@@ -1,5 +1,11 @@
 """Загрузка OHLCV данных с MOEX ISS REST API."""
 
+import sys
+from pathlib import Path
+
+# Позволяет запускать файл напрямую: python3 data/loader.py
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
 import logging
 from datetime import date, datetime, timedelta
 from typing import Optional
@@ -178,3 +184,68 @@ class MoexLoader:
 
 
 loader = MoexLoader()
+
+
+if __name__ == "__main__":
+    import argparse
+    from sqlalchemy import create_engine, text
+
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s  %(levelname)-8s  %(message)s",
+        datefmt="%H:%M:%S",
+    )
+
+    parser = argparse.ArgumentParser(description="Загрузить OHLCV с MOEX и сохранить в PostgreSQL")
+    parser.add_argument("tickers", nargs="*", default=["SBER", "GAZP", "LKOH", "YNDX", "NVTK"])
+    parser.add_argument("--interval", default="1d", choices=list(INTERVAL_MAP))
+    parser.add_argument("--days", type=int, default=365)
+    args = parser.parse_args()
+
+    end_dt   = date.today()
+    start_dt = end_dt - timedelta(days=args.days)
+
+    print(f"\nПараметры загрузки:")
+    print(f"  Тикеры   : {', '.join(args.tickers)}")
+    print(f"  Интервал : {args.interval}")
+    print(f"  Период   : {start_dt} → {end_dt}")
+    print(f"  База     : {config.db.dsn.split('@')[-1]}\n")
+
+    engine = create_engine(config.db.dsn, pool_pre_ping=True)
+
+    total_saved = 0
+    for ticker in args.tickers:
+        print(f"[{ticker}] Запрос к MOEX ISS…")
+        df = loader.get_candles(ticker, interval=args.interval, start=start_dt, end=end_dt)
+
+        if df.empty:
+            print(f"[{ticker}] Нет данных — пропускаем\n")
+            continue
+
+        # Привести DataFrame к схеме таблицы candles
+        df = df.reset_index()                          # datetime-индекс → колонка
+        df = df.rename(columns={"datetime": "time"})
+        df["ticker"]    = ticker
+        df["timeframe"] = args.interval
+        df["volume"]    = df["volume"].astype("int64")
+        df = df[["time", "ticker", "timeframe", "open", "high", "low", "close", "volume"]]
+
+        # Удалить существующие строки за этот период, затем вставить свежие
+        with engine.begin() as conn:
+            deleted = conn.execute(text("""
+                DELETE FROM candles
+                WHERE ticker    = :ticker
+                  AND timeframe = :tf
+                  AND time BETWEEN :start AND :end
+            """), {"ticker": ticker, "tf": args.interval,
+                   "start": start_dt, "end": end_dt}).rowcount
+
+            if deleted:
+                print(f"[{ticker}] Удалено {deleted} старых строк")
+
+        df.to_sql("candles", engine, if_exists="append", index=False, method="multi", chunksize=500)
+        total_saved += len(df)
+        print(f"[{ticker}] Сохранено {len(df)} свечей  "
+              f"({df['time'].min().date()} → {df['time'].max().date()})\n")
+
+    print(f"Готово. Итого сохранено: {total_saved} строк в таблицу candles.")

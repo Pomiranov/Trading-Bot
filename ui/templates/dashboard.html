@@ -1,0 +1,937 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>QuantFlow — Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/static/style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+</head>
+<body>
+
+<!-- ── Topbar ── -->
+<header class="topbar">
+  <a href="/" class="logo">
+    <span class="logo-icon">⚡</span>
+    QuantFlow
+  </a>
+
+  <nav class="nav">
+    <a href="#" data-view="dashboard" class="active">Dashboard</a>
+    <a href="#" data-view="portfolio">Portfolio</a>
+    <a href="#" data-view="signals">Signals</a>
+    <a href="#" data-view="backtest">Backtest</a>
+    <a href="#" data-view="settings">Settings</a>
+  </nav>
+
+  <div class="topbar-right">
+    <span class="clock" id="clock"></span>
+    <div class="status-badge" id="botStatus">
+      <span class="status-dot"></span>
+      <span id="botStatusText">Connecting…</span>
+    </div>
+  </div>
+</header>
+
+<!-- ══════════════════════════════════════════════════════════════════════════ -->
+<!-- VIEW: Dashboard                                                            -->
+<!-- ══════════════════════════════════════════════════════════════════════════ -->
+<div id="view-dashboard" class="view active">
+<div class="layout">
+
+  <!-- Metrics row -->
+  <div class="metrics-row">
+    <div class="card metric-card">
+      <div class="metric-label">Portfolio</div>
+      <div class="metric-value neutral" id="metPortfolio">—</div>
+      <div class="metric-sub" id="metTrades">— сделок</div>
+    </div>
+    <div class="card metric-card">
+      <div class="metric-label">P&amp;L сегодня</div>
+      <div class="metric-value" id="metPnl">—</div>
+      <div class="metric-sub" id="metPnlPct">—</div>
+    </div>
+    <div class="card metric-card">
+      <div class="metric-label">Просадка</div>
+      <div class="metric-value" id="metDrawdown">—</div>
+      <div class="metric-sub" id="metWinRate">Win rate —</div>
+    </div>
+    <div class="card metric-card">
+      <div class="metric-label">Sharpe Ratio</div>
+      <div class="metric-value neutral" id="metSharpe">—</div>
+      <div class="metric-sub">252 дня, анн.</div>
+    </div>
+  </div>
+
+  <!-- Main column -->
+  <div class="main-col">
+
+    <!-- Equity chart -->
+    <div class="card chart-card">
+      <div class="card-header">
+        <div>
+          <div class="card-title">Equity Curve · SBER</div>
+          <div class="card-subtitle" id="chartSubtitle">Загрузка…</div>
+        </div>
+      </div>
+      <div class="chart-wrap">
+        <canvas id="equityChart"></canvas>
+      </div>
+    </div>
+
+    <!-- Signals table -->
+    <div class="card signals-card">
+      <div class="card-header">
+        <div class="card-title">Последние сигналы</div>
+        <div class="card-subtitle" id="signalsUpdated"></div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Время</th>
+              <th>Тикер</th>
+              <th>Сигнал</th>
+              <th>Цена</th>
+              <th>Скор</th>
+              <th>Правил</th>
+            </tr>
+          </thead>
+          <tbody id="signalsBody">
+            <tr><td colspan="6" class="empty">Загрузка…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Sidebar -->
+  <div class="sidebar">
+
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">Открытые позиции</div>
+        <div class="card-subtitle" id="posCount">—</div>
+      </div>
+      <div id="positionsList">
+        <div class="empty">Загрузка…</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">Риск-менеджмент</div>
+      </div>
+      <div class="risk-grid" id="riskGrid">
+        <div class="risk-row">
+          <span class="risk-label">Дневной убыток</span>
+          <div class="risk-bar-wrap"><div class="risk-bar-fill" id="riskDailyBar" style="width:0%"></div></div>
+          <span class="risk-value" id="riskDailyVal">—</span>
+        </div>
+        <div class="risk-row">
+          <span class="risk-label">Просадка</span>
+          <div class="risk-bar-wrap"><div class="risk-bar-fill" id="riskDdBar" style="width:0%"></div></div>
+          <span class="risk-value" id="riskDdVal">—</span>
+        </div>
+        <div class="risk-row">
+          <span class="risk-label">Позиций</span>
+          <div class="risk-bar-wrap"><div class="risk-bar-fill" id="riskPosBar" style="width:0%"></div></div>
+          <span class="risk-value" id="riskPosVal">—</span>
+        </div>
+        <div class="risk-row">
+          <span class="risk-label">Win Rate</span>
+          <div class="risk-bar-wrap"><div class="risk-bar-fill" id="riskWrBar" style="width:0%"></div></div>
+          <span class="risk-value" id="riskWrVal">—</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" style="flex:1">
+      <div class="card-header">
+        <div class="card-title">Лог событий</div>
+      </div>
+      <div class="log-list" id="logList">
+        <div class="empty">Загрузка…</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════════════ -->
+<!-- VIEW: Portfolio                                                            -->
+<!-- ══════════════════════════════════════════════════════════════════════════ -->
+<div id="view-portfolio" class="view">
+<div class="page-layout">
+
+  <div class="page-title-row">
+    <div>
+      <h2 class="page-title">Portfolio</h2>
+      <p class="page-desc">Рыночные данные из БД · дневные свечи</p>
+    </div>
+    <span class="badge badge-info" id="portfolioUpdated"></span>
+  </div>
+
+  <div class="ticker-grid" id="tickerGrid">
+    <div class="empty">Загрузка котировок…</div>
+  </div>
+
+  <div class="card chart-card">
+    <div class="card-header">
+      <div>
+        <div class="card-title" id="portfolioChartTitle">Выберите тикер</div>
+        <div class="card-subtitle" id="portfolioChartSub">Нажмите на карточку выше</div>
+      </div>
+      <div class="ticker-tabs" id="tickerTabs"></div>
+    </div>
+    <div class="chart-wrap" style="height:260px">
+      <canvas id="portfolioChart"></canvas>
+    </div>
+  </div>
+
+</div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════════════ -->
+<!-- VIEW: Signals                                                              -->
+<!-- ══════════════════════════════════════════════════════════════════════════ -->
+<div id="view-signals" class="view">
+<div class="page-layout">
+
+  <div class="page-title-row">
+    <div>
+      <h2 class="page-title">Live Signals</h2>
+      <p class="page-desc">Сигналы на основе реальных данных · RSI, MACD, EMA, ADX</p>
+    </div>
+    <button class="btn-action" id="refreshSignalsBtn">↻ Обновить</button>
+  </div>
+
+  <div class="indicators-grid" id="indicatorsGrid">
+    <div class="empty" style="grid-column:1/-1">Загрузка сигналов…</div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">Детальные сигналы</div>
+      <div class="card-subtitle" id="signalsLiveUpdated"></div>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Тикер</th>
+            <th>Сигнал</th>
+            <th>Цена</th>
+            <th>RSI</th>
+            <th>MACD hist</th>
+            <th>ADX</th>
+            <th>BB%</th>
+            <th>Buy score</th>
+            <th>Sell score</th>
+            <th>Правил</th>
+          </tr>
+        </thead>
+        <tbody id="signalsLiveBody">
+          <tr><td colspan="10" class="empty">—</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card" id="triggeredRulesCard" style="display:none">
+    <div class="card-header">
+      <div class="card-title">Сработавшие правила</div>
+    </div>
+    <div id="triggeredRulesBody"></div>
+  </div>
+
+</div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════════════ -->
+<!-- VIEW: Backtest                                                             -->
+<!-- ══════════════════════════════════════════════════════════════════════════ -->
+<div id="view-backtest" class="view">
+<div class="page-layout">
+
+  <div class="page-title-row">
+    <div>
+      <h2 class="page-title">Backtest</h2>
+      <p class="page-desc">Событийный бэктест на исторических свечах из БД</p>
+    </div>
+    <button class="btn-primary" id="runBacktestBtn">▶ Запустить бэктест</button>
+  </div>
+
+  <div class="card" id="backtestStatus">
+    <div class="backtest-welcome">
+      <div class="backtest-welcome-icon">📊</div>
+      <div class="backtest-welcome-title">Готов к запуску</div>
+      <div class="backtest-welcome-desc">
+        Бэктест запустится на исторических свечах из PostgreSQL.<br>
+        Тикеры: SBER, GAZP, LKOH, NVTK · Период: ~334 дня · Комиссия: 0.03%
+      </div>
+    </div>
+  </div>
+
+  <div id="backtestResults" style="display:none">
+    <div class="card" style="margin-bottom:12px">
+      <div class="card-header">
+        <div class="card-title">Результаты бэктеста</div>
+        <div class="card-subtitle" id="backtestMeta"></div>
+      </div>
+      <div class="table-wrap">
+        <table id="backtestTable">
+          <thead>
+            <tr>
+              <th>Тикер</th>
+              <th>Сделок</th>
+              <th>Win Rate</th>
+              <th>PnL</th>
+              <th>Avg PnL</th>
+              <th>Просадка</th>
+              <th>Sharpe</th>
+              <th>Свечей</th>
+            </tr>
+          </thead>
+          <tbody id="backtestBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card chart-card">
+      <div class="card-header">
+        <div class="card-title">Equity Curves</div>
+        <div class="card-subtitle">Кривые капитала по тикерам</div>
+      </div>
+      <div class="chart-wrap" style="height:260px">
+        <canvas id="backtestChart"></canvas>
+      </div>
+    </div>
+  </div>
+
+</div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════════════ -->
+<!-- VIEW: Settings                                                             -->
+<!-- ══════════════════════════════════════════════════════════════════════════ -->
+<div id="view-settings" class="view">
+<div class="page-layout">
+
+  <div class="page-title-row">
+    <div>
+      <h2 class="page-title">Settings</h2>
+      <p class="page-desc">Текущая конфигурация торгового бота</p>
+    </div>
+  </div>
+
+  <div class="settings-grid" id="settingsGrid">
+    <div class="empty">Загрузка…</div>
+  </div>
+
+</div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════════════ -->
+<!-- JavaScript                                                                 -->
+<!-- ══════════════════════════════════════════════════════════════════════════ -->
+<script>
+// ── Clock ─────────────────────────────────────────────────────────────────────
+function updateClock() {
+  document.getElementById('clock').textContent =
+    new Date().toLocaleTimeString('ru-RU', { hour12: false }) + ' MSK';
+}
+updateClock();
+setInterval(updateClock, 1000);
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+const fmt    = new Intl.NumberFormat('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const fmtInt = new Intl.NumberFormat('ru-RU');
+
+function money(v)   { return fmt.format(v) + ' ₽'; }
+function pct(v)     { return (v >= 0 ? '+' : '') + fmt.format(v) + '%'; }
+function colorClass(v) { return v > 0 ? 'positive' : v < 0 ? 'negative' : 'neutral'; }
+
+function applyColor(el, v) {
+  el.classList.remove('positive', 'negative', 'neutral');
+  el.classList.add(colorClass(v));
+}
+
+function badgeHTML(action) {
+  const cls = { BUY: 'badge-buy', SELL: 'badge-sell', HOLD: 'badge-hold' }[action] || 'badge-hold';
+  return `<span class="badge ${cls}">${action}</span>`;
+}
+
+function logBadge(level) {
+  const l = (level || '').toUpperCase();
+  if (l === 'ERROR') return `<span class="badge badge-error">ERR</span>`;
+  if (l === 'WARN' || l === 'WARNING') return `<span class="badge badge-warn">WARN</span>`;
+  return `<span class="badge badge-info">INFO</span>`;
+}
+
+async function fetchJSON(url, opts) {
+  const res = await fetch(url, opts);
+  if (!res.ok) throw new Error(res.status);
+  return res.json();
+}
+
+// ── SPA navigation ────────────────────────────────────────────────────────────
+const viewHandlers = {};
+let portfolioChartInst = null;
+let backtestChartInst  = null;
+let currentView = 'dashboard';
+
+function showView(name) {
+  document.querySelectorAll('.view').forEach(v =>
+    v.classList.toggle('active', v.id === `view-${name}`)
+  );
+  document.querySelectorAll('.nav a').forEach(a =>
+    a.classList.toggle('active', a.dataset.view === name)
+  );
+  currentView = name;
+  viewHandlers[name]?.();
+}
+
+document.querySelectorAll('.nav a').forEach(a => {
+  a.addEventListener('click', e => {
+    e.preventDefault();
+    showView(a.dataset.view);
+  });
+});
+
+// ── Dashboard: Chart setup ────────────────────────────────────────────────────
+const equityChart = new Chart(document.getElementById('equityChart').getContext('2d'), {
+  type: 'line',
+  data: { labels: [], datasets: [{
+    label: 'Equity',
+    data: [],
+    borderColor: '#26a69a',
+    borderWidth: 2,
+    pointRadius: 0,
+    pointHoverRadius: 4,
+    fill: true,
+    backgroundColor: (ctx) => {
+      const g = ctx.chart.ctx.createLinearGradient(0, 0, 0, ctx.chart.height);
+      g.addColorStop(0, 'rgba(38,166,154,.25)');
+      g.addColorStop(1, 'rgba(38,166,154,.00)');
+      return g;
+    },
+    tension: 0.3,
+  }]},
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    interaction: { mode: 'index', intersect: false },
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        backgroundColor: '#1e2130',
+        borderColor: '#2a2e39',
+        borderWidth: 1,
+        titleColor: '#787b86',
+        bodyColor: '#e0e3eb',
+        callbacks: { label: (item) => ' ' + money(item.raw) },
+      },
+    },
+    scales: {
+      x: { ticks: { color: '#787b86', maxTicksLimit: 8, font: { size: 11 } }, grid: { color: '#2a2e39' } },
+      y: {
+        ticks: { color: '#787b86', font: { size: 11 }, callback: (v) => fmtInt.format(v / 1000) + 'k' },
+        grid: { color: '#2a2e39' },
+      },
+    },
+  },
+});
+
+// ── Dashboard loaders ─────────────────────────────────────────────────────────
+async function loadMetrics() {
+  const d = await fetchJSON('/api/metrics');
+
+  const sb  = document.getElementById('botStatus');
+  const sbt = document.getElementById('botStatusText');
+  const live = d.bot_status === 'live';
+  sb.className = 'status-badge ' + (live ? 'live' : 'stopped');
+  sbt.textContent = live ? 'Live' : 'Stopped';
+
+  const pEl = document.getElementById('metPortfolio');
+  pEl.textContent = money(d.portfolio_value);
+  document.getElementById('metTrades').textContent = fmtInt.format(d.total_trades) + ' сделок';
+
+  const pnlEl    = document.getElementById('metPnl');
+  const pnlPctEl = document.getElementById('metPnlPct');
+  pnlEl.textContent    = money(d.pnl_today);
+  pnlPctEl.textContent = pct(d.pnl_today_pct);
+  applyColor(pnlEl, d.pnl_today);
+  pnlPctEl.className = 'metric-sub ' + (d.pnl_today >= 0 ? 'sub-positive' : 'sub-negative');
+
+  const ddEl = document.getElementById('metDrawdown');
+  ddEl.textContent = pct(d.drawdown_pct);
+  applyColor(ddEl, d.drawdown_pct);
+  document.getElementById('metWinRate').textContent = 'Win rate ' + fmt.format(d.win_rate) + '%';
+  document.getElementById('metSharpe').textContent  = fmt.format(d.sharpe_ratio);
+
+  const dailyPct = Math.min(Math.abs(d.pnl_today_pct) / 2 * 100, 100);
+  const ddPct    = Math.min(Math.abs(d.drawdown_pct)   / 10 * 100, 100);
+  setRiskBar('riskDailyBar', 'riskDailyVal', dailyPct, pct(d.pnl_today_pct), 60, 90);
+  setRiskBar('riskDdBar',    'riskDdVal',    ddPct,    pct(d.drawdown_pct),   50, 80);
+  setRiskBar('riskWrBar',    'riskWrVal',    d.win_rate, fmt.format(d.win_rate) + '%', -1, -1, true);
+}
+
+function setRiskBar(barId, valId, pctVal, label, warnAt, dangerAt, invert = false) {
+  const bar = document.getElementById(barId);
+  bar.style.width = pctVal + '%';
+  bar.className = 'risk-bar-fill';
+  if (!invert) {
+    if (pctVal >= dangerAt) bar.classList.add('danger');
+    else if (pctVal >= warnAt) bar.classList.add('warn');
+  }
+  document.getElementById(valId).textContent = label;
+}
+
+async function loadEquity() {
+  const data = await fetchJSON('/api/equity');
+  equityChart.data.labels   = data.map(d => d.ts);
+  equityChart.data.datasets[0].data = data.map(d => d.equity);
+  equityChart.update('none');
+
+  const first = data[0]?.equity || 0;
+  const last  = data[data.length - 1]?.equity || 0;
+  const diff  = last - first;
+  const diffP = first ? (diff / first * 100) : 0;
+  const sub = document.getElementById('chartSubtitle');
+  sub.textContent = `${data.length} дней · ${diff >= 0 ? '+' : ''}${fmt.format(diff)} ₽ (${pct(diffP)})`;
+  sub.className   = 'card-subtitle ' + (diff >= 0 ? 'sub-positive' : 'sub-negative');
+}
+
+async function loadSignals() {
+  const data  = await fetchJSON('/api/signals');
+  const tbody = document.getElementById('signalsBody');
+  if (!data.length) {
+    tbody.innerHTML = '<tr><td colspan="6" class="empty">Нет сигналов</td></tr>';
+    return;
+  }
+  tbody.innerHTML = data.slice(0, 30).map(r => `
+    <tr>
+      <td class="ts-cell">${r.ts}</td>
+      <td class="ticker-cell">${r.ticker}</td>
+      <td>${badgeHTML(r.action)}</td>
+      <td class="price-cell">${fmt.format(r.price)} ₽</td>
+      <td class="score-cell">${fmt.format(r.score)}</td>
+      <td class="score-cell">${r.rules}</td>
+    </tr>`).join('');
+  document.getElementById('signalsUpdated').textContent =
+    'обновлено ' + new Date().toLocaleTimeString('ru-RU', { hour12: false });
+}
+
+async function loadPositions() {
+  const data = await fetchJSON('/api/positions');
+  const list = document.getElementById('positionsList');
+  document.getElementById('posCount').textContent = data.length + ' / 5';
+  if (!data.length) {
+    list.innerHTML = '<div class="empty">Нет открытых позиций</div>';
+    return;
+  }
+  list.innerHTML = data.map(p => {
+    const posClass = p.pnl >= 0 ? 'positive' : 'negative';
+    const barW     = Math.min(Math.abs(p.pnl_pct) * 10, 100);
+    const barColor = p.pnl >= 0 ? 'var(--green)' : 'var(--red)';
+    return `
+      <div class="position-row">
+        <div class="pos-top">
+          <span class="pos-ticker">${p.ticker}</span>
+          <span class="pos-pnl ${posClass}">${p.pnl >= 0 ? '+' : ''}${fmt.format(p.pnl)} ₽</span>
+        </div>
+        <div class="pos-meta">
+          <span>${fmtInt.format(p.shares)} шт · вход ${fmt.format(p.entry_price)}</span>
+          <span class="${posClass}">${pct(p.pnl_pct)}</span>
+        </div>
+        <div class="pos-meta">
+          <span style="color:var(--muted)">Стоп ${fmt.format(p.stop_price)}</span>
+          <span style="color:var(--muted)">Текущая ${fmt.format(p.current_price)}</span>
+        </div>
+        <div class="pos-progress">
+          <div class="pos-progress-fill" style="width:${barW}%;background:${barColor}"></div>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+async function loadLog() {
+  const data = await fetchJSON('/api/log');
+  const list = document.getElementById('logList');
+  if (!data.length) { list.innerHTML = '<div class="empty">Лог пуст</div>'; return; }
+  list.innerHTML = data.map(e => `
+    <div class="log-entry">
+      <span class="log-ts">${e.ts}</span>
+      ${logBadge(e.level)}
+      <span class="log-msg">${e.message}</span>
+    </div>`).join('');
+}
+
+async function updatePositionsBar() {
+  const data = await fetchJSON('/api/positions');
+  setRiskBar('riskPosBar', 'riskPosVal', data.length / 5 * 100, data.length + ' / 5', 60, 100);
+}
+
+async function dashboardRefresh() {
+  if (currentView !== 'dashboard') return;
+  await Promise.allSettled([loadMetrics(), loadEquity(), loadSignals(), loadPositions(), loadLog(), updatePositionsBar()]);
+}
+
+// ── Portfolio view ────────────────────────────────────────────────────────────
+const TICKER_COLORS = {
+  SBER: '#26a69a', GAZP: '#2196f3', LKOH: '#ffb74d', NVTK: '#ef5350',
+};
+
+function buildPortfolioChart(labels, prices, ticker) {
+  const color = TICKER_COLORS[ticker] || '#26a69a';
+  const ctx = document.getElementById('portfolioChart');
+  if (portfolioChartInst) { portfolioChartInst.destroy(); portfolioChartInst = null; }
+  portfolioChartInst = new Chart(ctx.getContext('2d'), {
+    type: 'line',
+    data: { labels, datasets: [{
+      label: ticker,
+      data: prices,
+      borderColor: color,
+      borderWidth: 2,
+      pointRadius: 0,
+      pointHoverRadius: 4,
+      fill: true,
+      backgroundColor: (ctx2) => {
+        const g = ctx2.chart.ctx.createLinearGradient(0, 0, 0, ctx2.chart.height);
+        g.addColorStop(0, color.replace(')', ', .25)').replace('rgb', 'rgba'));
+        g.addColorStop(1, color.replace(')', ', .00)').replace('rgb', 'rgba'));
+        return g;
+      },
+      tension: 0.3,
+    }]},
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: '#1e2130', borderColor: '#2a2e39', borderWidth: 1,
+          titleColor: '#787b86', bodyColor: '#e0e3eb',
+          callbacks: { label: (item) => ' ' + fmt.format(item.raw) + ' ₽' },
+        },
+      },
+      scales: {
+        x: { ticks: { color: '#787b86', maxTicksLimit: 8, font: { size: 11 } }, grid: { color: '#2a2e39' } },
+        y: { ticks: { color: '#787b86', font: { size: 11 }, callback: v => fmt.format(v) }, grid: { color: '#2a2e39' } },
+      },
+    },
+  });
+}
+
+async function loadTickerChart(ticker) {
+  document.getElementById('portfolioChartTitle').textContent = `${ticker} — Дневные свечи`;
+  document.getElementById('portfolioChartSub').textContent   = 'Загрузка…';
+  document.querySelectorAll('.ticker-tab').forEach(t =>
+    t.classList.toggle('active', t.dataset.ticker === ticker)
+  );
+  try {
+    const data   = await fetchJSON(`/api/candles?ticker=${ticker}&limit=120`);
+    const labels = data.map(d => d.ts);
+    const prices = data.map(d => d.close);
+    buildPortfolioChart(labels, prices, ticker);
+    const first = prices[0] || 0, last = prices[prices.length - 1] || 0;
+    const diff  = last - first, diffP = first ? diff / first * 100 : 0;
+    const sub   = document.getElementById('portfolioChartSub');
+    sub.textContent = `${data.length} дней · ${diff >= 0 ? '+' : ''}${fmt.format(diff)} ₽ (${pct(diffP)})`;
+    sub.className   = 'card-subtitle ' + (diff >= 0 ? 'sub-positive' : 'sub-negative');
+  } catch (e) {
+    document.getElementById('portfolioChartSub').textContent = 'Ошибка загрузки';
+  }
+}
+
+async function loadPortfolio() {
+  const grid = document.getElementById('tickerGrid');
+  const tabs  = document.getElementById('tickerTabs');
+  try {
+    const data = await fetchJSON('/api/portfolio');
+    if (!data.length) { grid.innerHTML = '<div class="empty">Нет данных о котировках</div>'; return; }
+
+    grid.innerHTML = data.map(t => {
+      const cls   = t.change_1d >= 0 ? 'positive' : 'negative';
+      const color = TICKER_COLORS[t.ticker] || '#787b86';
+      return `
+        <div class="ticker-card" data-ticker="${t.ticker}" onclick="loadTickerChart('${t.ticker}')">
+          <div class="ticker-card-symbol" style="color:${color}">${t.ticker}</div>
+          <div class="ticker-card-price">${fmt.format(t.price)} ₽</div>
+          <div class="ticker-card-change ${cls}">${pct(t.change_1d)}</div>
+          <div class="ticker-card-row">
+            <span class="ticker-card-label">30д</span>
+            <span class="ticker-card-30d ${t.change_30d >= 0 ? 'positive' : 'negative'}">${pct(t.change_30d)}</span>
+          </div>
+          <div class="ticker-card-row">
+            <span class="ticker-card-label">Объём</span>
+            <span class="ticker-card-vol">${fmtInt.format(Math.round(t.volume / 1000))}K</span>
+          </div>
+        </div>`;
+    }).join('');
+
+    tabs.innerHTML = data.map(t =>
+      `<button class="ticker-tab" data-ticker="${t.ticker}" onclick="loadTickerChart('${t.ticker}')">${t.ticker}</button>`
+    ).join('');
+
+    document.getElementById('portfolioUpdated').textContent =
+      'обновлено ' + new Date().toLocaleTimeString('ru-RU', { hour12: false });
+
+    if (data.length > 0) loadTickerChart(data[0].ticker);
+  } catch (e) {
+    grid.innerHTML = '<div class="empty">Ошибка загрузки котировок</div>';
+  }
+}
+
+viewHandlers.portfolio = loadPortfolio;
+
+// ── Signals view ──────────────────────────────────────────────────────────────
+function rsiBar(v) {
+  const pct = Math.min(Math.max(v, 0), 100);
+  const col  = v < 30 ? 'var(--green)' : v > 70 ? 'var(--red)' : 'var(--blue)';
+  return `<div style="display:flex;align-items:center;gap:6px">
+    <div style="flex:1;height:4px;background:var(--border);border-radius:2px;overflow:hidden">
+      <div style="width:${pct}%;height:100%;background:${col};border-radius:2px"></div>
+    </div>
+    <span style="min-width:32px;text-align:right">${fmt.format(v)}</span>
+  </div>`;
+}
+
+async function loadLiveSignals() {
+  const grid  = document.getElementById('indicatorsGrid');
+  const tbody = document.getElementById('signalsLiveBody');
+  const card  = document.getElementById('triggeredRulesCard');
+  grid.innerHTML = '<div class="empty" style="grid-column:1/-1">Вычисление индикаторов…</div>';
+
+  try {
+    const data = await fetchJSON('/api/signals/live');
+
+    if (!data.length || data[0]?.ts) {
+      // Real signal data
+      grid.innerHTML = data.map(s => {
+        const cls    = { BUY: 'badge-buy', SELL: 'badge-sell', HOLD: 'badge-hold' }[s.action] || 'badge-hold';
+        const color  = TICKER_COLORS[s.ticker] || '#787b86';
+        const macdCls = s.macd_hist > 0 ? 'positive' : 'negative';
+        return `
+          <div class="indicator-card">
+            <div class="indicator-header">
+              <span class="indicator-ticker" style="color:${color}">${s.ticker}</span>
+              <span class="badge ${cls}">${s.action}</span>
+            </div>
+            <div class="indicator-price">${fmt.format(s.price)} ₽</div>
+            <div class="indicator-row">
+              <span class="indicator-label">RSI</span>
+              ${rsiBar(s.rsi)}
+            </div>
+            <div class="indicator-row">
+              <span class="indicator-label">MACD</span>
+              <span class="${macdCls}">${s.macd_hist >= 0 ? '+' : ''}${fmt.format(s.macd_hist)}</span>
+            </div>
+            <div class="indicator-row">
+              <span class="indicator-label">ADX</span>
+              <span style="color:${s.adx > 25 ? 'var(--green)' : 'var(--muted)'}">${fmt.format(s.adx)}</span>
+            </div>
+            <div class="indicator-row">
+              <span class="indicator-label">Score</span>
+              <span style="color:var(--text)">${fmt.format(s.score)}</span>
+            </div>
+          </div>`;
+      }).join('');
+
+      tbody.innerHTML = data.map(s => `
+        <tr>
+          <td class="ticker-cell">${s.ticker}</td>
+          <td>${badgeHTML(s.action)}</td>
+          <td class="price-cell">${fmt.format(s.price)} ₽</td>
+          <td>${rsiBar(s.rsi)}</td>
+          <td class="${s.macd_hist >= 0 ? 'positive' : 'negative'}">${s.macd_hist >= 0 ? '+' : ''}${fmt.format(s.macd_hist)}</td>
+          <td style="color:${s.adx > 25 ? 'var(--green)' : 'var(--muted)'}">${fmt.format(s.adx)}</td>
+          <td>${fmt.format(s.bb_pct)}</td>
+          <td class="positive">${fmt.format(s.buy_score)}</td>
+          <td class="negative">${fmt.format(s.sell_score)}</td>
+          <td class="score-cell">${s.rules}</td>
+        </tr>`).join('');
+
+      const allTriggered = data.flatMap(s => (s.triggered || []).map(r => `${s.ticker}: ${r}`));
+      if (allTriggered.length) {
+        card.style.display = '';
+        document.getElementById('triggeredRulesBody').innerHTML =
+          allTriggered.map(r => `<div class="rule-tag">${r}</div>`).join('');
+      } else {
+        card.style.display = 'none';
+      }
+    } else {
+      grid.innerHTML = '<div class="empty" style="grid-column:1/-1">Нет сигналов</div>';
+    }
+
+    document.getElementById('signalsLiveUpdated').textContent =
+      'обновлено ' + new Date().toLocaleTimeString('ru-RU', { hour12: false });
+  } catch (e) {
+    grid.innerHTML = `<div class="empty" style="grid-column:1/-1">Ошибка: ${e.message}</div>`;
+  }
+}
+
+document.getElementById('refreshSignalsBtn').addEventListener('click', loadLiveSignals);
+viewHandlers.signals = loadLiveSignals;
+
+// ── Backtest view ─────────────────────────────────────────────────────────────
+const BACKTEST_COLORS = ['#26a69a', '#2196f3', '#ffb74d', '#ef5350'];
+
+document.getElementById('runBacktestBtn').addEventListener('click', async () => {
+  const btn    = document.getElementById('runBacktestBtn');
+  const status = document.getElementById('backtestStatus');
+  const resEl  = document.getElementById('backtestResults');
+
+  btn.disabled = true;
+  btn.textContent = '⏳ Вычисление…';
+  status.innerHTML = `
+    <div class="backtest-welcome">
+      <div class="backtest-welcome-icon" style="animation:spin 1s linear infinite">⚙️</div>
+      <div class="backtest-welcome-title">Запуск бэктеста…</div>
+      <div class="backtest-welcome-desc">Вычисление индикаторов и прогон стратегии по историческим данным</div>
+    </div>`;
+  resEl.style.display = 'none';
+
+  try {
+    const results = await fetchJSON('/api/backtest', { method: 'POST' });
+
+    if (results.error) throw new Error(results.error);
+
+    status.innerHTML = `
+      <div class="backtest-welcome">
+        <div class="backtest-welcome-icon">✅</div>
+        <div class="backtest-welcome-title">Бэктест завершён</div>
+        <div class="backtest-welcome-desc">${results.length} тикеров проверено</div>
+      </div>`;
+
+    document.getElementById('backtestMeta').textContent =
+      `Запуск: ${new Date().toLocaleTimeString('ru-RU')} · Стартовый капитал: ${money(1_000_000)}`;
+
+    const tbody = document.getElementById('backtestBody');
+    tbody.innerHTML = results.map(r => {
+      const pnlCls = r.total_pnl >= 0 ? 'positive' : 'negative';
+      const wrCls  = r.win_rate >= 50 ? 'positive' : 'negative';
+      return `
+        <tr>
+          <td class="ticker-cell">${r.ticker}</td>
+          <td>${fmtInt.format(r.total_trades)}</td>
+          <td class="${wrCls}">${fmt.format(r.win_rate)}%</td>
+          <td class="${pnlCls}">${r.total_pnl >= 0 ? '+' : ''}${money(r.total_pnl)}</td>
+          <td class="${r.avg_pnl >= 0 ? 'positive' : 'negative'}">${r.avg_pnl >= 0 ? '+' : ''}${money(r.avg_pnl)}</td>
+          <td class="negative">${fmt.format(r.max_drawdown)}%</td>
+          <td class="${r.sharpe >= 1 ? 'positive' : r.sharpe >= 0 ? 'neutral' : 'negative'}">${fmt.format(r.sharpe)}</td>
+          <td class="score-cell">${r.candles_count}</td>
+        </tr>`;
+    }).join('');
+
+    // Equity curves chart
+    const ctx2 = document.getElementById('backtestChart');
+    if (backtestChartInst) { backtestChartInst.destroy(); backtestChartInst = null; }
+    backtestChartInst = new Chart(ctx2.getContext('2d'), {
+      type: 'line',
+      data: {
+        labels: results[0]?.equity_curve.map((_, i) => i) || [],
+        datasets: results.map((r, idx) => ({
+          label: r.ticker,
+          data: r.equity_curve,
+          borderColor: BACKTEST_COLORS[idx % BACKTEST_COLORS.length],
+          borderWidth: 2,
+          pointRadius: 0,
+          fill: false,
+          tension: 0.3,
+        })),
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        interaction: { mode: 'index', intersect: false },
+        plugins: {
+          legend: { display: true, labels: { color: '#e0e3eb', font: { size: 11 } } },
+          tooltip: {
+            backgroundColor: '#1e2130', borderColor: '#2a2e39', borderWidth: 1,
+            titleColor: '#787b86', bodyColor: '#e0e3eb',
+            callbacks: { label: (item) => ` ${item.dataset.label}: ${money(item.raw)}` },
+          },
+        },
+        scales: {
+          x: { display: false },
+          y: {
+            ticks: { color: '#787b86', font: { size: 11 }, callback: v => fmtInt.format(v / 1000) + 'k' },
+            grid: { color: '#2a2e39' },
+          },
+        },
+      },
+    });
+
+    resEl.style.display = '';
+  } catch (e) {
+    status.innerHTML = `
+      <div class="backtest-welcome">
+        <div class="backtest-welcome-icon">❌</div>
+        <div class="backtest-welcome-title">Ошибка</div>
+        <div class="backtest-welcome-desc">${e.message}</div>
+      </div>`;
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '▶ Запустить бэктест';
+  }
+});
+
+// ── Settings view ─────────────────────────────────────────────────────────────
+async function loadSettings() {
+  const grid = document.getElementById('settingsGrid');
+  try {
+    const d = await fetchJSON('/api/settings');
+
+    function settingsSection(title, rows) {
+      return `
+        <div class="settings-section card">
+          <div class="card-header"><div class="card-title">${title}</div></div>
+          <div class="settings-rows">
+            ${rows.map(([k, v, ok]) => `
+              <div class="settings-row">
+                <span class="settings-key">${k}</span>
+                <span class="settings-val ${ok !== undefined ? (ok ? 'positive' : 'negative') : ''}">${v}</span>
+              </div>`).join('')}
+          </div>
+        </div>`;
+    }
+
+    grid.innerHTML = [
+      settingsSection('База данных', [
+        ['Хост',       d.db.host + ':' + d.db.port, undefined],
+        ['База',       d.db.name, undefined],
+        ['Статус',     d.db.connected ? 'Подключено ✓' : 'Ошибка соединения', d.db.connected],
+      ]),
+      settingsSection('Риск-менеджмент', [
+        ['Макс. позиция',    (d.risk.max_position_pct * 100).toFixed(1) + '% капитала', undefined],
+        ['ATR стоп ×',       d.risk.atr_stop_multiplier + 'x', undefined],
+        ['Макс. дн. убыток', (d.risk.max_daily_loss_pct * 100).toFixed(1) + '%', undefined],
+        ['Макс. позиций',    d.risk.max_open_positions, undefined],
+      ]),
+      settingsSection('Приложение', [
+        ['Тикеры',          d.app.tickers.join(', '), undefined],
+        ['Интервал опроса', d.app.poll_interval + ' сек.', undefined],
+        ['Уровень логов',   d.app.log_level, undefined],
+      ]),
+      settingsSection('Брокер (Tinkoff)', [
+        ['Режим',     d.tinkoff.sandbox ? 'Sandbox' : 'Prod', d.tinkoff.sandbox],
+        ['API токен', d.tinkoff.has_token ? 'Настроен ✓' : 'Не задан', d.tinkoff.has_token],
+      ]),
+    ].join('');
+  } catch (e) {
+    grid.innerHTML = `<div class="empty">Ошибка загрузки настроек: ${e.message}</div>`;
+  }
+}
+
+viewHandlers.settings = loadSettings;
+
+// ── Refresh cycle (Dashboard only) ───────────────────────────────────────────
+dashboardRefresh();
+setInterval(dashboardRefresh, 30_000);
+</script>
+</body>
+</html>

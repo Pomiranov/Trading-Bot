@@ -1,0 +1,169 @@
+# Торговые правила для алгоритмического бота MOEX
+# Каждое правило: name, conditions (список), action (BUY/SELL/HOLD), weight, description
+
+rules:
+  # ─── Правила на покупку ───────────────────────────────────────────────
+
+  - name: "RSI_Oversold_Bounce"
+    description: "Цена перепродана — RSI выходит из зоны перепроданности"
+    action: BUY
+    weight: 1.0
+    conditions:
+      - indicator: rsi
+        operator: "<"
+        value: 35
+      - indicator: macd_hist
+        operator: ">"
+        value: 0
+
+  - name: "EMA_Bullish_Cross"
+    description: "Быстрая EMA пересекает медленную EMA снизу вверх"
+    action: BUY
+    weight: 1.5
+    conditions:
+      - indicator: price_above_ema_fast
+        operator: "=="
+        value: true
+      - indicator: price_above_ema_slow
+        operator: "=="
+        value: true
+      - indicator: adx
+        operator: ">"
+        value: 20
+
+  - name: "MACD_Bullish_Crossover"
+    description: "MACD пересекает сигнальную линию снизу вверх"
+    action: BUY
+    weight: 1.2
+    conditions:
+      - indicator: macd_bullish_cross
+        operator: "=="
+        value: true
+      - indicator: rsi
+        operator: ">"
+        value: 40
+      - indicator: rsi
+        operator: "<"
+        value: 65
+
+  - name: "BB_Lower_Bounce"
+    description: "Цена отбивается от нижней полосы Боллинджера при слабом тренде"
+    action: BUY
+    weight: 0.8
+    conditions:
+      - indicator: bb_pct
+        operator: "<"
+        value: 0.1
+      - indicator: rsi
+        operator: "<"
+        value: 40
+      - indicator: adx
+        operator: "<"
+        value: 30
+
+  - name: "Strong_Trend_Continuation_Buy"
+    description: "Продолжение сильного восходящего тренда — ADX высокий, +DI > -DI"
+    action: BUY
+    weight: 1.8
+    conditions:
+      - indicator: adx
+        operator: ">"
+        value: 30
+      - indicator: adx_pos
+        operator: ">"
+        value: adx_neg
+      - indicator: price_above_ema_fast
+        operator: "=="
+        value: true
+
+  - name: "VWAP_Support_Buy"
+    description: "Цена выше VWAP — подтверждение покупательского давления"
+    action: BUY
+    weight: 0.7
+    conditions:
+      - indicator: close
+        operator: ">"
+        value: vwap
+
+  # ─── Правила на продажу ──────────────────────────────────────────────
+
+  - name: "RSI_Overbought_Exit"
+    description: "Цена перекуплена — RSI заходит в зону перекупленности"
+    action: SELL
+    weight: 1.0
+    conditions:
+      - indicator: rsi
+        operator: ">"
+        value: 70
+      - indicator: macd_hist
+        operator: "<"
+        value: 0
+
+  - name: "EMA_Bearish_Cross"
+    description: "Быстрая EMA пересекает медленную EMA сверху вниз"
+    action: SELL
+    weight: 1.5
+    conditions:
+      - indicator: price_above_ema_fast
+        operator: "=="
+        value: false
+      - indicator: price_above_ema_slow
+        operator: "=="
+        value: false
+      - indicator: adx
+        operator: ">"
+        value: 20
+
+  - name: "MACD_Bearish_Crossover"
+    description: "MACD пересекает сигнальную линию сверху вниз"
+    action: SELL
+    weight: 1.2
+    conditions:
+      - indicator: macd_bearish_cross
+        operator: "=="
+        value: true
+      - indicator: rsi
+        operator: ">"
+        value: 50
+
+  - name: "BB_Upper_Rejection"
+    description: "Цена отвергается верхней полосой Боллинджера"
+    action: SELL
+    weight: 0.8
+    conditions:
+      - indicator: bb_pct
+        operator: ">"
+        value: 0.9
+      - indicator: rsi
+        operator: ">"
+        value: 60
+
+  - name: "Strong_Trend_Continuation_Sell"
+    description: "Продолжение сильного нисходящего тренда — ADX высокий, -DI > +DI"
+    action: SELL
+    weight: 1.8
+    conditions:
+      - indicator: adx
+        operator: ">"
+        value: 30
+      - indicator: adx_neg
+        operator: ">"
+        value: adx_pos
+      - indicator: price_above_ema_fast
+        operator: "=="
+        value: false
+
+  - name: "VWAP_Resistance_Sell"
+    description: "Цена ниже VWAP — давление продавцов"
+    action: SELL
+    weight: 0.7
+    conditions:
+      - indicator: close
+        operator: "<"
+        value: vwap
+
+# ─── Параметры движка правил ──────────────────────────────────────────
+settings:
+  min_buy_score: 2.0       # Минимальный суммарный вес для сигнала BUY
+  min_sell_score: 2.0      # Минимальный суммарный вес для сигнала SELL
+  confirmation_rules: 2    # Минимальное количество сработавших правил

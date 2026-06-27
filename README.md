@@ -1,20 +1,17 @@
-# QuantFlow — Professional AI-Powered Investment & Trading Platform
+# QuantFlow — Алгоритмический торговый бот для MOEX
 
 <div align="center">
 
 ![Python](https://img.shields.io/badge/Python-3.11+-3776AB?style=flat-square&logo=python&logoColor=white)
-![FastAPI](https://img.shields.io/badge/FastAPI-0.111+-009688?style=flat-square&logo=fastapi&logoColor=white)
-![PostgreSQL](https://img.shields.io/badge/PostgreSQL-15+-4169E1?style=flat-square&logo=postgresql&logoColor=white)
-![Redis](https://img.shields.io/badge/Redis-7.2+-DC382D?style=flat-square&logo=redis&logoColor=white)
-![Kafka](https://img.shields.io/badge/Kafka-3.7+-231F20?style=flat-square&logo=apachekafka&logoColor=white)
+![Flask](https://img.shields.io/badge/Flask-3.1+-000000?style=flat-square&logo=flask&logoColor=white)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-TimescaleDB-4169E1?style=flat-square&logo=postgresql&logoColor=white)
 ![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?style=flat-square&logo=docker&logoColor=white)
-![License](https://img.shields.io/badge/License-MIT-green?style=flat-square)
-![Build](https://img.shields.io/badge/Build-Passing-brightgreen?style=flat-square)
-![Coverage](https://img.shields.io/badge/Coverage-87%25-green?style=flat-square)
+![Tinkoff](https://img.shields.io/badge/Tinkoff-Invest%20API%20v2-FFDD2D?style=flat-square)
+![License](https://img.shields.io/badge/License-MIT-26a69a?style=flat-square)
 
-**Профессиональная микросервисная платформа для автоматической торговли акциями, ETF, облигациями и фьючерсами с гибридным AI-движком, управлением риском и оптимизацией портфеля.**
+**Торговый бот для Московской биржи с веб-дашбордом, сигнальным движком на технических индикаторах, управлением риском и интеграцией с Tinkoff Invest API.**
 
-[Архитектура](#архитектура) · [Быстрый старт](#быстрый-старт) · [Модули](#модули) · [AI Engine](#ai-prediction-engine) · [Risk Engine](#risk-engine) · [API Docs](#api-документация) · [Деплой](#деплой) · [Contributing](#contributing)
+[Архитектура](#архитектура) · [Быстрый старт](#быстрый-старт) · [Dashboard](#web-dashboard) · [Сигналы](#сигнальный-движок) · [Бэктест](#бэктест) · [API](#rest-api) · [Конфигурация](#конфигурация) · [Безопасность](#безопасность)
 
 </div>
 
@@ -22,1644 +19,205 @@
 
 ## Содержание
 
-- [Обзор системы](#обзор-системы)
+- [Обзор](#обзор)
+- [Возможности](#возможности)
 - [Архитектура](#архитектура)
 - [Стек технологий](#стек-технологий)
-- [Структура репозитория](#структура-репозитория)
-- [Модули](#модули)
-  - [Market Data Service](#market-data-service)
-  - [News Intelligence Service](#news-intelligence-service)
-  - [Macroeconomic Service](#macroeconomic-service)
-  - [Political Risk Service](#political-risk-service)
-  - [Social Sentiment Service](#social-sentiment-service)
-  - [Fundamental Analysis Service](#fundamental-analysis-service)
-  - [Technical Analysis Service](#technical-analysis-service)
-  - [AI Prediction Engine](#ai-prediction-engine)
-  - [Portfolio Optimizer](#portfolio-optimizer)
-  - [Risk Engine](#risk-engine)
-  - [Execution Engine](#execution-engine)
-  - [Monitoring Service](#monitoring-service)
+- [Структура проекта](#структура-проекта)
 - [Быстрый старт](#быстрый-старт)
+  - [Docker (рекомендуется)](#docker-рекомендуется)
+  - [Python-окружение](#python-окружение)
+  - [Загрузка исторических данных](#загрузка-исторических-данных)
 - [Конфигурация](#конфигурация)
-- [API Документация](#api-документация)
-- [Тестирование](#тестирование)
-- [Деплой](#деплой)
+- [Web Dashboard](#web-dashboard)
+- [Сигнальный движок](#сигнальный-движок)
+- [Риск-менеджмент](#риск-менеджмент)
+- [Брокер Tinkoff Invest](#брокер-tinkoff-invest)
+- [Бэктест](#бэктест)
+- [Telegram-бот](#telegram-бот)
+- [REST API](#rest-api)
+- [База данных](#база-данных)
+- [Безопасность](#безопасность)
 - [Roadmap](#roadmap)
-- [Contributing](#contributing)
-- [Лицензия](#лицензия)
+- [Changelog](#changelog)
+- [Дисклеймер](#дисклеймер)
 
 ---
 
-## Обзор системы
+## Обзор
 
-QuantFlow — это production-ready платформа для алгоритмической торговли, построенная по принципам **Clean Architecture**, **Domain Driven Design** и **Event-Driven Architecture**. Система способна:
+QuantFlow — это production-ready алгоритмический торговый бот для **Московской биржи (MOEX)**. Система анализирует рыночные данные через технические индикаторы, генерирует торговые сигналы по YAML-правилам, управляет риском через ATR-стоп, исполняет сделки через **Tinkoff Invest API v2** и визуализирует всё через стеклянный веб-дашборд.
 
-- собирать и нормализовывать рыночные, новостные, макроэкономические и альтернативные данные в реальном времени;
-- анализировать фундаментальные, технические, политические и сентиментальные факторы;
-- генерировать торговые сигналы через гибридный ансамбль моделей (XGBoost + LightGBM + CatBoost + LSTM + Transformer);
-- формировать и оптимизировать портфель методами MPT, Black-Litterman и Risk Parity;
-- управлять риском через VaR, Expected Shortfall, Drawdown Control и Position Sizing;
-- исполнять ордера автоматически через брокерские API (Interactive Brokers, Alpaca, и др.).
+```
+MOEX ISS API → Загрузка свечей → Технические индикаторы → Движок правил
+     ↓                                                           ↓
+TimescaleDB ←── Запись сделок ←── Риск-менеджмент ←── Сигнал BUY/SELL/HOLD
+     ↓                                    ↓
+Web Dashboard              Tinkoff Invest API v2
+     ↓                                    ↓
+Chart.js + SPA            Рыночный / Лимитный ордер
+```
 
-### Ключевые характеристики
+---
 
-| Характеристика | Значение |
+## Возможности
+
+| Категория | Детали |
 |---|---|
-| Инструменты | Акции, ETF, Облигации, Фьючерсы |
-| Временной горизонт | Долгосрочный (weeks–months) + краткосрочный (intraday) |
-| Латентность исполнения | < 50ms (через Redis) |
-| Частота переобучения AI | Еженедельно (walk-forward) |
-| Максимальная просадка (hard limit) | 15% от NAV |
-| Поддерживаемые брокеры | IBKR, Alpaca, Tinkoff, Bybit (через адаптеры) |
+| **Рыночные данные** | MOEX ISS REST API: интервалы 1m / 5m / 10m / 15m / 30m / 1h / 1d / 1w |
+| **Индикаторы** | RSI · MACD · EMA · ATR · Bollinger Bands · ADX+DI · VWAP |
+| **Сигналы** | 12 правил на BUY / SELL из `knowledge/rules.yaml`, горячая перезагрузка |
+| **Риск** | ATR-стоп · Размер позиции % от капитала · Дневной лимит убытков · Трейлинг-стоп |
+| **Брокер** | Tinkoff Invest API v2 · Sandbox + Production · Рыночные и лимитные ордера |
+| **Dashboard** | Flask SPA · 5 страниц · Chart.js · Glassmorphism UI · авто-обновление 30 сек |
+| **Бэктест** | Событийный бэктестер · Комиссия 0.03% · Equity curve · Sharpe · Drawdown |
+| **Telegram** | 7 команд: /status /signal /trades /stats /rules /stop /start |
+| **БД** | PostgreSQL TimescaleDB · Лог сделок с контекстом сигнала · Статистика правил |
 
 ---
 
 ## Архитектура
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                    ВНЕШНИЕ ИСТОЧНИКИ ДАННЫХ                      │
-│  Market APIs · News APIs · Macro Data · Social · SEC/EDGAR       │
-└──────────────────────────┬──────────────────────────────────────┘
-                           │  REST / WebSocket / FTP
-                           ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                  СЛОЙ СБОРА ДАННЫХ (Kafka)                       │
-│  Market Data · News Intelligence · Macro/Political · Sentiment   │
-└──────────────────────────┬──────────────────────────────────────┘
-                           │  Events → Kafka Topics
-                           ▼
-┌─────────────────────────────────────────────────────────────────┐
-│               СЛОЙ АНАЛИЗА (PostgreSQL + Redis)                  │
-│     Fundamental Analysis · Technical Analysis · Political Risk   │
-└──────────────────────────┬──────────────────────────────────────┘
-                           │  Features → Feature Store
-                           ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                    AI PREDICTION ENGINE                          │
-│  XGBoost · LightGBM · CatBoost · LSTM · Transformer Ensemble    │
-└──────────────────────────┬──────────────────────────────────────┘
-                           │  Signals → BUY / SELL / HOLD + Score
-                           ▼
-┌─────────────────────────────────────────────────────────────────┐
-│           PORTFOLIO OPTIMIZER + RISK ENGINE                      │
-│   MPT · Black-Litterman · Risk Parity · VaR · ES · Drawdown     │
-└──────────────────────────┬──────────────────────────────────────┘
-                           │  Validated Orders
-                           ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                    EXECUTION ENGINE                              │
-│         Order Router · Smart OMS · Broker Adapters              │
-└──────────────────────────┬──────────────────────────────────────┘
-                           │
-                           ▼
-┌─────────────────────────────────────────────────────────────────┐
-│              MONITORING · ALERTING · AUDIT TRAIL                 │
-│            Prometheus · Grafana · ELK · PagerDuty               │
-└─────────────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────────┐
+│                         MOEX ISS REST API                            │
+│              https://iss.moex.com/iss — TQBR, дневные/часовые свечи │
+└─────────────────────────────┬────────────────────────────────────────┘
+                              │
+                    data/loader.py
+                    MoexLoader.get_candles()
+                              │
+                              ▼
+┌──────────────────────────────────────────────────────────────────────┐
+│                   СИГНАЛЬНЫЙ ДВИЖОК                                   │
+│                                                                      │
+│  signals/indicators.py          signals/rules_engine.py              │
+│  IndicatorEngine                RulesEngine ← knowledge/rules.yaml   │
+│  RSI · MACD · EMA · ATR         12 правил YAML · весовой скоринг     │
+│  BB · ADX+DI · VWAP             BUY / SELL / HOLD + score            │
+└─────────────────────────────┬────────────────────────────────────────┘
+                              │ SignalResult
+                              ▼
+┌──────────────────────────────────────────────────────────────────────┐
+│                    РИСК-МЕНЕДЖМЕНТ                                    │
+│                  risk/risk_manager.py                                │
+│  ATR-стоп · Размер позиции · Лимит позиций · Дневной убыток         │
+│  check_trade_allowed() · trailing_stop() · calculate_position()      │
+└─────────────────────────────┬────────────────────────────────────────┘
+                              │ RiskCheckResult.allowed
+                              ▼
+┌──────────────────────────────────────────────────────────────────────┐
+│                    БРОКЕР — TINKOFF INVEST API v2                    │
+│              broker/tinkoff_client.py  (торговый цикл)              │
+│              services/tinkoff/         (дашборд / портфель)         │
+│  place_market_order · place_limit_order · cancel_order              │
+│  get_portfolio · get_balance · find_instrument                      │
+│  Sandbox / Production — переключение через .env                     │
+└──────────────────────────────┬───────────────────────────────────────┘
+              записывает       │              читает
+              ▼                ▼                 ▼
+┌────────────────────────────────────────────────────────────────────┐
+│                   TimescaleDB (PostgreSQL)                          │
+│  trades  — лог сделок, PnL, RSI/MACD/ADX в момент сигнала         │
+│  candles — OHLCV исторические данные                               │
+│  news    — лог событий (опционально)                               │
+└────────────────────────────────┬───────────────────────────────────┘
+                                 │
+                                 ▼
+┌────────────────────────────────────────────────────────────────────┐
+│               WEB DASHBOARD  (ui/dashboard.py)                     │
+│                   Flask · REST API · SPA                           │
+│                                                                    │
+│  📊 Dashboard  — метрики, equity curve, позиции, лог              │
+│  📈 Portfolio  — котировки тикеров, дневные свечи                  │
+│  ⚡ Signals   — live RSI · MACD · ADX · BB · сигнал               │
+│  🔄 Backtest  — запуск и результаты бэктеста                       │
+│  ⚙️  Settings  — конфигурация, Tinkoff-токены                      │
+└────────────────────────────────┬───────────────────────────────────┘
+                                 │
+              ┌──────────────────┤
+              │                  │
+              ▼                  ▼
+        Chart.js SPA      Telegram Bot
+        Glassmorphism     7 команд управления
+        Dark Terminal     python-telegram-bot
 ```
-
-### Принципы проектирования
-
-**Clean Architecture** — каждый сервис разделён на слои `domain → application → infrastructure → api`. Бизнес-логика не зависит от фреймворков и баз данных.
-
-**Domain Driven Design** — каждый ограниченный контекст (Bounded Context) имеет собственные агрегаты, репозитории и доменные события.
-
-**Event-Driven Architecture** — сервисы общаются через Kafka. Прямые HTTP-вызовы используются только для синхронных запросов (команды и запросы к API).
-
-**SOLID** — интерфейсы репозиториев и сервисов абстрагированы; конкретные реализации подставляются через DI-контейнер.
 
 ---
 
 ## Стек технологий
 
-| Категория | Технологии |
-|---|---|
-| Язык | Python 3.11+ |
-| Web Framework | FastAPI 0.111+, Uvicorn, Pydantic v2 |
-| Очередь сообщений | Apache Kafka 3.7+, kafka-python |
-| Основная БД | PostgreSQL 15+ (asyncpg, SQLAlchemy 2.0 async) |
-| Кэш / Feature Store | Redis 7.2+ (aioredis) |
-| ML / AI | XGBoost, LightGBM, CatBoost, PyTorch, Transformers |
-| Портфельная оптимизация | scipy, cvxpy, PyPortfolioOpt |
-| Технический анализ | TA-Lib, pandas-ta |
-| Бэктестинг | Backtrader, VectorBT |
-| Эксперименты | MLflow, Optuna |
-| Оркестрация пайплайнов | Apache Airflow 2.9+ |
-| Контейнеризация | Docker, Docker Compose, Kubernetes (prod) |
-| CI/CD | GitHub Actions |
-| Мониторинг | Prometheus, Grafana, Alertmanager |
-| Логирование | ELK Stack (Elasticsearch, Logstash, Kibana) |
-| Тестирование | pytest, pytest-asyncio, pytest-cov, factory_boy |
+| Слой | Технология | Версия |
+|---|---|---|
+| Язык | Python | 3.11+ |
+| Web-сервер | Flask | ≥ 3.1.0 |
+| ORM / SQL | SQLAlchemy + psycopg2-binary | ≥ 2.0 |
+| База данных | PostgreSQL + TimescaleDB | 15 |
+| Брокер | tinkoff-investments SDK | ≥ 0.2.0b55 (тест на 0.2.0b59) |
+| Рыночные данные | MOEX ISS REST API | — |
+| Технические индикаторы | ta | ≥ 0.11.0 |
+| Анализ данных | pandas | ≥ 2.0.0 |
+| Конфигурация | python-dotenv | ≥ 1.0.0 |
+| YAML-правила | PyYAML | ≥ 6.0 |
+| HTTP-клиент | requests | ≥ 2.31.0 |
+| Telegram | python-telegram-bot | ≥ 20.0 |
+| Frontend | Vanilla JS · Chart.js 4 | — |
+| Шрифты | Inter · JetBrains Mono | Google Fonts |
+| Инфраструктура | Docker Compose | — |
+| UI базы данных | Adminer | latest |
 
 ---
 
-## Структура репозитория
+## Структура проекта
 
 ```
-quantflow/
+Trading-Bot-main/
+│
+├── main.py                      # Точка входа: торговый цикл + Telegram-бот
+├── config.py                    # AppConfig, TinkoffConfig, RiskConfig через .env
+├── requirements.txt             # Python-зависимости
+├── docker-compose.yml           # TimescaleDB (pg15) + Adminer на :8080
+├── .env.example                 # Шаблон переменных окружения
+│
+├── knowledge/
+│   └── rules.yaml               # 12 торговых правил YAML (BUY/SELL + веса)
+│
+├── data/
+│   └── loader.py                # MoexLoader: OHLCV с MOEX ISS, сохранение в БД
+│
+├── signals/
+│   ├── indicators.py            # IndicatorEngine: RSI·MACD·EMA·ATR·BB·ADX·VWAP
+│   └── rules_engine.py          # RulesEngine: оценка правил → SignalResult
+│
+├── risk/
+│   └── risk_manager.py          # RiskManager: позиция, стоп, дневной PnL, трейлинг
+│
+├── broker/
+│   └── tinkoff_client.py        # TinkoffClient: рыночные/лимитные ордера
+│
+├── backtest/
+│   └── engine.py                # BacktestEngine: событийный, комиссия, equity curve
+│
+├── learning/
+│   └── feedback.py              # FeedbackStore: запись/чтение сделок в PostgreSQL
+│
 ├── services/
-│   ├── market_data/
-│   │   ├── domain/
-│   │   │   ├── entities/
-│   │   │   │   ├── __init__.py
-│   │   │   │   ├── ohlcv.py
-│   │   │   │   ├── ticker.py
-│   │   │   │   └── orderbook.py
-│   │   │   ├── value_objects/
-│   │   │   │   ├── price.py
-│   │   │   │   ├── volume.py
-│   │   │   │   └── symbol.py
-│   │   │   ├── repositories/
-│   │   │   │   └── market_data_repository.py
-│   │   │   └── events/
-│   │   │       └── market_events.py
-│   │   ├── application/
-│   │   │   ├── use_cases/
-│   │   │   │   ├── fetch_ohlcv.py
-│   │   │   │   ├── stream_quotes.py
-│   │   │   │   └── normalize_data.py
-│   │   │   └── services/
-│   │   │       └── market_data_service.py
-│   │   ├── infrastructure/
-│   │   │   ├── adapters/
-│   │   │   │   ├── yahoo_finance_adapter.py
-│   │   │   │   ├── polygon_adapter.py
-│   │   │   │   └── alpaca_market_adapter.py
-│   │   │   ├── repositories/
-│   │   │   │   └── postgres_market_repository.py
-│   │   │   ├── kafka/
-│   │   │   │   ├── producer.py
-│   │   │   │   └── consumer.py
-│   │   │   └── cache/
-│   │   │       └── redis_cache.py
-│   │   ├── api/
-│   │   │   ├── v1/
-│   │   │   │   ├── router.py
-│   │   │   │   ├── schemas.py
-│   │   │   │   └── dependencies.py
-│   │   │   └── main.py
-│   │   ├── tests/
-│   │   │   ├── unit/
-│   │   │   ├── integration/
-│   │   │   └── conftest.py
-│   │   ├── Dockerfile
-│   │   └── pyproject.toml
-│   │
-│   ├── news_intelligence/
-│   ├── macroeconomic/
-│   ├── political_risk/
-│   ├── social_sentiment/
-│   ├── fundamental_analysis/
-│   ├── technical_analysis/
-│   ├── ai_prediction_engine/
-│   │   ├── domain/
-│   │   ├── application/
-│   │   ├── infrastructure/
-│   │   │   ├── models/
-│   │   │   │   ├── xgboost_model.py
-│   │   │   │   ├── lightgbm_model.py
-│   │   │   │   ├── catboost_model.py
-│   │   │   │   ├── lstm_model.py
-│   │   │   │   ├── transformer_model.py
-│   │   │   │   └── ensemble_model.py
-│   │   │   ├── feature_engineering/
-│   │   │   └── training/
-│   │   ├── api/
-│   │   └── tests/
-│   ├── portfolio_optimizer/
-│   ├── risk_engine/
-│   ├── execution_engine/
-│   └── monitoring/
+│   └── tinkoff/
+│       ├── __init__.py          # Публичный API сервисного слоя
+│       ├── client.py            # build_client(): Sandbox/Production + иерархия ошибок
+│       ├── portfolio.py         # get_portfolio_summary(): позиции + кэш 30 сек
+│       ├── statistics.py        # compute_bot_stats(): Sharpe, Drawdown, Win Rate
+│       ├── cache.py             # TTLCache: in-memory кэш с истечением
+│       ├── mapper.py            # Quotation → float, MoneyValue → float
+│       └── types.py             # Position, PortfolioSummary, BotStatistics
 │
-├── shared/
-│   ├── domain/
-│   │   ├── base_entity.py
-│   │   ├── base_repository.py
-│   │   ├── base_event.py
-│   │   └── value_objects.py
-│   ├── infrastructure/
-│   │   ├── database/
-│   │   │   ├── connection.py
-│   │   │   └── migrations/
-│   │   ├── kafka/
-│   │   │   ├── base_producer.py
-│   │   │   └── base_consumer.py
-│   │   └── logging/
-│   │       └── setup.py
-│   └── utils/
-│       ├── date_utils.py
-│       ├── math_utils.py
-│       └── validators.py
-│
-├── infra/
-│   ├── docker/
-│   │   ├── docker-compose.yml
-│   │   ├── docker-compose.dev.yml
-│   │   └── docker-compose.prod.yml
-│   ├── kubernetes/
-│   │   ├── deployments/
-│   │   ├── services/
-│   │   └── configmaps/
-│   ├── kafka/
-│   │   └── topics.yml
-│   ├── postgres/
-│   │   └── init.sql
-│   └── grafana/
-│       └── dashboards/
-│
-├── .github/
-│   └── workflows/
-│       ├── ci.yml
-│       ├── cd.yml
-│       └── model_retrain.yml
-│
-├── docs/
-│   ├── architecture/
-│   ├── api/
-│   └── runbooks/
-│
-├── scripts/
-│   ├── seed_data.py
-│   ├── backtest_run.py
-│   └── model_train.py
-│
-├── .env.example
-├── pyproject.toml
-├── Makefile
-└── README.md
-```
-
----
-
-## Модули
-
-### Market Data Service
-
-**Назначение:** Сбор, нормализация и хранение рыночных данных (OHLCV, стакан, тики) по акциям, ETF, облигациям и фьючерсам в реальном времени и исторически.
-
-**Входные данные:**
-- REST/WebSocket от Yahoo Finance, Polygon.io, Alpaca, Interactive Brokers
-- CSV-импорт исторических данных
-- FIX-протокол (для институционального контура)
-
-**Выходные данные:**
-- Нормализованные OHLCV-бары (1m, 5m, 1h, 1d) в PostgreSQL
-- Kafka-топик `market.quotes.raw`, `market.ohlcv.normalized`
-- Redis-кэш последних котировок (TTL 1s)
-
-**API:**
-```
-GET  /api/v1/market/ohlcv?symbol=AAPL&interval=1d&from=2024-01-01
-GET  /api/v1/market/quote?symbol=AAPL
-GET  /api/v1/market/orderbook?symbol=AAPL&depth=10
-POST /api/v1/market/subscribe   {"symbols": ["AAPL", "MSFT"], "interval": "1m"}
-WS   /ws/v1/market/stream
-```
-
-**Реализация:**
-
-```python
-# services/market_data/domain/entities/ohlcv.py
-from dataclasses import dataclass, field
-from datetime import datetime
-from decimal import Decimal
-from uuid import UUID, uuid4
-
-
-@dataclass
-class OHLCV:
-    symbol: str
-    timestamp: datetime
-    open: Decimal
-    high: Decimal
-    low: Decimal
-    close: Decimal
-    volume: int
-    interval: str
-    id: UUID = field(default_factory=uuid4)
-    adjusted_close: Decimal | None = None
-    vwap: Decimal | None = None
-
-    def validate(self) -> None:
-        if not (self.low <= self.open <= self.high):
-            raise ValueError(f"Invalid OHLCV: open={self.open} not in [{self.low}, {self.high}]")
-        if not (self.low <= self.close <= self.high):
-            raise ValueError(f"Invalid OHLCV: close={self.close} not in [{self.low}, {self.high}]")
-        if self.volume < 0:
-            raise ValueError("Volume cannot be negative")
-
-    @property
-    def body_range(self) -> Decimal:
-        return abs(self.close - self.open)
-
-    @property
-    def full_range(self) -> Decimal:
-        return self.high - self.low
-```
-
-```python
-# services/market_data/application/use_cases/fetch_ohlcv.py
-from dataclasses import dataclass
-from datetime import datetime
-
-from ..domain.entities.ohlcv import OHLCV
-from ..domain.repositories.market_data_repository import MarketDataRepository
-
-
-@dataclass
-class FetchOHLCVRequest:
-    symbol: str
-    interval: str
-    from_date: datetime
-    to_date: datetime
-    adjusted: bool = True
-
-
-class FetchOHLCVUseCase:
-    def __init__(self, repository: MarketDataRepository) -> None:
-        self._repository = repository
-
-    async def execute(self, request: FetchOHLCVRequest) -> list[OHLCV]:
-        bars = await self._repository.get_ohlcv(
-            symbol=request.symbol,
-            interval=request.interval,
-            from_date=request.from_date,
-            to_date=request.to_date,
-        )
-        for bar in bars:
-            bar.validate()
-        return bars
-```
-
-```python
-# services/market_data/infrastructure/adapters/yahoo_finance_adapter.py
-import asyncio
-from datetime import datetime
-from decimal import Decimal
-
-import yfinance as yf
-
-from ...domain.entities.ohlcv import OHLCV
-
-
-class YahooFinanceAdapter:
-    INTERVAL_MAP = {
-        "1m": "1m", "5m": "5m", "15m": "15m",
-        "1h": "60m", "1d": "1d", "1wk": "1wk",
-    }
-
-    async def fetch_ohlcv(
-        self,
-        symbol: str,
-        interval: str,
-        from_date: datetime,
-        to_date: datetime,
-    ) -> list[OHLCV]:
-        yf_interval = self.INTERVAL_MAP.get(interval, "1d")
-        ticker = yf.Ticker(symbol)
-
-        raw = await asyncio.to_thread(
-            ticker.history,
-            start=from_date.strftime("%Y-%m-%d"),
-            end=to_date.strftime("%Y-%m-%d"),
-            interval=yf_interval,
-            auto_adjust=True,
-        )
-
-        bars = []
-        for ts, row in raw.iterrows():
-            bar = OHLCV(
-                symbol=symbol,
-                timestamp=ts.to_pydatetime(),
-                open=Decimal(str(row["Open"])),
-                high=Decimal(str(row["High"])),
-                low=Decimal(str(row["Low"])),
-                close=Decimal(str(row["Close"])),
-                volume=int(row["Volume"]),
-                interval=interval,
-            )
-            bar.validate()
-            bars.append(bar)
-        return bars
-```
-
-```python
-# services/market_data/api/v1/router.py
-from datetime import datetime
-
-from fastapi import APIRouter, Depends, Query
-
-from ...application.use_cases.fetch_ohlcv import FetchOHLCVRequest, FetchOHLCVUseCase
-from .dependencies import get_fetch_ohlcv_use_case
-from .schemas import OHLCVResponse
-
-router = APIRouter(prefix="/market", tags=["Market Data"])
-
-
-@router.get("/ohlcv", response_model=list[OHLCVResponse])
-async def get_ohlcv(
-    symbol: str = Query(..., description="Ticker symbol, e.g. AAPL"),
-    interval: str = Query("1d", description="Bar interval: 1m, 5m, 1h, 1d"),
-    from_date: datetime = Query(...),
-    to_date: datetime = Query(...),
-    use_case: FetchOHLCVUseCase = Depends(get_fetch_ohlcv_use_case),
-) -> list[OHLCVResponse]:
-    request = FetchOHLCVRequest(
-        symbol=symbol, interval=interval,
-        from_date=from_date, to_date=to_date,
-    )
-    bars = await use_case.execute(request)
-    return [OHLCVResponse.from_entity(b) for b in bars]
-```
-
-**Тесты:**
-
-```python
-# services/market_data/tests/unit/test_ohlcv.py
-import pytest
-from decimal import Decimal
-from datetime import datetime
-
-from ...domain.entities.ohlcv import OHLCV
-
-
-def make_bar(**kwargs) -> OHLCV:
-    defaults = dict(
-        symbol="AAPL", timestamp=datetime(2024, 1, 1),
-        open=Decimal("150.00"), high=Decimal("155.00"),
-        low=Decimal("148.00"), close=Decimal("152.00"),
-        volume=1_000_000, interval="1d",
-    )
-    return OHLCV(**{**defaults, **kwargs})
-
-
-def test_valid_ohlcv_passes_validation():
-    bar = make_bar()
-    bar.validate()  # должен не бросить
-
-
-def test_open_above_high_fails_validation():
-    bar = make_bar(open=Decimal("160.00"))
-    with pytest.raises(ValueError, match="open"):
-        bar.validate()
-
-
-def test_close_below_low_fails_validation():
-    bar = make_bar(close=Decimal("140.00"))
-    with pytest.raises(ValueError, match="close"):
-        bar.validate()
-
-
-def test_negative_volume_fails_validation():
-    bar = make_bar(volume=-1)
-    with pytest.raises(ValueError, match="Volume"):
-        bar.validate()
-
-
-def test_body_range_calculation():
-    bar = make_bar(open=Decimal("150.00"), close=Decimal("152.00"))
-    assert bar.body_range == Decimal("2.00")
-
-
-def test_full_range_calculation():
-    bar = make_bar(high=Decimal("155.00"), low=Decimal("148.00"))
-    assert bar.full_range == Decimal("7.00")
-```
-
-**Docker:**
-
-```dockerfile
-# services/market_data/Dockerfile
-FROM python:3.11-slim AS base
-WORKDIR /app
-RUN apt-get update && apt-get install -y --no-install-recommends gcc && rm -rf /var/lib/apt/lists/*
-
-FROM base AS deps
-COPY pyproject.toml .
-RUN pip install --no-cache-dir hatch && hatch dep show requirements > requirements.txt
-RUN pip install --no-cache-dir -r requirements.txt
-
-FROM base AS final
-COPY --from=deps /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
-COPY . .
-EXPOSE 8001
-HEALTHCHECK --interval=30s --timeout=5s CMD curl -f http://localhost:8001/health || exit 1
-CMD ["uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "8001", "--workers", "2"]
-```
-
----
-
-### News Intelligence Service
-
-**Назначение:** Агрегация новостей из множества источников, NLP-классификация по тональности, тематике и рыночной релевантности, подготовка новостных фич для AI Engine.
-
-**Входные данные:**
-- RSS/Atom-ленты (Reuters, Bloomberg, Financial Times, Seeking Alpha)
-- NewsAPI, GDELT, Alpha Vantage News
-- SEC EDGAR 8-K, 10-K, 10-Q, Earnings Releases
-
-**Выходные данные:**
-- Kafka-топик `news.articles.raw`, `news.sentiment.scored`
-- Scoring по каждому тикеру: sentiment_score ∈ [-1, 1], relevance_score ∈ [0, 1]
-- Named Entity Recognition: привязка статей к тикерам
-
-**API:**
-```
-GET  /api/v1/news?symbol=AAPL&limit=50&from=2024-01-01
-GET  /api/v1/news/sentiment?symbol=AAPL&window=24h
-POST /api/v1/news/analyze   {"text": "...", "symbols": ["AAPL"]}
-```
-
-**Реализация:**
-
-```python
-# services/news_intelligence/domain/entities/article.py
-from dataclasses import dataclass, field
-from datetime import datetime
-from uuid import UUID, uuid4
-
-
-@dataclass
-class NewsArticle:
-    title: str
-    content: str
-    source: str
-    published_at: datetime
-    url: str
-    id: UUID = field(default_factory=uuid4)
-    sentiment_score: float | None = None       # [-1, 1]
-    relevance_score: float | None = None       # [0, 1]
-    related_symbols: list[str] = field(default_factory=list)
-    categories: list[str] = field(default_factory=list)
-    language: str = "en"
-
-    @property
-    def is_scored(self) -> bool:
-        return self.sentiment_score is not None
-
-    @property
-    def is_bearish(self) -> bool:
-        return self.sentiment_score is not None and self.sentiment_score < -0.2
-
-    @property
-    def is_bullish(self) -> bool:
-        return self.sentiment_score is not None and self.sentiment_score > 0.2
-```
-
-```python
-# services/news_intelligence/application/services/sentiment_analyzer.py
-from transformers import pipeline
-import torch
-
-
-class SentimentAnalyzer:
-    """FinBERT-based sentiment analysis for financial news."""
-
-    MODEL_NAME = "ProsusAI/finbert"
-
-    def __init__(self) -> None:
-        device = 0 if torch.cuda.is_available() else -1
-        self._pipeline = pipeline(
-            "text-classification",
-            model=self.MODEL_NAME,
-            device=device,
-            truncation=True,
-            max_length=512,
-        )
-        self._label_map = {"positive": 1.0, "neutral": 0.0, "negative": -1.0}
-
-    def score(self, text: str) -> float:
-        result = self._pipeline(text[:512])[0]
-        label = result["label"].lower()
-        confidence = result["score"]
-        base_score = self._label_map.get(label, 0.0)
-        return base_score * confidence
-
-    def score_batch(self, texts: list[str]) -> list[float]:
-        truncated = [t[:512] for t in texts]
-        results = self._pipeline(truncated)
-        scores = []
-        for r in results:
-            label = r["label"].lower()
-            confidence = r["score"]
-            scores.append(self._label_map.get(label, 0.0) * confidence)
-        return scores
-```
-
----
-
-### Macroeconomic Service
-
-**Назначение:** Сбор и анализ макроэкономических индикаторов, формирование макро-фич для портфельных решений.
-
-**Источники данных:**
-- FRED (Federal Reserve Economic Data) — GDP, CPI, безработица, M2
-- World Bank, IMF Data API
-- Eurostat, OECD.Stat
-- U.S. Bureau of Labor Statistics
-
-**Входные данные:** Расписание (Airflow DAG) + event-driven при выходе данных.
-
-**Выходные данные:**
-- Kafka-топик `macro.indicators.updated`
-- Макро-вектор на символ: yield_curve_slope, cpi_yoy, gdp_growth, unemployment_rate, pmi, vix_level
-
-**API:**
-```
-GET /api/v1/macro/indicators?series=GDP,CPI,UNRATE&from=2020-01-01
-GET /api/v1/macro/regime          # текущий макрорежим: expansion/contraction/stagflation/recession
-GET /api/v1/macro/forecast?horizon=3m
-```
-
-**Реализация:**
-
-```python
-# services/macroeconomic/infrastructure/adapters/fred_adapter.py
-import asyncio
-from datetime import datetime
-
-import pandas as pd
-from fredapi import Fred
-
-
-class FREDAdapter:
-    SERIES = {
-        "gdp": "GDP",
-        "cpi": "CPIAUCSL",
-        "unemployment": "UNRATE",
-        "fed_funds_rate": "FEDFUNDS",
-        "yield_10y": "GS10",
-        "yield_2y": "GS2",
-        "m2": "M2SL",
-        "pce": "PCE",
-        "ism_manufacturing": "MANEMP",
-    }
-
-    def __init__(self, api_key: str) -> None:
-        self._fred = Fred(api_key=api_key)
-
-    async def fetch_series(self, series_id: str, from_date: datetime) -> pd.Series:
-        return await asyncio.to_thread(
-            self._fred.get_series,
-            series_id,
-            observation_start=from_date.strftime("%Y-%m-%d"),
-        )
-
-    async def fetch_all(self, from_date: datetime) -> dict[str, pd.Series]:
-        tasks = {
-            name: self.fetch_series(fred_id, from_date)
-            for name, fred_id in self.SERIES.items()
-        }
-        results = {}
-        for name, coro in tasks.items():
-            results[name] = await coro
-        return results
-
-    def compute_yield_curve_slope(self, yield_10y: pd.Series, yield_2y: pd.Series) -> pd.Series:
-        return yield_10y - yield_2y
-
-    def detect_regime(self, gdp: float, cpi_yoy: float, unemployment: float) -> str:
-        if gdp > 2.0 and unemployment < 5.0:
-            return "expansion"
-        if gdp < 0 and cpi_yoy > 4.0:
-            return "stagflation"
-        if gdp < 0:
-            return "recession"
-        return "contraction"
-```
-
----
-
-### Political Risk Service
-
-**Назначение:** Оценка геополитических рисков, санкционных режимов, политической нестабильности по регионам — как дополнительный risk factor для Asset Allocation.
-
-**Источники данных:**
-- GDELT Project (геополитические события)
-- PRS Group (Political Risk Services)
-- Wikipedia Revision Frequency (прокси нестабильности)
-- GPT-4/Claude для NER политических событий
-
-**Выходные данные:**
-- `political_risk_score` ∈ [0, 100] по стране/региону
-- Kafka-топик `risk.political.updated`
-
-**API:**
-```
-GET /api/v1/political/risk?country=RU&country=CN
-GET /api/v1/political/events?region=eastern_europe&severity=high
-GET /api/v1/political/sanctions?entity=COMPANY_NAME
-```
-
----
-
-### Social Sentiment Service
-
-**Назначение:** Агрегация и анализ тональности в социальных сетях и форумах для формирования alternative data сигналов.
-
-**Источники данных:**
-- Reddit (r/wallstreetbets, r/investing, r/stocks) через Reddit API
-- Twitter/X API v2 — тикерные упоминания
-- StockTwits API
-- Telegram-каналы (через Telethon)
-
-**Реализация:**
-
-```python
-# services/social_sentiment/application/services/reddit_sentiment.py
-import asyncio
-from dataclasses import dataclass
-from datetime import datetime, timedelta
-
-import asyncpraw
-
-from ..domain.entities.sentiment_signal import SentimentSignal
-
-
-@dataclass
-class RedditSentimentConfig:
-    client_id: str
-    client_secret: str
-    user_agent: str
-    subreddits: list[str]
-
-
-class RedditSentimentCollector:
-    def __init__(self, config: RedditSentimentConfig, analyzer) -> None:
-        self._config = config
-        self._analyzer = analyzer
-
-    async def collect(self, symbol: str, hours: int = 24) -> list[SentimentSignal]:
-        reddit = asyncpraw.Reddit(
-            client_id=self._config.client_id,
-            client_secret=self._config.client_secret,
-            user_agent=self._config.user_agent,
-        )
-        cutoff = datetime.utcnow() - timedelta(hours=hours)
-        signals = []
-
-        for subreddit_name in self._config.subreddits:
-            subreddit = await reddit.subreddit(subreddit_name)
-            async for submission in subreddit.search(symbol, limit=100):
-                if datetime.utcfromtimestamp(submission.created_utc) < cutoff:
-                    continue
-                score = self._analyzer.score(f"{submission.title} {submission.selftext}")
-                signals.append(SentimentSignal(
-                    symbol=symbol,
-                    source=f"reddit/{subreddit_name}",
-                    score=score,
-                    upvotes=submission.score,
-                    timestamp=datetime.utcfromtimestamp(submission.created_utc),
-                ))
-
-        await reddit.close()
-        return signals
-```
-
----
-
-### Fundamental Analysis Service
-
-**Назначение:** Вычисление фундаментальных метрик компаний на основе финансовой отчётности. Генерация фундаментальных фич для AI Engine.
-
-**Входные данные:**
-- SEC EDGAR (10-K, 10-Q, 8-K через EDGAR API)
-- Simfin, Financial Modeling Prep API
-- Yahoo Finance Financials
-
-**Вычисляемые метрики:**
-
-| Категория | Метрики |
-|---|---|
-| Оценка | P/E, P/B, P/S, EV/EBITDA, EV/Revenue |
-| Качество | ROE, ROA, ROIC, Gross Margin, Operating Margin |
-| Рост | Revenue Growth YoY, EPS Growth, FCF Growth |
-| Долг | Debt/Equity, Interest Coverage, Net Debt/EBITDA |
-| Ликвидность | Current Ratio, Quick Ratio |
-| Piotroski F-Score | Совокупный score [0–9] |
-
-**Реализация:**
-
-```python
-# services/fundamental_analysis/domain/value_objects/financial_ratios.py
-from dataclasses import dataclass
-from decimal import Decimal
-
-
-@dataclass(frozen=True)
-class FinancialRatios:
-    symbol: str
-
-    # Valuation
-    pe_ratio: Decimal | None = None
-    pb_ratio: Decimal | None = None
-    ps_ratio: Decimal | None = None
-    ev_ebitda: Decimal | None = None
-
-    # Profitability
-    roe: Decimal | None = None
-    roa: Decimal | None = None
-    roic: Decimal | None = None
-    gross_margin: Decimal | None = None
-    operating_margin: Decimal | None = None
-    net_margin: Decimal | None = None
-
-    # Growth
-    revenue_growth_yoy: Decimal | None = None
-    eps_growth_yoy: Decimal | None = None
-    fcf_growth_yoy: Decimal | None = None
-
-    # Leverage
-    debt_to_equity: Decimal | None = None
-    interest_coverage: Decimal | None = None
-    net_debt_to_ebitda: Decimal | None = None
-
-    # Liquidity
-    current_ratio: Decimal | None = None
-    quick_ratio: Decimal | None = None
-
-    # Composite
-    piotroski_score: int | None = None  # 0–9
-
-    @property
-    def is_value_candidate(self) -> bool:
-        return (
-            self.pe_ratio is not None and self.pe_ratio < Decimal("15")
-            and self.pb_ratio is not None and self.pb_ratio < Decimal("2")
-            and self.piotroski_score is not None and self.piotroski_score >= 7
-        )
-
-    @property
-    def quality_score(self) -> float:
-        scores = []
-        if self.roe is not None:
-            scores.append(min(float(self.roe) / 0.20, 1.0))
-        if self.gross_margin is not None:
-            scores.append(min(float(self.gross_margin) / 0.50, 1.0))
-        if self.interest_coverage is not None:
-            scores.append(min(float(self.interest_coverage) / 10.0, 1.0))
-        return sum(scores) / len(scores) if scores else 0.0
-```
-
----
-
-### Technical Analysis Service
-
-**Назначение:** Вычисление технических индикаторов, паттернов и уровней поддержки/сопротивления.
-
-**Реализация:**
-
-```python
-# services/technical_analysis/application/services/indicator_calculator.py
-import pandas as pd
-import pandas_ta as ta
-import numpy as np
-from dataclasses import dataclass
-
-
-@dataclass
-class TechnicalFeatures:
-    symbol: str
-    timestamp: pd.Timestamp
-
-    # Trend
-    sma_20: float | None = None
-    sma_50: float | None = None
-    sma_200: float | None = None
-    ema_12: float | None = None
-    ema_26: float | None = None
-    macd: float | None = None
-    macd_signal: float | None = None
-    macd_hist: float | None = None
-    adx: float | None = None
-
-    # Momentum
-    rsi_14: float | None = None
-    stoch_k: float | None = None
-    stoch_d: float | None = None
-    williams_r: float | None = None
-    cci: float | None = None
-    mfi: float | None = None
-
-    # Volatility
-    bb_upper: float | None = None
-    bb_middle: float | None = None
-    bb_lower: float | None = None
-    bb_width: float | None = None
-    atr_14: float | None = None
-    natr: float | None = None
-
-    # Volume
-    obv: float | None = None
-    vwap: float | None = None
-    cmf: float | None = None
-    ad_line: float | None = None
-
-    # Price Action
-    support_level: float | None = None
-    resistance_level: float | None = None
-    trend_direction: str | None = None  # "up" | "down" | "sideways"
-
-
-class IndicatorCalculator:
-    def compute(self, df: pd.DataFrame) -> list[TechnicalFeatures]:
-        df = df.copy()
-        df.ta.strategy("all")
-
-        features = []
-        for i in range(len(df)):
-            row = df.iloc[i]
-            f = TechnicalFeatures(
-                symbol=df.attrs.get("symbol", "UNKNOWN"),
-                timestamp=df.index[i],
-                sma_20=self._safe(row, "SMA_20"),
-                sma_50=self._safe(row, "SMA_50"),
-                sma_200=self._safe(row, "SMA_200"),
-                ema_12=self._safe(row, "EMA_12"),
-                ema_26=self._safe(row, "EMA_26"),
-                macd=self._safe(row, "MACD_12_26_9"),
-                macd_signal=self._safe(row, "MACDs_12_26_9"),
-                macd_hist=self._safe(row, "MACDh_12_26_9"),
-                rsi_14=self._safe(row, "RSI_14"),
-                bb_upper=self._safe(row, "BBU_5_2.0"),
-                bb_lower=self._safe(row, "BBL_5_2.0"),
-                atr_14=self._safe(row, "ATRr_14"),
-                obv=self._safe(row, "OBV"),
-                adx=self._safe(row, "ADX_14"),
-            )
-            features.append(f)
-        return features
-
-    @staticmethod
-    def _safe(row: pd.Series, col: str) -> float | None:
-        val = row.get(col)
-        return float(val) if val is not None and not np.isnan(val) else None
-```
-
----
-
-### AI Prediction Engine
-
-**Назначение:** Генерация торговых сигналов BUY / SELL / HOLD с вероятностными оценками. Гибридный ансамбль из 5 моделей с meta-learner на втором уровне.
-
-**Архитектура Ensemble:**
-
-```
-Уровень 1 (Base Models):
-  ├── XGBoost       → P(BUY), P(SELL), P(HOLD)
-  ├── LightGBM      → P(BUY), P(SELL), P(HOLD)
-  ├── CatBoost      → P(BUY), P(SELL), P(HOLD)
-  ├── LSTM          → P(BUY), P(SELL), P(HOLD)
-  └── TFT           → P(BUY), P(SELL), P(HOLD)
-
-Уровень 2 (Meta-Learner):
-  └── Logistic Regression (Stacking)
-      → Final Signal + Confidence Score
-```
-
-**Реализация:**
-
-```python
-# services/ai_prediction_engine/infrastructure/models/ensemble_model.py
-from __future__ import annotations
-
-import numpy as np
-from sklearn.linear_model import LogisticRegression
-from sklearn.preprocessing import StandardScaler
-
-from .xgboost_model import XGBoostModel
-from .lightgbm_model import LightGBMModel
-from .catboost_model import CatBoostModel
-from .lstm_model import LSTMModel
-from .transformer_model import TFTModel
-
-
-class EnsembleModel:
-    """Two-level stacking ensemble: 5 base models + logistic meta-learner."""
-
-    SIGNAL_MAP = {0: "HOLD", 1: "BUY", 2: "SELL"}
-
-    def __init__(self) -> None:
-        self._base_models = [
-            XGBoostModel(),
-            LightGBMModel(),
-            CatBoostModel(),
-            LSTMModel(),
-            TFTModel(),
-        ]
-        self._meta_learner = LogisticRegression(
-            C=1.0, max_iter=1000, multi_class="multinomial"
-        )
-        self._scaler = StandardScaler()
-        self._is_fitted = False
-
-    def fit(self, X: np.ndarray, y: np.ndarray, X_val: np.ndarray, y_val: np.ndarray) -> None:
-        meta_features_train = []
-        for model in self._base_models:
-            model.fit(X, y)
-            proba = model.predict_proba(X_val)   # shape (n, 3)
-            meta_features_train.append(proba)
-
-        meta_X = np.hstack(meta_features_train)  # shape (n, 15)
-        meta_X_scaled = self._scaler.fit_transform(meta_X)
-        self._meta_learner.fit(meta_X_scaled, y_val)
-        self._is_fitted = True
-
-    def predict(self, X: np.ndarray) -> list[dict]:
-        if not self._is_fitted:
-            raise RuntimeError("Ensemble is not fitted. Call fit() first.")
-
-        meta_features = []
-        for model in self._base_models:
-            proba = model.predict_proba(X)
-            meta_features.append(proba)
-
-        meta_X = np.hstack(meta_features)
-        meta_X_scaled = self._scaler.transform(meta_X)
-        final_proba = self._meta_learner.predict_proba(meta_X_scaled)
-        final_class = np.argmax(final_proba, axis=1)
-
-        results = []
-        for i in range(len(X)):
-            signal = self.SIGNAL_MAP[final_class[i]]
-            confidence = float(np.max(final_proba[i]))
-            results.append({
-                "signal": signal,
-                "confidence": confidence,
-                "probabilities": {
-                    "HOLD": float(final_proba[i][0]),
-                    "BUY":  float(final_proba[i][1]),
-                    "SELL": float(final_proba[i][2]),
-                },
-                "model_votes": {
-                    m.__class__.__name__: self.SIGNAL_MAP[np.argmax(meta_features[j][i])]
-                    for j, m in enumerate(self._base_models)
-                },
-            })
-        return results
-```
-
-```python
-# services/ai_prediction_engine/infrastructure/models/lstm_model.py
-from __future__ import annotations
-
-import numpy as np
-import torch
-import torch.nn as nn
-from torch.utils.data import DataLoader, TensorDataset
-
-
-class LSTMNet(nn.Module):
-    def __init__(self, input_size: int, hidden_size: int = 128, num_layers: int = 2,
-                 dropout: float = 0.2, num_classes: int = 3) -> None:
-        super().__init__()
-        self.lstm = nn.LSTM(
-            input_size, hidden_size, num_layers,
-            batch_first=True, dropout=dropout, bidirectional=False,
-        )
-        self.attention = nn.MultiheadAttention(hidden_size, num_heads=4, batch_first=True)
-        self.norm = nn.LayerNorm(hidden_size)
-        self.classifier = nn.Sequential(
-            nn.Linear(hidden_size, 64),
-            nn.ReLU(),
-            nn.Dropout(dropout),
-            nn.Linear(64, num_classes),
-        )
-
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        lstm_out, _ = self.lstm(x)                      # (B, T, H)
-        attn_out, _ = self.attention(lstm_out, lstm_out, lstm_out)
-        out = self.norm(lstm_out + attn_out)             # residual
-        return self.classifier(out[:, -1, :])            # last timestep
-
-
-class LSTMModel:
-    def __init__(self, sequence_length: int = 60, input_size: int = 64,
-                 epochs: int = 50, lr: float = 1e-3, batch_size: int = 64) -> None:
-        self.sequence_length = sequence_length
-        self.input_size = input_size
-        self.epochs = epochs
-        self.lr = lr
-        self.batch_size = batch_size
-        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        self._net: LSTMNet | None = None
-
-    def _build_sequences(self, X: np.ndarray) -> np.ndarray:
-        seqs = []
-        for i in range(self.sequence_length, len(X)):
-            seqs.append(X[i - self.sequence_length:i])
-        return np.array(seqs)
-
-    def fit(self, X: np.ndarray, y: np.ndarray) -> None:
-        X_seq = self._build_sequences(X)
-        y_seq = y[self.sequence_length:]
-
-        self._net = LSTMNet(self.input_size).to(self.device)
-        optimizer = torch.optim.Adam(self._net.parameters(), lr=self.lr)
-        criterion = nn.CrossEntropyLoss()
-        scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, patience=5)
-
-        dataset = TensorDataset(
-            torch.FloatTensor(X_seq),
-            torch.LongTensor(y_seq),
-        )
-        loader = DataLoader(dataset, batch_size=self.batch_size, shuffle=True)
-
-        self._net.train()
-        for epoch in range(self.epochs):
-            total_loss = 0.0
-            for xb, yb in loader:
-                xb, yb = xb.to(self.device), yb.to(self.device)
-                optimizer.zero_grad()
-                loss = criterion(self._net(xb), yb)
-                loss.backward()
-                nn.utils.clip_grad_norm_(self._net.parameters(), max_norm=1.0)
-                optimizer.step()
-                total_loss += loss.item()
-            scheduler.step(total_loss)
-
-    def predict_proba(self, X: np.ndarray) -> np.ndarray:
-        if self._net is None:
-            raise RuntimeError("Model not fitted.")
-        X_seq = self._build_sequences(X)
-        self._net.eval()
-        with torch.no_grad():
-            tensor = torch.FloatTensor(X_seq).to(self.device)
-            logits = self._net(tensor)
-            proba = torch.softmax(logits, dim=1).cpu().numpy()
-        return proba
-```
-
----
-
-### Portfolio Optimizer
-
-**Назначение:** Оптимизация весов портфеля с учётом сигналов AI Engine, макро-режима и ограничений Risk Engine.
-
-**Методы оптимизации:**
-
-**1. Modern Portfolio Theory (Markowitz):**
-```
-max μᵀw − (λ/2) wᵀΣw
-s.t. 1ᵀw = 1, w ≥ 0, wᵢ ≤ max_weight
-```
-
-**2. Black-Litterman:**
-```
-μ_BL = [(τΣ)⁻¹ + PᵀΩ⁻¹P]⁻¹ [(τΣ)⁻¹μ_eq + PᵀΩ⁻¹q]
-```
-где q — прогнозы доходности от AI Engine, Ω — матрица неопределённости взглядов.
-
-**3. Risk Parity:**
-```
-min Σᵢ(RCᵢ − 1/n)²
-где RCᵢ = wᵢ · (Σw)ᵢ / σₚ
-```
-
-**Реализация:**
-
-```python
-# services/portfolio_optimizer/application/services/black_litterman.py
-from __future__ import annotations
-
-import numpy as np
-import pandas as pd
-from scipy.optimize import minimize
-
-
-class BlackLittermanOptimizer:
-    """Black-Litterman model with AI Engine views integration."""
-
-    def __init__(self, risk_aversion: float = 3.0, tau: float = 0.05) -> None:
-        self.risk_aversion = risk_aversion
-        self.tau = tau
-
-    def compute_equilibrium_returns(
-        self, weights_mkt: np.ndarray, cov_matrix: np.ndarray
-    ) -> np.ndarray:
-        return self.risk_aversion * cov_matrix @ weights_mkt
-
-    def combine_views(
-        self,
-        cov_matrix: np.ndarray,
-        mu_eq: np.ndarray,
-        P: np.ndarray,
-        q: np.ndarray,
-        omega: np.ndarray,
-    ) -> tuple[np.ndarray, np.ndarray]:
-        tau_sigma = self.tau * cov_matrix
-        tau_sigma_inv = np.linalg.inv(tau_sigma)
-        omega_inv = np.linalg.inv(omega)
-
-        posterior_cov_inv = tau_sigma_inv + P.T @ omega_inv @ P
-        posterior_cov = np.linalg.inv(posterior_cov_inv)
-        posterior_mu = posterior_cov @ (tau_sigma_inv @ mu_eq + P.T @ omega_inv @ q)
-
-        return posterior_mu, posterior_cov
-
-    def optimize(
-        self,
-        expected_returns: np.ndarray,
-        cov_matrix: np.ndarray,
-        constraints: dict | None = None,
-    ) -> np.ndarray:
-        n = len(expected_returns)
-        constraints = constraints or {}
-        max_weight = constraints.get("max_weight", 0.25)
-        min_weight = constraints.get("min_weight", 0.0)
-
-        def neg_sharpe(w: np.ndarray) -> float:
-            port_return = expected_returns @ w
-            port_vol = np.sqrt(w @ cov_matrix @ w)
-            return -(port_return / port_vol) if port_vol > 0 else 0.0
-
-        bounds = [(min_weight, max_weight)] * n
-        cons = [{"type": "eq", "fun": lambda w: np.sum(w) - 1}]
-
-        result = minimize(
-            neg_sharpe,
-            x0=np.ones(n) / n,
-            method="SLSQP",
-            bounds=bounds,
-            constraints=cons,
-            options={"maxiter": 1000, "ftol": 1e-9},
-        )
-        return result.x if result.success else np.ones(n) / n
-
-
-class RiskParityOptimizer:
-    """Equal Risk Contribution portfolio."""
-
-    def optimize(self, cov_matrix: np.ndarray) -> np.ndarray:
-        n = cov_matrix.shape[0]
-
-        def risk_budget_objective(w: np.ndarray) -> float:
-            w = np.array(w)
-            port_var = w @ cov_matrix @ w
-            port_vol = np.sqrt(port_var)
-            marginal_contrib = cov_matrix @ w
-            risk_contrib = w * marginal_contrib / port_vol
-            target = port_vol / n
-            return float(np.sum((risk_contrib - target) ** 2))
-
-        result = minimize(
-            risk_budget_objective,
-            x0=np.ones(n) / n,
-            method="SLSQP",
-            bounds=[(0.0, 1.0)] * n,
-            constraints=[{"type": "eq", "fun": lambda w: np.sum(w) - 1}],
-        )
-        return result.x if result.success else np.ones(n) / n
-```
-
----
-
-### Risk Engine
-
-**Назначение:** Центральный шлюз управления риском. Блокирует исполнение ордеров при нарушении любого из риск-лимитов.
-
-**Реализованные методы:**
-
-| Метод | Описание |
-|---|---|
-| VaR (Parametric) | 95%/99% однодневный Value at Risk |
-| VaR (Historical) | 250-дневное историческое окно |
-| VaR (Monte Carlo) | 10 000 симуляций, Cholesky decomposition |
-| Expected Shortfall | CVaR — среднее за хвостом VaR |
-| Max Drawdown Control | Circuit breaker при превышении 15% просадки |
-| Position Sizing | Kelly Criterion + фиксированный процент от NAV |
-| Portfolio Exposure | Лимиты по секторам, странам, отдельным именам |
-
-**Реализация:**
-
-```python
-# services/risk_engine/application/services/var_calculator.py
-from __future__ import annotations
-
-import numpy as np
-from scipy import stats
-from dataclasses import dataclass
-
-
-@dataclass
-class VaRResult:
-    parametric_95: float
-    parametric_99: float
-    historical_95: float
-    historical_99: float
-    monte_carlo_95: float
-    monte_carlo_99: float
-    expected_shortfall_95: float
-    expected_shortfall_99: float
-    portfolio_value: float
-
-    @property
-    def worst_case_loss(self) -> float:
-        return max(
-            self.parametric_99,
-            self.historical_99,
-            self.monte_carlo_99,
-        )
-
-
-class VaRCalculator:
-    def __init__(self, n_simulations: int = 10_000) -> None:
-        self.n_simulations = n_simulations
-
-    def compute(
-        self,
-        returns: np.ndarray,
-        weights: np.ndarray,
-        portfolio_value: float,
-        cov_matrix: np.ndarray,
-    ) -> VaRResult:
-        port_returns = returns @ weights
-        mu = np.mean(port_returns)
-        sigma = np.std(port_returns)
-
-        # Parametric VaR
-        p_var_95 = portfolio_value * (mu - stats.norm.ppf(0.95) * sigma)
-        p_var_99 = portfolio_value * (mu - stats.norm.ppf(0.99) * sigma)
-
-        # Historical VaR
-        sorted_returns = np.sort(port_returns)
-        h_var_95 = portfolio_value * abs(np.percentile(sorted_returns, 5))
-        h_var_99 = portfolio_value * abs(np.percentile(sorted_returns, 1))
-
-        # Monte Carlo VaR
-        L = np.linalg.cholesky(cov_matrix + 1e-8 * np.eye(len(weights)))
-        z = np.random.standard_normal((self.n_simulations, len(weights)))
-        sim_returns = (z @ L.T) @ weights
-        mc_var_95 = portfolio_value * abs(np.percentile(sim_returns, 5))
-        mc_var_99 = portfolio_value * abs(np.percentile(sim_returns, 1))
-
-        # Expected Shortfall (CVaR)
-        es_95 = portfolio_value * abs(sorted_returns[sorted_returns <= np.percentile(sorted_returns, 5)].mean())
-        es_99 = portfolio_value * abs(sorted_returns[sorted_returns <= np.percentile(sorted_returns, 1)].mean())
-
-        return VaRResult(
-            parametric_95=p_var_95, parametric_99=p_var_99,
-            historical_95=h_var_95, historical_99=h_var_99,
-            monte_carlo_95=mc_var_95, monte_carlo_99=mc_var_99,
-            expected_shortfall_95=es_95, expected_shortfall_99=es_99,
-            portfolio_value=portfolio_value,
-        )
-
-
-class DrawdownController:
-    def __init__(self, max_drawdown: float = 0.15) -> None:
-        self.max_drawdown = max_drawdown
-        self._peak_nav = 0.0
-
-    def update(self, current_nav: float) -> None:
-        if current_nav > self._peak_nav:
-            self._peak_nav = current_nav
-
-    @property
-    def current_drawdown(self) -> float:
-        if self._peak_nav == 0:
-            return 0.0
-        return (self._peak_nav - self._peak_nav) / self._peak_nav  # corrected at runtime
-
-    def is_circuit_breaker_triggered(self, current_nav: float) -> bool:
-        if self._peak_nav == 0:
-            return False
-        drawdown = (self._peak_nav - current_nav) / self._peak_nav
-        return drawdown >= self.max_drawdown
-
-
-class PositionSizer:
-    def __init__(self, max_risk_per_trade: float = 0.02) -> None:
-        self.max_risk_per_trade = max_risk_per_trade
-
-    def kelly_size(
-        self,
-        win_prob: float,
-        win_loss_ratio: float,
-        portfolio_value: float,
-    ) -> float:
-        """Fractional Kelly Criterion (half-Kelly for safety)."""
-        kelly_fraction = (win_prob * win_loss_ratio - (1 - win_prob)) / win_loss_ratio
-        half_kelly = max(0.0, kelly_fraction / 2)
-        max_risk_size = portfolio_value * self.max_risk_per_trade
-        return min(portfolio_value * half_kelly, max_risk_size)
-
-    def fixed_fraction_size(
-        self,
-        portfolio_value: float,
-        stop_loss_pct: float,
-    ) -> float:
-        """Risk fixed percentage of NAV per trade."""
-        if stop_loss_pct <= 0:
-            return 0.0
-        return (portfolio_value * self.max_risk_per_trade) / stop_loss_pct
-```
-
----
-
-### Execution Engine
-
-**Назначение:** Приём валидированных ордеров от Risk Engine, маршрутизация к брокерским адаптерам, управление жизненным циклом ордеров.
-
-**Поддерживаемые типы ордеров:** Market, Limit, Stop, Stop-Limit, Trailing Stop, MOC/MOO.
-
-**Реализация:**
-
-```python
-# services/execution_engine/domain/entities/order.py
-from dataclasses import dataclass, field
-from datetime import datetime
-from decimal import Decimal
-from enum import Enum
-from uuid import UUID, uuid4
-
-
-class OrderType(str, Enum):
-    MARKET = "MARKET"
-    LIMIT = "LIMIT"
-    STOP = "STOP"
-    STOP_LIMIT = "STOP_LIMIT"
-    TRAILING_STOP = "TRAILING_STOP"
-
-
-class OrderSide(str, Enum):
-    BUY = "BUY"
-    SELL = "SELL"
-
-
-class OrderStatus(str, Enum):
-    PENDING = "PENDING"
-    SUBMITTED = "SUBMITTED"
-    PARTIALLY_FILLED = "PARTIALLY_FILLED"
-    FILLED = "FILLED"
-    CANCELLED = "CANCELLED"
-    REJECTED = "REJECTED"
-    EXPIRED = "EXPIRED"
-
-
-@dataclass
-class Order:
-    symbol: str
-    side: OrderSide
-    order_type: OrderType
-    quantity: Decimal
-    id: UUID = field(default_factory=uuid4)
-    limit_price: Decimal | None = None
-    stop_price: Decimal | None = None
-    stop_loss: Decimal | None = None
-    take_profit: Decimal | None = None
-    status: OrderStatus = OrderStatus.PENDING
-    created_at: datetime = field(default_factory=datetime.utcnow)
-    filled_at: datetime | None = None
-    filled_price: Decimal | None = None
-    filled_quantity: Decimal = Decimal("0")
-    broker_order_id: str | None = None
-    strategy_id: str | None = None
-
-    def fill(self, price: Decimal, quantity: Decimal) -> None:
-        self.filled_quantity += quantity
-        self.filled_price = price
-        if self.filled_quantity >= self.quantity:
-            self.status = OrderStatus.FILLED
-            self.filled_at = datetime.utcnow()
-        else:
-            self.status = OrderStatus.PARTIALLY_FILLED
-
-    @property
-    def is_terminal(self) -> bool:
-        return self.status in {
-            OrderStatus.FILLED,
-            OrderStatus.CANCELLED,
-            OrderStatus.REJECTED,
-            OrderStatus.EXPIRED,
-        }
-```
-
-```python
-# services/execution_engine/infrastructure/adapters/alpaca_adapter.py
-import asyncio
-from decimal import Decimal
-
-import alpaca_trade_api as tradeapi
-
-from ...domain.entities.order import Order, OrderStatus
-
-
-class AlpacaBrokerAdapter:
-    def __init__(self, api_key: str, secret_key: str, base_url: str) -> None:
-        self._api = tradeapi.REST(api_key, secret_key, base_url)
-
-    async def submit_order(self, order: Order) -> str:
-        kwargs = {
-            "symbol": order.symbol,
-            "qty": str(order.quantity),
-            "side": order.side.value.lower(),
-            "type": order.order_type.value.lower(),
-            "time_in_force": "day",
-        }
-        if order.limit_price:
-            kwargs["limit_price"] = str(order.limit_price)
-        if order.stop_price:
-            kwargs["stop_price"] = str(order.stop_price)
-
-        response = await asyncio.to_thread(self._api.submit_order, **kwargs)
-        return response.id
-
-    async def cancel_order(self, broker_order_id: str) -> None:
-        await asyncio.to_thread(self._api.cancel_order, broker_order_id)
-
-    async def get_order_status(self, broker_order_id: str) -> OrderStatus:
-        order = await asyncio.to_thread(self._api.get_order, broker_order_id)
-        status_map = {
-            "new": OrderStatus.SUBMITTED,
-            "partially_filled": OrderStatus.PARTIALLY_FILLED,
-            "filled": OrderStatus.FILLED,
-            "canceled": OrderStatus.CANCELLED,
-            "rejected": OrderStatus.REJECTED,
-            "expired": OrderStatus.EXPIRED,
-        }
-        return status_map.get(order.status, OrderStatus.PENDING)
-```
-
----
-
-### Monitoring Service
-
-**Назначение:** Централизованный мониторинг health-состояния всех сервисов, производительности AI-моделей, P&L и системных метрик.
-
-**Реализация:**
-
-```python
-# services/monitoring/application/services/performance_tracker.py
-from dataclasses import dataclass, field
-from datetime import datetime
-import numpy as np
-
-
-@dataclass
-class PortfolioMetrics:
-    as_of: datetime
-    nav: float
-    total_return: float
-    sharpe_ratio: float
-    sortino_ratio: float
-    calmar_ratio: float
-    max_drawdown: float
-    current_drawdown: float
-    win_rate: float
-    profit_factor: float
-    average_trade: float
-    volatility_annualized: float
-    beta: float
-    alpha: float
-    information_ratio: float
-
-
-class PerformanceTracker:
-    def __init__(self, risk_free_rate: float = 0.05) -> None:
-        self.risk_free_rate = risk_free_rate
-        self._nav_history: list[tuple[datetime, float]] = []
-
-    def update(self, nav: float) -> None:
-        self._nav_history.append((datetime.utcnow(), nav))
-
-    def compute_metrics(self, benchmark_returns: np.ndarray | None = None) -> PortfolioMetrics:
-        navs = np.array([v for _, v in self._nav_history])
-        returns = np.diff(navs) / navs[:-1]
-        daily_rf = self.risk_free_rate / 252
-        excess = returns - daily_rf
-
-        sharpe = (np.mean(excess) / np.std(returns)) * np.sqrt(252) if np.std(returns) > 0 else 0
-        downside = returns[returns < 0]
-        sortino = (np.mean(excess) / np.std(downside)) * np.sqrt(252) if len(downside) > 0 and np.std(downside) > 0 else 0
-
-        cumulative = navs / navs[0]
-        rolling_max = np.maximum.accumulate(cumulative)
-        drawdowns = (cumulative - rolling_max) / rolling_max
-        max_dd = abs(drawdowns.min())
-        current_dd = abs(drawdowns[-1])
-
-        annual_return = (navs[-1] / navs[0]) ** (252 / len(navs)) - 1
-        calmar = annual_return / max_dd if max_dd > 0 else 0
-
-        return PortfolioMetrics(
-            as_of=datetime.utcnow(),
-            nav=navs[-1],
-            total_return=float((navs[-1] / navs[0]) - 1),
-            sharpe_ratio=float(sharpe),
-            sortino_ratio=float(sortino),
-            calmar_ratio=float(calmar),
-            max_drawdown=float(max_dd),
-            current_drawdown=float(current_dd),
-            win_rate=float(np.mean(returns > 0)),
-            profit_factor=0.0,  # computed from trade log
-            average_trade=float(np.mean(returns)),
-            volatility_annualized=float(np.std(returns) * np.sqrt(252)),
-            beta=0.0,
-            alpha=0.0,
-            information_ratio=0.0,
-        )
+└── ui/
+    ├── dashboard.py             # Flask: 18 REST-маршрутов + рендер SPA
+    ├── telegram_bot.py          # Telegram-бот: 7 команд
+    ├── templates/
+    │   └── dashboard.html       # SPA: 5 страниц, Chart.js, анимации, ripple
+    └── static/
+        └── style.css            # Glassmorphism dark terminal: CSS custom properties
 ```
 
 ---
@@ -1668,512 +226,682 @@ class PerformanceTracker:
 
 ### Требования
 
-- Docker 24+ и Docker Compose v2
-- Python 3.11+
-- Make (опционально, для удобства)
-- 16 GB RAM рекомендуется (AI models in-memory)
+- **Docker** 24+ и Docker Compose v2 — для запуска TimescaleDB
+- **Python** 3.11+ — для бота и дашборда
+- **Аккаунт Т-Инвестиции** — токен API (sandbox или production)
 
-### Клонирование и настройка
+### Docker (рекомендуется)
+
+Запустите TimescaleDB и Adminer одной командой:
 
 ```bash
-git clone https://github.com/your-org/quantflow.git
+git clone https://github.com/your-username/quantflow.git
 cd quantflow
 
-cp .env.example .env
-# Заполните переменные окружения (см. раздел Конфигурация)
-nano .env
-```
-
-### Запуск инфраструктуры
-
-```bash
-# Поднять PostgreSQL, Redis, Kafka, Zookeeper
-make infra-up
-# или
-docker compose -f infra/docker/docker-compose.yml up -d
+# Поднять БД
+docker compose up -d
 
 # Проверить статус
 docker compose ps
 ```
 
-### Запуск всех сервисов
+После запуска:
+- **TimescaleDB** доступна на `localhost:5432`
+- **Adminer** (веб-интерфейс БД) на `http://localhost:8080`
+  - Система: PostgreSQL, Сервер: `timescaledb`, Логин: `trader`, Пароль: `Trading2024!`, БД: `trading_bot`
+
+### Python-окружение
 
 ```bash
-# Режим разработки (с hot-reload)
-make dev
-# или
-docker compose -f infra/docker/docker-compose.dev.yml up --build
+# Создать виртуальное окружение
+python3 -m venv .venv
+source .venv/bin/activate       # Linux/macOS
+# .venv\Scripts\activate        # Windows
 
-# Только конкретный сервис
-docker compose up market_data --build
+# Установить зависимости
+pip install -r requirements.txt
+
+# Скопировать и заполнить .env
+cp .env.example .env
+nano .env                       # минимум: DB_PASSWORD, TINKOFF_TOKEN, TINKOFF_ACCOUNT_ID
 ```
 
-### Инициализация БД
+### Создание схемы БД
+
+Схема таблицы `trades` создаётся автоматически при первом запуске `main.py` или `ui/dashboard.py` через `learning/feedback.py`.
+
+Для таблицы `candles` и `news` выполните вручную или через Adminer:
+
+```sql
+CREATE TABLE IF NOT EXISTS candles (
+    time       TIMESTAMPTZ NOT NULL,
+    ticker     VARCHAR(20) NOT NULL,
+    timeframe  VARCHAR(10) NOT NULL,
+    open       NUMERIC(18,4),
+    high       NUMERIC(18,4),
+    low        NUMERIC(18,4),
+    close      NUMERIC(18,4),
+    volume     BIGINT
+);
+
+-- Для TimescaleDB (рекомендуется):
+SELECT create_hypertable('candles', 'time', if_not_exists => TRUE);
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_candles_uniq
+    ON candles (ticker, timeframe, time DESC);
+```
+
+### Загрузка исторических данных
+
+`data/loader.py` запускается как скрипт — загружает OHLCV с MOEX ISS и сохраняет в таблицу `candles`:
 
 ```bash
-make db-migrate
-# или
-docker compose exec market_data alembic upgrade head
-docker compose exec fundamental_analysis alembic upgrade head
-# ... для каждого сервиса
+# Загрузить дневные свечи за последний год (по умолчанию)
+python3 data/loader.py
+
+# Указать тикеры, интервал и период
+python3 data/loader.py SBER GAZP LKOH NVTK --interval 1d --days 730
+
+# Доступные интервалы
+# 1m  5m  10m  15m  30m  1h  1d  1w  1M
 ```
 
-### Заполнение исторических данных
+### Запуск веб-дашборда
 
 ```bash
-# Загрузить 5 лет исторических данных по S&P 500
-python scripts/seed_data.py --universe sp500 --years 5
-
-# Только указанные тикеры
-python scripts/seed_data.py --symbols AAPL MSFT GOOGL AMZN NVDA --years 3
+python3 ui/dashboard.py
+# Дашборд доступен на http://localhost:5001
 ```
 
-### Первичное обучение моделей
+### Запуск торгового бота
 
 ```bash
-# Обучить все модели ансамбля
-python scripts/model_train.py --universe sp500 --start 2018-01-01
+# Полный режим: торговый цикл + Telegram-бот в отдельном потоке
+python3 main.py
 
-# Запустить бэктест
-python scripts/backtest_run.py --strategy ensemble --start 2020-01-01 --end 2024-12-31
+# Только Telegram-бот (без автоматической торговли)
+python3 main.py --bot-only
+
+# Только бэктест по тикерам из TICKERS
+python3 main.py --backtest
 ```
+
+> **Внимание:** перед live-торговлей убедитесь, что `TINKOFF_SANDBOX=true` в `.env`. Переключение на `false` исполняет сделки с реальными деньгами.
 
 ---
 
 ## Конфигурация
 
-Все настройки передаются через переменные окружения. Создайте `.env` из `.env.example`:
+Скопируйте `.env.example` в `.env` и заполните значения:
 
 ```dotenv
-# ─── Database ────────────────────────────────────────────────────
-POSTGRES_HOST=localhost
-POSTGRES_PORT=5432
-POSTGRES_DB=quantflow
-POSTGRES_USER=quantflow
-POSTGRES_PASSWORD=your_secure_password
+# ─── База данных PostgreSQL / TimescaleDB ──────────────────────────────────
+DB_HOST=localhost
+DB_PORT=5432
+DB_NAME=trading_bot
+DB_USER=trader
+DB_PASSWORD=your_password_here       # совпадает с docker-compose.yml
 
-# ─── Redis ───────────────────────────────────────────────────────
-REDIS_URL=redis://localhost:6379/0
+# ─── Т-Инвестиции API ──────────────────────────────────────────────────────
+TINKOFF_TOKEN=your_tinkoff_token_here        # t.xxxxxxxxxxxxxxxx
+TINKOFF_ACCOUNT_ID=your_account_id_here      # идентификатор счёта
+TINKOFF_SANDBOX=true                          # true = песочница  false = боевой
 
-# ─── Kafka ───────────────────────────────────────────────────────
-KAFKA_BOOTSTRAP_SERVERS=localhost:9092
-KAFKA_GROUP_ID=quantflow
+# ─── Telegram ──────────────────────────────────────────────────────────────
+TELEGRAM_TOKEN=your_telegram_bot_token_here  # от @BotFather
+TELEGRAM_CHAT_ID=your_chat_id_here           # ваш Telegram user ID
 
-# ─── Market Data APIs ────────────────────────────────────────────
-POLYGON_API_KEY=your_polygon_key
-ALPACA_API_KEY=your_alpaca_key
-ALPACA_SECRET_KEY=your_alpaca_secret
-ALPACA_BASE_URL=https://paper-api.alpaca.markets  # paper trading
+# ─── Торгуемые инструменты ─────────────────────────────────────────────────
+TICKERS=SBER,GAZP,LKOH,YNDX,NVTK            # через запятую, без пробелов
+POLL_INTERVAL=60                              # секунд между итерациями цикла
 
-# ─── News APIs ───────────────────────────────────────────────────
-NEWS_API_KEY=your_newsapi_key
-REDDIT_CLIENT_ID=your_reddit_client_id
-REDDIT_CLIENT_SECRET=your_reddit_secret
-REDDIT_USER_AGENT=QuantFlow/1.0
+# ─── Риск-менеджмент ───────────────────────────────────────────────────────
+RISK_MAX_POSITION_PCT=0.05       # макс. % портфеля на одну позицию (5%)
+RISK_ATR_STOP_MULT=2.0           # множитель ATR для расчёта стоп-лосса
+RISK_MAX_DAILY_LOSS_PCT=0.02     # лимит дневных убытков (2% от портфеля)
+RISK_MAX_OPEN_POSITIONS=5        # макс. одновременных позиций
 
-# ─── Macro Data ──────────────────────────────────────────────────
-FRED_API_KEY=your_fred_key
+# ─── Приложение ────────────────────────────────────────────────────────────
+LOG_LEVEL=INFO                   # DEBUG / INFO / WARNING / ERROR
+```
 
-# ─── Broker ──────────────────────────────────────────────────────
-IBKR_HOST=127.0.0.1
-IBKR_PORT=7497
-IBKR_CLIENT_ID=1
-BROKER=alpaca  # alpaca | ibkr | paper
+### Все параметры конфигурации
 
-# ─── AI / ML ─────────────────────────────────────────────────────
-MLFLOW_TRACKING_URI=http://localhost:5000
-MODEL_REGISTRY_PATH=/models
-RETRAIN_SCHEDULE=0 0 * * 1  # каждый понедельник в 00:00
+| Переменная | По умолчанию | Описание |
+|---|---|---|
+| `DB_HOST` | `localhost` | Хост PostgreSQL |
+| `DB_PORT` | `5432` | Порт PostgreSQL |
+| `DB_NAME` | `trading_bot` | Имя базы данных |
+| `DB_USER` | `trader` | Пользователь БД |
+| `DB_PASSWORD` | — | Пароль БД **(обязательно)** |
+| `TINKOFF_TOKEN` | — | Токен API Т-Инвестиции **(обязательно)** |
+| `TINKOFF_ACCOUNT_ID` | — | ID торгового счёта **(обязательно)** |
+| `TINKOFF_SANDBOX` | `true` | Режим песочницы |
+| `TELEGRAM_TOKEN` | — | Токен Telegram-бота (опционально) |
+| `TELEGRAM_CHAT_ID` | — | ID чата для уведомлений (опционально) |
+| `TICKERS` | `SBER,GAZP,LKOH,YNDX,NVTK` | Торгуемые тикеры |
+| `POLL_INTERVAL` | `60` | Интервал опроса, сек |
+| `RISK_MAX_POSITION_PCT` | `0.05` | Макс. доля капитала на позицию |
+| `RISK_ATR_STOP_MULT` | `2.0` | Множитель ATR для стоп-лосса |
+| `RISK_MAX_DAILY_LOSS_PCT` | `0.02` | Лимит дневного убытка |
+| `RISK_MAX_OPEN_POSITIONS` | `5` | Макс. число позиций |
+| `LOG_LEVEL` | `INFO` | Уровень логирования |
 
-# ─── Risk Limits ─────────────────────────────────────────────────
-MAX_DRAWDOWN=0.15
-MAX_POSITION_SIZE=0.10
-MAX_SECTOR_EXPOSURE=0.30
-MAX_DAILY_VAR_95=0.02
-RISK_FREE_RATE=0.05
+---
 
-# ─── Portfolio ───────────────────────────────────────────────────
-OPTIMIZATION_METHOD=black_litterman  # mpt | black_litterman | risk_parity
-REBALANCE_FREQUENCY=weekly
-MIN_SIGNAL_CONFIDENCE=0.65
+## Web Dashboard
 
-# ─── Monitoring ──────────────────────────────────────────────────
-PROMETHEUS_PORT=9090
-GRAFANA_PORT=3000
-LOG_LEVEL=INFO
-SENTRY_DSN=your_sentry_dsn
+Дашборд запускается командой `python3 ui/dashboard.py` и доступен на `http://localhost:5001`.
 
-# ─── Paper Trading ───────────────────────────────────────────────
-PAPER_TRADING=true
-INITIAL_CAPITAL=100000
+Это SPA (Single-Page Application) на ванильном JavaScript с пятью страницами:
+
+### Dashboard
+
+Главная страница с мониторингом в реальном времени. Обновляется автоматически каждые 30 секунд.
+
+| Элемент | Данные |
+|---|---|
+| **Portfolio** | Стоимость портфеля из Tinkoff API + количество позиций |
+| **Нереализованный P&L** | Unrealized PnL + % от стоимости входа |
+| **Просадка / Win Rate** | Max Drawdown % + процент прибыльных сделок |
+| **Sharpe Ratio** | Аннуализированный коэффициент (252 торговых дня) |
+| **Equity Curve** | График капитала из истории закрытых сделок |
+| **Последние сигналы** | Таблица: время, тикер, BUY/SELL/HOLD, цена, скор, правил |
+| **Позиции Tinkoff** | Список позиций: тикер, P&L, средняя цена, текущая цена |
+| **Риск-менеджмент** | Прогресс-бары: P&L, просадка, позиций, Win Rate |
+| **Лог событий** | Последние записи из таблицы `news` |
+
+Если Tinkoff API недоступен или токен не настроен — дашборд показывает плейсхолдеры (`—`, `Нет данных`), а не пустой экран.
+
+### Portfolio
+
+Котировки торгуемых тикеров из таблицы `candles`:
+
+- Карточки тикеров: текущая цена, изменение за 1 день, изменение за 30 дней, объём
+- Интерактивный график дневных свечей (Chart.js, закрытие)
+- Переключение между тикерами через вкладки
+
+### Signals
+
+Live-вычисление технических индикаторов по последним данным из `candles`:
+
+- Карточки по каждому тикеру: сигнал (BUY/SELL/HOLD), RSI с визуальной полосой, MACD гистограмма, ADX, score
+- Подробная таблица: RSI, MACD, ADX, BB%, buy_score, sell_score, количество правил
+- Блок сработавших правил
+
+### Backtest
+
+Запуск событийного бэктеста по всем тикерам из БД:
+
+- Начальный капитал: 1 000 000 ₽, комиссия: 0.03% за сторону
+- Таблица результатов: сделок, Win%, PnL, Avg PnL, Max Drawdown, Sharpe, свечей
+- Сравнительный график equity curve по тикерам
+
+### Settings
+
+Просмотр конфигурации и управление токенами:
+
+- **База данных** — хост, порт, имя, статус подключения
+- **Риск-менеджмент** — все 4 параметра из `.env`
+- **Приложение** — тикеры, интервал опроса, уровень логов
+- **Брокер (Tinkoff)** — режим (Sandbox/Production), статус, Account ID
+- Поля ввода токенов с переключателем показать/скрыть
+- Сохранение токена записывает значение в `.env` и немедленно применяет без перезапуска
+
+---
+
+## Сигнальный движок
+
+### Технические индикаторы
+
+Библиотека: `ta` (Technical Analysis Library).
+
+| Индикатор | Параметры | Назначение |
+|---|---|---|
+| **RSI** | period=14 | Индекс относительной силы |
+| **MACD** | 12/26/9 | Схождение/расхождение скользящих средних |
+| **EMA fast** | period=9 | Быстрая экспоненциальная MA |
+| **EMA slow** | period=21 | Медленная экспоненциальная MA |
+| **ATR** | period=14 | Истинный средний диапазон (волатильность) |
+| **Bollinger Bands** | 20, σ=2.0 | Полосы волатильности + BB% |
+| **ADX** | period=14 | Индикатор направленного движения |
+| **+DI / -DI** | period=14 | Положительный / отрицательный тренд |
+| **VWAP** | — | Средневзвешенная по объёму цена |
+
+Вычисляемые состояния (`IndicatorValues`): `macd_bullish_cross`, `macd_bearish_cross`, `price_above_ema_fast`, `price_above_ema_slow`, `trend_strong`, `rsi_oversold`, `rsi_overbought`.
+
+### Торговые правила (knowledge/rules.yaml)
+
+Движок оценивает условия через `operator` (`>`, `<`, `>=`, `<=`, `==`). Значение может быть числом или ссылкой на другой индикатор (`value: adx_neg`).
+
+**Правила BUY:**
+
+| Правило | Вес | Условия |
+|---|---|---|
+| `RSI_Oversold_Bounce` | 1.0 | RSI < 35 AND MACD гист. > 0 |
+| `EMA_Bullish_Cross` | 1.5 | Цена > EMA_fast AND > EMA_slow AND ADX > 20 |
+| `MACD_Bullish_Crossover` | 1.2 | MACD бычий крест AND RSI ∈ (40, 65) |
+| `BB_Lower_Bounce` | 0.8 | BB% < 0.1 AND RSI < 40 AND ADX < 30 |
+| `Strong_Trend_Continuation_Buy` | 1.8 | ADX > 30 AND +DI > -DI AND Цена > EMA_fast |
+| `VWAP_Support_Buy` | 0.7 | Цена > VWAP |
+
+**Правила SELL:**
+
+| Правило | Вес | Условия |
+|---|---|---|
+| `RSI_Overbought_Exit` | 1.0 | RSI > 70 AND MACD гист. < 0 |
+| `EMA_Bearish_Cross` | 1.5 | Цена < EMA_fast AND < EMA_slow AND ADX > 20 |
+| `MACD_Bearish_Crossover` | 1.2 | MACD медвежий крест AND RSI > 50 |
+| `BB_Upper_Rejection` | 0.8 | BB% > 0.9 AND RSI > 60 |
+| `Strong_Trend_Continuation_Sell` | 1.8 | ADX > 30 AND -DI > +DI AND Цена < EMA_fast |
+| `VWAP_Resistance_Sell` | 0.7 | Цена < VWAP |
+
+**Параметры агрегации:**
+
+```yaml
+settings:
+  min_buy_score: 2.0        # минимальная сумма весов для BUY
+  min_sell_score: 2.0       # минимальная сумма весов для SELL
+  confirmation_rules: 2     # минимальное количество сработавших правил
+```
+
+### Горячая перезагрузка правил
+
+```python
+from signals.rules_engine import rules_engine
+rules_engine.reload()   # перечитывает knowledge/rules.yaml без перезапуска
 ```
 
 ---
 
-## API Документация
+## Риск-менеджмент
 
-После запуска сервисов документация доступна по адресам:
+### Расчёт размера позиции (ATR-метод)
 
-| Сервис | Swagger UI | ReDoc |
+```
+stop_distance  = ATR × RISK_ATR_STOP_MULT
+stop_price     = entry_price − stop_distance  (для лонга)
+risk_per_share = |entry_price − stop_price|
+max_risk_amount = portfolio_value × RISK_MAX_POSITION_PCT
+shares         = max_risk_amount / risk_per_share
+```
+
+### Проверки перед сделкой (`check_trade_allowed`)
+
+1. **Лимит позиций** — `len(open_positions) < RISK_MAX_OPEN_POSITIONS`
+2. **Нет дублирующей позиции** — тикер не в `open_positions`
+3. **Дневной лимит убытков** — `daily_pnl > -(portfolio_value × RISK_MAX_DAILY_LOSS_PCT)`
+4. **Размер позиции** — `position_value ≤ portfolio_value`
+
+### Трейлинг-стоп
+
+На каждой свече `trailing_stop()` вычисляет новый стоп:
+
+```
+new_stop = current_price − ATR × RISK_ATR_STOP_MULT
+if new_stop > position.stop_price:
+    position.stop_price = new_stop
+```
+
+---
+
+## Брокер Tinkoff Invest
+
+### Архитектура клиента
+
+В проекте два уровня клиентского кода:
+
+- `broker/tinkoff_client.py` — используется **торговым циклом** (`main.py`) для исполнения ордеров
+- `services/tinkoff/` — используется **дашбордом** (`ui/dashboard.py`) для отображения портфеля
+
+### Получение токена
+
+1. Откройте [Tinkoff Invest](https://www.tbank.ru/invest/)
+2. Перейдите в Настройки → Интеграция → Создать токен
+3. Скопируйте токен в `.env` → `TINKOFF_TOKEN`
+
+Получение Account ID:
+```python
+from tinkoff.invest import Client
+with Client("your_token") as c:
+    for acc in c.users.get_accounts().accounts:
+        print(acc.id, acc.name)
+```
+
+### Sandbox vs Production
+
+```dotenv
+TINKOFF_SANDBOX=true    # виртуальные деньги, безопасно
+TINKOFF_SANDBOX=false   # реальные деньги — использовать осознанно
+```
+
+Sandbox использует тот же endpoint (`INVEST_GRPC_API_SANDBOX`) через стандартный `Client`. Для пополнения счёта в sandbox используйте личный кабинет Т-Инвестиций.
+
+### TTL-кэш портфеля
+
+| Данные | TTL |
+|---|---|
+| Портфель и позиции | 30 секунд |
+| Инструменты (ticker ↔ FIGI) | 1 час |
+| Статистика бота из БД | 5 минут |
+
+Кэш сбрасывается автоматически при сохранении нового токена через Settings.
+
+---
+
+## Бэктест
+
+### Принцип работы
+
+Событийный бэктестер `backtest/engine.py` прогоняет стратегию свеча за свечой:
+
+1. **Стоп-лосс** — проверяется перед сигналом на каждой свече
+2. **Индикаторы** — вычисляются на окне последних 60 свечей
+3. **Открытие** — при сигнале BUY и отсутствии позиции
+4. **Закрытие** — при сигнале SELL или срабатывании стоп-лосса
+5. **Трейлинг-стоп** — обновляется на каждой свече
+6. **Принудительное закрытие** — на последней свече
+
+**Параметры по умолчанию:**
+- Начальный капитал: 1 000 000 ₽
+- Комиссия: 0.03% (обе стороны, как у большинства брокеров)
+- Минимум данных: 50 свечей
+- Размер лота: 1
+
+### Метрики результата
+
+```python
+BacktestResult:
+    total_trades    # всего сделок
+    winning_trades  # прибыльных
+    losing_trades   # убыточных
+    win_rate        # %  прибыльных
+    total_pnl       # суммарный PnL в ₽
+    avg_pnl         # средний PnL на сделку
+    max_drawdown    # максимальная просадка %
+    sharpe          # коэффициент Шарпа (rf = 16% годовых)
+    equity_curve    # список значений капитала
+```
+
+### Запуск через CLI
+
+```bash
+# Быстрый бэктест из командной строки
+python3 main.py --backtest
+
+# Бэктест через дашборд (POST /api/backtest)
+# Страница Backtest → кнопка "▶ Запустить бэктест"
+```
+
+---
+
+## Telegram-бот
+
+Бот запускается параллельно с торговым циклом в отдельном потоке.
+
+| Команда | Описание |
+|---|---|
+| `/start` | Приветствие и список команд |
+| `/status` | Статус цикла, дневной PnL, открытые позиции |
+| `/signal <TICKER>` | Live-сигнал для тикера: RSI, MACD, ADX, ATR, сработавшие правила |
+| `/trades` | Последние 10 сделок из БД |
+| `/stats` | Суммарная статистика: Win Rate, PnL, лучшая/худшая сделка |
+| `/rules` | Список загруженных правил с весами |
+| `/stop` | Остановить торговый цикл |
+
+Уведомления о сделках отправляются автоматически при каждой покупке и продаже:
+
+```
+🟢 ПОКУПКА SBER
+Цена: 315.20 руб.
+Лотов: 3 | Акций: 30
+Стоп: 309.40 руб.
+Счёт: 3.50
+```
+
+---
+
+## REST API
+
+Все эндпоинты дашборда на порту 5001.
+
+### Tinkoff
+
+| Метод | Путь | Описание |
 |---|---|---|
-| Market Data | http://localhost:8001/docs | http://localhost:8001/redoc |
-| News Intelligence | http://localhost:8002/docs | http://localhost:8002/redoc |
-| Macroeconomic | http://localhost:8003/docs | http://localhost:8003/redoc |
-| AI Prediction | http://localhost:8007/docs | http://localhost:8007/redoc |
-| Portfolio Optimizer | http://localhost:8008/docs | http://localhost:8008/redoc |
-| Risk Engine | http://localhost:8009/docs | http://localhost:8009/redoc |
-| Execution Engine | http://localhost:8010/docs | http://localhost:8010/redoc |
+| `GET` | `/api/tinkoff/portfolio` | Стоимость портфеля, количество позиций |
+| `GET` | `/api/tinkoff/positions` | Список позиций с P&L, ценами, лотами |
+| `GET` | `/api/tinkoff/pnl` | Нереализованный P&L + % |
+
+Коды ошибок в теле ответа:
+
+| `error_code` | HTTP | Причина |
+|---|---|---|
+| `NOT_CONFIGURED` | 503 | Не заданы `TINKOFF_TOKEN` или `TINKOFF_ACCOUNT_ID` |
+| `SDK_ERROR` | 503 | Пакет `tinkoff-investments` не установлен |
+| `API_ERROR` | 502 | Ошибка запроса к Tinkoff Invest API |
+
+### Статистика и данные
+
+| Метод | Путь | Описание |
+|---|---|---|
+| `GET` | `/api/stats` | Sharpe, Drawdown, Win Rate из БД (null если нет данных) |
+| `GET` | `/api/equity` | Equity curve из закрытых сделок |
+| `GET` | `/api/signals` | Последние 50 сигналов из таблицы `trades` |
+| `GET` | `/api/signals/live` | Live-вычисление индикаторов по тикерам из `candles` |
+| `GET` | `/api/portfolio` | Сводка котировок тикеров: цена, 1d/30d change, объём |
+| `GET` | `/api/candles?ticker=SBER&limit=120` | OHLCV свечи тикера (дневные) |
+| `GET` | `/api/metrics` | Агрегированные метрики из таблицы `trades` |
+| `GET` | `/api/positions` | Открытые позиции из таблицы `trades` |
+| `GET` | `/api/log` | Последние события из таблицы `news` |
+
+### Настройки
+
+| Метод | Путь | Описание |
+|---|---|---|
+| `GET` | `/api/settings` | Конфигурация: DB, Risk, App, Tinkoff (без значений токенов) |
+| `GET` | `/api/settings/tokens` | `{has_tinkoff_token: bool, has_tinkoff_account_id: bool}` |
+| `POST` | `/api/settings/tokens` | Сохранить токен: `{"key": "TINKOFF_TOKEN", "value": "t.xxx"}` |
+
+### Бэктест
+
+| Метод | Путь | Описание |
+|---|---|---|
+| `POST` | `/api/backtest` | Запустить бэктест, вернуть результаты по всем тикерам |
 
 ### Примеры запросов
 
 ```bash
-# Получить сигнал для AAPL
-curl http://localhost:8007/api/v1/predict \
-  -H "Content-Type: application/json" \
-  -d '{"symbols": ["AAPL"], "horizon": "5d"}'
+# Портфель
+curl http://localhost:5001/api/tinkoff/portfolio
 
-# Получить оптимальные веса портфеля
-curl http://localhost:8008/api/v1/optimize \
-  -H "Content-Type: application/json" \
-  -d '{"symbols": ["AAPL","MSFT","GOOGL"], "method": "black_litterman"}'
+# Статус токенов (безопасно — без значений)
+curl http://localhost:5001/api/settings/tokens
 
-# Проверить VaR портфеля
-curl http://localhost:8009/api/v1/var \
+# Сохранить токен
+curl -X POST http://localhost:5001/api/settings/tokens \
   -H "Content-Type: application/json" \
-  -d '{"portfolio": {"AAPL": 0.3, "MSFT": 0.4, "GOOGL": 0.3}, "nav": 100000}'
+  -d '{"key": "TINKOFF_TOKEN", "value": "t.your_token_here"}'
 
-# Разместить ордер (paper trading)
-curl -X POST http://localhost:8010/api/v1/orders \
-  -H "Content-Type: application/json" \
-  -d '{"symbol": "AAPL", "side": "BUY", "quantity": 10, "order_type": "LIMIT", "limit_price": 185.00}'
+# Live-сигналы
+curl http://localhost:5001/api/signals/live
+
+# Свечи SBER за 90 дней
+curl "http://localhost:5001/api/candles?ticker=SBER&limit=90"
+
+# Запуск бэктеста
+curl -X POST http://localhost:5001/api/backtest
 ```
 
 ---
 
-## Тестирование
+## База данных
 
-### Запуск тестов
+### Таблица `trades` — лог сделок
 
-```bash
-# Все тесты
-make test
-
-# Unit-тесты (быстро, без зависимостей)
-pytest services/ -m unit -v --cov=services --cov-report=term-missing
-
-# Integration-тесты (требуют запущенных контейнеров)
-pytest services/ -m integration -v
-
-# Конкретный сервис
-pytest services/risk_engine/tests/ -v
-
-# С покрытием
-pytest --cov=services --cov-report=html --cov-fail-under=80
-open htmlcov/index.html
+```sql
+CREATE TABLE trades (
+    id              SERIAL PRIMARY KEY,
+    ticker          VARCHAR(20)   NOT NULL,
+    direction       VARCHAR(4)    NOT NULL,   -- BUY / SELL
+    entry_price     NUMERIC(18,4) NOT NULL,
+    exit_price      NUMERIC(18,4),
+    shares          INTEGER       NOT NULL,
+    stop_price      NUMERIC(18,4),
+    pnl             NUMERIC(18,4),
+    pnl_pct         NUMERIC(10,6),
+    entry_at        TIMESTAMPTZ   NOT NULL DEFAULT NOW(),
+    exit_at         TIMESTAMPTZ,
+    signal_rules    TEXT[],                   -- список сработавших правил
+    buy_score       NUMERIC(8,4),
+    sell_score      NUMERIC(8,4),
+    rsi             NUMERIC(8,4),             -- RSI в момент сигнала
+    macd_hist       NUMERIC(18,6),
+    adx             NUMERIC(8,4),
+    atr             NUMERIC(18,6),
+    status          VARCHAR(20) DEFAULT 'OPEN',  -- OPEN / CLOSED / STOPPED
+    notes           TEXT
+);
 ```
 
-### Структура тестов
+### Таблица `candles` — OHLCV-данные
 
-Каждый сервис содержит:
-
-```
-tests/
-├── unit/                   # Тесты без внешних зависимостей
-│   ├── test_entities.py
-│   ├── test_use_cases.py
-│   └── test_value_objects.py
-├── integration/            # Тесты с реальными БД/Kafka
-│   ├── test_repository.py
-│   └── test_kafka_producer.py
-├── e2e/                    # End-to-end тесты
-│   └── test_signal_pipeline.py
-└── conftest.py             # Фикстуры, фабрики
+```sql
+CREATE TABLE candles (
+    time       TIMESTAMPTZ NOT NULL,
+    ticker     VARCHAR(20) NOT NULL,
+    timeframe  VARCHAR(10) NOT NULL,   -- '1d', '1h', '1m', ...
+    open       NUMERIC(18,4),
+    high       NUMERIC(18,4),
+    low        NUMERIC(18,4),
+    close      NUMERIC(18,4),
+    volume     BIGINT
+);
+-- TimescaleDB hypertable по полю time
 ```
 
-### Пример integration-теста
+### Анализ эффективности правил
+
+`FeedbackStore.get_rule_performance()` возвращает статистику по каждому правилу:
+
+```sql
+SELECT rule,
+       COUNT(*)                         AS total,
+       COUNT(*) FILTER (WHERE pnl > 0)  AS wins,
+       ROUND(SUM(pnl)::numeric, 2)      AS total_pnl
+FROM trades, UNNEST(signal_rules) AS rule
+WHERE status IN ('CLOSED', 'STOPPED')
+GROUP BY rule
+ORDER BY total_pnl DESC;
+```
+
+---
+
+## Безопасность
+
+> **Токены API никогда не попадают в логи, ответы API или фронтенд.**
+
+### Хранение токенов
+
+- Токены хранятся **только в `.env`** — файл исключён из Git через `.gitignore`
+- `_save_env_key()` использует `python-dotenv set_key()` для записи в `.env`
+- При сохранении через UI значение применяется в `config.tinkoff.token` без перезапуска
+
+### Защита API
 
 ```python
-# services/market_data/tests/integration/test_repository.py
-import pytest
-from datetime import datetime, timedelta
-from decimal import Decimal
+# Белый список допустимых ключей — других принять невозможно
+_ALLOWED_TOKEN_KEYS = {"TINKOFF_TOKEN", "TINKOFF_ACCOUNT_ID"}
 
-from ...infrastructure.repositories.postgres_market_repository import PostgresMarketRepository
+# GET /api/settings/tokens — возвращает ТОЛЬКО флаги присутствия
+{"has_tinkoff_token": true, "has_tinkoff_account_id": false}
 
-
-@pytest.mark.integration
-@pytest.mark.asyncio
-async def test_save_and_retrieve_ohlcv(pg_repository: PostgresMarketRepository):
-    bar = make_bar(symbol="TSLA", close=Decimal("250.00"))
-    await pg_repository.save(bar)
-
-    results = await pg_repository.get_ohlcv(
-        symbol="TSLA",
-        interval="1d",
-        from_date=datetime.utcnow() - timedelta(days=1),
-        to_date=datetime.utcnow(),
-    )
-    assert len(results) == 1
-    assert results[0].symbol == "TSLA"
-    assert results[0].close == Decimal("250.00")
+# POST: ключ логируется, значение — НИКОГДА
+logger.info("Credential updated: key=%s", key)   # value не передаётся в logger
 ```
 
----
+### Защита фронтенда
 
-## Деплой
+- Поля токенов: `type="password"` по умолчанию
+- Кнопка «глаз» переключает `input.type` только на клиенте
+- При потере фокуса (`input.blur`) поле возвращается в режим `password`
 
-### Docker Compose (production)
+### Проверьте перед запуском
 
-```yaml
-# infra/docker/docker-compose.prod.yml
-version: "3.9"
+```bash
+# Убедиться что .env в .gitignore
+cat .gitignore | grep .env
 
-services:
-  market_data:
-    image: quantflow/market-data:${VERSION:-latest}
-    restart: unless-stopped
-    environment:
-      - POSTGRES_HOST=${POSTGRES_HOST}
-      - REDIS_URL=${REDIS_URL}
-      - KAFKA_BOOTSTRAP_SERVERS=${KAFKA_BOOTSTRAP_SERVERS}
-    deploy:
-      replicas: 2
-      resources:
-        limits:
-          memory: 512M
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
-      interval: 30s
-      timeout: 5s
-      retries: 3
-
-  ai_prediction_engine:
-    image: quantflow/ai-engine:${VERSION:-latest}
-    restart: unless-stopped
-    deploy:
-      replicas: 1
-      resources:
-        limits:
-          memory: 4G
-    volumes:
-      - model_registry:/models
-
-  risk_engine:
-    image: quantflow/risk-engine:${VERSION:-latest}
-    restart: unless-stopped
-    deploy:
-      replicas: 2
-
-  execution_engine:
-    image: quantflow/execution-engine:${VERSION:-latest}
-    restart: unless-stopped
-    deploy:
-      replicas: 1  # Singleton — только один исполнитель
-
-volumes:
-  model_registry:
-```
-
-### GitHub Actions CI/CD
-
-```yaml
-# .github/workflows/ci.yml
-name: CI Pipeline
-
-on:
-  push:
-    branches: [main, develop]
-  pull_request:
-    branches: [main]
-
-jobs:
-  test:
-    runs-on: ubuntu-latest
-    services:
-      postgres:
-        image: postgres:15
-        env:
-          POSTGRES_PASSWORD: test
-          POSTGRES_DB: quantflow_test
-        ports: ["5432:5432"]
-      redis:
-        image: redis:7
-        ports: ["6379:6379"]
-
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-
-      - name: Install dependencies
-        run: pip install -e ".[dev]"
-
-      - name: Lint (ruff)
-        run: ruff check services/ shared/
-
-      - name: Type check (mypy)
-        run: mypy services/ shared/
-
-      - name: Unit tests
-        run: pytest services/ -m unit --cov=services --cov-report=xml
-
-      - name: Integration tests
-        run: pytest services/ -m integration
-        env:
-          POSTGRES_HOST: localhost
-          REDIS_URL: redis://localhost:6379/0
-
-      - name: Upload coverage
-        uses: codecov/codecov-action@v4
-
-  build:
-    needs: test
-    runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
-    steps:
-      - uses: actions/checkout@v4
-      - name: Build and push Docker images
-        run: |
-          docker compose -f infra/docker/docker-compose.yml build
-          docker compose push
-```
-
-### Makefile
-
-```makefile
-.PHONY: help infra-up infra-down dev test lint type-check build
-
-help:
-	@echo "QuantFlow - Available commands:"
-	@echo "  make infra-up      Start infrastructure (Postgres, Redis, Kafka)"
-	@echo "  make infra-down    Stop infrastructure"
-	@echo "  make dev           Start all services in dev mode"
-	@echo "  make test          Run all tests"
-	@echo "  make lint          Run ruff linter"
-	@echo "  make type-check    Run mypy"
-	@echo "  make build         Build Docker images"
-	@echo "  make db-migrate    Run Alembic migrations"
-	@echo "  make seed          Seed historical data"
-	@echo "  make train         Train AI models"
-	@echo "  make backtest      Run backtest"
-
-infra-up:
-	docker compose -f infra/docker/docker-compose.yml up -d postgres redis kafka zookeeper
-
-infra-down:
-	docker compose -f infra/docker/docker-compose.yml down
-
-dev:
-	docker compose -f infra/docker/docker-compose.dev.yml up --build
-
-test:
-	pytest services/ -v --cov=services --cov-report=term-missing
-
-lint:
-	ruff check services/ shared/
-	ruff format --check services/ shared/
-
-type-check:
-	mypy services/ shared/ --ignore-missing-imports
-
-build:
-	docker compose -f infra/docker/docker-compose.yml build
-
-db-migrate:
-	@for service in market_data news_intelligence macroeconomic ai_prediction_engine portfolio_optimizer risk_engine execution_engine; do \
-		echo "Migrating $$service..."; \
-		docker compose exec $$service alembic upgrade head; \
-	done
-
-seed:
-	python scripts/seed_data.py --universe sp500 --years 5
-
-train:
-	python scripts/model_train.py --universe sp500 --start 2018-01-01
-
-backtest:
-	python scripts/backtest_run.py --strategy ensemble --start 2020-01-01 --end 2024-12-31
+# Убедиться что .env не в git
+git status .env
+# должно быть: nothing to commit
 ```
 
 ---
 
 ## Roadmap
 
-| Фаза | Месяцы | Статус |
+| Версия | Статус | Задачи |
 |---|---|---|
-| Фаза 1: Фундамент (Data Collection) | 1–2 | 🔄 В разработке |
-| Фаза 2: Аналитика (Analysis Services) | 3–4 | ⏳ Запланировано |
-| Фаза 3: AI Engine (Models + Backtest) | 5–7 | ⏳ Запланировано |
-| Фаза 4: Риск и Портфель | 7–9 | ⏳ Запланировано |
-| Фаза 5: Исполнение + Live Trading | 9–12 | ⏳ Запланировано |
+| **v0.1** | ✅ Готово | Торговый цикл · MOEX загрузка · YAML-правила · Tinkoff API · Flask Dashboard |
+| **v0.2** | ✅ Готово | Glassmorphism UI · Бэктест в дашборде · Live-сигналы · TTL-кэш |
+| **v0.3** | 🔄 В работе | Исправление схемы БД (status → closed_at) · Шарп в статистике |
+| **v0.4** | ⏳ Запланировано | Рыночные часы MOEX · Авто-перезапуск · Healthcheck endpoint |
+| **v0.5** | ⏳ Запланировано | WebSocket для live-котировок · Push-уведомления в дашборд |
+| **v1.0** | ⏳ Запланировано | ML-сигналы (LightGBM на features из индикаторов) · A/B тест правил |
 
-### Ближайшие задачи (v0.1)
+### Ближайшие задачи
 
-- [ ] Market Data Service — полная реализация + тесты
-- [ ] News Intelligence Service — FinBERT интеграция
-- [ ] PostgreSQL схемы для всех сервисов
-- [ ] Kafka topics setup + schema registry
-- [ ] CI/CD pipeline (GitHub Actions)
-- [ ] Docker Compose для локальной разработки
-
-### Дальнейшие планы (v0.2+)
-
-- [ ] Transformer (TFT) для временных рядов
-- [ ] Black-Litterman с AI-взглядами
-- [ ] Interactive Brokers адаптер
-- [ ] Web Dashboard (Next.js + FastAPI)
-- [ ] Options trading support
-- [ ] Crypto markets integration
+- [ ] Унифицировать поле статуса в `trades`: использовать `closed_at IS NOT NULL` вместо `status IN ('CLOSED', 'STOPPED')`
+- [ ] Добавить endpoint `/health` для мониторинга
+- [ ] Написать SQL-миграции вместо ручного DDL
+- [ ] Добавить поддержку мультивалютных портфелей (USD, EUR)
+- [ ] Параметризовать правила из UI без редактирования YAML
 
 ---
 
-## Contributing
+## Changelog
 
-Мы приветствуем contributions! Пожалуйста, прочитайте следующие правила.
+### 2026-06-27 — v0.2.0
 
-### Процесс
+- **Dashboard**: полный рефакторинг SPA — glassmorphism, курсорное свечение, ripple-эффект, анимации, AbortController + дедупликация запросов
+- **Settings**: кредиты Tinkoff перенесены внутрь карточки "Брокер (Tinkoff)", убрана отдельная секция
+- **Dashboard**: гарантированный вывод данных при недоступном API — плейсхолдеры вместо пустого экрана
+- **CSS**: полный редизайн — CSS custom properties, `backdrop-filter: blur(22px)`, gradient body, spring easing
+- **Topbar**: часы, кнопка обновления, индикатор статуса API
+- **P&L/Sharpe/Drawdown**: корректная обработка `null` из БД при нулевом количестве сделок
 
-1. Форкните репозиторий.
-2. Создайте ветку от `develop`: `git checkout -b feature/my-feature`.
-3. Напишите код + тесты (coverage ≥ 80%).
-4. Проверьте линтер: `make lint && make type-check`.
-5. Создайте Pull Request в `develop`.
+### 2026-06-26 — v0.1.0
 
-### Code Style
+- **Tinkoff SDK**: замена `SandboxClient` на `Client(token, target=INVEST_GRPC_API_SANDBOX)` — совместимость с 0.2.0b59
+- **services/tinkoff**: выделен отдельный слой — `portfolio.py`, `statistics.py`, `cache.py`, `mapper.py`, `types.py`
+- **Backtester**: события в UI, equity curves через Chart.js, таблица результатов
+- **requirements.txt**: раскомментирован `tinkoff-investments`
 
-- Python: **ruff** (PEP 8 + расширенные правила)
-- Типизация: **mypy** в strict режиме для новых модулей
-- Docstrings: Google-стиль
-- Тесты: **pytest** + **pytest-asyncio**
-- Именование: snake_case для функций/переменных, PascalCase для классов
+### 2026-06-26 — v0.0.1 (Initial commit)
 
-### Commit Convention
-
-```
-feat(market-data): add polygon.io WebSocket adapter
-fix(risk-engine): correct VaR calculation for empty portfolio
-test(ai-engine): add LSTM sequence building unit tests
-docs(readme): update installation steps
-refactor(execution): extract order validation to domain service
-```
-
----
-
-## Лицензия
-
-Этот проект распространяется под лицензией **MIT**. Подробности в файле [LICENSE](LICENSE).
+- Базовая структура: `main.py`, `config.py`, `data/loader.py`, `signals/`, `risk/`, `broker/`
+- `knowledge/rules.yaml`: 12 торговых правил
+- Flask Dashboard: первичный вариант с 5 страницами
+- Docker Compose: TimescaleDB + Adminer
+- Telegram-бот: 7 команд
 
 ---
 
 ## Дисклеймер
 
-> Данная платформа предназначена исключительно для образовательных и исследовательских целей. Алгоритмическая торговля сопряжена с существенными финансовыми рисками. Прошлые результаты бэктестов не гарантируют будущей доходности. Авторы не несут ответственности за финансовые потери, возникшие в результате использования этого программного обеспечения. Перед использованием в реальной торговле проконсультируйтесь с лицензированным финансовым советником.
+> Данный проект предназначен исключительно для **образовательных и исследовательских целей**.
+>
+> Алгоритмическая торговля сопряжена с существенными финансовыми рисками. Прошлые результаты бэктестов на исторических данных не гарантируют и не предсказывают будущую доходность.
+>
+> **Перед использованием в реальной торговле** всегда тестируйте в Sandbox (`TINKOFF_SANDBOX=true`) и консультируйтесь с лицензированным финансовым советником.
+>
+> Авторы не несут ответственности за финансовые потери, возникшие в результате использования данного программного обеспечения.
 
 ---
 
 <div align="center">
 
-Сделано с ❤️ командой QuantFlow · [Issues](https://github.com/your-org/quantflow/issues) · [Discussions](https://github.com/your-org/quantflow/discussions)
+Сделано для MOEX · Tinkoff Invest API v2 · Flask · TimescaleDB
 
 </div>

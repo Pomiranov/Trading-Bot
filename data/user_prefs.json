@@ -1,0 +1,27 @@
+{
+  "123": {
+    "chat_id": 123,
+    "username": null,
+    "timezone": "Europe/Moscow",
+    "language": "ru",
+    "currency": "RUB",
+    "default_broker": "tinkoff",
+    "notifications": {
+      "order_fill": true,
+      "new_signal": true,
+      "large_drawdown": true,
+      "profit_target": true,
+      "api_error": true,
+      "connection_lost": true,
+      "deposit": true,
+      "withdrawal": true,
+      "dividend": true,
+      "coupon": true,
+      "risk_limit": true,
+      "bot_started": true,
+      "bot_stopped": true
+    },
+    "registered_at": "2026-06-27T20:31:01.591470+00:00",
+    "last_seen": null
+  }
+}

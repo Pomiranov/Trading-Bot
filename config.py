@@ -35,6 +35,10 @@ class TinkoffConfig:
 class TelegramConfig:
     token: str = field(default_factory=lambda: os.getenv("TELEGRAM_TOKEN", ""))
     chat_id: str = field(default_factory=lambda: os.getenv("TELEGRAM_CHAT_ID", ""))
+    allowed_chat_ids: list = field(default_factory=lambda: [
+        int(x) for x in os.getenv("TELEGRAM_ALLOWED_IDS", "").split(",")
+        if x.strip().lstrip("-").isdigit()
+    ])
 
 
 @dataclass

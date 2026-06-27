@@ -1,21 +1,21 @@
-# Данные и индикаторы
+# Data & indicators
 requests>=2.31.0
 pandas>=2.0.0
 ta>=0.11.0
 
-# Конфигурация
+# Configuration
 python-dotenv>=1.0.0
 
-# База данных
+# Database
 psycopg2-binary>=2.9.0
 
-# Telegram
+# Telegram Bot API
 python-telegram-bot>=20.0
 
-# Брокер Т-Инвестиции
+# Tinkoff Invest API
 tinkoff-investments>=0.2.0b55
 
-# Утилиты
+# Utilities
 PyYAML>=6.0
 
 # Web dashboard

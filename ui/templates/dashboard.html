@@ -3,13 +3,16 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>QuantFlow — Dashboard</title>
+  <title>QuantFlow — Trading Terminal</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/static/style.css" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
 </head>
 <body>
+
+<!-- cursor glow -->
+<div class="cursor-glow" id="cursorGlow"></div>
 
 <!-- ── Topbar ── -->
 <header class="topbar">
@@ -19,66 +22,96 @@
   </a>
 
   <nav class="nav">
-    <a href="#" data-view="dashboard" class="active">Dashboard</a>
-    <a href="#" data-view="portfolio">Portfolio</a>
-    <a href="#" data-view="signals">Signals</a>
-    <a href="#" data-view="backtest">Backtest</a>
-    <a href="#" data-view="settings">Settings</a>
+    <a href="#" data-view="dashboard" class="active">
+      <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="1" y="1" width="5.5" height="5.5" rx="1.5"/><rect x="9.5" y="1" width="5.5" height="5.5" rx="1.5"/>
+        <rect x="1" y="9.5" width="5.5" height="5.5" rx="1.5"/><rect x="9.5" y="9.5" width="5.5" height="5.5" rx="1.5"/>
+      </svg>
+      Dashboard
+    </a>
+    <a href="#" data-view="portfolio">
+      <svg class="nav-icon" viewBox="0 0 16 16" fill="currentColor">
+        <rect x="1" y="9" width="4" height="6" rx="1"/><rect x="6" y="6" width="4" height="9" rx="1"/><rect x="11" y="2" width="4" height="13" rx="1"/>
+      </svg>
+      Portfolio
+    </a>
+    <a href="#" data-view="signals">
+      <svg class="nav-icon" viewBox="0 0 16 16" fill="currentColor">
+        <path d="M9 1.5L3 9h4.5l-.5 5.5 6.5-8.5H9L9 1.5z"/>
+      </svg>
+      Signals
+    </a>
+    <a href="#" data-view="backtest">
+      <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="3,9 1,7 3,5"/><path d="M1 7h9a4 4 0 1 1 0 8H8"/>
+      </svg>
+      Backtest
+    </a>
+    <a href="#" data-view="settings">
+      <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
+        <circle cx="8" cy="8" r="2.5"/><path d="M8 1v1.5M8 13.5V15M1 8h1.5M13.5 8H15M3.2 3.2l1.1 1.1M11.7 11.7l1.1 1.1M12.8 3.2l-1.1 1.1M4.3 11.7l-1.1 1.1"/>
+      </svg>
+      Settings
+    </a>
   </nav>
 
   <div class="topbar-right">
+    <span class="last-updated" id="lastUpdated"></span>
     <span class="clock" id="clock"></span>
-    <div class="status-badge" id="botStatus">
+    <button class="btn-refresh" id="topbarRefreshBtn" title="Обновить данные">
+      <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M13 2v4h-4"/><path d="M1 7a6 6 0 0 1 10.9-3.4L13 6"/>
+        <path d="M1 12v-4h4"/><path d="M13 7a6 6 0 0 1-10.9 3.4L1 8"/>
+      </svg>
+    </button>
+    <div class="status-badge connecting" id="botStatus">
       <span class="status-dot"></span>
-      <span id="botStatusText">Connecting…</span>
+      <span id="botStatusText">Connecting</span>
     </div>
   </div>
 </header>
 
-<!-- ══════════════════════════════════════════════════════════════════════════ -->
-<!-- VIEW: Dashboard                                                            -->
-<!-- ══════════════════════════════════════════════════════════════════════════ -->
+<!-- ══════════════════════════════════════════════════════ -->
+<!-- VIEW: Dashboard                                        -->
+<!-- ══════════════════════════════════════════════════════ -->
 <div id="view-dashboard" class="view active">
 <div class="layout">
 
-  <!-- Metrics row -->
+  <!-- Metric cards -->
   <div class="metrics-row">
     <div class="card metric-card">
       <div class="metric-label">Portfolio</div>
-      <div class="metric-value neutral" id="metPortfolio">—</div>
-      <div class="metric-sub" id="metTrades">— сделок</div>
+      <div class="metric-value neutral" id="metPortfolio"><span class="skeleton skeleton-value"></span></div>
+      <div class="metric-sub" id="metTrades"><span class="skeleton skeleton-sub"></span></div>
     </div>
     <div class="card metric-card">
-      <div class="metric-label">P&amp;L сегодня</div>
-      <div class="metric-value" id="metPnl">—</div>
-      <div class="metric-sub" id="metPnlPct">—</div>
+      <div class="metric-label">Нереализованный P&amp;L</div>
+      <div class="metric-value neutral" id="metPnl"><span class="skeleton skeleton-value"></span></div>
+      <div class="metric-sub" id="metPnlPct"><span class="skeleton skeleton-sub"></span></div>
     </div>
     <div class="card metric-card">
-      <div class="metric-label">Просадка</div>
-      <div class="metric-value" id="metDrawdown">—</div>
-      <div class="metric-sub" id="metWinRate">Win rate —</div>
+      <div class="metric-label">Просадка / Win Rate</div>
+      <div class="metric-value neutral" id="metDrawdown"><span class="skeleton skeleton-value"></span></div>
+      <div class="metric-sub" id="metWinRate"><span class="skeleton skeleton-sub"></span></div>
     </div>
     <div class="card metric-card">
-      <div class="metric-label">Sharpe Ratio</div>
-      <div class="metric-value neutral" id="metSharpe">—</div>
-      <div class="metric-sub">252 дня, анн.</div>
+      <div class="metric-label">Sharpe Ratio · 252д</div>
+      <div class="metric-value neutral" id="metSharpe"><span class="skeleton skeleton-value"></span></div>
+      <div class="metric-sub" id="metSharpesSub">аннуализированный</div>
     </div>
   </div>
 
   <!-- Main column -->
   <div class="main-col">
-
     <!-- Equity chart -->
     <div class="card chart-card">
       <div class="card-header">
         <div>
-          <div class="card-title">Equity Curve · SBER</div>
+          <div class="card-title">Equity Curve</div>
           <div class="card-subtitle" id="chartSubtitle">Загрузка…</div>
         </div>
       </div>
-      <div class="chart-wrap">
-        <canvas id="equityChart"></canvas>
-      </div>
+      <div class="chart-wrap"><canvas id="equityChart"></canvas></div>
     </div>
 
     <!-- Signals table -->
@@ -90,14 +123,7 @@
       <div class="table-wrap">
         <table>
           <thead>
-            <tr>
-              <th>Время</th>
-              <th>Тикер</th>
-              <th>Сигнал</th>
-              <th>Цена</th>
-              <th>Скор</th>
-              <th>Правил</th>
-            </tr>
+            <tr><th>Время</th><th>Тикер</th><th>Сигнал</th><th>Цена</th><th>Скор</th><th>Правил</th></tr>
           </thead>
           <tbody id="signalsBody">
             <tr><td colspan="6" class="empty">Загрузка…</td></tr>
@@ -109,24 +135,19 @@
 
   <!-- Sidebar -->
   <div class="sidebar">
-
     <div class="card">
       <div class="card-header">
-        <div class="card-title">Открытые позиции</div>
+        <div class="card-title">Позиции Tinkoff</div>
         <div class="card-subtitle" id="posCount">—</div>
       </div>
-      <div id="positionsList">
-        <div class="empty">Загрузка…</div>
-      </div>
+      <div id="positionsList"><div class="empty">Загрузка…</div></div>
     </div>
 
     <div class="card">
-      <div class="card-header">
-        <div class="card-title">Риск-менеджмент</div>
-      </div>
-      <div class="risk-grid" id="riskGrid">
+      <div class="card-header"><div class="card-title">Риск-менеджмент</div></div>
+      <div class="risk-grid">
         <div class="risk-row">
-          <span class="risk-label">Дневной убыток</span>
+          <span class="risk-label">Unrealized P&L</span>
           <div class="risk-bar-wrap"><div class="risk-bar-fill" id="riskDailyBar" style="width:0%"></div></div>
           <span class="risk-value" id="riskDailyVal">—</span>
         </div>
@@ -149,36 +170,24 @@
     </div>
 
     <div class="card" style="flex:1">
-      <div class="card-header">
-        <div class="card-title">Лог событий</div>
-      </div>
-      <div class="log-list" id="logList">
-        <div class="empty">Загрузка…</div>
-      </div>
+      <div class="card-header"><div class="card-title">Лог событий</div></div>
+      <div class="log-list" id="logList"><div class="empty">Загрузка…</div></div>
     </div>
-
   </div>
+
 </div>
 </div>
 
-<!-- ══════════════════════════════════════════════════════════════════════════ -->
-<!-- VIEW: Portfolio                                                            -->
-<!-- ══════════════════════════════════════════════════════════════════════════ -->
+<!-- ══════════════════════════════════════════════════════ -->
+<!-- VIEW: Portfolio                                        -->
+<!-- ══════════════════════════════════════════════════════ -->
 <div id="view-portfolio" class="view">
 <div class="page-layout">
-
   <div class="page-title-row">
-    <div>
-      <h2 class="page-title">Portfolio</h2>
-      <p class="page-desc">Рыночные данные из БД · дневные свечи</p>
-    </div>
+    <div><h2 class="page-title">Portfolio</h2><p class="page-desc">Рыночные данные из БД · дневные свечи</p></div>
     <span class="badge badge-info" id="portfolioUpdated"></span>
   </div>
-
-  <div class="ticker-grid" id="tickerGrid">
-    <div class="empty">Загрузка котировок…</div>
-  </div>
-
+  <div class="ticker-grid" id="tickerGrid"><div class="empty">Загрузка котировок…</div></div>
   <div class="card chart-card">
     <div class="card-header">
       <div>
@@ -187,32 +196,23 @@
       </div>
       <div class="ticker-tabs" id="tickerTabs"></div>
     </div>
-    <div class="chart-wrap" style="height:260px">
-      <canvas id="portfolioChart"></canvas>
-    </div>
+    <div class="chart-wrap" style="height:260px"><canvas id="portfolioChart"></canvas></div>
   </div>
-
 </div>
 </div>
 
-<!-- ══════════════════════════════════════════════════════════════════════════ -->
-<!-- VIEW: Signals                                                              -->
-<!-- ══════════════════════════════════════════════════════════════════════════ -->
+<!-- ══════════════════════════════════════════════════════ -->
+<!-- VIEW: Signals                                          -->
+<!-- ══════════════════════════════════════════════════════ -->
 <div id="view-signals" class="view">
 <div class="page-layout">
-
   <div class="page-title-row">
-    <div>
-      <h2 class="page-title">Live Signals</h2>
-      <p class="page-desc">Сигналы на основе реальных данных · RSI, MACD, EMA, ADX</p>
-    </div>
+    <div><h2 class="page-title">Live Signals</h2><p class="page-desc">RSI · MACD · EMA · ADX · BB</p></div>
     <button class="btn-action" id="refreshSignalsBtn">↻ Обновить</button>
   </div>
-
   <div class="indicators-grid" id="indicatorsGrid">
     <div class="empty" style="grid-column:1/-1">Загрузка сигналов…</div>
   </div>
-
   <div class="card">
     <div class="card-header">
       <div class="card-title">Детальные сигналы</div>
@@ -221,61 +221,35 @@
     <div class="table-wrap">
       <table>
         <thead>
-          <tr>
-            <th>Тикер</th>
-            <th>Сигнал</th>
-            <th>Цена</th>
-            <th>RSI</th>
-            <th>MACD hist</th>
-            <th>ADX</th>
-            <th>BB%</th>
-            <th>Buy score</th>
-            <th>Sell score</th>
-            <th>Правил</th>
-          </tr>
+          <tr><th>Тикер</th><th>Сигнал</th><th>Цена</th><th>RSI</th><th>MACD</th><th>ADX</th><th>BB%</th><th>Buy</th><th>Sell</th><th>Правил</th></tr>
         </thead>
-        <tbody id="signalsLiveBody">
-          <tr><td colspan="10" class="empty">—</td></tr>
-        </tbody>
+        <tbody id="signalsLiveBody"><tr><td colspan="10" class="empty">—</td></tr></tbody>
       </table>
     </div>
   </div>
-
   <div class="card" id="triggeredRulesCard" style="display:none">
-    <div class="card-header">
-      <div class="card-title">Сработавшие правила</div>
-    </div>
+    <div class="card-header"><div class="card-title">Сработавшие правила</div></div>
     <div id="triggeredRulesBody"></div>
   </div>
-
 </div>
 </div>
 
-<!-- ══════════════════════════════════════════════════════════════════════════ -->
-<!-- VIEW: Backtest                                                             -->
-<!-- ══════════════════════════════════════════════════════════════════════════ -->
+<!-- ══════════════════════════════════════════════════════ -->
+<!-- VIEW: Backtest                                         -->
+<!-- ══════════════════════════════════════════════════════ -->
 <div id="view-backtest" class="view">
 <div class="page-layout">
-
   <div class="page-title-row">
-    <div>
-      <h2 class="page-title">Backtest</h2>
-      <p class="page-desc">Событийный бэктест на исторических свечах из БД</p>
-    </div>
+    <div><h2 class="page-title">Backtest</h2><p class="page-desc">Событийный бэктест на исторических свечах из БД</p></div>
     <button class="btn-primary" id="runBacktestBtn">▶ Запустить бэктест</button>
   </div>
-
   <div class="card" id="backtestStatus">
     <div class="backtest-welcome">
       <div class="backtest-welcome-icon">📊</div>
       <div class="backtest-welcome-title">Готов к запуску</div>
-      <div class="backtest-welcome-desc">
-        Бэктест запустится на исторических свечах из PostgreSQL.<br>
-        Тикеры: SBER, GAZP, LKOH, NVTK · Период: ~334 дня · Комиссия: 0.03%
-      </div>
+      <div class="backtest-welcome-desc">Бэктест на исторических свечах из PostgreSQL.<br>Тикеры: SBER, GAZP, LKOH, NVTK · Комиссия: 0.03%</div>
     </div>
   </div>
-
   <div id="backtestResults" style="display:none">
     <div class="card" style="margin-bottom:12px">
       <div class="card-header">
@@ -283,31 +257,86 @@
         <div class="card-subtitle" id="backtestMeta"></div>
       </div>
       <div class="table-wrap">
-        <table id="backtestTable">
-          <thead>
-            <tr>
-              <th>Тикер</th>
-              <th>Сделок</th>
-              <th>Win Rate</th>
-              <th>PnL</th>
-              <th>Avg PnL</th>
-              <th>Просадка</th>
-              <th>Sharpe</th>
-              <th>Свечей</th>
-            </tr>
-          </thead>
+        <table>
+          <thead><tr><th>Тикер</th><th>Сделок</th><th>Win %</th><th>PnL</th><th>Avg PnL</th><th>Просадка</th><th>Sharpe</th><th>Свечей</th></tr></thead>
           <tbody id="backtestBody"></tbody>
         </table>
       </div>
     </div>
-
     <div class="card chart-card">
       <div class="card-header">
         <div class="card-title">Equity Curves</div>
         <div class="card-subtitle">Кривые капитала по тикерам</div>
       </div>
-      <div class="chart-wrap" style="height:260px">
-        <canvas id="backtestChart"></canvas>
+      <div class="chart-wrap" style="height:260px"><canvas id="backtestChart"></canvas></div>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════ -->
+<!-- VIEW: Settings                                         -->
+<!-- ══════════════════════════════════════════════════════ -->
+<div id="view-settings" class="view">
+<div class="page-layout">
+  <div class="page-title-row">
+    <div><h2 class="page-title">Settings</h2><p class="page-desc">Конфигурация торгового бота</p></div>
+  </div>
+
+  <div class="settings-layout">
+    <!-- Dynamic sections: DB, Risk, App -->
+    <div class="settings-grid" id="settingsGrid">
+      <div class="empty">Загрузка…</div>
+    </div>
+
+    <!-- ── Брокер (Tinkoff) — статичная карточка, всегда в DOM ── -->
+    <div class="card settings-section tinkoff-broker-card" id="tinkoffBrokerCard">
+      <div class="card-header">
+        <div>
+          <div class="card-title">Брокер (Tinkoff)</div>
+          <div class="card-subtitle">Токены хранятся в .env · никогда не отображаются в логах</div>
+        </div>
+      </div>
+
+      <!-- Dynamic info rows (filled by loadSettings) -->
+      <div class="settings-rows" id="tinkoffInfoRows">
+        <div class="settings-row">
+          <span class="settings-key">Статус</span>
+          <span class="skeleton skeleton-sub" style="width:80px"></span>
+        </div>
+      </div>
+
+      <!-- Credential inputs: always present for JS wiring -->
+      <div class="cred-separator"></div>
+
+      <div class="credential-group">
+        <div class="credential-label">Tinkoff Invest API Token</div>
+        <div class="credential-input-row">
+          <input type="password" id="inputTinkoffToken" class="credential-input"
+            placeholder="t.xxxxxxxxxxxxxxxxxxxxxxxx…"
+            autocomplete="new-password" spellcheck="false" />
+          <button class="btn-eye" id="eyeTinkoffToken" title="Показать / скрыть">👁</button>
+        </div>
+        <div class="credential-actions">
+          <button class="btn-save" id="saveTinkoffToken">Сохранить</button>
+          <button class="btn-clear" id="clearTinkoffToken">Очистить</button>
+        </div>
+        <div class="credential-status" id="statusTinkoffToken"></div>
+      </div>
+
+      <div class="credential-group">
+        <div class="credential-label">Tinkoff Account ID</div>
+        <div class="credential-input-row">
+          <input type="password" id="inputTinkoffAccountId" class="credential-input"
+            placeholder="Идентификатор счёта…"
+            autocomplete="new-password" spellcheck="false" />
+          <button class="btn-eye" id="eyeTinkoffAccountId" title="Показать / скрыть">👁</button>
+        </div>
+        <div class="credential-actions">
+          <button class="btn-save" id="saveTinkoffAccountId">Сохранить</button>
+          <button class="btn-clear" id="clearTinkoffAccountId">Очистить</button>
+        </div>
+        <div class="credential-status" id="statusTinkoffAccountId"></div>
       </div>
     </div>
   </div>
@@ -315,31 +344,17 @@
 </div>
 </div>
 
-<!-- ══════════════════════════════════════════════════════════════════════════ -->
-<!-- VIEW: Settings                                                             -->
-<!-- ══════════════════════════════════════════════════════════════════════════ -->
-<div id="view-settings" class="view">
-<div class="page-layout">
-
-  <div class="page-title-row">
-    <div>
-      <h2 class="page-title">Settings</h2>
-      <p class="page-desc">Текущая конфигурация торгового бота</p>
-    </div>
-  </div>
-
-  <div class="settings-grid" id="settingsGrid">
-    <div class="empty">Загрузка…</div>
-  </div>
-
-</div>
-</div>
-
-<!-- ══════════════════════════════════════════════════════════════════════════ -->
-<!-- JavaScript                                                                 -->
-<!-- ══════════════════════════════════════════════════════════════════════════ -->
+<!-- ══════════════════════════════════════════════════════ -->
+<!-- JavaScript                                             -->
+<!-- ══════════════════════════════════════════════════════ -->
 <script>
-// ── Clock ─────────────────────────────────────────────────────────────────────
+// ── Cursor glow ────────────────────────────────────────────────────────────────
+const _glow = document.getElementById('cursorGlow');
+document.addEventListener('mousemove', e => {
+  _glow.style.transform = `translate(${e.clientX - 210}px,${e.clientY - 210}px)`;
+}, { passive: true });
+
+// ── Clock ──────────────────────────────────────────────────────────────────────
 function updateClock() {
   document.getElementById('clock').textContent =
     new Date().toLocaleTimeString('ru-RU', { hour12: false }) + ' MSK';
@@ -347,13 +362,13 @@ function updateClock() {
 updateClock();
 setInterval(updateClock, 1000);
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
+// ── Formatters ─────────────────────────────────────────────────────────────────
 const fmt    = new Intl.NumberFormat('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const fmtInt = new Intl.NumberFormat('ru-RU');
 
-function money(v)   { return fmt.format(v) + ' ₽'; }
-function pct(v)     { return (v >= 0 ? '+' : '') + fmt.format(v) + '%'; }
-function colorClass(v) { return v > 0 ? 'positive' : v < 0 ? 'negative' : 'neutral'; }
+function money(v)       { return fmt.format(v) + ' ₽'; }
+function pct(v)         { return (v >= 0 ? '+' : '') + fmt.format(v) + '%'; }
+function colorClass(v)  { return v > 0 ? 'positive' : v < 0 ? 'negative' : 'neutral'; }
 
 function applyColor(el, v) {
   el.classList.remove('positive', 'negative', 'neutral');
@@ -372,17 +387,91 @@ function logBadge(level) {
   return `<span class="badge badge-info">INFO</span>`;
 }
 
-async function fetchJSON(url, opts) {
+// ── Animated value counter ─────────────────────────────────────────────────────
+function animateValue(el, targetVal, formatter, duration = 650) {
+  const startVal = parseFloat(el.dataset.rawVal) || 0;
+  if (Math.abs(targetVal - startVal) < 0.005) {
+    el.textContent = formatter(targetVal);
+    el.dataset.rawVal = targetVal;
+    return;
+  }
+  el.dataset.rawVal = targetVal;
+  if (el._raf) cancelAnimationFrame(el._raf);
+  const t0 = performance.now();
+  function step(now) {
+    const t  = Math.min((now - t0) / duration, 1);
+    const e  = t < .5 ? 4*t*t*t : 1 - Math.pow(-2*t+2,3)/2;
+    el.textContent = formatter(startVal + (targetVal - startVal) * e);
+    el._raf = t < 1 ? requestAnimationFrame(step) : null;
+  }
+  el._raf = requestAnimationFrame(step);
+}
+
+// ── Ripple on buttons ─────────────────────────────────────────────────────────
+function addRipple(el) {
+  el.addEventListener('click', function(e) {
+    const r = document.createElement('span');
+    r.className = 'ripple';
+    const rect = this.getBoundingClientRect();
+    r.style.left = (e.clientX - rect.left) + 'px';
+    r.style.top  = (e.clientY - rect.top)  + 'px';
+    this.appendChild(r);
+    setTimeout(() => r.remove(), 600);
+  });
+}
+document.querySelectorAll('.btn-primary, .btn-action').forEach(addRipple);
+
+// ── Fetch with timeout + deduplication ────────────────────────────────────────
+const _controllers = new Map();
+
+async function fetchJSON(url, opts = {}) {
+  if (opts.method === undefined || opts.method === 'GET') {
+    _controllers.get(url)?.abort();
+    const ctrl = new AbortController();
+    _controllers.set(url, ctrl);
+    const tid = setTimeout(() => ctrl.abort(), 10000);
+    try {
+      const res = await fetch(url, { ...opts, signal: ctrl.signal });
+      clearTimeout(tid);
+      _controllers.delete(url);
+      if (!res.ok) {
+        let b = {};
+        try { b = await res.json(); } catch (_) {}
+        const err = new Error(b.error || `HTTP ${res.status}`);
+        err.errorCode = b.error_code || 'HTTP_ERROR';
+        err.status = res.status;
+        throw err;
+      }
+      return res.json();
+    } catch (e) {
+      clearTimeout(tid);
+      _controllers.delete(url);
+      if (e.name === 'AbortError') {
+        const err = new Error('Таймаут соединения');
+        err.errorCode = 'TIMEOUT';
+        throw err;
+      }
+      throw e;
+    }
+  }
+  // POST etc — no deduplication
   const res = await fetch(url, opts);
-  if (!res.ok) throw new Error(res.status);
+  if (!res.ok) {
+    let b = {};
+    try { b = await res.json(); } catch (_) {}
+    const err = new Error(b.error || `HTTP ${res.status}`);
+    err.errorCode = b.error_code || 'HTTP_ERROR';
+    err.status = res.status;
+    throw err;
+  }
   return res.json();
 }
 
 // ── SPA navigation ────────────────────────────────────────────────────────────
 const viewHandlers = {};
+let currentView = 'dashboard';
 let portfolioChartInst = null;
 let backtestChartInst  = null;
-let currentView = 'dashboard';
 
 function showView(name) {
   document.querySelectorAll('.view').forEach(v =>
@@ -396,121 +485,213 @@ function showView(name) {
 }
 
 document.querySelectorAll('.nav a').forEach(a => {
-  a.addEventListener('click', e => {
-    e.preventDefault();
-    showView(a.dataset.view);
-  });
+  a.addEventListener('click', e => { e.preventDefault(); showView(a.dataset.view); });
 });
 
-// ── Dashboard: Chart setup ────────────────────────────────────────────────────
+// ── Bot status ────────────────────────────────────────────────────────────────
+function setBotStatus(state) {
+  // state: 'live' | 'stopped' | 'connecting'
+  const sb  = document.getElementById('botStatus');
+  const txt = document.getElementById('botStatusText');
+  sb.className = 'status-badge ' + state;
+  txt.textContent = state === 'live' ? 'API Connected' : state === 'stopped' ? 'API Offline' : 'Connecting';
+}
+
+// ── Equity chart ──────────────────────────────────────────────────────────────
 const equityChart = new Chart(document.getElementById('equityChart').getContext('2d'), {
   type: 'line',
   data: { labels: [], datasets: [{
-    label: 'Equity',
-    data: [],
-    borderColor: '#26a69a',
-    borderWidth: 2,
-    pointRadius: 0,
-    pointHoverRadius: 4,
+    label: 'Equity', data: [],
+    borderColor: '#26a69a', borderWidth: 2,
+    pointRadius: 0, pointHoverRadius: 4,
     fill: true,
-    backgroundColor: (ctx) => {
+    backgroundColor: ctx => {
       const g = ctx.chart.ctx.createLinearGradient(0, 0, 0, ctx.chart.height);
-      g.addColorStop(0, 'rgba(38,166,154,.25)');
+      g.addColorStop(0, 'rgba(38,166,154,.22)');
       g.addColorStop(1, 'rgba(38,166,154,.00)');
       return g;
     },
     tension: 0.3,
   }]},
   options: {
-    responsive: true,
-    maintainAspectRatio: false,
+    responsive: true, maintainAspectRatio: false,
     interaction: { mode: 'index', intersect: false },
     plugins: {
       legend: { display: false },
       tooltip: {
-        backgroundColor: '#1e2130',
-        borderColor: '#2a2e39',
-        borderWidth: 1,
-        titleColor: '#787b86',
-        bodyColor: '#e0e3eb',
-        callbacks: { label: (item) => ' ' + money(item.raw) },
+        backgroundColor: '#111428', borderColor: 'rgba(255,255,255,.08)', borderWidth: 1,
+        titleColor: '#475569', bodyColor: '#e2e8f0',
+        callbacks: { label: item => ' ' + money(item.raw) },
       },
     },
     scales: {
-      x: { ticks: { color: '#787b86', maxTicksLimit: 8, font: { size: 11 } }, grid: { color: '#2a2e39' } },
+      x: { ticks: { color: '#475569', maxTicksLimit: 8, font: { size: 11 } }, grid: { color: 'rgba(255,255,255,.05)' } },
       y: {
-        ticks: { color: '#787b86', font: { size: 11 }, callback: (v) => fmtInt.format(v / 1000) + 'k' },
-        grid: { color: '#2a2e39' },
+        ticks: { color: '#475569', font: { size: 11 }, callback: v => fmtInt.format(v / 1000) + 'k' },
+        grid: { color: 'rgba(255,255,255,.05)' },
       },
     },
+    animation: { duration: 600 },
   },
 });
 
-// ── Dashboard loaders ─────────────────────────────────────────────────────────
-async function loadMetrics() {
-  const d = await fetchJSON('/api/metrics');
-
-  const sb  = document.getElementById('botStatus');
-  const sbt = document.getElementById('botStatusText');
-  const live = d.bot_status === 'live';
-  sb.className = 'status-badge ' + (live ? 'live' : 'stopped');
-  sbt.textContent = live ? 'Live' : 'Stopped';
-
-  const pEl = document.getElementById('metPortfolio');
-  pEl.textContent = money(d.portfolio_value);
-  document.getElementById('metTrades').textContent = fmtInt.format(d.total_trades) + ' сделок';
-
-  const pnlEl    = document.getElementById('metPnl');
-  const pnlPctEl = document.getElementById('metPnlPct');
-  pnlEl.textContent    = money(d.pnl_today);
-  pnlPctEl.textContent = pct(d.pnl_today_pct);
-  applyColor(pnlEl, d.pnl_today);
-  pnlPctEl.className = 'metric-sub ' + (d.pnl_today >= 0 ? 'sub-positive' : 'sub-negative');
-
-  const ddEl = document.getElementById('metDrawdown');
-  ddEl.textContent = pct(d.drawdown_pct);
-  applyColor(ddEl, d.drawdown_pct);
-  document.getElementById('metWinRate').textContent = 'Win rate ' + fmt.format(d.win_rate) + '%';
-  document.getElementById('metSharpe').textContent  = fmt.format(d.sharpe_ratio);
-
-  const dailyPct = Math.min(Math.abs(d.pnl_today_pct) / 2 * 100, 100);
-  const ddPct    = Math.min(Math.abs(d.drawdown_pct)   / 10 * 100, 100);
-  setRiskBar('riskDailyBar', 'riskDailyVal', dailyPct, pct(d.pnl_today_pct), 60, 90);
-  setRiskBar('riskDdBar',    'riskDdVal',    ddPct,    pct(d.drawdown_pct),   50, 80);
-  setRiskBar('riskWrBar',    'riskWrVal',    d.win_rate, fmt.format(d.win_rate) + '%', -1, -1, true);
-}
-
-function setRiskBar(barId, valId, pctVal, label, warnAt, dangerAt, invert = false) {
+// ── Risk bar helper ───────────────────────────────────────────────────────────
+function setRiskBar(barId, valId, pctVal, label, warnAt, dangerAt) {
   const bar = document.getElementById(barId);
-  bar.style.width = pctVal + '%';
+  if (!bar) return;
+  bar.style.width = Math.min(pctVal, 100) + '%';
   bar.className = 'risk-bar-fill';
-  if (!invert) {
-    if (pctVal >= dangerAt) bar.classList.add('danger');
-    else if (pctVal >= warnAt) bar.classList.add('warn');
-  }
+  if (dangerAt > 0 && pctVal >= dangerAt) bar.classList.add('danger');
+  else if (warnAt > 0 && pctVal >= warnAt) bar.classList.add('warn');
   document.getElementById(valId).textContent = label;
 }
 
-async function loadEquity() {
-  const data = await fetchJSON('/api/equity');
-  equityChart.data.labels   = data.map(d => d.ts);
-  equityChart.data.datasets[0].data = data.map(d => d.equity);
-  equityChart.update('none');
+// ── Load: Tinkoff portfolio ───────────────────────────────────────────────────
+async function loadTinkoffPortfolio() {
+  try {
+    const d = await fetchJSON('/api/tinkoff/portfolio');
+    setBotStatus('live');
 
-  const first = data[0]?.equity || 0;
-  const last  = data[data.length - 1]?.equity || 0;
-  const diff  = last - first;
-  const diffP = first ? (diff / first * 100) : 0;
-  const sub = document.getElementById('chartSubtitle');
-  sub.textContent = `${data.length} дней · ${diff >= 0 ? '+' : ''}${fmt.format(diff)} ₽ (${pct(diffP)})`;
-  sub.className   = 'card-subtitle ' + (diff >= 0 ? 'sub-positive' : 'sub-negative');
+    const pEl = document.getElementById('metPortfolio');
+    pEl.className = 'metric-value neutral';
+    animateValue(pEl, d.total_value, money);
+
+    const tEl = document.getElementById('metTrades');
+    tEl.textContent = d.positions_count > 0
+      ? fmtInt.format(d.positions_count) + (d.positions_count === 1 ? ' позиция' : ' позиций')
+      : 'Нет открытых позиций';
+
+  } catch (err) {
+    setBotStatus('stopped');
+    const pEl = document.getElementById('metPortfolio');
+    pEl.className = 'metric-value neutral';
+    const tEl = document.getElementById('metTrades');
+
+    if (err.errorCode === 'NOT_CONFIGURED') {
+      pEl.innerHTML = '<span class="metric-notice">Настройте API в <button class="metric-link" onclick="showView(\'settings\')">Settings</button></span>';
+      tEl.textContent = 'Требуется TINKOFF_TOKEN';
+    } else if (err.errorCode === 'TIMEOUT') {
+      pEl.textContent = '—';
+      tEl.textContent = 'Таймаут';
+    } else {
+      pEl.textContent = '—';
+      tEl.textContent = err.errorCode === 'SDK_ERROR' ? 'SDK не установлен' : 'Ошибка API';
+    }
+  }
 }
 
+// ── Load: Tinkoff P&L ─────────────────────────────────────────────────────────
+async function loadTinkoffPnL() {
+  const pnlEl    = document.getElementById('metPnl');
+  const pnlPctEl = document.getElementById('metPnlPct');
+
+  try {
+    const d = await fetchJSON('/api/tinkoff/pnl');
+
+    animateValue(pnlEl, d.unrealized, money);
+    applyColor(pnlEl, d.unrealized);
+
+    pnlPctEl.textContent = pct(d.unrealized_pct);
+    pnlPctEl.className = 'metric-sub ' + (d.unrealized >= 0 ? 'sub-positive' : 'sub-negative');
+
+    const barPct = Math.min(Math.abs(d.unrealized_pct) / 5 * 100, 100);
+    setRiskBar('riskDailyBar', 'riskDailyVal', barPct, pct(d.unrealized_pct), 60, 90);
+
+  } catch (err) {
+    pnlEl.className = 'metric-value neutral';
+    pnlEl.textContent = '—';
+    pnlEl.dataset.rawVal = '0';
+    if (err.errorCode === 'NOT_CONFIGURED') {
+      pnlPctEl.textContent = 'Требуется Tinkoff API';
+    } else {
+      pnlPctEl.textContent = 'Нет данных';
+    }
+    pnlPctEl.className = 'metric-sub';
+  }
+}
+
+// ── Load: Bot stats from DB ───────────────────────────────────────────────────
+async function loadBotStats() {
+  const ddEl = document.getElementById('metDrawdown');
+  const wrEl = document.getElementById('metWinRate');
+  const shEl = document.getElementById('metSharpe');
+
+  try {
+    const d = await fetchJSON('/api/stats');
+
+    // Drawdown
+    if (d.max_drawdown !== null && d.max_drawdown !== undefined) {
+      ddEl.textContent = pct(d.max_drawdown);
+      applyColor(ddEl, d.max_drawdown);
+      const ddPct = Math.min(Math.abs(d.max_drawdown) / 15 * 100, 100);
+      setRiskBar('riskDdBar', 'riskDdVal', ddPct, pct(d.max_drawdown), 50, 80);
+    } else {
+      ddEl.textContent = '—';
+      ddEl.className = 'metric-value neutral';
+      document.getElementById('riskDdVal').textContent = '—';
+    }
+
+    // Win rate
+    if (d.win_rate !== null && d.win_rate !== undefined) {
+      wrEl.textContent = 'Win rate ' + fmt.format(d.win_rate) + '%';
+      setRiskBar('riskWrBar', 'riskWrVal', d.win_rate, fmt.format(d.win_rate) + '%', -1, -1);
+    } else if (d.total_trades === 0) {
+      wrEl.textContent = 'Нет завершённых сделок';
+      document.getElementById('riskWrVal').textContent = '0%';
+    } else if (d.total_trades === null) {
+      wrEl.textContent = 'Нет данных о сделках';
+      document.getElementById('riskWrVal').textContent = '—';
+    } else {
+      wrEl.textContent = 'Недостаточно данных';
+      document.getElementById('riskWrVal').textContent = '—';
+    }
+
+    // Sharpe
+    if (d.sharpe_ratio !== null && d.sharpe_ratio !== undefined) {
+      shEl.textContent = fmt.format(d.sharpe_ratio);
+      shEl.className = 'metric-value ' + colorClass(d.sharpe_ratio);
+    } else {
+      shEl.textContent = '—';
+      shEl.className = 'metric-value neutral';
+      document.getElementById('metSharpesSub').textContent = 'Недостаточно данных';
+    }
+
+  } catch (_) {
+    [ddEl, shEl].forEach(el => { el.textContent = '—'; el.className = 'metric-value neutral'; });
+    wrEl.textContent = 'Нет данных';
+    document.getElementById('riskDdVal').textContent = '—';
+    document.getElementById('riskWrVal').textContent = '—';
+  }
+}
+
+// ── Load: Equity chart ────────────────────────────────────────────────────────
+async function loadEquity() {
+  const sub = document.getElementById('chartSubtitle');
+  try {
+    const data = await fetchJSON('/api/equity');
+    if (!data.length) { sub.textContent = 'Нет данных о закрытых сделках'; return; }
+
+    equityChart.data.labels = data.map(d => d.ts);
+    equityChart.data.datasets[0].data = data.map(d => d.equity);
+    equityChart.update('none');
+
+    const first = data[0]?.equity || 0;
+    const last  = data[data.length - 1]?.equity || 0;
+    const diff  = last - first;
+    const diffP = first ? diff / first * 100 : 0;
+    sub.textContent = `${data.length} дней · ${diff >= 0 ? '+' : ''}${fmt.format(diff)} ₽ (${pct(diffP)})`;
+    sub.className = 'card-subtitle ' + (diff >= 0 ? 'sub-positive' : 'sub-negative');
+  } catch (_) {
+    sub.textContent = 'Нет данных об истории';
+  }
+}
+
+// ── Load: Signals table ────────────────────────────────────────────────────────
 async function loadSignals() {
-  const data  = await fetchJSON('/api/signals');
+  const data  = await fetchJSON('/api/signals').catch(() => []);
   const tbody = document.getElementById('signalsBody');
   if (!data.length) {
-    tbody.innerHTML = '<tr><td colspan="6" class="empty">Нет сигналов</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="6" class="empty">Нет сигналов в базе данных</td></tr>';
     return;
   }
   tbody.innerHTML = data.slice(0, 30).map(r => `
@@ -526,41 +707,79 @@ async function loadSignals() {
     'обновлено ' + new Date().toLocaleTimeString('ru-RU', { hour12: false });
 }
 
-async function loadPositions() {
-  const data = await fetchJSON('/api/positions');
-  const list = document.getElementById('positionsList');
-  document.getElementById('posCount').textContent = data.length + ' / 5';
-  if (!data.length) {
-    list.innerHTML = '<div class="empty">Нет открытых позиций</div>';
-    return;
+// ── Load: Tinkoff positions ────────────────────────────────────────────────────
+async function loadTinkoffPositions() {
+  const list  = document.getElementById('positionsList');
+  const cntEl = document.getElementById('posCount');
+
+  try {
+    const data = await fetchJSON('/api/tinkoff/positions');
+
+    if (!data.length) {
+      cntEl.textContent = '0 позиций';
+      list.innerHTML = `
+        <div class="empty-state">
+          <div class="empty-state-icon">📭</div>
+          <div class="empty-state-title">Нет открытых позиций</div>
+          <div class="empty-state-desc">Портфель пуст. Откройте позицию в Тинькофф Инвестиции для отображения данных.</div>
+        </div>`;
+      setRiskBar('riskPosBar', 'riskPosVal', 0, '0 / 5', 60, 100);
+      return;
+    }
+
+    cntEl.textContent = data.length + ' / 5';
+    setRiskBar('riskPosBar', 'riskPosVal', data.length / 5 * 100, data.length + ' / 5', 60, 100);
+
+    list.innerHTML = data.map(p => {
+      const cls    = p.expected_yield >= 0 ? 'positive' : 'negative';
+      const barW   = Math.min(Math.abs(p.expected_yield_pct) * 5, 100);
+      const barCol = p.expected_yield >= 0 ? 'var(--green)' : 'var(--red)';
+      return `
+        <div class="tinkoff-pos-row">
+          <div class="pos-top">
+            <span class="pos-ticker">${p.ticker}</span>
+            <span class="pos-pnl ${cls}">${p.expected_yield >= 0 ? '+' : ''}${fmt.format(p.expected_yield)} ₽</span>
+          </div>
+          <div class="tinkoff-pos-name">${p.name}</div>
+          <div class="pos-meta">
+            <span>${fmtInt.format(p.quantity)} шт · вход ${fmt.format(p.average_price)}</span>
+            <span class="${cls}">${pct(p.expected_yield_pct)}</span>
+          </div>
+          <div class="pos-meta">
+            <span>Текущая ${fmt.format(p.current_price)}</span>
+            <span>${money(p.current_value)}</span>
+          </div>
+          <div class="pos-progress">
+            <div class="pos-progress-fill" style="width:${barW}%;background:${barCol}"></div>
+          </div>
+        </div>`;
+    }).join('');
+
+  } catch (err) {
+    cntEl.textContent = '—';
+    if (err.errorCode === 'NOT_CONFIGURED') {
+      list.innerHTML = `
+        <div class="api-error">
+          <div class="api-error-icon">🔑</div>
+          <div class="api-error-msg">Настройте <strong>TINKOFF_TOKEN</strong> и <strong>TINKOFF_ACCOUNT_ID</strong> в разделе
+            <button class="metric-link" onclick="showView('settings')">Settings</button>
+          </div>
+        </div>`;
+    } else {
+      list.innerHTML = `
+        <div class="api-error">
+          <div class="api-error-icon">⚠️</div>
+          <div class="api-error-msg">${err.message}</div>
+          <button class="btn-action" style="margin-top:8px" onclick="loadTinkoffPositions()">↺ Повторить</button>
+        </div>`;
+    }
+    setRiskBar('riskPosBar', 'riskPosVal', 0, '—', 60, 100);
   }
-  list.innerHTML = data.map(p => {
-    const posClass = p.pnl >= 0 ? 'positive' : 'negative';
-    const barW     = Math.min(Math.abs(p.pnl_pct) * 10, 100);
-    const barColor = p.pnl >= 0 ? 'var(--green)' : 'var(--red)';
-    return `
-      <div class="position-row">
-        <div class="pos-top">
-          <span class="pos-ticker">${p.ticker}</span>
-          <span class="pos-pnl ${posClass}">${p.pnl >= 0 ? '+' : ''}${fmt.format(p.pnl)} ₽</span>
-        </div>
-        <div class="pos-meta">
-          <span>${fmtInt.format(p.shares)} шт · вход ${fmt.format(p.entry_price)}</span>
-          <span class="${posClass}">${pct(p.pnl_pct)}</span>
-        </div>
-        <div class="pos-meta">
-          <span style="color:var(--muted)">Стоп ${fmt.format(p.stop_price)}</span>
-          <span style="color:var(--muted)">Текущая ${fmt.format(p.current_price)}</span>
-        </div>
-        <div class="pos-progress">
-          <div class="pos-progress-fill" style="width:${barW}%;background:${barColor}"></div>
-        </div>
-      </div>`;
-  }).join('');
 }
 
+// ── Load: Event log ────────────────────────────────────────────────────────────
 async function loadLog() {
-  const data = await fetchJSON('/api/log');
+  const data = await fetchJSON('/api/log').catch(() => []);
   const list = document.getElementById('logList');
   if (!data.length) { list.innerHTML = '<div class="empty">Лог пуст</div>'; return; }
   list.innerHTML = data.map(e => `
@@ -571,65 +790,75 @@ async function loadLog() {
     </div>`).join('');
 }
 
-async function updatePositionsBar() {
-  const data = await fetchJSON('/api/positions');
-  setRiskBar('riskPosBar', 'riskPosVal', data.length / 5 * 100, data.length + ' / 5', 60, 100);
-}
-
+// ── Dashboard refresh ─────────────────────────────────────────────────────────
 async function dashboardRefresh() {
   if (currentView !== 'dashboard') return;
-  await Promise.allSettled([loadMetrics(), loadEquity(), loadSignals(), loadPositions(), loadLog(), updatePositionsBar()]);
+  const btn = document.getElementById('topbarRefreshBtn');
+  btn.classList.add('spinning');
+  await Promise.allSettled([
+    loadTinkoffPortfolio(),
+    loadTinkoffPnL(),
+    loadBotStats(),
+    loadEquity(),
+    loadSignals(),
+    loadTinkoffPositions(),
+    loadLog(),
+  ]);
+  btn.classList.remove('spinning');
+  const now = new Date().toLocaleTimeString('ru-RU', { hour12: false });
+  document.getElementById('lastUpdated').textContent = 'обновлено ' + now;
 }
 
-// ── Portfolio view ────────────────────────────────────────────────────────────
-const TICKER_COLORS = {
-  SBER: '#26a69a', GAZP: '#2196f3', LKOH: '#ffb74d', NVTK: '#ef5350',
-};
+document.getElementById('topbarRefreshBtn').addEventListener('click', () => {
+  if (currentView === 'dashboard') dashboardRefresh();
+  else viewHandlers[currentView]?.();
+});
+
+// ── Portfolio view ─────────────────────────────────────────────────────────────
+const TICKER_COLORS = { SBER: '#26a69a', GAZP: '#3b82f6', LKOH: '#fbbf24', NVTK: '#ef5350' };
 
 function buildPortfolioChart(labels, prices, ticker) {
   const color = TICKER_COLORS[ticker] || '#26a69a';
-  const ctx = document.getElementById('portfolioChart');
   if (portfolioChartInst) { portfolioChartInst.destroy(); portfolioChartInst = null; }
-  portfolioChartInst = new Chart(ctx.getContext('2d'), {
-    type: 'line',
-    data: { labels, datasets: [{
-      label: ticker,
-      data: prices,
-      borderColor: color,
-      borderWidth: 2,
-      pointRadius: 0,
-      pointHoverRadius: 4,
-      fill: true,
-      backgroundColor: (ctx2) => {
-        const g = ctx2.chart.ctx.createLinearGradient(0, 0, 0, ctx2.chart.height);
-        g.addColorStop(0, color.replace(')', ', .25)').replace('rgb', 'rgba'));
-        g.addColorStop(1, color.replace(')', ', .00)').replace('rgb', 'rgba'));
-        return g;
-      },
-      tension: 0.3,
-    }]},
-    options: {
-      responsive: true, maintainAspectRatio: false,
-      interaction: { mode: 'index', intersect: false },
-      plugins: {
-        legend: { display: false },
-        tooltip: {
-          backgroundColor: '#1e2130', borderColor: '#2a2e39', borderWidth: 1,
-          titleColor: '#787b86', bodyColor: '#e0e3eb',
-          callbacks: { label: (item) => ' ' + fmt.format(item.raw) + ' ₽' },
+  portfolioChartInst = new Chart(
+    document.getElementById('portfolioChart').getContext('2d'),
+    {
+      type: 'line',
+      data: { labels, datasets: [{
+        label: ticker, data: prices,
+        borderColor: color, borderWidth: 2,
+        pointRadius: 0, pointHoverRadius: 4, fill: true,
+        backgroundColor: ctx2 => {
+          const g = ctx2.chart.ctx.createLinearGradient(0, 0, 0, ctx2.chart.height);
+          g.addColorStop(0, color + '44'); g.addColorStop(1, color + '00');
+          return g;
         },
+        tension: 0.3,
+      }]},
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        interaction: { mode: 'index', intersect: false },
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            backgroundColor: '#111428', borderColor: 'rgba(255,255,255,.08)', borderWidth: 1,
+            titleColor: '#475569', bodyColor: '#e2e8f0',
+            callbacks: { label: item => ' ' + fmt.format(item.raw) + ' ₽' },
+          },
+        },
+        scales: {
+          x: { ticks: { color: '#475569', maxTicksLimit: 8, font: { size: 11 } }, grid: { color: 'rgba(255,255,255,.05)' } },
+          y: { ticks: { color: '#475569', font: { size: 11 } }, grid: { color: 'rgba(255,255,255,.05)' } },
+        },
+        animation: { duration: 500 },
       },
-      scales: {
-        x: { ticks: { color: '#787b86', maxTicksLimit: 8, font: { size: 11 } }, grid: { color: '#2a2e39' } },
-        y: { ticks: { color: '#787b86', font: { size: 11 }, callback: v => fmt.format(v) }, grid: { color: '#2a2e39' } },
-      },
-    },
-  });
+    }
+  );
 }
 
 async function loadTickerChart(ticker) {
   document.getElementById('portfolioChartTitle').textContent = `${ticker} — Дневные свечи`;
-  document.getElementById('portfolioChartSub').textContent   = 'Загрузка…';
+  document.getElementById('portfolioChartSub').textContent = 'Загрузка…';
   document.querySelectorAll('.ticker-tab').forEach(t =>
     t.classList.toggle('active', t.dataset.ticker === ticker)
   );
@@ -639,12 +868,12 @@ async function loadTickerChart(ticker) {
     const prices = data.map(d => d.close);
     buildPortfolioChart(labels, prices, ticker);
     const first = prices[0] || 0, last = prices[prices.length - 1] || 0;
-    const diff  = last - first, diffP = first ? diff / first * 100 : 0;
-    const sub   = document.getElementById('portfolioChartSub');
+    const diff = last - first, diffP = first ? diff / first * 100 : 0;
+    const sub = document.getElementById('portfolioChartSub');
     sub.textContent = `${data.length} дней · ${diff >= 0 ? '+' : ''}${fmt.format(diff)} ₽ (${pct(diffP)})`;
-    sub.className   = 'card-subtitle ' + (diff >= 0 ? 'sub-positive' : 'sub-negative');
-  } catch (e) {
-    document.getElementById('portfolioChartSub').textContent = 'Ошибка загрузки';
+    sub.className = 'card-subtitle ' + (diff >= 0 ? 'sub-positive' : 'sub-negative');
+  } catch (_) {
+    document.getElementById('portfolioChartSub').textContent = 'Нет данных';
   }
 }
 
@@ -659,13 +888,13 @@ async function loadPortfolio() {
       const cls   = t.change_1d >= 0 ? 'positive' : 'negative';
       const color = TICKER_COLORS[t.ticker] || '#787b86';
       return `
-        <div class="ticker-card" data-ticker="${t.ticker}" onclick="loadTickerChart('${t.ticker}')">
+        <div class="ticker-card" onclick="loadTickerChart('${t.ticker}')">
           <div class="ticker-card-symbol" style="color:${color}">${t.ticker}</div>
           <div class="ticker-card-price">${fmt.format(t.price)} ₽</div>
           <div class="ticker-card-change ${cls}">${pct(t.change_1d)}</div>
           <div class="ticker-card-row">
             <span class="ticker-card-label">30д</span>
-            <span class="ticker-card-30d ${t.change_30d >= 0 ? 'positive' : 'negative'}">${pct(t.change_30d)}</span>
+            <span class="${t.change_30d >= 0 ? 'positive' : 'negative'}">${pct(t.change_30d)}</span>
           </div>
           <div class="ticker-card-row">
             <span class="ticker-card-label">Объём</span>
@@ -681,23 +910,23 @@ async function loadPortfolio() {
     document.getElementById('portfolioUpdated').textContent =
       'обновлено ' + new Date().toLocaleTimeString('ru-RU', { hour12: false });
 
-    if (data.length > 0) loadTickerChart(data[0].ticker);
-  } catch (e) {
+    if (data.length) loadTickerChart(data[0].ticker);
+  } catch (_) {
     grid.innerHTML = '<div class="empty">Ошибка загрузки котировок</div>';
   }
 }
 
 viewHandlers.portfolio = loadPortfolio;
 
-// ── Signals view ──────────────────────────────────────────────────────────────
+// ── Signals view ───────────────────────────────────────────────────────────────
 function rsiBar(v) {
-  const pct = Math.min(Math.max(v, 0), 100);
-  const col  = v < 30 ? 'var(--green)' : v > 70 ? 'var(--red)' : 'var(--blue)';
+  const p   = Math.min(Math.max(v, 0), 100);
+  const col = v < 30 ? 'var(--green)' : v > 70 ? 'var(--red)' : 'var(--blue)';
   return `<div style="display:flex;align-items:center;gap:6px">
-    <div style="flex:1;height:4px;background:var(--border);border-radius:2px;overflow:hidden">
-      <div style="width:${pct}%;height:100%;background:${col};border-radius:2px"></div>
+    <div style="flex:1;height:3px;background:rgba(255,255,255,.07);border-radius:2px;overflow:hidden">
+      <div style="width:${p}%;height:100%;background:${col};border-radius:2px"></div>
     </div>
-    <span style="min-width:32px;text-align:right">${fmt.format(v)}</span>
+    <span style="min-width:32px;text-align:right;font-family:var(--font-mono)">${fmt.format(v)}</span>
   </div>`;
 }
 
@@ -709,80 +938,82 @@ async function loadLiveSignals() {
 
   try {
     const data = await fetchJSON('/api/signals/live');
+    if (!data.length) {
+      grid.innerHTML = '<div class="empty" style="grid-column:1/-1">Нет данных для вычисления сигналов</div>';
+      tbody.innerHTML = '<tr><td colspan="10" class="empty">—</td></tr>';
+      card.style.display = 'none';
+      return;
+    }
 
-    if (!data.length || data[0]?.ts) {
-      // Real signal data
-      grid.innerHTML = data.map(s => {
-        const cls    = { BUY: 'badge-buy', SELL: 'badge-sell', HOLD: 'badge-hold' }[s.action] || 'badge-hold';
-        const color  = TICKER_COLORS[s.ticker] || '#787b86';
-        const macdCls = s.macd_hist > 0 ? 'positive' : 'negative';
-        return `
-          <div class="indicator-card">
-            <div class="indicator-header">
-              <span class="indicator-ticker" style="color:${color}">${s.ticker}</span>
-              <span class="badge ${cls}">${s.action}</span>
-            </div>
-            <div class="indicator-price">${fmt.format(s.price)} ₽</div>
-            <div class="indicator-row">
-              <span class="indicator-label">RSI</span>
-              ${rsiBar(s.rsi)}
-            </div>
-            <div class="indicator-row">
-              <span class="indicator-label">MACD</span>
-              <span class="${macdCls}">${s.macd_hist >= 0 ? '+' : ''}${fmt.format(s.macd_hist)}</span>
-            </div>
-            <div class="indicator-row">
-              <span class="indicator-label">ADX</span>
-              <span style="color:${s.adx > 25 ? 'var(--green)' : 'var(--muted)'}">${fmt.format(s.adx)}</span>
-            </div>
-            <div class="indicator-row">
-              <span class="indicator-label">Score</span>
-              <span style="color:var(--text)">${fmt.format(s.score)}</span>
-            </div>
-          </div>`;
-      }).join('');
+    grid.innerHTML = data.map(s => {
+      const cls     = { BUY: 'badge-buy', SELL: 'badge-sell', HOLD: 'badge-hold' }[s.action] || 'badge-hold';
+      const color   = TICKER_COLORS[s.ticker] || '#787b86';
+      const macdCls = s.macd_hist > 0 ? 'positive' : 'negative';
+      return `
+        <div class="indicator-card">
+          <div class="indicator-header">
+            <span class="indicator-ticker" style="color:${color}">${s.ticker}</span>
+            <span class="badge ${cls}">${s.action}</span>
+          </div>
+          <div class="indicator-price">${fmt.format(s.price)} ₽</div>
+          <div class="indicator-row"><span class="indicator-label">RSI</span>${rsiBar(s.rsi)}</div>
+          <div class="indicator-row">
+            <span class="indicator-label">MACD</span>
+            <span class="${macdCls}">${s.macd_hist >= 0 ? '+' : ''}${fmt.format(s.macd_hist)}</span>
+          </div>
+          <div class="indicator-row">
+            <span class="indicator-label">ADX</span>
+            <span style="color:${s.adx > 25 ? 'var(--green)' : 'var(--muted)'}">${fmt.format(s.adx)}</span>
+          </div>
+          <div class="indicator-row">
+            <span class="indicator-label">Score</span>
+            <span>${fmt.format(s.score)}</span>
+          </div>
+        </div>`;
+    }).join('');
 
-      tbody.innerHTML = data.map(s => `
-        <tr>
-          <td class="ticker-cell">${s.ticker}</td>
-          <td>${badgeHTML(s.action)}</td>
-          <td class="price-cell">${fmt.format(s.price)} ₽</td>
-          <td>${rsiBar(s.rsi)}</td>
-          <td class="${s.macd_hist >= 0 ? 'positive' : 'negative'}">${s.macd_hist >= 0 ? '+' : ''}${fmt.format(s.macd_hist)}</td>
-          <td style="color:${s.adx > 25 ? 'var(--green)' : 'var(--muted)'}">${fmt.format(s.adx)}</td>
-          <td>${fmt.format(s.bb_pct)}</td>
-          <td class="positive">${fmt.format(s.buy_score)}</td>
-          <td class="negative">${fmt.format(s.sell_score)}</td>
-          <td class="score-cell">${s.rules}</td>
-        </tr>`).join('');
+    tbody.innerHTML = data.map(s => `
+      <tr>
+        <td class="ticker-cell">${s.ticker}</td>
+        <td>${badgeHTML(s.action)}</td>
+        <td class="price-cell">${fmt.format(s.price)} ₽</td>
+        <td>${rsiBar(s.rsi)}</td>
+        <td class="${s.macd_hist >= 0 ? 'positive' : 'negative'}">${s.macd_hist >= 0 ? '+' : ''}${fmt.format(s.macd_hist)}</td>
+        <td style="color:${s.adx > 25 ? 'var(--green)' : 'var(--muted)'}">${fmt.format(s.adx)}</td>
+        <td>${fmt.format(s.bb_pct)}</td>
+        <td class="positive">${fmt.format(s.buy_score)}</td>
+        <td class="negative">${fmt.format(s.sell_score)}</td>
+        <td class="score-cell">${s.rules}</td>
+      </tr>`).join('');
 
-      const allTriggered = data.flatMap(s => (s.triggered || []).map(r => `${s.ticker}: ${r}`));
-      if (allTriggered.length) {
-        card.style.display = '';
-        document.getElementById('triggeredRulesBody').innerHTML =
-          allTriggered.map(r => `<div class="rule-tag">${r}</div>`).join('');
-      } else {
-        card.style.display = 'none';
-      }
-    } else {
-      grid.innerHTML = '<div class="empty" style="grid-column:1/-1">Нет сигналов</div>';
+    const triggered = data.flatMap(s => (s.triggered || []).map(r => `${s.ticker}: ${r}`));
+    card.style.display = triggered.length ? '' : 'none';
+    if (triggered.length) {
+      document.getElementById('triggeredRulesBody').innerHTML =
+        triggered.map(r => `<div class="rule-tag">${r}</div>`).join('');
     }
 
     document.getElementById('signalsLiveUpdated').textContent =
       'обновлено ' + new Date().toLocaleTimeString('ru-RU', { hour12: false });
-  } catch (e) {
-    grid.innerHTML = `<div class="empty" style="grid-column:1/-1">Ошибка: ${e.message}</div>`;
+
+  } catch (err) {
+    grid.innerHTML = `
+      <div class="api-error" style="grid-column:1/-1">
+        <div class="api-error-icon">⚠️</div>
+        <div class="api-error-msg">${err.message}</div>
+        <button class="btn-action" style="margin-top:8px" onclick="loadLiveSignals()">↺ Повторить</button>
+      </div>`;
   }
 }
 
 document.getElementById('refreshSignalsBtn').addEventListener('click', loadLiveSignals);
 viewHandlers.signals = loadLiveSignals;
 
-// ── Backtest view ─────────────────────────────────────────────────────────────
-const BACKTEST_COLORS = ['#26a69a', '#2196f3', '#ffb74d', '#ef5350'];
+// ── Backtest view ──────────────────────────────────────────────────────────────
+const BT_COLORS = ['#26a69a', '#3b82f6', '#fbbf24', '#ef5350'];
 
 document.getElementById('runBacktestBtn').addEventListener('click', async () => {
-  const btn    = document.getElementById('runBacktestBtn');
+  const btn   = document.getElementById('runBacktestBtn');
   const status = document.getElementById('backtestStatus');
   const resEl  = document.getElementById('backtestResults');
 
@@ -792,87 +1023,75 @@ document.getElementById('runBacktestBtn').addEventListener('click', async () => 
     <div class="backtest-welcome">
       <div class="backtest-welcome-icon" style="animation:spin 1s linear infinite">⚙️</div>
       <div class="backtest-welcome-title">Запуск бэктеста…</div>
-      <div class="backtest-welcome-desc">Вычисление индикаторов и прогон стратегии по историческим данным</div>
+      <div class="backtest-welcome-desc">Прогон стратегии по историческим данным</div>
     </div>`;
   resEl.style.display = 'none';
 
   try {
     const results = await fetchJSON('/api/backtest', { method: 'POST' });
-
     if (results.error) throw new Error(results.error);
 
     status.innerHTML = `
       <div class="backtest-welcome">
         <div class="backtest-welcome-icon">✅</div>
         <div class="backtest-welcome-title">Бэктест завершён</div>
-        <div class="backtest-welcome-desc">${results.length} тикеров проверено</div>
+        <div class="backtest-welcome-desc">${results.length} тикеров · ${new Date().toLocaleTimeString('ru-RU')}</div>
       </div>`;
 
     document.getElementById('backtestMeta').textContent =
-      `Запуск: ${new Date().toLocaleTimeString('ru-RU')} · Стартовый капитал: ${money(1_000_000)}`;
+      `Стартовый капитал: ${money(1_000_000)}`;
 
-    const tbody = document.getElementById('backtestBody');
-    tbody.innerHTML = results.map(r => {
-      const pnlCls = r.total_pnl >= 0 ? 'positive' : 'negative';
-      const wrCls  = r.win_rate >= 50 ? 'positive' : 'negative';
-      return `
-        <tr>
-          <td class="ticker-cell">${r.ticker}</td>
-          <td>${fmtInt.format(r.total_trades)}</td>
-          <td class="${wrCls}">${fmt.format(r.win_rate)}%</td>
-          <td class="${pnlCls}">${r.total_pnl >= 0 ? '+' : ''}${money(r.total_pnl)}</td>
-          <td class="${r.avg_pnl >= 0 ? 'positive' : 'negative'}">${r.avg_pnl >= 0 ? '+' : ''}${money(r.avg_pnl)}</td>
-          <td class="negative">${fmt.format(r.max_drawdown)}%</td>
-          <td class="${r.sharpe >= 1 ? 'positive' : r.sharpe >= 0 ? 'neutral' : 'negative'}">${fmt.format(r.sharpe)}</td>
-          <td class="score-cell">${r.candles_count}</td>
-        </tr>`;
+    document.getElementById('backtestBody').innerHTML = results.map(r => {
+      const pCls = r.total_pnl >= 0 ? 'positive' : 'negative';
+      const wCls = r.win_rate  >= 50 ? 'positive' : 'negative';
+      return `<tr>
+        <td class="ticker-cell">${r.ticker}</td>
+        <td>${fmtInt.format(r.total_trades)}</td>
+        <td class="${wCls}">${fmt.format(r.win_rate)}%</td>
+        <td class="${pCls}">${r.total_pnl >= 0 ? '+' : ''}${money(r.total_pnl)}</td>
+        <td class="${r.avg_pnl >= 0 ? 'positive' : 'negative'}">${r.avg_pnl >= 0 ? '+' : ''}${money(r.avg_pnl)}</td>
+        <td class="negative">${fmt.format(r.max_drawdown)}%</td>
+        <td class="${r.sharpe >= 1 ? 'positive' : r.sharpe >= 0 ? 'neutral' : 'negative'}">${fmt.format(r.sharpe)}</td>
+        <td class="score-cell">${r.candles_count}</td>
+      </tr>`;
     }).join('');
 
-    // Equity curves chart
-    const ctx2 = document.getElementById('backtestChart');
     if (backtestChartInst) { backtestChartInst.destroy(); backtestChartInst = null; }
-    backtestChartInst = new Chart(ctx2.getContext('2d'), {
+    backtestChartInst = new Chart(document.getElementById('backtestChart').getContext('2d'), {
       type: 'line',
       data: {
         labels: results[0]?.equity_curve.map((_, i) => i) || [],
-        datasets: results.map((r, idx) => ({
-          label: r.ticker,
-          data: r.equity_curve,
-          borderColor: BACKTEST_COLORS[idx % BACKTEST_COLORS.length],
-          borderWidth: 2,
-          pointRadius: 0,
-          fill: false,
-          tension: 0.3,
+        datasets: results.map((r, i) => ({
+          label: r.ticker, data: r.equity_curve,
+          borderColor: BT_COLORS[i % BT_COLORS.length], borderWidth: 2,
+          pointRadius: 0, fill: false, tension: 0.3,
         })),
       },
       options: {
         responsive: true, maintainAspectRatio: false,
         interaction: { mode: 'index', intersect: false },
         plugins: {
-          legend: { display: true, labels: { color: '#e0e3eb', font: { size: 11 } } },
+          legend: { display: true, labels: { color: '#94a3b8', font: { size: 11 } } },
           tooltip: {
-            backgroundColor: '#1e2130', borderColor: '#2a2e39', borderWidth: 1,
-            titleColor: '#787b86', bodyColor: '#e0e3eb',
-            callbacks: { label: (item) => ` ${item.dataset.label}: ${money(item.raw)}` },
+            backgroundColor: '#111428', borderColor: 'rgba(255,255,255,.08)', borderWidth: 1,
+            titleColor: '#475569', bodyColor: '#e2e8f0',
+            callbacks: { label: item => ` ${item.dataset.label}: ${money(item.raw)}` },
           },
         },
         scales: {
           x: { display: false },
-          y: {
-            ticks: { color: '#787b86', font: { size: 11 }, callback: v => fmtInt.format(v / 1000) + 'k' },
-            grid: { color: '#2a2e39' },
-          },
+          y: { ticks: { color: '#475569', font: { size: 11 }, callback: v => fmtInt.format(v / 1000) + 'k' }, grid: { color: 'rgba(255,255,255,.05)' } },
         },
+        animation: { duration: 800 },
       },
     });
-
     resEl.style.display = '';
-  } catch (e) {
+  } catch (err) {
     status.innerHTML = `
       <div class="backtest-welcome">
         <div class="backtest-welcome-icon">❌</div>
         <div class="backtest-welcome-title">Ошибка</div>
-        <div class="backtest-welcome-desc">${e.message}</div>
+        <div class="backtest-welcome-desc">${err.message}</div>
       </div>`;
   } finally {
     btn.disabled = false;
@@ -880,13 +1099,89 @@ document.getElementById('runBacktestBtn').addEventListener('click', async () => 
   }
 });
 
-// ── Settings view ─────────────────────────────────────────────────────────────
+// ── Settings: credential fields ────────────────────────────────────────────────
+function initCredentialField(inputId, eyeId, saveId, clearId, statusId, envKey) {
+  const input  = document.getElementById(inputId);
+  const eye    = document.getElementById(eyeId);
+  const save   = document.getElementById(saveId);
+  const clear  = document.getElementById(clearId);
+  const status = document.getElementById(statusId);
+  let visible  = false;
+
+  eye.addEventListener('click', () => {
+    visible = !visible;
+    input.type = visible ? 'text' : 'password';
+    eye.textContent = visible ? '🙈' : '👁';
+  });
+
+  async function persist(value) {
+    save.disabled = true;
+    status.textContent = 'Сохранение…';
+    status.className = 'credential-status';
+    try {
+      const res  = await fetch('/api/settings/tokens', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ key: envKey, value }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.ok) throw new Error(data.error || 'Ошибка');
+      status.textContent = value ? '✓ Сохранено' : '✓ Очищено';
+      status.className   = 'credential-status cred-ok';
+      // Refresh dashboard data after credential change
+      if (currentView === 'dashboard') dashboardRefresh();
+    } catch (err) {
+      status.textContent = '✗ ' + err.message;
+      status.className   = 'credential-status cred-err';
+    } finally {
+      save.disabled = false;
+      setTimeout(() => { status.textContent = ''; }, 4000);
+    }
+  }
+
+  save.addEventListener('click',  () => persist(input.value));
+  clear.addEventListener('click', () => {
+    input.value = '';
+    if (visible) { visible = false; input.type = 'password'; eye.textContent = '👁'; }
+    persist('');
+  });
+  input.addEventListener('blur', () => {
+    if (visible) { visible = false; input.type = 'password'; eye.textContent = '👁'; }
+  });
+
+  [save, clear].forEach(addRipple);
+}
+
+// Wire credential fields at page load (elements always in DOM)
+initCredentialField('inputTinkoffToken',     'eyeTinkoffToken',     'saveTinkoffToken',     'clearTinkoffToken',     'statusTinkoffToken',     'TINKOFF_TOKEN');
+initCredentialField('inputTinkoffAccountId', 'eyeTinkoffAccountId', 'saveTinkoffAccountId', 'clearTinkoffAccountId', 'statusTinkoffAccountId', 'TINKOFF_ACCOUNT_ID');
+
+// ── Load token status (shown as info rows) ─────────────────────────────────────
+async function loadTokenStatus() {
+  try {
+    const d = await fetchJSON('/api/settings/tokens');
+    const ts = document.getElementById('statusTinkoffToken');
+    const as = document.getElementById('statusTinkoffAccountId');
+    if (!ts.textContent) {
+      ts.textContent = d.has_tinkoff_token      ? '● Настроен' : '○ Не задан';
+      ts.className   = 'credential-status ' + (d.has_tinkoff_token      ? 'cred-set' : 'cred-err');
+    }
+    if (!as.textContent) {
+      as.textContent = d.has_tinkoff_account_id ? '● Настроен' : '○ Не задан';
+      as.className   = 'credential-status ' + (d.has_tinkoff_account_id ? 'cred-set' : 'cred-err');
+    }
+  } catch (_) {}
+}
+
+// ── Settings: main loader ──────────────────────────────────────────────────────
 async function loadSettings() {
-  const grid = document.getElementById('settingsGrid');
+  const grid       = document.getElementById('settingsGrid');
+  const infoRows   = document.getElementById('tinkoffInfoRows');
+
   try {
     const d = await fetchJSON('/api/settings');
 
-    function settingsSection(title, rows) {
+    function sec(title, rows) {
       return `
         <div class="settings-section card">
           <div class="card-header"><div class="card-title">${title}</div></div>
@@ -901,35 +1196,47 @@ async function loadSettings() {
     }
 
     grid.innerHTML = [
-      settingsSection('База данных', [
-        ['Хост',       d.db.host + ':' + d.db.port, undefined],
-        ['База',       d.db.name, undefined],
-        ['Статус',     d.db.connected ? 'Подключено ✓' : 'Ошибка соединения', d.db.connected],
+      sec('База данных', [
+        ['Хост',    d.db.host + ':' + d.db.port],
+        ['База',    d.db.name],
+        ['Статус',  d.db.connected ? 'Подключено ✓' : 'Ошибка', d.db.connected],
       ]),
-      settingsSection('Риск-менеджмент', [
-        ['Макс. позиция',    (d.risk.max_position_pct * 100).toFixed(1) + '% капитала', undefined],
-        ['ATR стоп ×',       d.risk.atr_stop_multiplier + 'x', undefined],
-        ['Макс. дн. убыток', (d.risk.max_daily_loss_pct * 100).toFixed(1) + '%', undefined],
-        ['Макс. позиций',    d.risk.max_open_positions, undefined],
+      sec('Риск-менеджмент', [
+        ['Макс. позиция',    (d.risk.max_position_pct * 100).toFixed(1) + '% капитала'],
+        ['ATR стоп ×',       d.risk.atr_stop_multiplier + 'x'],
+        ['Макс. дн. убыток', (d.risk.max_daily_loss_pct * 100).toFixed(1) + '%'],
+        ['Макс. позиций',    d.risk.max_open_positions],
       ]),
-      settingsSection('Приложение', [
-        ['Тикеры',          d.app.tickers.join(', '), undefined],
-        ['Интервал опроса', d.app.poll_interval + ' сек.', undefined],
-        ['Уровень логов',   d.app.log_level, undefined],
-      ]),
-      settingsSection('Брокер (Tinkoff)', [
-        ['Режим',     d.tinkoff.sandbox ? 'Sandbox' : 'Prod', d.tinkoff.sandbox],
-        ['API токен', d.tinkoff.has_token ? 'Настроен ✓' : 'Не задан', d.tinkoff.has_token],
+      sec('Приложение', [
+        ['Тикеры',          d.app.tickers.join(', ')],
+        ['Интервал опроса', d.app.poll_interval + ' сек.'],
+        ['Уровень логов',   d.app.log_level],
       ]),
     ].join('');
-  } catch (e) {
-    grid.innerHTML = `<div class="empty">Ошибка загрузки настроек: ${e.message}</div>`;
+
+    // Tinkoff info rows inside the static broker card
+    const connected = d.tinkoff.has_token && d.tinkoff.has_account_id;
+    infoRows.innerHTML = [
+      ['Режим',               d.tinkoff.sandbox ? 'Sandbox' : 'Production'],
+      ['Статус подключения',  connected ? '● Настроен' : '○ Не настроен', connected],
+      ['Account ID',          d.tinkoff.has_account_id ? 'Задан ✓' : 'Не задан', d.tinkoff.has_account_id],
+    ].map(([k, v, ok]) => `
+      <div class="settings-row">
+        <span class="settings-key">${k}</span>
+        <span class="settings-val ${ok !== undefined ? (ok ? 'positive' : 'negative') : ''}">${v}</span>
+      </div>`).join('');
+
+  } catch (err) {
+    grid.innerHTML = `<div class="empty">Ошибка загрузки: ${err.message}</div>`;
+    infoRows.innerHTML = '';
+  } finally {
+    await loadTokenStatus();
   }
 }
 
 viewHandlers.settings = loadSettings;
 
-// ── Refresh cycle (Dashboard only) ───────────────────────────────────────────
+// ── Boot ──────────────────────────────────────────────────────────────────────
 dashboardRefresh();
 setInterval(dashboardRefresh, 30_000);
 </script>

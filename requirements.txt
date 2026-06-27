@@ -12,8 +12,8 @@ psycopg2-binary>=2.9.0
 # Telegram
 python-telegram-bot>=20.0
 
-# Брокер Т-Инвестиции (опционально — раскомментировать при использовании)
-# tinkoff-investments>=0.2.0b55
+# Брокер Т-Инвестиции
+tinkoff-investments>=0.2.0b55
 
 # Утилиты
 PyYAML>=6.0

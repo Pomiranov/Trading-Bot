@@ -105,22 +105,40 @@ class TinkoffClient:
     # ─── Инструменты ─────────────────────────────────────────────────
 
     def find_instrument(self, ticker: str) -> Optional[dict]:
-        """Найти инструмент по тикеру, вернуть figi и lot."""
+        """Найти инструмент по тикеру, вернуть figi и lot.
+
+        find_instrument() returns InstrumentShort which has no 'lot' field.
+        A second call to get_instrument_by() fetches the full instrument data.
+        """
         try:
             with self._get_client() as client:
                 resp = client.instruments.find_instrument(query=ticker)
+                figi = None
                 for item in resp.instruments:
                     if item.ticker == ticker:
-                        return {
-                            "figi": item.figi,
-                            "ticker": item.ticker,
-                            "name": item.name,
-                            "lot": item.lot,
-                            "currency": item.currency,
-                            "min_price_increment": float(
-                                _quotation_to_decimal(item.min_price_increment)
-                            ),
-                        }
+                        figi = item.figi
+                        break
+
+                if figi is None:
+                    return None
+
+                from tinkoff.invest import InstrumentIdType
+                full = client.instruments.get_instrument_by(
+                    id_type=InstrumentIdType.INSTRUMENT_ID_TYPE_FIGI,
+                    id=figi,
+                    class_code="",
+                )
+                instr = full.instrument
+                return {
+                    "figi": instr.figi,
+                    "ticker": instr.ticker,
+                    "name": instr.name,
+                    "lot": instr.lot,
+                    "currency": instr.currency,
+                    "min_price_increment": float(
+                        _quotation_to_decimal(instr.min_price_increment)
+                    ),
+                }
         except Exception as exc:
             logger.error("Ошибка поиска инструмента %s: %s", ticker, exc)
         return None

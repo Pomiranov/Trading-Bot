@@ -93,7 +93,7 @@ def _compute(engine) -> BotStatistics:
                     COALESCE(SUM(pnl), 0)                                AS total_pnl,
                     AVG(pnl)                                             AS avg_pnl
                 FROM trades
-                WHERE status IN ('CLOSED', 'STOPPED')
+                WHERE closed_at IS NOT NULL
                   AND pnl IS NOT NULL
             """)).fetchone()
 
@@ -109,12 +109,11 @@ def _compute(engine) -> BotStatistics:
 
         with engine.connect() as conn:
             eq_rows = conn.execute(text("""
-                SELECT 1000000 + SUM(pnl) OVER (ORDER BY exit_at) AS equity
+                SELECT 1000000 + SUM(pnl) OVER (ORDER BY closed_at) AS equity
                 FROM trades
-                WHERE status IN ('CLOSED', 'STOPPED')
+                WHERE closed_at IS NOT NULL
                   AND pnl IS NOT NULL
-                  AND exit_at IS NOT NULL
-                ORDER BY exit_at
+                ORDER BY closed_at
             """)).fetchall()
 
         equities = [float(r[0]) for r in eq_rows]

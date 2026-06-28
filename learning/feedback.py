@@ -1,7 +1,7 @@
 """Запись результатов сделок в БД PostgreSQL для последующего анализа и обучения."""
 
 import logging
-from dataclasses import dataclass, asdict
+from dataclasses import dataclass
 from datetime import datetime
 from typing import Optional
 
@@ -12,33 +12,51 @@ from config import config
 
 logger = logging.getLogger(__name__)
 
+# Base table DDL — uses actual column names from the existing schema.
+# CREATE IF NOT EXISTS is a no-op when the table already exists.
 CREATE_TABLE_SQL = """
 CREATE TABLE IF NOT EXISTS trades (
     id              SERIAL PRIMARY KEY,
     ticker          VARCHAR(20)   NOT NULL,
-    direction       VARCHAR(4)    NOT NULL,   -- BUY / SELL
+    direction       VARCHAR(4)    NOT NULL,
     entry_price     NUMERIC(18,4) NOT NULL,
     exit_price      NUMERIC(18,4),
-    shares          INTEGER       NOT NULL,
-    stop_price      NUMERIC(18,4),
+    quantity        INTEGER       NOT NULL,
+    stop_loss       NUMERIC(18,4),
+    take_profit     NUMERIC(18,4),
     pnl             NUMERIC(18,4),
     pnl_pct         NUMERIC(10,6),
-    entry_at        TIMESTAMPTZ   NOT NULL DEFAULT NOW(),
-    exit_at         TIMESTAMPTZ,
-    signal_rules    TEXT[],        -- список правил, сформировавших сигнал
+    opened_at       TIMESTAMPTZ   NOT NULL DEFAULT NOW(),
+    closed_at       TIMESTAMPTZ,
+    signal_rules    TEXT[],
     buy_score       NUMERIC(8,4),
     sell_score      NUMERIC(8,4),
     rsi             NUMERIC(8,4),
     macd_hist       NUMERIC(18,6),
     adx             NUMERIC(8,4),
     atr             NUMERIC(18,6),
-    status          VARCHAR(20)   DEFAULT 'OPEN',  -- OPEN / CLOSED / STOPPED
-    notes           TEXT
+    status          VARCHAR(20)   DEFAULT 'OPEN',
+    reason_open     TEXT,
+    reason_close    TEXT
 );
 
-CREATE INDEX IF NOT EXISTS idx_trades_ticker  ON trades (ticker);
-CREATE INDEX IF NOT EXISTS idx_trades_entry_at ON trades (entry_at DESC);
-CREATE INDEX IF NOT EXISTS idx_trades_status   ON trades (status);
+CREATE INDEX IF NOT EXISTS idx_trades_ticker    ON trades (ticker);
+CREATE INDEX IF NOT EXISTS idx_trades_opened_at ON trades (opened_at DESC);
+"""
+
+# Analytics columns absent from the pre-existing table — added non-destructively.
+# status index is created after the migration so the column is guaranteed to exist.
+_MIGRATE_SQL = """
+ALTER TABLE trades ADD COLUMN IF NOT EXISTS pnl_pct      NUMERIC(10,6);
+ALTER TABLE trades ADD COLUMN IF NOT EXISTS signal_rules TEXT[];
+ALTER TABLE trades ADD COLUMN IF NOT EXISTS buy_score    NUMERIC(8,4);
+ALTER TABLE trades ADD COLUMN IF NOT EXISTS sell_score   NUMERIC(8,4);
+ALTER TABLE trades ADD COLUMN IF NOT EXISTS rsi          NUMERIC(8,4);
+ALTER TABLE trades ADD COLUMN IF NOT EXISTS macd_hist    NUMERIC(18,6);
+ALTER TABLE trades ADD COLUMN IF NOT EXISTS adx          NUMERIC(8,4);
+ALTER TABLE trades ADD COLUMN IF NOT EXISTS atr          NUMERIC(18,6);
+ALTER TABLE trades ADD COLUMN IF NOT EXISTS status       VARCHAR(20) DEFAULT 'OPEN';
+CREATE INDEX IF NOT EXISTS idx_trades_status ON trades (status);
 """
 
 
@@ -47,13 +65,13 @@ class TradeRecord:
     ticker: str
     direction: str
     entry_price: float
-    shares: int
-    stop_price: Optional[float] = None
+    shares: int                          # mapped to DB column `quantity`
+    stop_price: Optional[float] = None   # mapped to DB column `stop_loss`
     exit_price: Optional[float] = None
     pnl: Optional[float] = None
     pnl_pct: Optional[float] = None
-    entry_at: Optional[datetime] = None
-    exit_at: Optional[datetime] = None
+    entry_at: Optional[datetime] = None  # mapped to DB column `opened_at`
+    exit_at: Optional[datetime] = None   # mapped to DB column `closed_at`
     signal_rules: Optional[list] = None
     buy_score: Optional[float] = None
     sell_score: Optional[float] = None
@@ -84,6 +102,11 @@ class FeedbackStore:
             conn = self._connect()
             with conn.cursor() as cur:
                 cur.execute(CREATE_TABLE_SQL)
+                # Add analytics columns to pre-existing tables without dropping data.
+                for stmt in _MIGRATE_SQL.strip().split(";"):
+                    stmt = stmt.strip()
+                    if stmt:
+                        cur.execute(stmt)
             conn.commit()
             logger.info("Схема БД проверена/создана")
         except Exception as exc:
@@ -95,34 +118,34 @@ class FeedbackStore:
         """Записать открытие сделки, вернуть id строки в БД."""
         sql = """
             INSERT INTO trades (
-                ticker, direction, entry_price, shares, stop_price,
-                entry_at, signal_rules, buy_score, sell_score,
-                rsi, macd_hist, adx, atr, status, notes
+                ticker, direction, entry_price, quantity, stop_loss,
+                opened_at, signal_rules, buy_score, sell_score,
+                rsi, macd_hist, adx, atr, status, reason_open
             ) VALUES (
-                %(ticker)s, %(direction)s, %(entry_price)s, %(shares)s, %(stop_price)s,
-                %(entry_at)s, %(signal_rules)s, %(buy_score)s, %(sell_score)s,
-                %(rsi)s, %(macd_hist)s, %(adx)s, %(atr)s, %(status)s, %(notes)s
+                %(ticker)s, %(direction)s, %(entry_price)s, %(quantity)s, %(stop_loss)s,
+                %(opened_at)s, %(signal_rules)s, %(buy_score)s, %(sell_score)s,
+                %(rsi)s, %(macd_hist)s, %(adx)s, %(atr)s, %(status)s, %(reason_open)s
             ) RETURNING id
         """
         try:
             conn = self._connect()
             with conn.cursor() as cur:
                 cur.execute(sql, {
-                    "ticker": trade.ticker,
-                    "direction": trade.direction,
-                    "entry_price": trade.entry_price,
-                    "shares": trade.shares,
-                    "stop_price": trade.stop_price,
-                    "entry_at": trade.entry_at or datetime.utcnow(),
+                    "ticker":       trade.ticker,
+                    "direction":    trade.direction,
+                    "entry_price":  trade.entry_price,
+                    "quantity":     trade.shares,        # Python: shares → DB: quantity
+                    "stop_loss":    trade.stop_price,    # Python: stop_price → DB: stop_loss
+                    "opened_at":    trade.entry_at or datetime.utcnow(),
                     "signal_rules": trade.signal_rules,
-                    "buy_score": trade.buy_score,
-                    "sell_score": trade.sell_score,
-                    "rsi": trade.rsi,
-                    "macd_hist": trade.macd_hist,
-                    "adx": trade.adx,
-                    "atr": trade.atr,
-                    "status": "OPEN",
-                    "notes": trade.notes,
+                    "buy_score":    trade.buy_score,
+                    "sell_score":   trade.sell_score,
+                    "rsi":          trade.rsi,
+                    "macd_hist":    trade.macd_hist,
+                    "adx":          trade.adx,
+                    "atr":          trade.atr,
+                    "status":       "OPEN",
+                    "reason_open":  trade.notes,
                 })
                 trade_id = cur.fetchone()[0]
             conn.commit()
@@ -143,11 +166,11 @@ class FeedbackStore:
         """Обновить запись с результатом закрытой сделки."""
         sql = """
             UPDATE trades
-            SET exit_price = %(exit_price)s,
-                exit_at    = %(exit_at)s,
-                pnl        = (%(exit_price)s - entry_price) * shares,
-                pnl_pct    = (%(exit_price)s - entry_price) / entry_price,
-                status     = %(status)s
+            SET exit_price  = %(exit_price)s,
+                closed_at   = %(closed_at)s,
+                pnl         = (%(exit_price)s - entry_price) * quantity,
+                pnl_pct     = (%(exit_price)s - entry_price) / entry_price,
+                status      = %(status)s
             WHERE id = %(id)s
         """
         try:
@@ -155,9 +178,9 @@ class FeedbackStore:
             with conn.cursor() as cur:
                 cur.execute(sql, {
                     "exit_price": exit_price,
-                    "exit_at": datetime.utcnow(),
-                    "status": status,
-                    "id": trade_id,
+                    "closed_at":  datetime.utcnow(),
+                    "status":     status,
+                    "id":         trade_id,
                 })
             conn.commit()
             logger.info("Сделка %d закрыта: выход=%.2f, статус=%s", trade_id, exit_price, status)
@@ -171,9 +194,9 @@ class FeedbackStore:
         """Получить последние сделки."""
         sql = """
             SELECT id, ticker, direction, entry_price, exit_price,
-                   shares, pnl, pnl_pct, entry_at, exit_at, status
+                   quantity, pnl, pnl_pct, opened_at, closed_at, status
             FROM trades
-            ORDER BY entry_at DESC
+            ORDER BY opened_at DESC
             LIMIT %(limit)s
         """
         try:
@@ -198,7 +221,7 @@ class FeedbackStore:
                 ROUND(MIN(pnl)::numeric, 2)      AS max_loss,
                 ROUND(AVG(pnl_pct) * 100, 3)     AS avg_pnl_pct
             FROM trades
-            WHERE status IN ('CLOSED', 'STOPPED')
+            WHERE closed_at IS NOT NULL AND pnl IS NOT NULL
         """
         try:
             conn = self._connect()
@@ -219,7 +242,8 @@ class FeedbackStore:
                 COUNT(*) FILTER (WHERE pnl > 0)  AS wins,
                 ROUND(SUM(pnl)::numeric, 2)      AS total_pnl
             FROM trades, UNNEST(signal_rules) AS rule
-            WHERE status IN ('CLOSED', 'STOPPED')
+            WHERE closed_at IS NOT NULL AND pnl IS NOT NULL
+              AND signal_rules IS NOT NULL
             GROUP BY rule
             ORDER BY total_pnl DESC
         """

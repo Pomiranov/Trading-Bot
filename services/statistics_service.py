@@ -126,15 +126,15 @@ def _compute(engine) -> FullStatistics:
                     AVG(pnl) FILTER (WHERE pnl <= 0)                        AS avg_loss,
                     MAX(pnl)                                                 AS max_win,
                     MIN(pnl)                                                 AS max_loss,
-                    AVG(EXTRACT(EPOCH FROM (exit_at - entry_at)) / 3600.0)  AS avg_hold_hours,
-                    COALESCE(SUM(pnl) FILTER (WHERE DATE(exit_at) = CURRENT_DATE), 0)              AS pnl_today,
-                    COALESCE(SUM(pnl) FILTER (WHERE DATE(exit_at) = CURRENT_DATE - 1), 0)          AS pnl_yesterday,
-                    COALESCE(SUM(pnl) FILTER (WHERE exit_at >= NOW() - INTERVAL '7 days'), 0)      AS pnl_week,
-                    COALESCE(SUM(pnl) FILTER (WHERE exit_at >= NOW() - INTERVAL '30 days'), 0)     AS pnl_month,
-                    COALESCE(SUM(pnl) FILTER (WHERE exit_at >= NOW() - INTERVAL '90 days'), 0)     AS pnl_quarter,
-                    COALESCE(SUM(pnl) FILTER (WHERE exit_at >= NOW() - INTERVAL '365 days'), 0)    AS pnl_year
+                    AVG(EXTRACT(EPOCH FROM (closed_at - opened_at)) / 3600.0)  AS avg_hold_hours,
+                    COALESCE(SUM(pnl) FILTER (WHERE DATE(closed_at) = CURRENT_DATE), 0)              AS pnl_today,
+                    COALESCE(SUM(pnl) FILTER (WHERE DATE(closed_at) = CURRENT_DATE - 1), 0)          AS pnl_yesterday,
+                    COALESCE(SUM(pnl) FILTER (WHERE closed_at >= NOW() - INTERVAL '7 days'), 0)      AS pnl_week,
+                    COALESCE(SUM(pnl) FILTER (WHERE closed_at >= NOW() - INTERVAL '30 days'), 0)     AS pnl_month,
+                    COALESCE(SUM(pnl) FILTER (WHERE closed_at >= NOW() - INTERVAL '90 days'), 0)     AS pnl_quarter,
+                    COALESCE(SUM(pnl) FILTER (WHERE closed_at >= NOW() - INTERVAL '365 days'), 0)    AS pnl_year
                 FROM trades
-                WHERE status IN ('CLOSED', 'STOPPED') AND pnl IS NOT NULL AND exit_at IS NOT NULL
+                WHERE closed_at IS NOT NULL AND pnl IS NOT NULL
             """)).fetchone()
 
         if agg is None or (agg[0] or 0) == 0:
@@ -168,10 +168,10 @@ def _compute(engine) -> FullStatistics:
 
         with engine.connect() as conn:
             eq_rows = conn.execute(text("""
-                SELECT 1000000 + SUM(pnl) OVER (ORDER BY exit_at) AS equity
+                SELECT 1000000 + SUM(pnl) OVER (ORDER BY closed_at) AS equity
                 FROM trades
-                WHERE status IN ('CLOSED', 'STOPPED') AND pnl IS NOT NULL AND exit_at IS NOT NULL
-                ORDER BY exit_at
+                WHERE closed_at IS NOT NULL AND pnl IS NOT NULL
+                ORDER BY closed_at
             """)).fetchall()
 
         equities = [float(r[0]) for r in eq_rows]
@@ -193,18 +193,18 @@ def _compute(engine) -> FullStatistics:
 
         with engine.connect() as conn:
             daily_rows = conn.execute(text("""
-                SELECT DATE(exit_at) AS day, SUM(pnl) AS daily_pnl
+                SELECT DATE(closed_at) AS day, SUM(pnl) AS daily_pnl
                 FROM trades
-                WHERE status IN ('CLOSED', 'STOPPED') AND pnl IS NOT NULL AND exit_at IS NOT NULL
-                GROUP BY DATE(exit_at)
+                WHERE closed_at IS NOT NULL AND pnl IS NOT NULL
+                GROUP BY DATE(closed_at)
                 ORDER BY daily_pnl DESC
                 LIMIT 1
             """)).fetchall()
             daily_asc = conn.execute(text("""
-                SELECT DATE(exit_at) AS day, SUM(pnl) AS daily_pnl
+                SELECT DATE(closed_at) AS day, SUM(pnl) AS daily_pnl
                 FROM trades
-                WHERE status IN ('CLOSED', 'STOPPED') AND pnl IS NOT NULL AND exit_at IS NOT NULL
-                GROUP BY DATE(exit_at)
+                WHERE closed_at IS NOT NULL AND pnl IS NOT NULL
+                GROUP BY DATE(closed_at)
                 ORDER BY daily_pnl ASC
                 LIMIT 1
             """)).fetchall()

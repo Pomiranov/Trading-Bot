@@ -42,6 +42,13 @@ class TelegramConfig:
 
 
 @dataclass
+class BybitConfig:
+    api_key: str = field(default_factory=lambda: os.getenv("BYBIT_API_KEY", "").strip())
+    api_secret: str = field(default_factory=lambda: os.getenv("BYBIT_API_SECRET", "").strip())
+    testnet: bool = field(default_factory=lambda: os.getenv("BYBIT_TESTNET", "false").lower() == "true")
+
+
+@dataclass
 class RiskConfig:
     max_position_pct: float = field(default_factory=lambda: float(os.getenv("RISK_MAX_POSITION_PCT", "0.05")))
     atr_stop_multiplier: float = field(default_factory=lambda: float(os.getenv("RISK_ATR_STOP_MULT", "2.0")))
@@ -53,6 +60,7 @@ class RiskConfig:
 class AppConfig:
     db: DatabaseConfig = field(default_factory=DatabaseConfig)
     tinkoff: TinkoffConfig = field(default_factory=TinkoffConfig)
+    bybit: BybitConfig = field(default_factory=BybitConfig)
     telegram: TelegramConfig = field(default_factory=TelegramConfig)
     risk: RiskConfig = field(default_factory=RiskConfig)
 

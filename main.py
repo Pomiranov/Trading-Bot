@@ -3,10 +3,12 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import os
 import signal
 import sys
 import threading
 from datetime import datetime
+from pathlib import Path
 
 from config import config
 from data.loader import loader
@@ -156,6 +158,33 @@ async def _process_ticker(ticker: str):
         trading_engine.record_error(f"{ticker}: {exc}")
 
 
+_PID_FILE = Path(__file__).parent / ".bot.pid"
+
+
+def _acquire_pid_lock() -> bool:
+    """Return False if another instance is already running."""
+    if _PID_FILE.exists():
+        try:
+            pid = int(_PID_FILE.read_text().strip())
+            os.kill(pid, 0)  # signal 0 = проверка существования процесса
+            logger.error(
+                "Бот уже запущен (PID %d). Остановите предыдущий процесс: kill %d",
+                pid, pid,
+            )
+            return False
+        except (ProcessLookupError, ValueError):
+            pass  # старый PID-файл от упавшего процесса
+    _PID_FILE.write_text(str(os.getpid()))
+    return True
+
+
+def _release_pid_lock() -> None:
+    try:
+        _PID_FILE.unlink(missing_ok=True)
+    except OSError:
+        pass
+
+
 def main():
     logger.info("=== Trading Bot starting ===")
     logger.info("Tinkoff mode: %s", "SANDBOX" if config.tinkoff.sandbox else "LIVE")
@@ -172,10 +201,17 @@ def main():
         run_bot()
         return
 
-    bot_thread = threading.Thread(target=run_bot, daemon=True)
-    bot_thread.start()
+    if not _acquire_pid_lock():
+        sys.exit(1)
 
-    asyncio.run(trading_loop())
+    try:
+        bot_thread = threading.Thread(target=run_bot, daemon=True)
+        bot_thread.start()
+
+        asyncio.run(trading_loop())
+    finally:
+        _release_pid_lock()
+
     logger.info("=== Trading Bot stopped ===")
 
 

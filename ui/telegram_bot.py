@@ -30,6 +30,7 @@ from learning.feedback import feedback_store
 from risk.risk_manager import risk_manager
 from signals.indicators import indicator_engine
 from signals.rules_engine import rules_engine, Action
+from tg.middlewares.auth import require_auth
 
 logger = logging.getLogger(__name__)
 
@@ -173,6 +174,13 @@ async def send_signal_alert(ticker: str, signal, ind) -> None:
     if signal.action not in (Action.BUY, Action.SELL):
         return
 
+    # Deduplicate: one alert per ticker+action per hour
+    now_key = datetime.now().strftime("%Y%m%d%H")
+    sig_key = f"{ticker}:{signal.action.value}:{now_key}"
+    if sig_key in _sent_signal_keys:
+        return
+    _sent_signal_keys.add(sig_key)
+
     text = _build_signal_text(ticker, signal, ind)
     with _state_lock:
         auto = _bot_running
@@ -186,7 +194,7 @@ async def send_signal_alert(ticker: str, signal, ind) -> None:
     # Manual confirmation mode
     try:
         from broker.tinkoff_client import tinkoff_client
-        instrument = tinkoff_client.find_instrument(ticker)
+        instrument = await asyncio.to_thread(tinkoff_client.find_instrument, ticker)
     except Exception:
         instrument = None
 
@@ -230,6 +238,8 @@ async def send_stop_loss_alert(ticker: str, price: float, pnl: float) -> None:
 
 async def cmd_start(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
     """/start — приветствие."""
+    if not await require_auth(update, ctx):
+        return
     logger.info("User %s: /start", update.effective_user.id)
     text = (
         "🤖 <b>QuantFlow Trading Bot</b>\n"
@@ -256,6 +266,8 @@ async def cmd_start(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
 
 async def cmd_help(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
     """/help — полная справка."""
+    if not await require_auth(update, ctx):
+        return
     logger.info("User %s: /help", update.effective_user.id)
     text = (
         "❓ <b>Справка QuantFlow Bot</b>\n"
@@ -287,6 +299,8 @@ async def cmd_help(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
 
 async def cmd_status(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
     """/status — текущий статус бота."""
+    if not await require_auth(update, ctx):
+        return
     logger.info("User %s: /status", update.effective_user.id)
     positions = risk_manager.open_positions
     daily_pnl = risk_manager.daily_pnl
@@ -331,6 +345,8 @@ async def cmd_status(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
 
 async def cmd_signal(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
     """/signal TICKER — сигнал по конкретному тикеру."""
+    if not await require_auth(update, ctx):
+        return
     if not ctx.args:
         await update.message.reply_html(
             "⚠️ Укажите тикер: <code>/signal SBER</code>"
@@ -392,6 +408,8 @@ async def cmd_signal(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
 
 async def cmd_signals(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
     """/signals — сигналы по всем тикерам."""
+    if not await require_auth(update, ctx):
+        return
     logger.info("User %s: /signals", update.effective_user.id)
     await update.message.reply_html("⏳ Анализирую все тикеры…")
 
@@ -424,6 +442,8 @@ async def cmd_signals(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
 
 async def cmd_stop(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
     """/stop — остановить автоторговлю (перейти в ручной режим)."""
+    if not await require_auth(update, ctx):
+        return
     logger.info("User %s: /stop", update.effective_user.id)
     set_bot_running(False)
     await update.message.reply_html(
@@ -435,6 +455,8 @@ async def cmd_stop(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
 
 async def cmd_start_trading(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
     """/start_trading — включить автоторговлю."""
+    if not await require_auth(update, ctx):
+        return
     logger.info("User %s: /start_trading", update.effective_user.id)
     set_bot_running(True)
     mode = "SANDBOX" if config.tinkoff.sandbox else "⚠️ LIVE"
@@ -450,6 +472,8 @@ async def cmd_start_trading(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> N
 
 async def cmd_portfolio(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
     """/portfolio — портфель из Tinkoff API."""
+    if not await require_auth(update, ctx):
+        return
     logger.info("User %s: /portfolio", update.effective_user.id)
     await update.message.reply_html("⏳ Загружаю портфель из Tinkoff…")
 
@@ -502,13 +526,15 @@ async def cmd_portfolio(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
 
 async def cmd_backtest(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
     """/backtest — быстрый бэктест за последние 30 дней."""
+    if not await require_auth(update, ctx):
+        return
     logger.info("User %s: /backtest", update.effective_user.id)
     await update.message.reply_html(
         f"⏳ Запускаю бэктест за 30 дней по {len(config.tickers)} тикерам…\n"
         f"<i>Это займёт несколько секунд.</i>"
     )
 
-    async def _run():
+    def _run():
         from backtest.engine import BacktestEngine
         from datetime import date, timedelta
 
@@ -578,6 +604,8 @@ async def cmd_backtest(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
 
 async def cb_confirm_trade(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
     """✅ Подтвердить сделку."""
+    if not await require_auth(update, ctx):
+        return
     from broker.tinkoff_client import tinkoff_client
     from learning.feedback import feedback_store, TradeRecord
 
@@ -682,6 +710,8 @@ async def cb_confirm_trade(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> No
 
 async def cb_reject_trade(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
     """❌ Отклонить сделку."""
+    if not await require_auth(update, ctx):
+        return
     query = update.callback_query
     await query.answer("Сделка отклонена.")
 
@@ -711,17 +741,22 @@ async def _signal_monitor_loop(app: Application) -> None:
     while True:
         await asyncio.sleep(300)  # 5 минут
 
-        now = datetime.now()
+        now = datetime.now(timezone.utc)
         if not (7 <= now.hour < 16):
             continue
 
         current_hour = now.strftime("%Y%m%d%H")
 
-        for ticker in config.tickers:
-            sig_key = f"{ticker}:{current_hour}"
-            if sig_key in _sent_signal_keys:
-                continue
+        # Prune stale pending trades older than 2 hours
+        cutoff = datetime.now(timezone.utc).replace(tzinfo=timezone.utc)
+        stale = [
+            tid for tid, t in _pending_trades.items()
+            if (cutoff - t["created_at"]).total_seconds() > 7200
+        ]
+        for tid in stale:
+            _pending_trades.pop(tid, None)
 
+        for ticker in config.tickers:
             try:
                 df = await asyncio.to_thread(
                     loader.get_candles, ticker, interval="1h"
@@ -733,6 +768,11 @@ async def _signal_monitor_loop(app: Application) -> None:
                 sig = rules_engine.evaluate(ind)
 
                 if sig.action not in (Action.BUY, Action.SELL):
+                    continue
+
+                # Key includes action: one alert per ticker+action per hour
+                sig_key = f"{ticker}:{sig.action.value}:{current_hour}"
+                if sig_key in _sent_signal_keys:
                     continue
 
                 _sent_signal_keys.add(sig_key)
@@ -850,7 +890,7 @@ async def _daily_report_loop(app: Application) -> None:
         now_utc = datetime.now(timezone.utc)
         today = now_utc.date()
 
-        if not (now_utc.hour == 16 and now_utc.minute == 0):
+        if not (now_utc.hour == 16 and now_utc.minute < 5):
             continue
         if reported_date == today:
             continue
@@ -908,9 +948,11 @@ async def _daily_report_loop(app: Application) -> None:
 async def _post_init(app: Application) -> None:
     """Запускает фоновые задачи после инициализации Application."""
     if config.telegram.chat_id:
-        app.create_task(_signal_monitor_loop(app))
-        app.create_task(_drawdown_monitor_loop(app))
-        app.create_task(_daily_report_loop(app))
+        # asyncio.ensure_future schedules on the running loop without
+        # triggering PTB's "not running" warning from app.create_task
+        asyncio.ensure_future(_signal_monitor_loop(app))
+        asyncio.ensure_future(_drawdown_monitor_loop(app))
+        asyncio.ensure_future(_daily_report_loop(app))
         logger.info("Background monitoring tasks started")
     else:
         logger.warning("TELEGRAM_CHAT_ID not set — background tasks disabled")

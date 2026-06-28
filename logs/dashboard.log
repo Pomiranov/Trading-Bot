@@ -1,0 +1,77 @@
+ * Serving Flask app 'dashboard'
+ * Debug mode: off
+INFO:werkzeug:[31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5001
+ * Running on http://172.16.0.1:5001
+INFO:werkzeug:[33mPress CTRL+C to quit[0m
+INFO:werkzeug:127.0.0.1 - - [28/Jun/2026 19:42:18] "GET / HTTP/1.1" 200 -
+INFO:werkzeug:127.0.0.1 - - [28/Jun/2026 19:44:26] "GET / HTTP/1.1" 200 -
+INFO:werkzeug:127.0.0.1 - - [28/Jun/2026 19:44:26] "GET /static/style.css HTTP/1.1" 200 -
+INFO:werkzeug:127.0.0.1 - - [28/Jun/2026 19:44:27] "GET /api/stats HTTP/1.1" 200 -
+INFO:__main__:log: news table is empty
+INFO:werkzeug:127.0.0.1 - - [28/Jun/2026 19:44:27] "GET /api/log HTTP/1.1" 200 -
+INFO:__main__:signals: trades table is empty
+INFO:werkzeug:127.0.0.1 - - [28/Jun/2026 19:44:27] "GET /api/signals HTTP/1.1" 200 -
+INFO:werkzeug:127.0.0.1 - - [28/Jun/2026 19:44:27] "GET /api/equity HTTP/1.1" 200 -
+INFO:tinkoff.invest.logging:45af3a05050c0f97946ee92e4e11d0d1 GetPortfolio
+INFO:tinkoff.invest.logging:18cc99ddbdf5a8818a20f85e39024ee8 GetPortfolio
+INFO:tinkoff.invest.logging:e703f18d8ee60b2dd6d5b22c84871388 GetPortfolio
+INFO:werkzeug:127.0.0.1 - - [28/Jun/2026 19:44:27] "GET /api/tinkoff/pnl HTTP/1.1" 200 -
+INFO:werkzeug:127.0.0.1 - - [28/Jun/2026 19:44:27] "GET /api/tinkoff/portfolio HTTP/1.1" 200 -
+INFO:werkzeug:127.0.0.1 - - [28/Jun/2026 19:44:27] "GET /api/tinkoff/positions HTTP/1.1" 200 -
+INFO:werkzeug:127.0.0.1 - - [28/Jun/2026 19:44:28] "[33mGET /favicon.ico HTTP/1.1[0m" 404 -
+INFO:werkzeug:127.0.0.1 - - [28/Jun/2026 19:44:32] "GET /api/portfolio HTTP/1.1" 200 -
+INFO:werkzeug:127.0.0.1 - - [28/Jun/2026 19:44:32] "GET /api/candles?ticker=GAZP&limit=120 HTTP/1.1" 200 -
+INFO:signals.rules_engine:Загружено 12 правил из /Users/danila/Downloads/Trading-Bot-main/knowledge/rules.yaml
+INFO:signals.rules_engine:Загружено 12 правил из /Users/danila/Downloads/Trading-Bot-main/knowledge/rules.yaml
+INFO:werkzeug:127.0.0.1 - - [28/Jun/2026 19:44:33] "GET /api/signals/live HTTP/1.1" 200 -
+INFO:werkzeug:127.0.0.1 - - [28/Jun/2026 19:44:35] "GET /api/settings HTTP/1.1" 200 -
+INFO:werkzeug:127.0.0.1 - - [28/Jun/2026 19:44:35] "GET /api/settings/tokens HTTP/1.1" 200 -
+INFO:werkzeug:127.0.0.1 - - [28/Jun/2026 19:44:46] "GET /api/portfolio HTTP/1.1" 200 -
+INFO:werkzeug:127.0.0.1 - - [28/Jun/2026 19:44:46] "GET /api/candles?ticker=GAZP&limit=120 HTTP/1.1" 200 -
+INFO:signals.rules_engine:Загружено 12 правил из /Users/danila/Downloads/Trading-Bot-main/knowledge/rules.yaml
+INFO:werkzeug:127.0.0.1 - - [28/Jun/2026 19:44:47] "GET /api/signals/live HTTP/1.1" 200 -
+INFO:signals.rules_engine:Загружено 12 правил из /Users/danila/Downloads/Trading-Bot-main/knowledge/rules.yaml
+INFO:signals.rules_engine:Загружено 12 правил из /Users/danila/Downloads/Trading-Bot-main/knowledge/rules.yaml
+INFO:risk.risk_manager:Позиция GAZP: 7442 лотов (7442 акций), вход 124.36, стоп 117.64, риск 49999.69 руб.
+INFO:risk.risk_manager:Позиция GAZP: 7975 лотов (7975 акций), вход 120.45, стоп 114.80, риск 45046.57 руб.
+INFO:risk.risk_manager:Позиция GAZP: 7788 лотов (7788 акций), вход 130.22, стоп 124.65, риск 43350.37 руб.
+INFO:risk.risk_manager:Позиция GAZP: 8354 лотов (8354 акций), вход 123.94, стоп 119.23, риск 39321.69 руб.
+INFO:risk.risk_manager:Позиция GAZP: 8119 лотов (8119 акций), вход 124.01, стоп 119.28, риск 38398.84 руб.
+INFO:backtest.engine:[GAZP] Сделок: 5 | Win Rate: 40.0% | PnL: -32781.55 руб. | Просадка: 10.14% | Sharpe: -1.66
+INFO:signals.rules_engine:Загружено 12 правил из /Users/danila/Downloads/Trading-Bot-main/knowledge/rules.yaml
+INFO:risk.risk_manager:Позиция LKOH: 157 лотов (157 акций), вход 6365.00, стоп 6135.53, риск 36027.50 руб.
+INFO:risk.risk_manager:Позиция LKOH: 158 лотов (158 акций), вход 6185.00, стоп 5899.85, риск 45054.12 руб.
+INFO:risk.risk_manager:Позиция LKOH: 131 лотов (131 акций), вход 5470.00, стоп 5104.28, риск 47909.42 руб.
+INFO:risk.risk_manager:Позиция LKOH: 187 лотов (187 акций), вход 5260.50, стоп 5090.96, риск 31703.09 руб.
+INFO:risk.risk_manager:Позиция LKOH: 185 лотов (185 акций), вход 5689.50, стоп 5478.70, риск 38998.73 руб.
+INFO:backtest.engine:[LKOH] Сделок: 5 | Win Rate: 40.0% | PnL: +10858.50 руб. | Просадка: 7.76% | Sharpe: -1.40
+INFO:signals.rules_engine:Загружено 12 правил из /Users/danila/Downloads/Trading-Bot-main/knowledge/rules.yaml
+INFO:risk.risk_manager:Позиция NVTK: 638 лотов (638 акций), вход 1250.60, стоп 1172.25, риск 49985.41 руб.
+INFO:risk.risk_manager:Позиция NVTK: 618 лотов (618 акций), вход 1225.20, стоп 1148.82, риск 47204.85 руб.
+INFO:risk.risk_manager:Позиция NVTK: 533 лотов (533 акций), вход 1162.00, стоп 1076.87, риск 45375.85 руб.
+INFO:risk.risk_manager:Позиция NVTK: 630 лотов (630 акций), вход 1077.80, стоп 1009.12, риск 43270.08 руб.
+INFO:risk.risk_manager:Позиция NVTK: 751 лотов (751 акций), вход 1216.00, стоп 1163.22, риск 39634.58 руб.
+INFO:risk.risk_manager:Позиция NVTK: 584 лотов (584 акций), вход 1328.30, стоп 1253.26, риск 43825.89 руб.
+INFO:risk.risk_manager:Позиция NVTK: 743 лотов (743 акций), вход 1168.30, стоп 1114.63, риск 39880.26 руб.
+INFO:risk.risk_manager:Позиция NVTK: 748 лотов (748 акций), вход 1123.00, стоп 1077.14, риск 34300.57 руб.
+INFO:risk.risk_manager:Позиция NVTK: 757 лотов (757 акций), вход 1079.40, стоп 1031.02, риск 36624.81 руб.
+INFO:backtest.engine:[NVTK] Сделок: 9 | Win Rate: 0.0% | PnL: -220429.64 руб. | Просадка: 22.25% | Sharpe: -2.50
+INFO:signals.rules_engine:Загружено 12 правил из /Users/danila/Downloads/Trading-Bot-main/knowledge/rules.yaml
+INFO:risk.risk_manager:Позиция SBER: 3402 лотов (3402 акций), вход 293.89, стоп 283.92, риск 33918.34 руб.
+INFO:risk.risk_manager:Позиция SBER: 3164 лотов (3164 акций), вход 302.91, стоп 289.54, риск 42294.71 руб.
+INFO:risk.risk_manager:Позиция SBER: 3097 лотов (3097 акций), вход 296.12, стоп 282.43, риск 42391.95 руб.
+INFO:risk.risk_manager:Позиция SBER: 3014 лотов (3014 акций), вход 305.70, стоп 299.58, риск 18435.32 руб.
+INFO:risk.risk_manager:Позиция SBER: 2985 лотов (2985 акций), вход 314.68, стоп 309.10, риск 16655.07 руб.
+INFO:risk.risk_manager:Позиция SBER: 2914 лотов (2914 акций), вход 323.47, стоп 317.86, риск 16361.32 руб.
+INFO:backtest.engine:[SBER] Сделок: 6 | Win Rate: 16.7% | PnL: -60440.19 руб. | Просадка: 9.61% | Sharpe: -2.67
+INFO:werkzeug:127.0.0.1 - - [28/Jun/2026 19:44:53] "POST /api/backtest HTTP/1.1" 200 -
+INFO:werkzeug:127.0.0.1 - - [28/Jun/2026 19:44:59] "GET /api/settings HTTP/1.1" 200 -
+INFO:werkzeug:127.0.0.1 - - [28/Jun/2026 19:44:59] "GET /api/settings/tokens HTTP/1.1" 200 -
+INFO:werkzeug:127.0.0.1 - - [28/Jun/2026 19:47:07] "GET /api/portfolio HTTP/1.1" 200 -
+INFO:werkzeug:127.0.0.1 - - [28/Jun/2026 19:47:07] "GET /api/candles?ticker=GAZP&limit=120 HTTP/1.1" 200 -
+INFO:signals.rules_engine:Загружено 12 правил из /Users/danila/Downloads/Trading-Bot-main/knowledge/rules.yaml
+INFO:werkzeug:127.0.0.1 - - [28/Jun/2026 19:47:09] "GET /api/signals/live HTTP/1.1" 200 -
+INFO:werkzeug:127.0.0.1 - - [28/Jun/2026 19:47:11] "GET /api/settings HTTP/1.1" 200 -
+INFO:werkzeug:127.0.0.1 - - [28/Jun/2026 19:47:11] "GET /api/settings/tokens HTTP/1.1" 200 -

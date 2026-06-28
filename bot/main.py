@@ -10,6 +10,9 @@ import threading
 from datetime import datetime
 from pathlib import Path
 
+# Ensure bot/ directory is on sys.path so all internal imports resolve
+sys.path.insert(0, str(Path(__file__).parent))
+
 from config import config
 from data.loader import loader
 from signals.indicators import indicator_engine

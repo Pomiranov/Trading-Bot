@@ -2,5 +2,10 @@
 __pycache__/
 *.pyc
 *.pkl
+*.pyc
 models/
 .DS_Store
+.bot.pid
+knowledge/rules.yaml.backup
+"Trading Bot.code-workspace"
+bot/data/user_prefs.json

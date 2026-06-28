@@ -65,7 +65,7 @@ class AppConfig:
     risk: RiskConfig = field(default_factory=RiskConfig)
 
     moex_base_url: str = "https://iss.moex.com/iss"
-    rules_file: Path = BASE_DIR / "knowledge" / "rules.yaml"
+    rules_file: Path = BASE_DIR.parent / "knowledge" / "rules.yaml"
     log_level: str = field(default_factory=lambda: os.getenv("LOG_LEVEL", "INFO"))
 
     # Торгуемые тикеры по умолчанию

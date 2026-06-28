@@ -164,6 +164,211 @@ rules:
 
 # ─── Параметры движка правил ──────────────────────────────────────────
 settings:
-  min_buy_score: 2.0       # Минимальный суммарный вес для сигнала BUY
-  min_sell_score: 2.0      # Минимальный суммарный вес для сигнала SELL
+  min_buy_score: 3.0       # Минимальный суммарный вес для сигнала BUY
+  min_sell_score: 3.0      # Минимальный суммарный вес для сигнала SELL
   confirmation_rules: 2    # Минимальное количество сработавших правил
+
+# ─── Фильтры блокировки торговли ──────────────────────────────────────
+# Когда хотя бы один фильтр активен — новые сделки не открываются.
+# Движок проверяет эти условия ПЕРЕД оценкой rules.
+# action: BLOCK — специальное значение, не BUY/SELL.
+
+filters:
+  - name: "Low_Liquidity_Filter"
+    description: "Объём слишком низкий — спреды широкие, исполнение ненадёжное"
+    action: BLOCK
+    weight: 999
+    conditions:
+      - indicator: adx
+        operator: "<"
+        value: 15
+      - indicator: rsi
+        operator: ">"
+        value: 45
+      - indicator: rsi
+        operator: "<"
+        value: 55
+
+  - name: "Extreme_Volatility_Filter"
+    description: "ATR аномально высокий — рынок непредсказуем, стопы будут срабатывать хаотично"
+    action: BLOCK
+    weight: 999
+    conditions:
+      - indicator: bb_pct
+        operator: ">"
+        value: 1.2
+
+  - name: "No_Trend_Flat_Market"
+    description: "Флэт: ADX низкий, цена болтается между EMA — трендовые стратегии не работают"
+    action: BLOCK
+    weight: 999
+    conditions:
+      - indicator: adx
+        operator: "<"
+        value: 22
+      - indicator: price_above_ema_fast
+        operator: "=="
+        value: true
+      - indicator: price_above_ema_slow
+        operator: "=="
+        value: false
+
+# ─── Правила выхода из позиции ────────────────────────────────────────
+# Применяются к открытым позициям. action: EXIT означает закрыть позицию.
+# Движок проверяет exit_rules для каждой открытой позиции на каждой свече.
+
+exit_rules:
+  - name: "Trailing_Stop_ATR"
+    description: "Скользящий стоп: цена упала более чем на 2×ATR от локального максимума"
+    action: EXIT
+    weight: 2.0
+    conditions:
+      - indicator: close
+        operator: "<"
+        value: bb_lower
+      - indicator: rsi
+        operator: "<"
+        value: 35
+
+  - name: "Take_Profit_BB_Upper"
+    description: "Тейк-профит у верхней полосы Боллинджера при перекупленности"
+    action: EXIT
+    weight: 1.5
+    conditions:
+      - indicator: bb_pct
+        operator: ">"
+        value: 0.95
+      - indicator: rsi
+        operator: ">"
+        value: 68
+
+  - name: "Trend_Reversal_Exit"
+    description: "Тренд сменился: EMA пересечение подтверждено MACD"
+    action: EXIT
+    weight: 1.8
+    conditions:
+      - indicator: macd_bearish_cross
+        operator: "=="
+        value: true
+      - indicator: price_above_ema_slow
+        operator: "=="
+        value: false
+      - indicator: adx
+        operator: ">"
+        value: 22
+
+# ─── Правила для конкретных тикеров ───────────────────────────────────
+# Переопределяют или дополняют общие rules для конкретного инструмента.
+# Движок применяет ticker_specific только если ticker совпадает.
+# Поле ticker: FIGI или тикер (SBER, GAZP, LKOH, NVTK, YNDX).
+
+ticker_specific:
+  - name: "SBER_Oversold_Strong_Buy"
+    description: "СБЕР: глубокая перепроданность + объём — агрессивный откуп институционалов"
+    ticker: SBER
+    action: BUY
+    weight: 2.0
+    conditions:
+      - indicator: rsi
+        operator: "<"
+        value: 28
+      - indicator: bb_pct
+        operator: "<"
+        value: 0.05
+      - indicator: macd_hist
+        operator: ">"
+        value: 0
+
+  - name: "YNDX_High_Volatility_Wait"
+    description: "Яндекс: ADX экстремально высокий — не входить против тренда"
+    ticker: YNDX
+    action: BLOCK
+    weight: 999
+    conditions:
+      - indicator: adx
+        operator: ">"
+        value: 45
+      - indicator: price_above_ema_fast
+        operator: "=="
+        value: false
+
+  - name: "SBER_Downtrend_Block"
+    description: "СБЕР: цена ниже медленной EMA и медведи доминируют — не покупать в падающий рынок"
+    ticker: SBER
+    action: BLOCK
+    weight: 999
+    conditions:
+      - indicator: price_above_ema_slow
+        operator: "=="
+        value: false
+      - indicator: adx_neg
+        operator: ">"
+        value: adx_pos
+
+  - name: "GAZP_Uptrend_Required"
+    description: "ГАЗПРОМ: входить только при выраженном восходящем тренде — ADX > 25 и +DI > -DI"
+    ticker: GAZP
+    action: BLOCK
+    weight: 999
+    conditions:
+      - indicator: adx
+        operator: "<"
+        value: 25
+
+
+# ─── Макро-фильтры ────────────────────────────────────────────────────
+# Условия на основе рыночного контекста — применяются ко всем тикерам.
+# Используют те же индикаторы, но интерпретируются как рыночный режим.
+# Когда активен macro_filter — снижать веса всех сигналов на 50%.
+
+macro_filters:
+  - name: "Market_Wide_Selloff"
+    description: "Широкий рынок падает: все индикаторы в медвежьей зоне — только шорт или стоп"
+    action: BLOCK
+    weight: 999
+    conditions:
+      - indicator: price_above_ema_slow
+        operator: "=="
+        value: false
+      - indicator: adx_neg
+        operator: ">"
+        value: adx_pos
+      - indicator: rsi
+        operator: "<"
+        value: 40
+      - indicator: macd_hist
+        operator: "<"
+        value: 0
+
+  - name: "Pre_Dividend_Cutoff_Caution"
+    description: "Перепроданность + BB сжатие — возможна отсечка, воздержаться от лонга"
+    action: BLOCK
+    weight: 999
+    conditions:
+      - indicator: bb_pct
+        operator: "<"
+        value: 0.15
+      - indicator: adx
+        operator: "<"
+        value: 20
+      - indicator: rsi
+        operator: "<"
+        value: 45
+
+  - name: "Risk_On_Mode"
+    description: "Рынок в режиме risk-on: все условия благоприятны, можно торговать агрессивнее"
+    action: ALLOW
+    weight: 1.0
+    conditions:
+      - indicator: price_above_ema_slow
+        operator: "=="
+        value: true
+      - indicator: adx_pos
+        operator: ">"
+        value: adx_neg
+      - indicator: rsi
+        operator: ">"
+        value: 50
+      - indicator: close
+        operator: ">"
+        value: vwap

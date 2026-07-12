@@ -2,10 +2,9 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, Callable
 
 from telegram import Update
-from telegram.ext import BaseHandler, ContextTypes
+from telegram.ext import ApplicationHandlerStop, BaseHandler, ContextTypes
 
 from config import config
 
@@ -27,41 +26,34 @@ def _allowed_ids() -> set[int]:
     return ids
 
 
-class AuthMiddleware(BaseHandler):
-    """Drops updates from unauthorized chat IDs before they reach any handler."""
-
-    def __init__(self) -> None:
-        super().__init__(callback=self._noop)
-
-    @staticmethod
-    async def _noop(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-        pass
-
-    def check_update(self, update: object) -> bool:
-        return False
-
-
-async def require_auth(update: Update, context: ContextTypes.DEFAULT_TYPE) -> bool:
-    """
-    Call this at the top of every handler that needs to be protected.
-    Returns True if the user is authorized, False if the update was rejected.
-    """
-    if not isinstance(update, Update):
-        return False
-
-    chat_id: int | None = None
+def resolve_chat_id(update: Update) -> int | None:
     if update.effective_chat:
-        chat_id = update.effective_chat.id
-    elif update.effective_user:
-        chat_id = update.effective_user.id
+        return update.effective_chat.id
+    if update.effective_user:
+        return update.effective_user.id
+    return None
 
+
+def is_authorized(update: Update) -> bool:
+    """
+    Fail-closed: deny when whitelist is empty or chat_id is not listed.
+    """
+    chat_id = resolve_chat_id(update)
     if chat_id is None:
         return False
 
     allowed = _allowed_ids()
-    if not allowed or chat_id in allowed:
-        return True
+    if not allowed:
+        logger.error(
+            "Telegram auth misconfigured: TELEGRAM_CHAT_ID / TELEGRAM_ALLOWED_IDS not set"
+        )
+        return False
 
+    return chat_id in allowed
+
+
+async def reject_unauthorized(update: Update) -> None:
+    chat_id = resolve_chat_id(update)
     logger.warning("Unauthorized access attempt from chat_id=%s", chat_id)
     if update.effective_message:
         await update.effective_message.reply_text(
@@ -69,4 +61,35 @@ async def require_auth(update: Update, context: ContextTypes.DEFAULT_TYPE) -> bo
         )
     elif update.callback_query:
         await update.callback_query.answer("⛔ Доступ запрещён", show_alert=True)
+
+
+async def require_auth(update: Update, context: ContextTypes.DEFAULT_TYPE) -> bool:
+    """
+    Call at the top of protected handlers.
+    Returns True if authorized, False after sending a rejection message.
+    """
+    if not isinstance(update, Update):
+        return False
+
+    if is_authorized(update):
+        return True
+
+    await reject_unauthorized(update)
     return False
+
+
+async def auth_gate(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Global gate (group -1): stop propagation for unauthorized updates."""
+    if not is_authorized(update):
+        await reject_unauthorized(update)
+        raise ApplicationHandlerStop
+
+
+class AuthMiddleware(BaseHandler):
+    """Handler wrapper used as a global auth gate."""
+
+    def __init__(self) -> None:
+        super().__init__(callback=auth_gate)
+
+    def check_update(self, update: object) -> bool:
+        return isinstance(update, Update)

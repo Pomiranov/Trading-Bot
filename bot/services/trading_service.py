@@ -7,6 +7,7 @@ from typing import Optional
 
 from broker.base import BrokerOrder, OrderDirection, OrderType
 from broker.registry import broker_registry
+from gateway.trade_gateway import trade_gateway
 from risk.risk_manager import risk_manager
 
 logger = logging.getLogger(__name__)
@@ -21,6 +22,9 @@ class TradeRequest:
     quantity: int
     price: Optional[float] = None
     order_type: OrderType = OrderType.MARKET
+    entry_price: Optional[float] = None
+    atr: Optional[float] = None
+    lot_size: int = 1
 
 
 @dataclass
@@ -35,36 +39,21 @@ class TradeResult:
 
 
 async def execute_trade(req: TradeRequest) -> TradeResult:
-    adapter = broker_registry.get(req.broker_id)
-
-    if not adapter.supports_trading():
-        return TradeResult(
-            success=False,
-            error=f"Брокер {adapter.broker_name} не поддерживает торговые операции",
-        )
-
-    try:
-        if req.order_type == OrderType.LIMIT and req.price is not None:
-            order = await adapter.place_limit_order(
-                figi=req.figi,
-                quantity=req.quantity,
-                price=req.price,
-                direction=req.direction,
-            )
-        else:
-            order = await adapter.place_market_order(
-                figi=req.figi,
-                quantity=req.quantity,
-                direction=req.direction,
-            )
-        logger.info(
-            "Order placed: broker=%s ticker=%s dir=%s qty=%d order_id=%s",
-            req.broker_id, req.ticker, req.direction.value, req.quantity, order.order_id,
-        )
+    success, order, error = await trade_gateway.execute(
+        broker_id=req.broker_id,
+        ticker=req.ticker,
+        figi=req.figi,
+        direction=req.direction,
+        quantity=req.quantity,
+        order_type=req.order_type,
+        price=req.price,
+        entry_price=req.entry_price,
+        atr=req.atr,
+        lot_size=req.lot_size,
+    )
+    if success and order is not None:
         return TradeResult(success=True, order=order)
-    except Exception as exc:
-        logger.error("Order failed: %s", exc)
-        return TradeResult(success=False, error=str(exc))
+    return TradeResult(success=False, error=error or "Не удалось разместить заявку")
 
 
 async def cancel_order(broker_id: str, order_id: str) -> TradeResult:

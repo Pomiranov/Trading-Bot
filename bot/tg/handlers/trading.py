@@ -71,6 +71,9 @@ async def cb_trade_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 
 
 async def trade_enter_ticker(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    if not await require_auth(update, context):
+        return ConversationHandler.END
+
     ticker = update.message.text.strip().upper()
     if not ticker.isalpha() or len(ticker) > 12:
         await update.message.reply_html(
@@ -106,6 +109,9 @@ async def trade_enter_ticker(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
 
 async def trade_enter_quantity(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    if not await require_auth(update, context):
+        return ConversationHandler.END
+
     text = update.message.text.strip()
     try:
         quantity = int(text)
@@ -145,6 +151,10 @@ async def trade_enter_quantity(update: Update, context: ContextTypes.DEFAULT_TYP
 
 async def trade_confirm(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     query = update.callback_query
+    if not await require_auth(update, context):
+        await query.answer()
+        return ConversationHandler.END
+
     await query.answer()
 
     parts = query.data.split("_")
@@ -157,8 +167,35 @@ async def trade_confirm(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
     figi = parts[4]
     quantity = int(parts[5])
 
+    expected_figi = context.user_data.get("trade_figi")
+    expected_qty = context.user_data.get("trade_quantity")
+    expected_broker = context.user_data.get("trade_broker", _BROKER_ID)
+    expected_direction = context.user_data.get("trade_direction", "").upper()
+
+    if (
+        figi != expected_figi
+        or quantity != expected_qty
+        or broker_id != expected_broker
+        or direction_str != expected_direction
+    ):
+        logger.warning(
+            "Trade confirm tamper attempt: user=%s expected=%s/%s got=%s/%s",
+            update.effective_user.id if update.effective_user else None,
+            expected_figi,
+            expected_qty,
+            figi,
+            quantity,
+        )
+        await query.edit_message_text(
+            "⚠️ Параметры заявки не совпадают с подтверждёнными. Начните сделку заново.",
+            reply_markup=None,
+        )
+        context.user_data.clear()
+        return ConversationHandler.END
+
     direction = OrderDirection.BUY if direction_str == "BUY" else OrderDirection.SELL
     ticker = context.user_data.get("trade_ticker", figi)
+    lot_size = context.user_data.get("trade_lot", 1)
 
     await query.edit_message_text(
         f"⏳ Отправляю рыночную заявку {direction_str} {ticker}…"
@@ -171,6 +208,7 @@ async def trade_confirm(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
         direction=direction,
         quantity=quantity,
         order_type=OrderType.MARKET,
+        lot_size=lot_size,
     )
     result = await execute_trade(req)
 

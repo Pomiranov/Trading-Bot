@@ -14,6 +14,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent))
 
 from config import config
+from security.bootstrap import bootstrap_security
 from data.loader import loader
 from signals.indicators import indicator_engine
 from signals.rules_engine import rules_engine, Action
@@ -31,11 +32,7 @@ from tg.notifications.dispatcher import (
     notify_bot_stopped,
 )
 
-logging.basicConfig(
-    level=getattr(logging, config.log_level, logging.INFO),
-    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
-    datefmt="%Y-%m-%d %H:%M:%S",
-)
+bootstrap_security(config, service_name="trading-bot")
 logger = logging.getLogger(__name__)
 
 

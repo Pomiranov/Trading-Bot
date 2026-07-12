@@ -142,6 +142,9 @@ async def cb_signal_query_start(update: Update, context: ContextTypes.DEFAULT_TY
 
 
 async def signal_enter_ticker(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    if not await require_auth(update, context):
+        return ConversationHandler.END
+
     ticker = update.message.text.strip().upper()
     text = _build_signal_text(ticker)
     kb = signals_keyboard()

@@ -6,6 +6,7 @@ import os
 load_dotenv()
 
 BASE_DIR = Path(__file__).parent
+PROJECT_ROOT = BASE_DIR.parent
 
 
 @dataclass
@@ -26,19 +27,29 @@ class DatabaseConfig:
 
 @dataclass
 class TinkoffConfig:
-    token: str = field(default_factory=lambda: os.getenv("TINKOFF_TOKEN", ""))
-    account_id: str = field(default_factory=lambda: os.getenv("TINKOFF_ACCOUNT_ID", ""))
+    token: str = field(default_factory=lambda: os.getenv("TINKOFF_TOKEN", "").strip())
+    account_id: str = field(default_factory=lambda: os.getenv("TINKOFF_ACCOUNT_ID", "").strip())
     sandbox: bool = field(default_factory=lambda: os.getenv("TINKOFF_SANDBOX", "true").lower() == "true")
 
 
 @dataclass
 class TelegramConfig:
-    token: str = field(default_factory=lambda: os.getenv("TELEGRAM_TOKEN", ""))
-    chat_id: str = field(default_factory=lambda: os.getenv("TELEGRAM_CHAT_ID", ""))
+    token: str = field(default_factory=lambda: os.getenv("TELEGRAM_TOKEN", "").strip())
+    chat_id: str = field(default_factory=lambda: os.getenv("TELEGRAM_CHAT_ID", "").strip())
     allowed_chat_ids: list = field(default_factory=lambda: [
         int(x) for x in os.getenv("TELEGRAM_ALLOWED_IDS", "").split(",")
         if x.strip().lstrip("-").isdigit()
     ])
+
+
+@dataclass
+class DashboardConfig:
+    host: str = field(default_factory=lambda: os.getenv("DASHBOARD_HOST", "127.0.0.1"))
+    port: int = field(default_factory=lambda: int(os.getenv("DASHBOARD_PORT", "5001")))
+    api_key: str = field(default_factory=lambda: os.getenv("DASHBOARD_API_KEY", "").strip())
+    require_api_key_for_reads: bool = field(
+        default_factory=lambda: os.getenv("DASHBOARD_REQUIRE_API_KEY", "false").lower() == "true"
+    )
 
 
 @dataclass
@@ -57,23 +68,36 @@ class RiskConfig:
 
 
 @dataclass
+class SecretsConfig:
+    master_key: str = field(default_factory=lambda: os.getenv("SECRETS_MASTER_KEY", "").strip())
+
+
+@dataclass
+class LoggingConfig:
+    file_path: str = field(default_factory=lambda: os.getenv("LOG_FILE", "").strip())
+    max_bytes: int = field(default_factory=lambda: int(os.getenv("LOG_MAX_BYTES", str(10 * 1024 * 1024))))
+    backup_count: int = field(default_factory=lambda: int(os.getenv("LOG_BACKUP_COUNT", "5")))
+
+
+@dataclass
 class AppConfig:
     db: DatabaseConfig = field(default_factory=DatabaseConfig)
     tinkoff: TinkoffConfig = field(default_factory=TinkoffConfig)
     bybit: BybitConfig = field(default_factory=BybitConfig)
     telegram: TelegramConfig = field(default_factory=TelegramConfig)
+    dashboard: DashboardConfig = field(default_factory=DashboardConfig)
     risk: RiskConfig = field(default_factory=RiskConfig)
+    secrets: SecretsConfig = field(default_factory=SecretsConfig)
+    logging: LoggingConfig = field(default_factory=LoggingConfig)
 
     moex_base_url: str = "https://iss.moex.com/iss"
     rules_file: Path = BASE_DIR.parent / "knowledge" / "rules.yaml"
     log_level: str = field(default_factory=lambda: os.getenv("LOG_LEVEL", "INFO"))
 
-    # Торгуемые тикеры по умолчанию
     tickers: list = field(default_factory=lambda: os.getenv(
         "TICKERS", "SBER,GAZP,LKOH,YNDX,NVTK"
     ).split(","))
 
-    # Интервал опроса сигналов в секундах
     poll_interval: int = field(default_factory=lambda: int(os.getenv("POLL_INTERVAL", "60")))
 
 

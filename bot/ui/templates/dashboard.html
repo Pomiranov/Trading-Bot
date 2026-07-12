@@ -325,6 +325,21 @@
       </div>
 
       <div class="credential-group">
+        <div class="credential-label">Dashboard API Key</div>
+        <div class="credential-input-row">
+          <input type="password" id="inputDashboardApiKey" class="credential-input"
+            placeholder="Ключ для POST /api/settings/tokens (если задан в .env)…"
+            autocomplete="off" spellcheck="false" />
+          <button class="btn-eye" id="eyeDashboardApiKey" title="Показать / скрыть">👁</button>
+        </div>
+        <div class="credential-actions">
+          <button class="btn-save" id="saveDashboardApiKey">Сохранить в сессии</button>
+          <button class="btn-clear" id="clearDashboardApiKey">Очистить</button>
+        </div>
+        <div class="credential-status" id="statusDashboardApiKey"></div>
+      </div>
+
+      <div class="credential-group">
         <div class="credential-label">Tinkoff Account ID</div>
         <div class="credential-input-row">
           <input type="password" id="inputTinkoffAccountId" class="credential-input"
@@ -424,7 +439,17 @@ document.querySelectorAll('.btn-primary, .btn-action').forEach(addRipple);
 // ── Fetch with timeout + deduplication ────────────────────────────────────────
 const _controllers = new Map();
 
+function dashboardApiHeaders(extra = {}) {
+  const headers = { ...extra };
+  const apiKey = sessionStorage.getItem('dashboard_api_key');
+  if (apiKey) {
+    headers['X-Dashboard-Api-Key'] = apiKey;
+  }
+  return headers;
+}
+
 async function fetchJSON(url, opts = {}) {
+  opts.headers = dashboardApiHeaders(opts.headers || {});
   if (opts.method === undefined || opts.method === 'GET') {
     _controllers.get(url)?.abort();
     const ctrl = new AbortController();
@@ -1121,7 +1146,7 @@ function initCredentialField(inputId, eyeId, saveId, clearId, statusId, envKey) 
     try {
       const res  = await fetch('/api/settings/tokens', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: dashboardApiHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify({ key: envKey, value }),
       });
       const data = await res.json();
@@ -1155,6 +1180,35 @@ function initCredentialField(inputId, eyeId, saveId, clearId, statusId, envKey) 
 // Wire credential fields at page load (elements always in DOM)
 initCredentialField('inputTinkoffToken',     'eyeTinkoffToken',     'saveTinkoffToken',     'clearTinkoffToken',     'statusTinkoffToken',     'TINKOFF_TOKEN');
 initCredentialField('inputTinkoffAccountId', 'eyeTinkoffAccountId', 'saveTinkoffAccountId', 'clearTinkoffAccountId', 'statusTinkoffAccountId', 'TINKOFF_ACCOUNT_ID');
+
+(function initDashboardApiKeyField() {
+  const input  = document.getElementById('inputDashboardApiKey');
+  const eye    = document.getElementById('eyeDashboardApiKey');
+  const save   = document.getElementById('saveDashboardApiKey');
+  const clear  = document.getElementById('clearDashboardApiKey');
+  const status = document.getElementById('statusDashboardApiKey');
+  if (!input) return;
+  let visible = false;
+  const stored = sessionStorage.getItem('dashboard_api_key');
+  if (stored) input.value = stored;
+
+  eye.addEventListener('click', () => {
+    visible = !visible;
+    input.type = visible ? 'text' : 'password';
+    eye.textContent = visible ? '🙈' : '👁';
+  });
+  save.addEventListener('click', () => {
+    sessionStorage.setItem('dashboard_api_key', input.value.trim());
+    status.textContent = '✓ Ключ сохранён в сессии браузера';
+    status.className = 'credential-status cred-ok';
+  });
+  clear.addEventListener('click', () => {
+    sessionStorage.removeItem('dashboard_api_key');
+    input.value = '';
+    status.textContent = '✓ Ключ удалён из сессии';
+    status.className = 'credential-status cred-ok';
+  });
+})();
 
 // ── Load token status (shown as info rows) ─────────────────────────────────────
 async function loadTokenStatus() {

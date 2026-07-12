@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import logging
-import os
 
 from telegram import Update
 from telegram.ext import (
@@ -15,6 +14,7 @@ from telegram.ext import (
 )
 
 from config import config
+from security.credential_store import persist_credential
 from services.tinkoff.portfolio import invalidate_portfolio_cache
 from services.tinkoff.statistics import invalidate as invalidate_stats_cache
 from services.statistics_service import invalidate as invalidate_full_stats
@@ -32,16 +32,14 @@ from tg.middlewares.auth import require_auth
 
 logger = logging.getLogger(__name__)
 
-_ENV_FILE = (
-    __import__("pathlib").Path(__file__).parent.parent.parent / ".env"
-)
-
-
-def _save_env(key: str, value: str) -> None:
-    from dotenv import set_key
-    _ENV_FILE.touch(exist_ok=True)
-    set_key(str(_ENV_FILE), key, value, quote_mode="never")
-    os.environ[key] = value
+def _save_env(key: str, value: str, *, actor_id: str | None = None) -> None:
+    persist_credential(
+        key,
+        value,
+        config,
+        actor_type="telegram",
+        actor_id=actor_id,
+    )
 
 
 async def cb_settings(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -147,6 +145,9 @@ async def cb_enter_tinkoff_account(update: Update, context: ContextTypes.DEFAULT
 
 
 async def _save_credential(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    if not await require_auth(update, context):
+        return ConversationHandler.END
+
     field = context.user_data.get("settings_field", "")
     value = update.message.text.strip()
 
@@ -165,11 +166,8 @@ async def _save_credential(update: Update, context: ContextTypes.DEFAULT_TYPE) -
         )
         return ConversationHandler.END
 
-    _save_env(field, value)
-    if field == "TINKOFF_TOKEN":
-        config.tinkoff.token = value
-    elif field == "TINKOFF_ACCOUNT_ID":
-        config.tinkoff.account_id = value
+    actor = str(update.effective_user.id) if update.effective_user else None
+    _save_env(field, value, actor_id=actor)
 
     invalidate_portfolio_cache()
     invalidate_stats_cache()

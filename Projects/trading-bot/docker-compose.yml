@@ -7,11 +7,11 @@ services:
     container_name: trading_db
     restart: always
     environment:
-      POSTGRES_USER: trader
-      POSTGRES_PASSWORD: Trade1200
-      POSTGRES_DB: trading_bot
+      POSTGRES_USER: ${DB_USER:-trader}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD in .env}
+      POSTGRES_DB: ${DB_NAME:-trading_bot}
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5432:5432"
     volumes:
       - db_data:/var/lib/postgresql/data
 
@@ -20,7 +20,7 @@ services:
     container_name: trading_adminer
     restart: always
     ports:
-      - "8080:8080"
+      - "127.0.0.1:8080:8080"
 
 volumes:
   db_data:

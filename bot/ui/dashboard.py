@@ -14,6 +14,10 @@ _ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(_ROOT))
 
 from config import config
+from security.bootstrap import bootstrap_security
+from security.credential_store import persist_credential
+from security.dashboard_auth import register_dashboard_security
+from security.http_middleware import register_request_middleware
 from services.tinkoff import (
     TinkoffAPIError,
     TinkoffNotConfigured,
@@ -24,8 +28,13 @@ from services.tinkoff import (
 )
 from services.tinkoff.statistics import invalidate as invalidate_stats_cache
 
+bootstrap_security(config, service_name="dashboard")
+
 app = Flask(__name__)
 logger = logging.getLogger(__name__)
+
+register_request_middleware(app)
+register_dashboard_security(app)
 
 # ── Database connection ───────────────────────────────────────────────────────
 
@@ -249,19 +258,23 @@ def _db_log() -> list[dict]:
 # ── Settings persistence ──────────────────────────────────────────────────────
 
 _ALLOWED_TOKEN_KEYS = {"TINKOFF_TOKEN", "TINKOFF_ACCOUNT_ID"}
-_ENV_FILE = _ROOT / ".env"
+
+
+def _client_ip() -> str:
+    forwarded = (request.headers.get("X-Forwarded-For") or "").split(",")[0].strip()
+    return forwarded or (request.remote_addr or "")
 
 
 def _save_env_key(key: str, value: str) -> None:
-    """Write key=value to .env and update the live config object."""
-    from dotenv import set_key as _set_key
-    _ENV_FILE.touch(exist_ok=True)
-    _set_key(str(_ENV_FILE), key, value, quote_mode="never")
-    os.environ[key] = value
-    if key == "TINKOFF_TOKEN":
-        config.tinkoff.token = value
-    elif key == "TINKOFF_ACCOUNT_ID":
-        config.tinkoff.account_id = value
+    """Persist credential via encrypted vault and/or .env."""
+    persist_credential(
+        key,
+        value.strip(),
+        config,
+        actor_type="dashboard",
+        actor_id="settings_ui",
+        client_ip=_client_ip(),
+    )
     invalidate_portfolio_cache()
     invalidate_stats_cache()
 
@@ -281,6 +294,14 @@ def _tinkoff_error_response(exc: Exception):
 @app.route("/")
 def index():
     return render_template("dashboard.html")
+
+
+@app.route("/health")
+def health():
+    return jsonify({
+        "status": "ok",
+        "db": DB_AVAILABLE,
+    })
 
 
 # ── Tinkoff Invest routes ─────────────────────────────────────────────────────
@@ -629,5 +650,7 @@ def api_backtest():
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
-    port = int(os.getenv("DASHBOARD_PORT", "5001"))
-    app.run(host="0.0.0.0", port=port, debug=False)
+    host = config.dashboard.host
+    port = config.dashboard.port
+    logger.info("Dashboard listening on %s:%s", host, port)
+    app.run(host=host, port=port, debug=False)

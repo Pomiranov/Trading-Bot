@@ -31,7 +31,7 @@ nohup python3 bot/ui/dashboard.py > "$LOG_DIR/dashboard.log" 2>&1 &
 DASH_PID=$!
 sleep 3
 if kill -0 $DASH_PID 2>/dev/null; then
-    echo "  ✓ Dashboard запущен  PID=$DASH_PID  http://localhost:5001"
+    echo "  ✓ Dashboard запущен  PID=$DASH_PID  http://127.0.0.1:${DASHBOARD_PORT:-5001}"
     echo $DASH_PID > "$LOG_DIR/dashboard.pid"
 else
     echo "  ✗ Dashboard не запустился — смотри logs/dashboard.log"

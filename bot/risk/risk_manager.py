@@ -118,22 +118,26 @@ class RiskManager:
         ticker: str,
         portfolio_value: float,
         position: Optional[PositionSizing] = None,
+        direction: str = "buy",
     ) -> RiskCheckResult:
-        """Проверить, разрешена ли новая сделка по правилам риск-менеджмента."""
+        """Проверить, разрешена ли сделка по правилам риск-менеджмента."""
 
-        # Лимит открытых позиций
-        if len(self._open_positions) >= self.cfg.max_open_positions:
-            return RiskCheckResult(
-                allowed=False,
-                reason=f"Достигнут лимит открытых позиций: {self.cfg.max_open_positions}",
-            )
+        is_buy = direction.lower() in ("buy", "long")
 
-        # Уже в позиции по этому тикеру
-        if ticker in self._open_positions:
-            return RiskCheckResult(
-                allowed=False,
-                reason=f"Позиция по {ticker} уже открыта",
-            )
+        if is_buy:
+            # Лимит открытых позиций
+            if len(self._open_positions) >= self.cfg.max_open_positions:
+                return RiskCheckResult(
+                    allowed=False,
+                    reason=f"Достигнут лимит открытых позиций: {self.cfg.max_open_positions}",
+                )
+
+            # Уже в позиции по этому тикеру
+            if ticker in self._open_positions:
+                return RiskCheckResult(
+                    allowed=False,
+                    reason=f"Позиция по {ticker} уже открыта",
+                )
 
         # Дневной лимит убытков
         max_daily_loss = portfolio_value * self.cfg.max_daily_loss_pct

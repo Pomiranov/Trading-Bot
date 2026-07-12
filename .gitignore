@@ -2,10 +2,18 @@
 __pycache__/
 *.pyc
 *.pkl
-*.pyc
 models/
 .DS_Store
 .bot.pid
 knowledge/rules.yaml.backup
 "Trading Bot.code-workspace"
 bot/data/user_prefs.json
+bot/data/credential_vault.json
+bot/data/credential_vault.json.tmp
+logs/
+*.log
+logs/*.pid
+.claude/
+Projects/trading-bot/Password.env
+Password.env
+*.env.local

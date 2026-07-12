@@ -21,6 +21,8 @@ from telegram.ext import (
 )
 
 from config import config
+from security.bootstrap import bootstrap_security
+from tg.middlewares.auth import AuthMiddleware
 from tg.middlewares.error_handler import handle_error
 from tg.notifications.dispatcher import set_bot
 
@@ -61,6 +63,8 @@ logger = logging.getLogger(__name__)
 
 
 def _build_application() -> Application:
+    bootstrap_security(config, service_name="telegram-bot")
+
     if not config.telegram.token:
         raise RuntimeError(
             "TELEGRAM_TOKEN не настроен. Укажите его в .env файле."
@@ -91,6 +95,9 @@ def _build_application() -> Application:
 
     # ── Global error handler ─────────────────────────────────────────────
     app.add_error_handler(handle_error)
+
+    # ── Auth gate (group -1): fail-closed before any handler ─────────────
+    app.add_handler(AuthMiddleware(), group=-1)
 
     # ── FSM Conversations (must be added before catch-all handlers) ──────
     app.add_handler(build_trade_conversation())

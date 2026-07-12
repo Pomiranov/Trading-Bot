@@ -26,7 +26,7 @@
   },
   "5251095401": {
     "chat_id": 5251095401,
-    "username": "dpomiranov",
+    "username": "danilasushkov",
     "timezone": "Europe/Moscow",
     "language": "ru",
     "currency": "RUB",
@@ -47,6 +47,6 @@
       "bot_stopped": true
     },
     "registered_at": "2026-06-28T14:41:03.237333+00:00",
-    "last_seen": "2026-06-28T16:45:45.054642+00:00"
+    "last_seen": "2026-07-12T23:08:02.837261+00:00"
   }
 }

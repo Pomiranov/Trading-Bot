@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <title>CRYPTONITE — Quant Hunter</title>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Orbitron:wght@500;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="miniapp.css?v=4" />
+</head>
+<body class="ma-body">
+  <div id="app" class="ma-root">
+    <header class="ma-header holo-panel">
+      <div class="ma-brand">
+        <div class="ma-logo-ring"><span>⚡</span></div>
+        <div>
+          <div class="ma-title">CRYPTONITE</div>
+          <div class="ma-sub" id="maUser">Quant Hunter</div>
+        </div>
+      </div>
+      <div class="ma-header-right">
+        <div class="energy-wrap">
+          <span class="energy-label">⚡ <span id="gameEnergy">100/100</span></span>
+          <div class="energy-track"><div class="energy-fill" id="energyBar"></div></div>
+        </div>
+        <div class="ma-sync" id="maSyncDot" title="Live sync"></div>
+      </div>
+    </header>
+
+    <nav class="ma-tabs holo-panel">
+      <button class="ma-tab active" data-tab="trade" type="button">Trade</button>
+      <button class="ma-tab ma-tab-game" data-tab="game" type="button">QUANT HUNTER</button>
+    </nav>
+
+    <main class="ma-main">
+      <!-- Trade -->
+      <section id="tab-trade" class="ma-panel active">
+        <div class="ma-hero holo-panel">
+          <div class="ma-hero-label">Total Balance</div>
+          <div class="ma-hero-value" id="maBalance">—</div>
+          <div class="ma-hero-sub" id="maPnl">PnL —</div>
+        </div>
+        <div class="ma-stats">
+          <div class="ma-stat holo-panel"><span>Positions</span><strong id="maOpenPos">0</strong></div>
+          <div class="ma-stat holo-panel"><span>Signals</span><strong id="maSignals">0</strong></div>
+          <div class="ma-stat holo-panel"><span>Sync</span><strong id="maSyncTime">—</strong></div>
+        </div>
+        <div class="ma-section holo-panel">
+          <div class="ma-section-title">Active Positions</div>
+          <div id="maPositions" class="ma-list"><div class="ma-empty">Нет позиций</div></div>
+        </div>
+        <div class="ma-section holo-panel">
+          <div class="ma-section-title">Latest Signals</div>
+          <div id="maSignalList" class="ma-list"><div class="ma-empty">Нет сигналов</div></div>
+        </div>
+      </section>
+
+      <!-- QUANT HUNTER -->
+      <section id="tab-game" class="ma-panel">
+        <div class="game-hud holo-panel">
+          <div class="game-hud-block">
+            <span class="hud-label">Points</span>
+            <strong id="gamePoints" class="hud-val">0</strong>
+          </div>
+          <div class="game-hud-block">
+            <span class="hud-label">Level</span>
+            <strong id="gameLevel" class="hud-val">1</strong>
+            <span class="hud-sub" id="gameTitle">Crypto Rookie</span>
+          </div>
+          <div class="game-hud-block">
+            <span class="hud-label">XP</span>
+            <div class="xp-track"><div class="xp-fill" id="xpBar"></div></div>
+            <span class="hud-sub" id="gameXp">0/105</span>
+          </div>
+        </div>
+
+        <div class="quant-legend holo-panel">
+          <span class="ql common">◇ Common +1</span>
+          <span class="ql rare">◆ Rare +10</span>
+          <span class="ql epic">✦ Epic +100</span>
+          <span class="ql legendary">★ Legend +1000</span>
+        </div>
+
+        <div class="game-arena holo-panel" id="gameArena">
+          <canvas id="gameCanvas"></canvas>
+          <div class="game-combo" id="gameCombo"></div>
+          <div class="game-hint">Охоться за Quant · -1 Energy за поимку</div>
+          <div id="particles" class="particles"></div>
+        </div>
+
+        <div class="game-actions">
+          <button class="ma-btn primary" id="dailyRewardBtn" type="button">Daily Reward</button>
+          <button class="ma-btn ghost" id="leaderboardBtn" type="button">Leaderboard</button>
+        </div>
+
+        <div class="ma-section holo-panel">
+          <div class="ma-section-title">Daily Missions</div>
+          <div id="missionsList" class="missions-grid"></div>
+        </div>
+
+        <div class="ma-section holo-panel" id="leaderboardPanel" hidden>
+          <div class="ma-section-title">Global Ranking</div>
+          <div class="lb-header"><span>#</span><span>Player</span><span>Lvl</span><span>Points</span></div>
+          <div id="leaderboard" class="lb-list"></div>
+        </div>
+
+        <div class="ma-section holo-panel">
+          <div class="ma-section-title">Achievements</div>
+          <div id="achievements" class="ach-grid"></div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <div id="maToast" class="ma-toast-root"></div>
+
+  <script src="../core/format.js?v=4"></script>
+  <script src="../core/api.js?v=4"></script>
+  <script src="game.js?v=4"></script>
+  <script src="miniapp.js?v=4"></script>
+</body>
+</html>

@@ -24,3 +24,6 @@ sqlalchemy>=2.0.0
 
 # Security (Phase 1+)
 cryptography>=42.0.0
+
+# Platform monitoring
+psutil>=5.9.0

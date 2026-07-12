@@ -30,11 +30,24 @@ from services.tinkoff.statistics import invalidate as invalidate_stats_cache
 
 bootstrap_security(config, service_name="dashboard")
 
-app = Flask(__name__)
+_UI_DIR = Path(__file__).resolve().parent
+app = Flask(
+    __name__,
+    template_folder=str(_UI_DIR / "templates"),
+    static_folder=str(_UI_DIR / "static"),
+    static_url_path="/static",
+)
+app.config.update(
+    TEMPLATES_AUTO_RELOAD=True,
+    SEND_FILE_MAX_AGE_DEFAULT=0,
+)
 logger = logging.getLogger(__name__)
 
 register_request_middleware(app)
 register_dashboard_security(app)
+
+from qf_platform.bootstrap import ensure_platform_schema
+from ui.api.platform_routes import init_platform_routes, platform_bp
 
 # ── Database connection ───────────────────────────────────────────────────────
 
@@ -46,6 +59,9 @@ try:
         _c.execute(text("SELECT 1"))
     DB_AVAILABLE = True
     logger.info("Connected to PostgreSQL at %s", config.db.host)
+    ensure_platform_schema(_engine)
+    init_platform_routes(_engine)
+    app.register_blueprint(platform_bp)
 except Exception as exc:
     logger.warning("DB unavailable: %s", exc)
     DB_AVAILABLE = False
@@ -653,4 +669,5 @@ if __name__ == "__main__":
     host = config.dashboard.host
     port = config.dashboard.port
     logger.info("Dashboard listening on %s:%s", host, port)
-    app.run(host=host, port=port, debug=False)
+    use_debug = os.getenv("QF_DASHBOARD_DEBUG", "1") == "1"
+    app.run(host=host, port=port, debug=use_debug, use_reloader=use_debug)

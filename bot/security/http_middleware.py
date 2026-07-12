@@ -23,6 +23,10 @@ def register_request_middleware(app: Flask) -> None:
         response.headers["X-Request-ID"] = get_request_id()
         response.headers["X-Correlation-ID"] = get_correlation_id()
         response.headers.setdefault("X-Content-Type-Options", "nosniff")
-        response.headers.setdefault("X-Frame-Options", "DENY")
+        # Standalone Mini App page (Telegram WebView) — allow same-origin framing.
+        if request.path.startswith("/static/miniapp/"):
+            response.headers.pop("X-Frame-Options", None)
+        else:
+            response.headers.setdefault("X-Frame-Options", "DENY")
         response.headers.setdefault("Referrer-Policy", "no-referrer")
         return response

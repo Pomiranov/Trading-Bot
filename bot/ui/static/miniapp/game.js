@@ -10,7 +10,7 @@ const QuantHunter = (() => {
     common:    { id: 'common',    label: 'Common',    points: 1,    color: '#848e9c', glow: 'rgba(132,142,156,0.5)',  spawn: 0.55, lifetime: 4000, size: 44, symbol: '◇' },
     rare:      { id: 'rare',      label: 'Rare',      points: 10,   color: '#3861fb', glow: 'rgba(56,97,251,0.6)',    spawn: 0.28, lifetime: 2800, size: 52, symbol: '◆' },
     epic:      { id: 'epic',      label: 'Epic',      points: 100,  color: '#8b5cf6', glow: 'rgba(139,92,246,0.7)',   spawn: 0.14, lifetime: 2000, size: 60, symbol: '✦' },
-    legendary: { id: 'legendary', label: 'Legendary', points: 1000, color: '#f0b90b', glow: 'rgba(240,185,11,0.85)', spawn: 0.03, lifetime: 1500, size: 68, symbol: '★' },
+    legendary: { id: 'legendary', label: 'Legendary', points: 1000, color: '#F7931A', glow: 'rgba(247,147,26,0.85)', spawn: 0.03, lifetime: 1500, size: 68, symbol: '★' },
   };
 
   const LEVEL_TITLES = [

@@ -63,7 +63,7 @@ const QFRender = (() => {
         if (el) { el.textContent = QFFmt.pct(v); applyColor(el, v); }
       });
       if (portfolio.equity_history?.length) {
-        QFChart.line('heroSparkline', portfolio.equity_history.map(h => ({ time: h.ts, value: h.equity })), { color: '#00c076', fill: 'rgba(0,192,118,0.15)' });
+        QFChart.line('heroSparkline', portfolio.equity_history.map(h => ({ time: h.ts, value: h.equity })), { color: '#F7931A', fill: 'rgba(247,147,26,0.15)' });
       }
       updateRiskPanel(portfolio, stats);
     }

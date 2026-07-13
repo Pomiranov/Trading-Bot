@@ -47,7 +47,7 @@
       const list = document.getElementById('logList');
       if (list) {
         list.innerHTML = log.length
-          ? log.map(e => `<div class="log-entry"><span class="log-ts">${e.ts}</span>${QFUI.logBadge(e.level)}<span class="log-msg">${e.message}</span></div>`).join('')
+          ? log.map(e => `<div class="log-entry"><span class="log-ts">${esc(e.ts)}</span>${QFUI.logBadge(e.level)}<span class="log-msg">${esc(e.message)}</span></div>`).join('')
           : '<div class="empty">Лог пуст</div>';
       }
     } catch (_) {}
@@ -135,10 +135,10 @@
       QFRender.backtestMetrics(metrics);
 
       document.getElementById('backtestBody').innerHTML = (r.trades || []).map(t => `
-        <tr><td class="ticker-cell">${t.ticker}</td><td class="mono">${QFFmt.num(t.entry_price)}</td>
+        <tr><td class="ticker-cell">${esc(t.ticker)}</td><td class="mono">${QFFmt.num(t.entry_price)}</td>
         <td class="mono">${QFFmt.num(t.exit_price)}</td>
         <td class="mono ${QFFmt.colorClass(t.pnl)}">${t.pnl >= 0 ? '+' : ''}${QFFmt.money(t.pnl)}</td>
-        <td class="mono">${t.pnl_pct}%</td><td>${t.status}</td></tr>`).join('') || '<tr><td colspan="6" class="empty">Нет сделок</td></tr>';
+        <td class="mono">${t.pnl_pct}%</td><td>${esc(t.status)}</td></tr>`).join('') || '<tr><td colspan="6" class="empty">Нет сделок</td></tr>';
 
       QFChart.line('backtestChart', (r.equity_curve || []).map(e => ({ time: e.ts, value: e.equity })));
       QFChart.drawdown('backtestDrawdownChart', r.drawdown_curve || []);
@@ -164,9 +164,9 @@
       const el = document.getElementById('backtestHistory');
       if (!el) return;
       el.innerHTML = runs.length
-        ? runs.map(r => `<div class="recent-item recent-click" data-run-id="${r.id}" style="cursor:pointer">
-            <span>#${r.id} ${r.ticker} · ${r.strategy || 'rules'}</span>
-            <span class="ts-cell">${String(r.created_at).slice(0, 16)}</span></div>`).join('')
+        ? runs.map(r => `<div class="recent-item recent-click" data-run-id="${Number(r.id)}" style="cursor:pointer">
+            <span>#${Number(r.id)} ${esc(r.ticker)} · ${esc(r.strategy || 'rules')}</span>
+            <span class="ts-cell">${esc(String(r.created_at).slice(0, 16))}</span></div>`).join('')
         : '<div class="empty">История пуста</div>';
 
       el.querySelectorAll('[data-run-id]').forEach(row => {
@@ -198,10 +198,10 @@
       QFRender.backtestMetrics(metrics);
 
       document.getElementById('backtestBody').innerHTML = (r.trades || []).slice(0, 50).map(t => `
-        <tr><td class="ticker-cell">${t.ticker}</td><td class="mono">${QFFmt.num(t.entry_price)}</td>
+        <tr><td class="ticker-cell">${esc(t.ticker)}</td><td class="mono">${QFFmt.num(t.entry_price)}</td>
         <td class="mono">${QFFmt.num(t.exit_price)}</td>
         <td class="mono ${QFFmt.colorClass(t.pnl)}">${t.pnl >= 0 ? '+' : ''}${QFFmt.money(t.pnl)}</td>
-        <td class="mono">${t.pnl_pct}%</td><td>${t.status}</td></tr>`).join('') || '<tr><td colspan="6" class="empty">Нет сделок</td></tr>';
+        <td class="mono">${t.pnl_pct}%</td><td>${esc(t.status)}</td></tr>`).join('') || '<tr><td colspan="6" class="empty">Нет сделок</td></tr>';
 
       QFChart.line('backtestChart', (r.equity_curve || []).map(e => ({ time: e.ts, value: e.equity })));
       QFChart.drawdown('backtestDrawdownChart', r.drawdown_curve || []);

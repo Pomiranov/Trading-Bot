@@ -2,6 +2,7 @@
 
 import dataclasses
 import logging
+import math
 import os
 import sys
 from datetime import datetime, timedelta
@@ -462,7 +463,7 @@ def api_signals():
         return jsonify([])
     try:
         return jsonify(_db_signals())
-    except (ValueError, Exception) as exc:
+    except Exception as exc:
         logger.info("signals: %s", exc)
         return jsonify([])
 
@@ -473,7 +474,7 @@ def api_positions():
         return jsonify([])
     try:
         return jsonify(_db_positions())
-    except (ValueError, Exception) as exc:
+    except Exception as exc:
         logger.info("positions: %s", exc)
         return jsonify([])
 
@@ -484,7 +485,7 @@ def api_log():
         return jsonify([])
     try:
         return jsonify(_db_log())
-    except (ValueError, Exception) as exc:
+    except Exception as exc:
         logger.info("log: %s", exc)
         return jsonify([])
 
@@ -595,8 +596,6 @@ def api_signals_live():
             signal = rules.evaluate(iv)
             latest = rows[-1]
 
-            import math
-
             def _safe_f(v):
                 return round(float(v), 4) if v is not None and not (isinstance(v, float) and math.isnan(v)) else 0.0
 
@@ -669,5 +668,5 @@ if __name__ == "__main__":
     host = config.dashboard.host
     port = config.dashboard.port
     logger.info("Dashboard listening on %s:%s", host, port)
-    use_debug = os.getenv("QF_DASHBOARD_DEBUG", "1") == "1"
+    use_debug = os.getenv("QF_DASHBOARD_DEBUG", "0") == "1"
     app.run(host=host, port=port, debug=use_debug, use_reloader=use_debug)

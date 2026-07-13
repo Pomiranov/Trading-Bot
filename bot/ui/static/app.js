@@ -10,10 +10,13 @@ const PAGE_TITLES = {
 };
 
 const KEY_VIEWS = { '1': 'dashboard', '2': 'portfolio', '3': 'signals', '4': 'backtest', '5': 'miniapp' };
-const TICKER_COLORS = { SBER: '#00c076', GAZP: '#3861fb', LKOH: '#f0b90b', NVTK: '#f6465d', YNDX: '#8b5cf6' };
+const TICKER_COLORS = { SBER: '#F7931A', GAZP: '#3861fb', LKOH: '#00c076', NVTK: '#f6465d', YNDX: '#8b5cf6' };
 
 const fmt = new Intl.NumberFormat('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const fmtInt = new Intl.NumberFormat('ru-RU');
+
+const _ESC_MAP = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
+function esc(s) { return String(s ?? '').replace(/[&<>"']/g, c => _ESC_MAP[c]); }
 
 function money(v) { return fmt.format(v) + ' ₽'; }
 function pct(v) { return (v >= 0 ? '+' : '') + fmt.format(v) + '%'; }
@@ -249,7 +252,7 @@ async function loadSignals() {
     return;
   }
   tbody.innerHTML = data.slice(0, 20).map(r => `
-    <tr><td class="ts-cell">${r.ts}</td><td class="ticker-cell">${r.ticker}</td>
+    <tr><td class="ts-cell">${esc(r.ts)}</td><td class="ticker-cell">${esc(r.ticker)}</td>
     <td>${badgeHTML(r.action)}</td><td class="price-cell">${fmt.format(r.price)}</td>
     <td>${fmt.format(r.score)}</td></tr>`).join('');
   const su = document.getElementById('signalsUpdated');
@@ -262,7 +265,7 @@ async function loadLog() {
   if (!list) return;
   if (!data.length) { list.innerHTML = '<div class="empty">Лог пуст</div>'; return; }
   list.innerHTML = data.map(e => `
-    <div class="log-entry"><span class="log-ts">${e.ts}</span>${logBadge(e.level)}<span class="log-msg">${e.message}</span></div>`).join('');
+    <div class="log-entry"><span class="log-ts">${esc(e.ts)}</span>${logBadge(e.level)}<span class="log-msg">${esc(e.message)}</span></div>`).join('');
 }
 
 async function dashboardRefreshCore() {
@@ -321,14 +324,21 @@ async function loadPortfolio() {
     if (grid) grid.innerHTML = data.map(t => {
       const cls = t.change_1d >= 0 ? 'positive' : 'negative';
       const color = TICKER_COLORS[t.ticker] || '#848e9c';
-      return `<div class="ticker-card" onclick="loadTickerChart('${t.ticker}')">
-        <div class="ticker-card-symbol" style="color:${color}">${t.ticker}</div>
+      const eticker = esc(t.ticker);
+      return `<div class="ticker-card" data-ticker="${eticker}">
+        <div class="ticker-card-symbol" style="color:${color}">${eticker}</div>
         <div class="ticker-card-price">${fmt.format(t.price)} ₽</div>
         <div class="ticker-card-change ${cls}">${pct(t.change_1d)}</div></div>`;
     }).join('');
+    if (grid) grid.querySelectorAll('.ticker-card[data-ticker]').forEach(el =>
+      el.addEventListener('click', () => loadTickerChart(el.dataset.ticker))
+    );
     if (tabs) tabs.innerHTML = data.map(t =>
-      `<button type="button" class="ticker-tab" data-ticker="${t.ticker}" onclick="loadTickerChart('${t.ticker}')">${t.ticker}</button>`
+      `<button type="button" class="ticker-tab" data-ticker="${esc(t.ticker)}">${esc(t.ticker)}</button>`
     ).join('');
+    if (tabs) tabs.querySelectorAll('.ticker-tab[data-ticker]').forEach(el =>
+      el.addEventListener('click', () => loadTickerChart(el.dataset.ticker))
+    );
     if (data.length) loadTickerChart(data[0].ticker);
   } catch (_) {
     if (grid) grid.innerHTML = '<div class="empty">Ошибка загрузки</div>';
@@ -446,7 +456,7 @@ async function loadSettings() {
       <span class="settings-val ${ok !== undefined ? (ok ? 'positive' : 'negative') : ''}">${v}</span></div>`).join('');
     window._maxOpenPositions = d.risk.max_open_positions;
   } catch (err) {
-    if (grid) grid.innerHTML = `<div class="empty">${err.message}</div>`;
+    if (grid) grid.innerHTML = `<div class="empty">${esc(err.message)}</div>`;
   } finally {
     await loadTokenStatus();
   }

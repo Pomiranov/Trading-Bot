@@ -1,6 +1,37 @@
 """DDL for platform tables — idempotent migrations."""
 
 PLATFORM_SCHEMA_SQL = """
+CREATE TABLE IF NOT EXISTS trades (
+    id            SERIAL PRIMARY KEY,
+    ticker        VARCHAR(32)    NOT NULL,
+    direction     VARCHAR(8)     NOT NULL DEFAULT 'long',
+    entry_price   NUMERIC(18, 4) NOT NULL DEFAULT 0,
+    quantity      INTEGER        NOT NULL DEFAULT 0,
+    stop_loss     NUMERIC(18, 4),
+    take_profit   NUMERIC(18, 4),
+    pnl           NUMERIC(18, 4),
+    opened_at     TIMESTAMPTZ    NOT NULL DEFAULT NOW(),
+    closed_at     TIMESTAMPTZ
+);
+
+CREATE INDEX IF NOT EXISTS idx_trades_closed ON trades (closed_at DESC NULLS LAST);
+CREATE INDEX IF NOT EXISTS idx_trades_ticker ON trades (ticker);
+
+CREATE TABLE IF NOT EXISTS candles (
+    id        BIGSERIAL PRIMARY KEY,
+    ticker    VARCHAR(32)    NOT NULL,
+    timeframe VARCHAR(8)     NOT NULL,
+    time      TIMESTAMPTZ    NOT NULL,
+    open      NUMERIC(18, 4) NOT NULL,
+    high      NUMERIC(18, 4) NOT NULL,
+    low       NUMERIC(18, 4) NOT NULL,
+    close     NUMERIC(18, 4) NOT NULL,
+    volume    BIGINT         NOT NULL DEFAULT 0,
+    UNIQUE (ticker, timeframe, time)
+);
+
+CREATE INDEX IF NOT EXISTS idx_candles_lookup ON candles (ticker, timeframe, time DESC);
+
 CREATE TABLE IF NOT EXISTS paper_accounts (
     id                SERIAL PRIMARY KEY,
     user_id           VARCHAR(64)   NOT NULL DEFAULT 'default',
@@ -125,9 +156,83 @@ CREATE INDEX IF NOT EXISTS idx_system_events_created ON system_events (created_a
 
 CREATE TABLE IF NOT EXISTS trade_feedback (
     id         SERIAL PRIMARY KEY,
-    trade_id   INTEGER REFERENCES trades(id),
+    trade_id   INTEGER,
     outcome    VARCHAR(16),
     signals    JSONB,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_trade_feedback_trade ON trade_feedback (trade_id);
+
+-- ── Learning system tables ────────────────────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS belief_system (
+    strategy_id             VARCHAR(50)     PRIMARY KEY,
+    strategy_name           VARCHAR(100)    NOT NULL,
+    market                  VARCHAR(20)     NOT NULL,
+    description             TEXT,
+    total_trades            INTEGER         DEFAULT 0,
+    winning_trades          INTEGER         DEFAULT 0,
+    losing_trades           INTEGER         DEFAULT 0,
+    win_rate                DECIMAL(5,4),
+    profit_factor           DECIMAL(10,4),
+    expectancy              DECIMAL(10,4),
+    sharpe_ratio            DECIMAL(10,4),
+    avg_win_r               DECIMAL(10,4),
+    avg_loss_r              DECIMAL(10,4),
+    max_consecutive_losses  INTEGER         DEFAULT 0,
+    confidence              DECIMAL(5,4)    DEFAULT 0.5
+                            CHECK (confidence BETWEEN 0 AND 1),
+    best_regime             VARCHAR(20),
+    best_timeframe          VARCHAR(10),
+    created_at              TIMESTAMPTZ     DEFAULT NOW(),
+    updated_at              TIMESTAMPTZ     DEFAULT NOW(),
+    last_trade_at           TIMESTAMPTZ
+);
+
+CREATE TABLE IF NOT EXISTS hypotheses (
+    hypothesis_id   UUID            DEFAULT gen_random_uuid() PRIMARY KEY,
+    description     TEXT            NOT NULL,
+    market          VARCHAR(20),
+    stage           VARCHAR(20)     DEFAULT 'observation'
+                    CHECK (stage IN ('observation','candidate','active','rejected')),
+    conditions      JSONB           NOT NULL DEFAULT '{}',
+    total_trades    INTEGER         DEFAULT 0,
+    winning_trades  INTEGER         DEFAULT 0,
+    win_rate        DECIMAL(5,4),
+    profit_factor   DECIMAL(10,4),
+    expectancy      DECIMAL(10,4),
+    confidence      DECIMAL(5,4)    CHECK (confidence BETWEEN 0 AND 1),
+    stat_test_result JSONB,
+    created_at      TIMESTAMPTZ     DEFAULT NOW(),
+    promoted_at     TIMESTAMPTZ,
+    rejected_at     TIMESTAMPTZ,
+    updated_at      TIMESTAMPTZ     DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_hypotheses_stage  ON hypotheses (stage);
+CREATE INDEX IF NOT EXISTS idx_hypotheses_market ON hypotheses (market);
+
+CREATE TABLE IF NOT EXISTS skipped_signals (
+    skip_id         UUID            DEFAULT gen_random_uuid() PRIMARY KEY,
+    skipped_at      TIMESTAMPTZ     NOT NULL DEFAULT NOW(),
+    strategy_id     VARCHAR(50)     NOT NULL,
+    ticker          VARCHAR(20),
+    timeframe       VARCHAR(10),
+    direction       VARCHAR(8),
+    skip_reason     VARCHAR(50)     NOT NULL,
+    details         JSONB,
+    is_sandbox      BOOLEAN         DEFAULT true
+);
+
+CREATE INDEX IF NOT EXISTS idx_skipped_strategy ON skipped_signals (strategy_id);
+CREATE INDEX IF NOT EXISTS idx_skipped_reason   ON skipped_signals (skip_reason);
+
+CREATE TABLE IF NOT EXISTS forward_state (
+    strategy_id         VARCHAR(50)     NOT NULL,
+    ticker              VARCHAR(20)     NOT NULL,
+    last_candle_time    TIMESTAMPTZ     NOT NULL,
+    updated_at          TIMESTAMPTZ     DEFAULT NOW(),
+    PRIMARY KEY (strategy_id, ticker)
 );
 """

@@ -91,7 +91,8 @@ class AppConfig:
     logging: LoggingConfig = field(default_factory=LoggingConfig)
 
     moex_base_url: str = "https://iss.moex.com/iss"
-    rules_file: Path = BASE_DIR.parent / "knowledge" / "rules.yaml"
+    rules_dir: Path = PROJECT_ROOT / "knowledge" / "rules"
+    rules_file: Path = PROJECT_ROOT / "knowledge" / "rules" / "rules.yaml"
     log_level: str = field(default_factory=lambda: os.getenv("LOG_LEVEL", "INFO"))
 
     tickers: list = field(default_factory=lambda: os.getenv(

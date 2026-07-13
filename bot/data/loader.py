@@ -186,6 +186,75 @@ class MoexLoader:
 loader = MoexLoader()
 
 
+def save_candles_to_db(
+    tickers: list[str],
+    interval: str = "1d",
+    days: int = 365,
+    verbose: bool = True,
+) -> int:
+    """Догрузить свечи с MOEX ISS в таблицу candles (delete+insert по периоду).
+
+    За период [today-days, today] существующие строки тикера/таймфрейма
+    заменяются свежими — безопасно вызывать ежедневно с перекрытием.
+    Возвращает количество сохранённых строк.
+    """
+    import psycopg2
+    from psycopg2.extras import execute_values
+    from config import config as _config
+
+    def _say(msg: str) -> None:
+        if verbose:
+            print(msg)
+        else:
+            logger.info(msg)
+
+    end_dt   = date.today()
+    start_dt = end_dt - timedelta(days=days)
+    conn = psycopg2.connect(_config.db.dsn)
+
+    total_saved = 0
+    try:
+        for ticker in tickers:
+            _say(f"[{ticker}] Запрос к MOEX ISS…")
+            df = loader.get_candles(ticker, interval=interval, start=start_dt, end=end_dt)
+
+            if df.empty:
+                _say(f"[{ticker}] Нет данных — пропускаем")
+                continue
+
+            df = df.reset_index()
+            df = df.rename(columns={"datetime": "time"})
+            records = [
+                (row.time.to_pydatetime(), ticker, interval,
+                 float(row.open), float(row.high), float(row.low),
+                 float(row.close), int(row.volume))
+                for row in df.itertuples(index=False)
+            ]
+
+            with conn.cursor() as cur:
+                cur.execute("""
+                    DELETE FROM candles
+                    WHERE ticker    = %s
+                      AND timeframe = %s
+                      AND time BETWEEN %s AND %s
+                """, (ticker, interval, start_dt, end_dt))
+                if cur.rowcount:
+                    _say(f"[{ticker}] Удалено {cur.rowcount} старых строк")
+                execute_values(cur, """
+                    INSERT INTO candles (time, ticker, timeframe, open, high, low, close, volume)
+                    VALUES %s
+                """, records, page_size=500)
+            conn.commit()
+
+            total_saved += len(records)
+            _say(f"[{ticker}] Сохранено {len(records)} свечей "
+                 f"({df['time'].min().date()} → {df['time'].max().date()})")
+    finally:
+        conn.close()
+
+    return total_saved
+
+
 if __name__ == "__main__":
     import argparse
     from sqlalchemy import create_engine, text

@@ -47,7 +47,7 @@ const QFUI = {
 
   allocationList(items, max = 6) {
     if (!items?.length) return '<div class="empty">Нет данных</div>';
-    const colors = ['#00c076', '#3861fb', '#f0b90b', '#f6465d', '#8b5cf6', '#06b6d4'];
+    const colors = ['#F7931A', '#3861fb', '#00c076', '#f6465d', '#8b5cf6', '#06b6d4'];
     return `<div class="alloc-list">${items.slice(0, max).map((a, i) => `
       <div class="alloc-row">
         <span class="alloc-dot" style="background:${colors[i % colors.length]}"></span>
@@ -168,7 +168,13 @@ const QFUI = {
     const icons = { success: '✓', error: '✕', warn: '⚠', info: 'ℹ' };
     const el = document.createElement('div');
     el.className = `toast toast-${type}`;
-    el.innerHTML = `<span class="toast-icon">${icons[type] || icons.info}</span><span class="toast-msg">${message}</span>`;
+    const iconSpan = document.createElement('span');
+    iconSpan.className = 'toast-icon';
+    iconSpan.textContent = icons[type] || icons.info;
+    const msgSpan = document.createElement('span');
+    msgSpan.className = 'toast-msg';
+    msgSpan.textContent = message;
+    el.append(iconSpan, msgSpan);
     root.appendChild(el);
     requestAnimationFrame(() => el.classList.add('show'));
     setTimeout(() => {
@@ -184,12 +190,13 @@ const QFUI = {
       overlay.innerHTML = `
         <div class="modal-card">
           <div class="modal-title">Подтверждение</div>
-          <div class="modal-body">${message}</div>
+          <div class="modal-body"></div>
           <div class="modal-actions">
             <button class="btn btn-ghost" data-action="cancel">Отмена</button>
             <button class="btn btn-primary" data-action="ok">Подтвердить</button>
           </div>
         </div>`;
+      overlay.querySelector('.modal-body').textContent = message;
       document.body.appendChild(overlay);
       requestAnimationFrame(() => overlay.classList.add('show'));
       overlay.addEventListener('click', e => {

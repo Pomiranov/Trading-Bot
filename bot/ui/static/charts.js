@@ -4,9 +4,9 @@ const QFChart = (() => {
   const instances = new Map();
   const observers = new Map();
   const COLORS = {
-    long: '#00c076', short: '#f6465d', accent: '#f0b90b', blue: '#3861fb',
+    long: '#00c076', short: '#f6465d', accent: '#F7931A', blue: '#3861fb',
     grid: 'rgba(255,255,255,0.04)', text: '#848e9c',
-    palette: ['#00c076', '#3861fb', '#f0b90b', '#f6465d', '#8b5cf6', '#06b6d4'],
+    palette: ['#F7931A', '#3861fb', '#00c076', '#f6465d', '#8b5cf6', '#06b6d4'],
   };
 
   function normalizeTime(t, index) {

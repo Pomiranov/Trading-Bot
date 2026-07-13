@@ -23,8 +23,8 @@ body.app::before {
   content: '';
   position: fixed; inset: 0; pointer-events: none; z-index: 0;
   background:
-    radial-gradient(ellipse 70% 45% at 0% 0%, rgba(56,97,251,.06) 0%, transparent 55%),
-    radial-gradient(ellipse 50% 40% at 100% 100%, rgba(0,192,118,.04) 0%, transparent 50%);
+    radial-gradient(ellipse 70% 45% at 0% 0%, rgba(56,97,251,.05) 0%, transparent 55%),
+    radial-gradient(ellipse 50% 40% at 100% 100%, rgba(247,147,26,.04) 0%, transparent 50%);
 }
 
 /* ── Sidebar ── */
@@ -51,11 +51,11 @@ body.app::before {
 }
 .sidebar-logo {
   width: 32px; height: 32px; flex-shrink: 0;
-  background: linear-gradient(135deg, var(--qf-long), #00a868);
+  background: linear-gradient(135deg, var(--qf-accent), var(--qf-accent-dark));
   border-radius: var(--qf-radius-sm);
   display: flex; align-items: center; justify-content: center;
   font-size: 16px;
-  box-shadow: 0 2px 12px var(--qf-long-glow);
+  box-shadow: 0 2px 12px var(--qf-accent-glow);
 }
 .sidebar-title {
   font-size: var(--qf-text-md); font-weight: 700;
@@ -93,12 +93,12 @@ body.sidebar-collapsed .nav-section-label { opacity: 0; width: 0; overflow: hidd
   color: var(--qf-text);
 }
 .sidebar-nav a.active, .nav a.active {
-  background: rgba(0,192,118,.1);
-  color: var(--qf-long);
+  background: var(--qf-accent-dim);
+  color: var(--qf-accent);
 }
 .sidebar-nav a.active::before, .nav a.active::before {
   content: ''; position: absolute; left: 0; top: 20%; bottom: 20%;
-  width: 3px; background: var(--qf-long); border-radius: 0 2px 2px 0;
+  width: 3px; background: var(--qf-accent); border-radius: 0 2px 2px 0;
 }
 .nav-icon { width: 18px; height: 18px; flex-shrink: 0; opacity: 0.85; }
 .nav-label { white-space: nowrap; transition: opacity var(--qf-duration) var(--qf-ease); }
@@ -258,7 +258,7 @@ body.layout-miniapp .content {
 .dash-hero-main {
   grid-row: span 2;
   padding: 20px 24px;
-  background: linear-gradient(135deg, rgba(0,192,118,.08) 0%, rgba(56,97,251,.05) 100%);
+  background: linear-gradient(135deg, rgba(247,147,26,.07) 0%, rgba(56,97,251,.04) 100%);
   border: 1px solid var(--qf-border);
   border-radius: var(--qf-radius-lg);
 }
@@ -504,7 +504,7 @@ body.layout-miniapp .content {
   background: var(--qf-surface-2); color: var(--qf-text);
   transition: all var(--qf-duration) var(--qf-ease);
 }
-.btn-save:hover { background: var(--qf-long-dim); border-color: var(--qf-long); }
+.btn-save:hover { background: var(--qf-accent-dim); border-color: var(--qf-accent); color: var(--qf-accent); }
 .btn-eye { padding: 6px 10px; }
 
 .filter-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
@@ -518,7 +518,7 @@ body.layout-miniapp .content {
   color: var(--qf-text-3); cursor: pointer;
   transition: all var(--qf-duration) var(--qf-ease);
 }
-.ticker-tab.active, .ticker-tab:hover { background: var(--qf-long-dim); border-color: var(--qf-long); color: var(--qf-long); }
+.ticker-tab.active, .ticker-tab:hover { background: var(--qf-accent-dim); border-color: var(--qf-accent); color: var(--qf-accent); }
 
 .sub-positive { color: var(--qf-long); }
 .sub-negative { color: var(--qf-short); }
@@ -528,7 +528,7 @@ body.layout-miniapp .content {
 .api-error-msg { font-size: var(--qf-text-sm); color: var(--qf-text-2); }
 
 .metric-link {
-  background: none; border: none; color: var(--qf-long);
+  background: none; border: none; color: var(--qf-accent);
   text-decoration: underline; cursor: pointer; font: inherit;
 }
 
@@ -689,7 +689,7 @@ kbd {
 .pro-table { min-width: 900px; }
 .pro-table .mono { font-family: var(--qf-font-mono); font-size: var(--qf-text-xs); }
 .pro-table .sticky-col { position: sticky; left: 0; background: var(--qf-surface); z-index: 1; }
-.pos-row:hover td { background: rgba(0,192,118,0.04); }
+.pos-row:hover td { background: rgba(247,147,26,0.04); }
 
 /* ── Asset management ── */
 .asset-toolbar { min-width: 200px; }
@@ -717,7 +717,7 @@ kbd {
 .qf-loading { display: flex; align-items: center; gap: 10px; padding: 20px; color: var(--qf-text-muted); font-size: var(--qf-text-sm); }
 .qf-spinner {
   width: 18px; height: 18px; border: 2px solid var(--qf-border);
-  border-top-color: var(--qf-long); border-radius: 50%;
+  border-top-color: var(--qf-accent); border-radius: 50%;
   animation: qfSpin 0.7s linear infinite;
 }
 @keyframes qfSpin { to { transform: rotate(360deg); } }

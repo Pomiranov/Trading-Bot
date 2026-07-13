@@ -1,0 +1,161 @@
+# ============================================================
+# QuantFlow — rules.yaml
+# Исполняемые торговые правила, извлечённые из knowledge/processed/.
+# Формат: signals/rules_engine.py (секции rules / filters /
+# exit_rules / ticker_specific / macro_filters).
+#
+# Источники:
+#   [BV] processed/strategies/breakout_volume.md
+#   [MR] processed/market_theory/market_regimes.md
+#   [RS] processed/technical/rsi_basics.md
+#   [PS] processed/risk/position_sizing.md
+# ============================================================
+
+settings:
+  min_buy_score: 2.0        # минимальный счёт для сигнала BUY
+  min_sell_score: 2.0       # минимальный счёт для сигнала SELL
+  confirmation_rules: 2     # минимум сработавших правил одного направления
+
+# ── Периоды индикаторов ──────────────────────────────────────
+# A3 (2026-07-12): ema_slow явно 50 — раньше дефолт IndicatorEngine (21)
+# расходился с описаниями правил («EMA50»). Швагер, гл. 17, стр. 626:
+# «на большинстве рынков медленные системы оказываются более эффективными».
+# См. processed/strategies/trend_following_problems_schwager.md.
+
+indicators:
+  ema_slow: 50
+
+# ── Основные сигналы BUY / SELL ──────────────────────────────
+
+rules:
+  # [BV] условие 3 + [MR] trending: цена выше EMA50 при сильном тренде
+  - name: trend_up_confirmed
+    action: BUY
+    weight: 1.5
+    description: "Восходящий тренд: цена выше EMA50, ADX >= 25"
+    conditions:
+      - { indicator: close, operator: ">",  value: ema_slow }
+      - { indicator: adx,   operator: ">=", value: 25 }
+
+  # [BV] условие 4: импульс для входа в Long — RSI 50–75
+  - name: rsi_momentum_long
+    action: BUY
+    weight: 1.0
+    description: "Импульс подтверждён: RSI в рабочей зоне Long 50-75"
+    conditions:
+      - { indicator: rsi, operator: ">=", value: 50 }
+      - { indicator: rsi, operator: "<=", value: 75 }
+
+  # [RS] trending: откат RSI к 40-50 в восходящем тренде — вход по тренду
+  - name: trend_pullback_buy
+    action: BUY
+    weight: 1.0
+    description: "Откат в восходящем тренде: RSI 40-50 при цене выше EMA50 и ADX >= 25"
+    conditions:
+      - { indicator: close, operator: ">",  value: ema_slow }
+      - { indicator: adx,   operator: ">=", value: 25 }
+      - { indicator: rsi,   operator: ">=", value: 40 }
+      - { indicator: rsi,   operator: "<=", value: 50 }
+
+  # [BV] Short зеркально: цена ниже EMA50 при сильном тренде
+  - name: trend_down_confirmed
+    action: SELL
+    weight: 1.5
+    description: "Нисходящий тренд: цена ниже EMA50, ADX >= 25"
+    conditions:
+      - { indicator: close, operator: "<",  value: ema_slow }
+      - { indicator: adx,   operator: ">=", value: 25 }
+
+  # [BV] Short: импульс — RSI 25–50
+  - name: rsi_momentum_short
+    action: SELL
+    weight: 1.0
+    description: "Импульс подтверждён: RSI в рабочей зоне Short 25-50"
+    conditions:
+      - { indicator: rsi, operator: ">=", value: 25 }
+      - { indicator: rsi, operator: "<=", value: 50 }
+
+  # [RS] trending: подъём RSI к 50-60 в нисходящем тренде — вход по тренду
+  - name: trend_pullback_sell
+    action: SELL
+    weight: 1.0
+    description: "Откат в нисходящем тренде: RSI 50-60 при цене ниже EMA50 и ADX >= 25"
+    conditions:
+      - { indicator: close, operator: "<",  value: ema_slow }
+      - { indicator: adx,   operator: ">=", value: 25 }
+      - { indicator: rsi,   operator: ">=", value: 50 }
+      - { indicator: rsi,   operator: "<=", value: 60 }
+
+# ── Фильтры: блокировка новых позиций ────────────────────────
+
+filters:
+  # [MR] ranging (ADX < 20): пробойные/трендовые сигналы запрещены.
+  # Бот торгует трендовой breakout_moex, поэтому слабый тренд = не торгуем.
+  - name: weak_trend_block
+    action: BLOCK
+    weight: 1.0
+    description: "Режим ranging (ADX < 20) - трендовые сигналы запрещены"
+    conditions:
+      - { indicator: adx, operator: "<", value: 20 }
+
+# ── Правила выхода из открытой позиции ───────────────────────
+# История (2026-07-12): фикс A4 удалял это правило (Швагер, стр. 641 —
+# выход без правила возобновления часто вредит), но A/B-изоляция
+# (backtest/run_ab_trend_fix.py) показала: изолированно A4 = ноль
+# (PF 0.74→0.74), а в сочетании с A3 ухудшает медвежий 2025
+# (−592k → −948k) — без фильтра направления exit по ADX<20 работает
+# слабым выходом из портящегося рынка. A4 откачен, правило возвращено.
+#
+# История (2026-07-13): трейлинг-выход по свинг-минимумам (Швагер,
+# гл. 9, метод 5; processed/technical/stops_schwager.md) проверен
+# A/B-изоляцией (backtest/run_ab_swing_stop.py, N=5/10/15): OOS не
+# улучшен ни одним N (PF 0.55→0.54-0.55, PnL −950k→−952…−967k,
+# payoff 2.01→1.65-1.77) — правило swing_low_break НЕ добавлено.
+# Движковая поддержка (секция swing_stop + индикатор swing_low)
+# оставлена для будущих стратегий.
+
+exit_rules:
+  # [BV] досрочный выход: рынок перестал соответствовать режиму trending
+  - name: trend_regime_lost
+    action: EXIT
+    weight: 1.0
+    description: "Тренд ослаб (ADX < 20) - рынок вышел из режима trending"
+    conditions:
+      - { indicator: adx, operator: "<", value: 20 }
+
+# ── Тикер-специфичные правила ────────────────────────────────
+
+ticker_specific: []
+
+# ── Макро-фильтры (корректируют веса) ────────────────────────
+
+macro_filters:
+  # [BV] условие 4: RSI выше 75 — сигнал перегрет, снижаем доверие
+  - name: overheated_momentum
+    action: BLOCK
+    weight: 1.0
+    description: "RSI > 75 - импульс перегрет, входы по тренду пропускаются"
+    conditions:
+      - { indicator: rsi, operator: ">", value: 75 }
+
+# ============================================================
+# НЕ КОДИРУЕМЫЕ ДВИЖКОМ ПРАВИЛА (нет данных в IndicatorValues
+# или относятся к risk_manager, а не к rules_engine):
+#
+# [BV] VolumeRatio >= 1.5 для пробоя — в IndicatorValues нет
+#      volume_ratio; добавить индикатор, затем правило.
+# [BV] Пробой уровня Close > Resistance + 0.1*ATR — движок не
+#      знает уровней поддержки/сопротивления.
+# [BV] Стоп: уровень -/+ 0.5*ATR; тейк 2R; безубыток после +1R —
+#      логика исполнения позиции, не сигнала.
+# [BV] Не торговать: первый час сессии, перед закрытием, перед
+#      макро-новостями, при широком спреде — нужны данные времени
+#      сессии и стакана.
+# [PS] Риск на сделку <= 2% (рекомендуется 0.5-1.5%), стоп до
+#      входа, размер = RiskAmount / RiskPerUnit, округление вниз
+#      до лота, запрет наращивания риска после убытков — зона
+#      ответственности risk/risk_manager.py (RISK_* в .env).
+# [MR] Volatile (ATR выше среднего): снизить позицию, расширить
+#      стопы — нет ATR-среднего в IndicatorValues.
+# [RS] Дивергенции RSI — требуют анализа серии баров.
+# ============================================================

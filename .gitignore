@@ -1,0 +1,14 @@
+.env
+__pycache__/
+*.pyc
+*.pkl
+models/
+.DS_Store
+
+# Артефакты запусков (не версионируются)
+logs/
+backtest/*.csv
+
+# Локальные настройки Claude Code (содержат разрешения с секретами)
+.claude/
+.context-handoff.json

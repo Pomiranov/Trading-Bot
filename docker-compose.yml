@@ -1,0 +1,25 @@
+services:
+  timescaledb:
+    image: timescale/timescaledb:latest-pg15
+    container_name: trading_db
+    restart: always
+    environment:
+      POSTGRES_USER: trader
+      # Пароль подставляется из .env проекта (docker compose читает его
+      # автоматически); :? — громкое падение, если переменная не задана
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD не задан — заполните .env}
+      POSTGRES_DB: trading_bot
+    ports:
+      - "5432:5432"
+    volumes:
+      - db_data:/var/lib/postgresql/data
+
+  adminer:
+    image: adminer
+    container_name: trading_adminer
+    restart: always
+    ports:
+      - "8080:8080"
+
+volumes:
+  db_data:

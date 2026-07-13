@@ -1,0 +1,27 @@
+# Данные и индикаторы
+requests>=2.31.0
+pandas>=2.0.0
+ta>=0.11.0
+
+# Конфигурация
+python-dotenv>=1.0.0
+
+# База данных
+psycopg2-binary>=2.9.0
+asyncpg>=0.29.0
+
+# Статистические тесты (hypothesis_engine)
+scipy>=1.11.0
+
+# Telegram
+python-telegram-bot>=20.0
+
+# Брокер Т-Инвестиции
+tinkoff-investments>=0.2.0b55
+
+# Утилиты
+PyYAML>=6.0
+
+# Web dashboard
+flask>=3.1.0
+sqlalchemy>=2.0.0

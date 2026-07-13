@@ -182,7 +182,14 @@ class TinkoffClient:
                 )
                 return resp.order_id
         except Exception as exc:
-            logger.error("Ошибка выставления рыночной заявки: %s", exc)
+            exc_str = str(exc)
+            if "30052" in exc_str or "forbidden for trading" in exc_str.lower():
+                logger.warning(
+                    "Инструмент figi=%s недоступен для торговли в sandbox (30052) — пропускаем",
+                    figi,
+                )
+            else:
+                logger.error("Ошибка выставления рыночной заявки: %s", exc)
             return None
 
     def place_limit_order(

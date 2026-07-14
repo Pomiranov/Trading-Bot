@@ -1,0 +1,734 @@
+"""Unified Paper Trading Engine — single source of truth for paper trading.
+
+DEPRECATED replacement target: bot/services/paper_auto_engine.py
+"""
+from __future__ import annotations
+
+import logging
+import threading
+import time
+from datetime import datetime
+from typing import Optional
+
+from realtime.sse_hub import sse_hub
+
+logger = logging.getLogger(__name__)
+
+COMMISSION_PCT = 0.0003   # 0.03% per side
+SLIPPAGE_PCT   = 0.0001   # 0.01% slippage
+MONITOR_INTERVAL = 30     # seconds
+SIGNAL_INTERVAL  = 90     # seconds
+
+
+def _is_market_open() -> bool:
+    """Return True during Moscow exchange trading hours (UTC 07:00–15:59)."""
+    now = datetime.utcnow()
+    return 7 <= now.hour < 16
+
+
+class PaperEngine:
+    """
+    Unified Paper Trading Engine with two background threads:
+      - signal_loop: runs every 90 s, generates signals and executes top-3
+      - monitor_loop: runs every 30 s, checks SL/TP/trailing-stop hits
+    """
+
+    def __init__(self) -> None:
+        self._db_engine = None
+        self._stop_flag = threading.Event()
+        self._running = False
+        self._lock = threading.Lock()
+        self._monitor_thread: Optional[threading.Thread] = None
+        self._signal_thread: Optional[threading.Thread] = None
+
+    # ------------------------------------------------------------------
+    # Internal helpers
+    # ------------------------------------------------------------------
+
+    def _get_db_engine(self):
+        if self._db_engine is None:
+            from sqlalchemy import create_engine
+            from config import config
+            self._db_engine = create_engine(
+                config.db.dsn,
+                pool_size=2,
+                max_overflow=2,
+                pool_pre_ping=True,
+            )
+        return self._db_engine
+
+    def _push_sse(self, event_type: str, data: dict) -> None:
+        # Try direct (same process as dashboard)
+        try:
+            sse_hub.publish(event_type, data)
+            return
+        except Exception:
+            pass
+        # Fallback via HTTP (if in bot process)
+        try:
+            import requests
+            from config import config
+            requests.post(
+                f"http://127.0.0.1:{config.dashboard.port}/api/internal/push",
+                json={"event_type": event_type, **data},
+                timeout=2,
+            )
+        except Exception:
+            pass
+
+    def _get_market_price(self, ticker: str) -> Optional[float]:
+        """Resolve current market price via MarketDataHub."""
+        try:
+            from market.data_hub import MarketDataHub
+            hub = MarketDataHub(self._get_db_engine())
+            quote = hub.get_quote(ticker)
+            return quote.last if quote else None
+        except Exception as exc:
+            logger.debug("PaperEngine._get_market_price error for %s: %s", ticker, exc)
+            return None
+
+    def _get_repo(self):
+        from qf_platform.repositories.paper_repository import PaperRepository
+        return PaperRepository(self._get_db_engine())
+
+    # ------------------------------------------------------------------
+    # Public API
+    # ------------------------------------------------------------------
+
+    def open_trade(
+        self,
+        ticker: str,
+        direction: str = "long",
+        quantity: Optional[float] = None,
+        stop_loss: Optional[float] = None,
+        take_profit: Optional[float] = None,
+        exchange: str = "paper",
+        signal_id: Optional[int] = None,
+        entry_reason: str = "",
+        probability_pct: Optional[float] = None,
+    ) -> dict:
+        """Open a paper position with commission and slippage applied."""
+        repo = self._get_repo()
+        account = repo.get_or_create_account()
+        account_id = int(account["id"])
+
+        price = self._get_market_price(ticker)
+        if price is None:
+            raise ValueError(f"Нет рыночных данных для {ticker}")
+
+        # Apply slippage (worse fill for the trader)
+        if direction == "long":
+            fill_price = price * (1 + SLIPPAGE_PCT)
+        else:
+            fill_price = price * (1 - SLIPPAGE_PCT)
+
+        available = float(account["available_balance"])
+        if quantity is None:
+            risk_capital = available * 0.05
+            quantity = max(1, int(risk_capital / fill_price))
+
+        cost = fill_price * quantity
+        commission = cost * COMMISSION_PCT
+
+        if cost + commission > available:
+            raise ValueError("Недостаточно средств на paper-счёте")
+
+        if stop_loss is None:
+            stop_loss = round(fill_price * 0.97, 4) if direction == "long" else round(fill_price * 1.03, 4)
+        if take_profit is None:
+            take_profit = round(fill_price * 1.06, 4) if direction == "long" else round(fill_price * 0.94, 4)
+
+        pos_id = repo.insert_position(account_id, {
+            "ticker": ticker.upper(),
+            "exchange": exchange,
+            "direction": direction,
+            "quantity": quantity,
+            "entry_price": fill_price,
+            "stop_loss": stop_loss,
+            "take_profit": take_profit,
+        })
+
+        # Update signal_id and entry_reason if provided
+        if signal_id is not None or entry_reason:
+            try:
+                from sqlalchemy import text
+                with self._get_db_engine().begin() as conn:
+                    conn.execute(
+                        text(
+                            "UPDATE paper_positions SET signal_id = :sid, entry_reason = :reason"
+                            " WHERE id = :id"
+                        ),
+                        {"sid": signal_id, "reason": entry_reason or None, "id": pos_id},
+                    )
+            except Exception as exc:
+                logger.debug("Could not set signal_id/entry_reason on position: %s", exc)
+
+        new_available = available - cost - commission
+        margin = float(account["margin_used"]) + cost
+        repo.update_account_balances(account_id, float(account["balance"]), new_available, margin)
+
+        result = {
+            "position_id": pos_id,
+            "ticker": ticker.upper(),
+            "direction": direction,
+            "entry_price": round(fill_price, 4),
+            "quantity": quantity,
+            "commission": round(commission, 4),
+            "slippage": round(fill_price - price, 4),
+            "entry_reason": entry_reason,
+            "probability_pct": probability_pct,
+        }
+
+        self._push_sse("paper_trade_executed", result)
+        self._push_sse("portfolio_updated", {"account_id": account_id})
+        logger.info(
+            "PaperEngine: opened %s %s qty=%s @ %s (commission=%.2f)",
+            direction, ticker, quantity, fill_price, commission,
+        )
+
+        try:
+            from tg.notifications.dispatcher import notify_paper_trade_open_sync
+            entry_reason = result.get("entry_reason", "")
+            notify_paper_trade_open_sync(
+                ticker=ticker,
+                direction=direction,
+                price=fill_price,
+                quantity=quantity,
+                probability=result.get("probability_pct"),
+                entry_reason=entry_reason,
+            )
+        except Exception as _exc:
+            logger.debug("PaperEngine: telegram notify error: %s", _exc)
+
+        return result
+
+    def close_trade(
+        self,
+        position_id: int,
+        reason: str = "manual",
+        exit_price: Optional[float] = None,
+    ) -> dict:
+        """Close a paper position at current market price with commission + slippage."""
+        repo = self._get_repo()
+        pos = repo.get_position(position_id)
+        if not pos:
+            raise ValueError(f"Позиция {position_id} не найдена")
+
+        direction = (pos["direction"] or "long").lower()
+        qty = float(pos["quantity"])
+        entry = float(pos["entry_price"])
+        account_id = int(pos["account_id"])
+
+        # Use actual current price (not entry_price)
+        if exit_price is None:
+            exit_price = self._get_market_price(pos["ticker"])
+        if exit_price is None:
+            exit_price = entry  # last resort fallback
+
+        # Apply slippage on exit (worse fill)
+        if direction == "long":
+            fill_exit = exit_price * (1 - SLIPPAGE_PCT)
+        else:
+            fill_exit = exit_price * (1 + SLIPPAGE_PCT)
+
+        commission = fill_exit * qty * COMMISSION_PCT
+
+        if direction == "short":
+            raw_pnl = (entry - fill_exit) * qty
+        else:
+            raw_pnl = (fill_exit - entry) * qty
+
+        pnl = raw_pnl - commission
+        pnl_pct = pnl / (entry * qty) if entry * qty else 0
+
+        # Persist trade record with extra fields
+        entry_reason = pos.get("entry_reason") or ""
+        try:
+            from sqlalchemy import text
+            with self._get_db_engine().begin() as conn:
+                conn.execute(
+                    text(
+                        """
+                        INSERT INTO paper_trades
+                            (account_id, position_id, ticker, exchange, direction,
+                             entry_price, exit_price, quantity, pnl, pnl_pct,
+                             opened_at, commission, slippage, close_reason, entry_reason)
+                        VALUES
+                            (:aid, :pid, :ticker, :exchange, :direction,
+                             :entry, :exit, :qty, :pnl, :pnl_pct,
+                             :opened, :commission, :slippage, :reason, :entry_reason)
+                        """
+                    ),
+                    {
+                        "aid": account_id,
+                        "pid": position_id,
+                        "ticker": pos["ticker"],
+                        "exchange": pos.get("exchange", "paper"),
+                        "direction": direction,
+                        "entry": entry,
+                        "exit": fill_exit,
+                        "qty": qty,
+                        "pnl": pnl,
+                        "pnl_pct": pnl_pct,
+                        "opened": pos["opened_at"],
+                        "commission": commission,
+                        "slippage": round(abs(fill_exit - exit_price) * qty, 4),
+                        "reason": reason,
+                        "entry_reason": entry_reason or None,
+                    },
+                )
+        except Exception:
+            # Fallback: use basic insert without new columns (schema migration not yet run)
+            repo.insert_trade(account_id, {
+                "position_id": position_id,
+                "ticker": pos["ticker"],
+                "exchange": pos.get("exchange", "paper"),
+                "direction": direction,
+                "entry_price": entry,
+                "exit_price": fill_exit,
+                "quantity": qty,
+                "pnl": pnl,
+                "pnl_pct": pnl_pct,
+                "opened_at": pos["opened_at"],
+            })
+
+        repo.delete_position(position_id)
+
+        # Update account balances
+        account = repo._query("SELECT * FROM paper_accounts WHERE id = :id", {"id": account_id})[0]
+        proceeds = fill_exit * qty - commission
+        new_available = float(account["available_balance"]) + proceeds
+        margin = max(0.0, float(account["margin_used"]) - entry * qty)
+        realized = float(repo.pnl_periods(account_id).get("realized_pnl") or 0)
+        initial = float(account["initial_balance"])
+        positions = repo.list_positions(account_id)
+        # Simple unrealized estimate (no price refresh here to avoid slow path)
+        unrealized = sum(float(p.get("unrealized_pnl", 0)) for p in positions)
+        balance = initial + realized + unrealized
+        repo.update_account_balances(account_id, balance, new_available, margin)
+        repo.record_equity_snapshot(account_id, "paper", balance)
+
+        result = {
+            "position_id": position_id,
+            "ticker": pos["ticker"],
+            "exit_price": round(fill_exit, 4),
+            "pnl": round(pnl, 2),
+            "pnl_pct": round(pnl_pct * 100, 4),
+            "commission": round(commission, 4),
+            "reason": reason,
+        }
+
+        self._push_sse("paper_position_closed", result)
+        self._push_sse("portfolio_updated", {"account_id": account_id})
+        logger.info(
+            "PaperEngine: closed pos=%s %s pnl=%.2f reason=%s",
+            position_id, pos["ticker"], pnl, reason,
+        )
+
+        try:
+            from tg.notifications.dispatcher import notify_paper_trade_close_sync
+            notify_paper_trade_close_sync(
+                ticker=pos["ticker"],
+                pnl=pnl,
+                pnl_pct=round(pnl_pct * 100, 2),
+                reason=reason,
+                exit_price=fill_exit,
+            )
+        except Exception as _exc:
+            logger.debug("PaperEngine: telegram notify (close) error: %s", _exc)
+
+        return result
+
+    def close_trade_partial(self, position_id: int, qty_pct: float) -> dict:
+        """Close a fraction of a position (qty_pct in 0..1)."""
+        repo = self._get_repo()
+        pos = repo.get_position(position_id)
+        if not pos:
+            raise ValueError(f"Позиция {position_id} не найдена")
+
+        qty_pct = max(0.01, min(1.0, qty_pct))
+        full_qty = float(pos["quantity"])
+        close_qty = full_qty * qty_pct
+        remain_qty = full_qty - close_qty
+
+        if remain_qty < 0.0001:
+            return self.close_trade(position_id, reason="partial_full")
+
+        exit_price = self._get_market_price(pos["ticker"]) or float(pos["entry_price"])
+        direction = (pos["direction"] or "long").lower()
+        entry = float(pos["entry_price"])
+        account_id = int(pos["account_id"])
+
+        if direction == "long":
+            fill_exit = exit_price * (1 - SLIPPAGE_PCT)
+        else:
+            fill_exit = exit_price * (1 + SLIPPAGE_PCT)
+
+        commission = fill_exit * close_qty * COMMISSION_PCT
+        raw_pnl = (fill_exit - entry) * close_qty if direction == "long" else (entry - fill_exit) * close_qty
+        pnl = raw_pnl - commission
+        pnl_pct = pnl / (entry * close_qty) if entry * close_qty else 0
+
+        # Update remaining quantity
+        from sqlalchemy import text
+        with self._get_db_engine().begin() as conn:
+            conn.execute(
+                text("UPDATE paper_positions SET quantity = :qty WHERE id = :id"),
+                {"qty": remain_qty, "id": position_id},
+            )
+
+        # Record partial trade
+        repo.insert_trade(account_id, {
+            "position_id": position_id,
+            "ticker": pos["ticker"],
+            "exchange": pos.get("exchange", "paper"),
+            "direction": direction,
+            "entry_price": entry,
+            "exit_price": fill_exit,
+            "quantity": close_qty,
+            "pnl": pnl,
+            "pnl_pct": pnl_pct,
+            "opened_at": pos["opened_at"],
+        })
+
+        account = repo._query("SELECT * FROM paper_accounts WHERE id = :id", {"id": account_id})[0]
+        proceeds = fill_exit * close_qty - commission
+        new_available = float(account["available_balance"]) + proceeds
+        margin = max(0.0, float(account["margin_used"]) - entry * close_qty)
+        repo.update_account_balances(account_id, float(account["balance"]) + pnl, new_available, margin)
+
+        result = {
+            "position_id": position_id,
+            "ticker": pos["ticker"],
+            "closed_qty": close_qty,
+            "remaining_qty": remain_qty,
+            "exit_price": round(fill_exit, 4),
+            "pnl": round(pnl, 2),
+        }
+        self._push_sse("paper_position_closed", {**result, "partial": True})
+        return result
+
+    def get_portfolio(self, mode: str = "rub") -> dict:
+        """Return current paper account + open positions with live PnL."""
+        repo = self._get_repo()
+        account = repo.get_or_create_account(mode=mode)
+        account_id = int(account["id"])
+        positions = repo.list_positions(account_id)
+
+        enriched = []
+        for pos in positions:
+            price = self._get_market_price(pos["ticker"]) or float(pos["entry_price"])
+            qty = float(pos["quantity"])
+            entry = float(pos["entry_price"])
+            direction = (pos["direction"] or "long").lower()
+            unrealized = (price - entry) * qty if direction == "long" else (entry - price) * qty
+            enriched.append({
+                **{k: v for k, v in pos.items()},
+                "current_price": price,
+                "unrealized_pnl": round(unrealized, 2),
+                "pnl_pct": round(unrealized / (entry * qty) * 100, 4) if entry * qty else 0,
+            })
+
+        pnl_data = repo.pnl_periods(account_id)
+        return {
+            "account": {
+                k: (float(v) if k in ("balance", "available_balance", "margin_used", "initial_balance") else v)
+                for k, v in account.items()
+            },
+            "positions": enriched,
+            "pnl": {k: float(v) if v is not None else 0 for k, v in pnl_data.items()},
+        }
+
+    # ------------------------------------------------------------------
+    # Background loops
+    # ------------------------------------------------------------------
+
+    def _signal_loop(self) -> None:
+        logger.info("PaperEngine signal_loop started")
+        while not self._stop_flag.is_set():
+            if _is_market_open():
+                try:
+                    self._run_signal_cycle()
+                except Exception as exc:
+                    logger.error("PaperEngine signal_loop error: %s", exc, exc_info=True)
+            for _ in range(SIGNAL_INTERVAL):
+                if self._stop_flag.is_set():
+                    break
+                time.sleep(1)
+        logger.info("PaperEngine signal_loop stopped")
+
+    def _check_risk_limits(self, ticker: str, portfolio_value: float) -> tuple[bool, str]:
+        """Gate trade against risk rules. Returns (allowed, reason)."""
+        try:
+            from risk.risk_manager import risk_manager
+            from config import config
+
+            if ticker in risk_manager.open_positions:
+                return False, f"Позиция по {ticker} уже открыта"
+
+            if len(risk_manager.open_positions) >= config.risk.max_open_positions:
+                return False, f"Лимит позиций ({config.risk.max_open_positions}) достигнут"
+
+            max_daily_loss = portfolio_value * config.risk.max_daily_loss_pct
+            if risk_manager.daily_pnl <= -max_daily_loss:
+                return False, (
+                    f"Дневной лимит убытков: "
+                    f"{risk_manager.daily_pnl:.2f} ₽ (лимит -{max_daily_loss:.2f} ₽)"
+                )
+        except Exception as exc:
+            logger.debug("Risk check error: %s", exc)
+        return True, ""
+
+    def _run_signal_cycle(self) -> None:
+        db = self._get_db_engine()
+        try:
+            from qf_platform.services.signals_service import SignalsService
+            signals = SignalsService(db).generate_live_signals(persist=True)
+        except Exception as exc:
+            logger.warning("PaperEngine: signal generation failed: %s", exc)
+            return
+
+        if not signals:
+            logger.debug("PaperEngine: no signals this cycle")
+            return
+
+        # Push signals update to dashboard
+        self._push_sse("signals_updated", {"count": len(signals), "source": "paper_engine"})
+
+        # Get portfolio value for risk checks
+        try:
+            account = self._get_repo().get_or_create_account()
+            portfolio_value = float(account.get("available_balance", 100_000))
+        except Exception:
+            portfolio_value = 100_000.0
+
+        # Execute top-3 signals by probability_pct with risk validation
+        top3 = sorted(signals, key=lambda s: s.probability_pct, reverse=True)[:3]
+        executed = 0
+        for i, sig in enumerate(top3):
+            if self._stop_flag.is_set():
+                break
+
+            direction = "short" if sig.signal_type.upper() in ("SELL", "SHORT") else "long"
+            meta = sig.metadata if isinstance(sig.metadata, dict) else {}
+
+            # Risk gate
+            allowed, reject_reason = self._check_risk_limits(sig.asset, portfolio_value)
+            if not allowed:
+                logger.info("PaperEngine: REJECTED %s — %s", sig.asset, reject_reason)
+                self._push_sse("signal_rejected", {
+                    "ticker": sig.asset,
+                    "reason": reject_reason,
+                    "signal_type": sig.signal_type,
+                    "probability_pct": sig.probability_pct,
+                })
+                try:
+                    from tg.notifications.dispatcher import notify_risk_limit_sync
+                    notify_risk_limit_sync(f"{sig.asset}: {reject_reason}")
+                except Exception:
+                    pass
+                continue
+
+            try:
+                entry_reason = meta.get("entry_reason", "")
+                result = self.open_trade(
+                    ticker=sig.asset,
+                    direction=direction,
+                    stop_loss=float(sig.stop_loss) if sig.stop_loss else None,
+                    take_profit=float(sig.take_profit_1) if sig.take_profit_1 else None,
+                    exchange=getattr(sig, "exchange", "paper"),
+                    signal_id=sig.id,
+                    entry_reason=entry_reason,
+                    probability_pct=sig.probability_pct,
+                )
+                result["strategy"] = meta.get("strategy", "")
+
+                # Register in risk manager for tracking
+                try:
+                    from risk.risk_manager import risk_manager, PositionSizing
+                    sl_price = float(sig.stop_loss) if sig.stop_loss else result["entry_price"] * 0.97
+                    ps = PositionSizing(
+                        ticker=sig.asset,
+                        entry_price=result["entry_price"],
+                        stop_price=sl_price,
+                        lot_size=1,
+                        shares=int(result["quantity"]),
+                        risk_amount=abs(result["entry_price"] - sl_price) * result["quantity"],
+                        position_value=result["entry_price"] * result["quantity"],
+                    )
+                    risk_manager.register_open(ps)
+                except Exception:
+                    pass
+
+                executed += 1
+                logger.info(
+                    "PaperEngine: executed signal %s/%s — %s %s prob=%.1f%%",
+                    i + 1, len(top3), sig.signal_type, sig.asset, sig.probability_pct,
+                )
+                if i < len(top3) - 1:
+                    for _ in range(60):
+                        if self._stop_flag.is_set():
+                            break
+                        time.sleep(1)
+            except ValueError as exc:
+                logger.warning("PaperEngine: could not open position for %s: %s", sig.asset, exc)
+            except Exception as exc:
+                logger.error("PaperEngine: unexpected error for %s: %s", sig.asset, exc, exc_info=True)
+
+        logger.info("PaperEngine: cycle done — %d executed / %d candidates", executed, len(top3))
+
+    def _monitor_loop(self) -> None:
+        logger.info("PaperEngine monitor_loop started")
+        while not self._stop_flag.is_set():
+            try:
+                self._run_monitor_cycle()
+            except Exception as exc:
+                logger.error("PaperEngine monitor_loop error: %s", exc, exc_info=True)
+            for _ in range(MONITOR_INTERVAL):
+                if self._stop_flag.is_set():
+                    break
+                time.sleep(1)
+        logger.info("PaperEngine monitor_loop stopped")
+
+    def _run_monitor_cycle(self) -> None:
+        repo = self._get_repo()
+        # Get default account
+        try:
+            account = repo.get_or_create_account()
+        except Exception as exc:
+            logger.debug("PaperEngine monitor: could not get account: %s", exc)
+            return
+
+        account_id = int(account["id"])
+        positions = repo.list_positions(account_id)
+
+        for pos in positions:
+            if self._stop_flag.is_set():
+                break
+            try:
+                self._check_position(pos)
+            except Exception as exc:
+                logger.warning("PaperEngine monitor: error checking pos %s: %s", pos.get("id"), exc)
+
+    def _check_position(self, pos: dict) -> None:
+        """Check SL/TP/trailing-stop for a single position."""
+        repo = self._get_repo()
+        pos_id = int(pos["id"])
+        ticker = pos["ticker"]
+        direction = (pos["direction"] or "long").lower()
+        entry = float(pos["entry_price"])
+        qty = float(pos["quantity"])
+
+        price = self._get_market_price(ticker)
+        if price is None:
+            return
+
+        sl = float(pos["stop_loss"]) if pos.get("stop_loss") else None
+        tp = float(pos["take_profit"]) if pos.get("take_profit") else None
+        trailing_pct = float(pos["trailing_stop_pct"]) if pos.get("trailing_stop_pct") else None
+
+        # Update unrealized PnL in DB
+        unrealized = (price - entry) * qty if direction == "long" else (entry - price) * qty
+        repo.update_position_pnl(pos_id, unrealized)
+
+        # Trailing stop: update SL if price moved favorably > 0.5%
+        if trailing_pct is not None and sl is not None:
+            if direction == "long":
+                new_sl = price * (1 - trailing_pct)
+                if new_sl > sl and (price - entry) / entry > 0.005:
+                    try:
+                        from sqlalchemy import text
+                        with self._get_db_engine().begin() as conn:
+                            conn.execute(
+                                text("UPDATE paper_positions SET stop_loss = :sl WHERE id = :id"),
+                                {"sl": round(new_sl, 4), "id": pos_id},
+                            )
+                        sl = new_sl
+                        logger.debug("PaperEngine: trailing stop raised to %.4f for pos %s", sl, pos_id)
+                    except Exception as exc:
+                        logger.debug("Could not update trailing stop: %s", exc)
+            else:
+                new_sl = price * (1 + trailing_pct)
+                if new_sl < sl and (entry - price) / entry > 0.005:
+                    try:
+                        from sqlalchemy import text
+                        with self._get_db_engine().begin() as conn:
+                            conn.execute(
+                                text("UPDATE paper_positions SET stop_loss = :sl WHERE id = :id"),
+                                {"sl": round(new_sl, 4), "id": pos_id},
+                            )
+                        sl = new_sl
+                    except Exception as exc:
+                        logger.debug("Could not update trailing stop: %s", exc)
+
+        # Check SL hit
+        if sl is not None:
+            sl_hit = (direction == "long" and price <= sl) or (direction == "short" and price >= sl)
+            if sl_hit:
+                logger.info("PaperEngine: SL hit for pos %s (%s) price=%.4f sl=%.4f", pos_id, ticker, price, sl)
+                self.close_trade(pos_id, reason="SL_HIT", exit_price=sl)
+                return
+
+        # Check TP hit
+        if tp is not None:
+            tp_hit = (direction == "long" and price >= tp) or (direction == "short" and price <= tp)
+            if tp_hit:
+                logger.info("PaperEngine: TP hit for pos %s (%s) price=%.4f tp=%.4f", pos_id, ticker, price, tp)
+                self.close_trade(pos_id, reason="TP_HIT", exit_price=tp)
+                return
+
+    # ------------------------------------------------------------------
+    # Lifecycle
+    # ------------------------------------------------------------------
+
+    def start(self, db_engine=None) -> None:
+        with self._lock:
+            if self._running:
+                logger.debug("PaperEngine: already running")
+                return
+            if db_engine is not None:
+                self._db_engine = db_engine
+            self._stop_flag.clear()
+            self._signal_thread = threading.Thread(
+                target=self._signal_loop,
+                name="paper-engine-signals",
+                daemon=True,
+            )
+            self._monitor_thread = threading.Thread(
+                target=self._monitor_loop,
+                name="paper-engine-monitor",
+                daemon=True,
+            )
+            self._signal_thread.start()
+            self._monitor_thread.start()
+            self._running = True
+            self._push_sse("engine_started", {"engine": "paper", "ts": datetime.utcnow().isoformat()})
+            logger.info("PaperEngine started (signal=%ds, monitor=%ds)", SIGNAL_INTERVAL, MONITOR_INTERVAL)
+
+    def stop(self) -> None:
+        with self._lock:
+            if not self._running:
+                logger.debug("PaperEngine: not running")
+                return
+            self._stop_flag.set()
+            for t in (self._signal_thread, self._monitor_thread):
+                if t and t.is_alive():
+                    t.join(timeout=10)
+            self._running = False
+            self._push_sse("engine_stopped", {"engine": "paper", "ts": datetime.utcnow().isoformat()})
+            logger.info("PaperEngine stopped")
+
+    def is_running(self) -> bool:
+        return self._running
+
+    def status(self) -> dict:
+        return {
+            "running": self._running,
+            "commission_pct": COMMISSION_PCT,
+            "slippage_pct": SLIPPAGE_PCT,
+            "monitor_interval": MONITOR_INTERVAL,
+            "signal_interval": SIGNAL_INTERVAL,
+        }
+
+
+paper_engine = PaperEngine()

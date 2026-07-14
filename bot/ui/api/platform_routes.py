@@ -14,6 +14,7 @@ from qf_platform.services.dashboard_service import DashboardService
 from qf_platform.services.paper_trading_service import PaperTradingService
 from qf_platform.services.portfolio_service import PortfolioService
 from qf_platform.services.signals_service import SignalsService
+from qf_platform.services.analytics_service import AnalyticsService
 from realtime.sse_hub import sse_hub
 
 logger = logging.getLogger(__name__)
@@ -234,6 +235,166 @@ def api_brokers():
     svc = DashboardService(_engine)
     overview = svc.get_overview()
     return jsonify([to_dict(b) for b in overview.brokers])
+
+
+@platform_bp.route("/engine/status")
+def api_engine_status():
+    from engine.paper_engine import paper_engine
+    return jsonify(paper_engine.status())
+
+
+@platform_bp.route("/engine/start", methods=["POST"])
+def api_engine_start():
+    err = _require_engine()
+    if err:
+        return err
+    from engine.paper_engine import paper_engine
+    paper_engine.start(db_engine=_engine)
+    return jsonify({"ok": True, "running": paper_engine.is_running()})
+
+
+@platform_bp.route("/engine/stop", methods=["POST"])
+def api_engine_stop():
+    from engine.paper_engine import paper_engine
+    paper_engine.stop()
+    return jsonify({"ok": True, "running": paper_engine.is_running()})
+
+
+@platform_bp.route("/analytics")
+def api_analytics():
+    err = _require_engine()
+    if err:
+        return err
+    svc = AnalyticsService(_engine)
+    return jsonify(svc.full_report())
+
+
+@platform_bp.route("/paper/trades")
+def api_paper_trades():
+    err = _require_engine()
+    if err:
+        return err
+    limit = int(request.args.get("limit", 50))
+    offset = int(request.args.get("offset", 0))
+    from sqlalchemy import text
+    svc = PaperTradingService(_engine)
+    account = svc.get_account()
+    aid = int(account["id"])
+    with _engine.connect() as conn:
+        rows = conn.execute(
+            text(
+                "SELECT * FROM paper_trades WHERE account_id = :aid"
+                " ORDER BY closed_at DESC LIMIT :limit OFFSET :offset"
+            ),
+            {"aid": aid, "limit": limit, "offset": offset},
+        )
+        cols = list(rows.keys())
+        trades = [dict(zip(cols, r)) for r in rows.fetchall()]
+    return jsonify([{k: (str(v) if hasattr(v, "isoformat") else v) for k, v in t.items()} for t in trades])
+
+
+@platform_bp.route("/paper/position/<int:pos_id>/close", methods=["POST"])
+def api_paper_position_close(pos_id: int):
+    err = _require_engine()
+    if err:
+        return err
+    body = request.get_json(silent=True) or {}
+    reason = body.get("reason", "manual")
+    from engine.paper_engine import paper_engine
+    paper_engine._db_engine = _engine
+    try:
+        result = paper_engine.close_trade(pos_id, reason=reason)
+        return jsonify({"ok": True, **result})
+    except ValueError as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 400
+    except Exception as exc:
+        logger.warning("position close error: %s", exc)
+        return jsonify({"ok": False, "error": str(exc)}), 500
+
+
+@platform_bp.route("/paper/position/<int:pos_id>/partial", methods=["POST"])
+def api_paper_position_partial(pos_id: int):
+    err = _require_engine()
+    if err:
+        return err
+    body = request.get_json(silent=True) or {}
+    qty_pct = float(body.get("qty_pct", 0.5))
+    from engine.paper_engine import paper_engine
+    paper_engine._db_engine = _engine
+    try:
+        result = paper_engine.close_trade_partial(pos_id, qty_pct=qty_pct)
+        return jsonify({"ok": True, **result})
+    except ValueError as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 400
+    except Exception as exc:
+        logger.warning("partial close error: %s", exc)
+        return jsonify({"ok": False, "error": str(exc)}), 500
+
+
+@platform_bp.route("/risk/status")
+def api_risk_status():
+    """Current risk manager state — positions, daily PnL, limits."""
+    try:
+        from risk.risk_manager import risk_manager
+        from config import config
+        open_pos = risk_manager.open_positions
+        return jsonify({
+            "open_positions": [
+                {
+                    "ticker": ticker,
+                    "entry_price": ps.entry_price,
+                    "stop_price": ps.stop_price,
+                    "shares": ps.shares,
+                    "risk_amount": ps.risk_amount,
+                    "position_value": ps.position_value,
+                }
+                for ticker, ps in open_pos.items()
+            ],
+            "daily_pnl": risk_manager.daily_pnl,
+            "limits": {
+                "max_open_positions": config.risk.max_open_positions,
+                "max_daily_loss_pct": config.risk.max_daily_loss_pct,
+                "max_position_pct": config.risk.max_position_pct,
+                "atr_stop_multiplier": config.risk.atr_stop_multiplier,
+            },
+        })
+    except Exception as exc:
+        return jsonify({"error": str(exc)}), 500
+
+
+@platform_bp.route("/signals/<int:signal_id>")
+def api_signal_detail(signal_id: int):
+    """Full signal detail with metadata."""
+    err = _require_engine()
+    if err:
+        return err
+    svc = SignalsService(_engine)
+    sig = svc.get_signal(signal_id)
+    if sig is None:
+        return jsonify({"error": "Signal not found"}), 404
+    return jsonify(to_dict(sig))
+
+
+@platform_bp.route("/analytics/summary")
+def api_analytics_summary():
+    """Quick analytics summary for dashboard header."""
+    err = _require_engine()
+    if err:
+        return err
+    try:
+        svc = AnalyticsService(_engine)
+        stats = svc.trade_stats()
+        return jsonify({
+            "total_trades": stats.get("total_trades", 0),
+            "win_rate": stats.get("win_rate", 0),
+            "total_pnl": stats.get("total_pnl", 0),
+            "roi_pct": stats.get("roi_pct", 0),
+            "sharpe_ratio": stats.get("sharpe_ratio", 0),
+            "max_drawdown": stats.get("max_drawdown", 0),
+            "profit_factor": stats.get("profit_factor"),
+        })
+    except Exception as exc:
+        return jsonify({"error": str(exc)}), 500
 
 
 @platform_bp.route("/stream")

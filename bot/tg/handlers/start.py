@@ -10,9 +10,14 @@ from tg.middlewares.auth import require_auth
 from tg.middlewares.rate_limit import rate_limiter
 
 _WELCOME = (
-    "👋 <b>Добро пожаловать в торговый терминал!</b>\n\n"
-    "Управляйте инвестициями, отслеживайте портфель и\n"
-    "получайте аналитику прямо в Telegram.\n\n"
+    "🤖 <b>QuantFlow Trading Terminal</b>\n"
+    "─────────────────────────────\n"
+    "Полноценный торговый терминал в Telegram.\n\n"
+    "⚡ <b>Auto Trading</b> — запускает Signal Engine,\n"
+    "   генерирует сигналы и исполняет Paper Trades\n\n"
+    "📡 <b>Сигналы</b> — LONG/SHORT с SL/TP/R:R и Confidence Score\n\n"
+    "📊 <b>Аналитика</b> — Sharpe, Drawdown, WinRate, P&L\n\n"
+    "📊 <b>Paper Trading</b> — виртуальная торговля с учётом риска\n\n"
     "Выберите раздел:"
 )
 

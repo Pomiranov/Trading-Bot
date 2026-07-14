@@ -5,11 +5,12 @@ const PAGE_TITLES = {
   portfolio: ['Portfolio', 'Assets · Allocation'],
   signals: ['Signals', 'Center · Live'],
   backtest: ['Backtest', 'Simulation · Analytics'],
+  analytics: ['Analytics', 'Performance · Risk · History'],
   settings: ['Settings', 'Configuration'],
   miniapp: ['Quant Hunter', 'Cryptonite · Mini App'],
 };
 
-const KEY_VIEWS = { '1': 'dashboard', '2': 'portfolio', '3': 'signals', '4': 'backtest', '5': 'miniapp' };
+const KEY_VIEWS = { '1': 'dashboard', '2': 'portfolio', '3': 'signals', '4': 'backtest', '5': 'miniapp', '6': 'analytics' };
 const TICKER_COLORS = { SBER: '#F7931A', GAZP: '#3861fb', LKOH: '#00c076', NVTK: '#f6465d', YNDX: '#8b5cf6' };
 
 const fmt = new Intl.NumberFormat('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -464,6 +465,139 @@ async function loadSettings() {
 
 viewHandlers.settings = loadSettings;
 
+/* ── Analytics ── */
+async function loadAnalytics() {
+  try {
+    // Engine status
+    const status = await QFApi.engineStatus().catch(() => ({ running: false }));
+    const btn = document.getElementById('engineStartBtn');
+    const statusTxt = document.getElementById('engineStatusText');
+    if (statusTxt) {
+      statusTxt.textContent = status.running ? '🟢 Запущен' : '🔴 Остановлен';
+      statusTxt.className = 'as-val ' + (status.running ? 'positive' : 'negative');
+    }
+    if (btn) {
+      btn.textContent = status.running ? '⏹ Остановить' : '▶ Запустить';
+      btn.onclick = async () => {
+        if (status.running) await QFApi.engineStop(); else await QFApi.engineStart();
+        loadAnalytics();
+      };
+    }
+
+    // Analytics data
+    const data = await QFApi.analytics().catch(() => null);
+    if (!data) return;
+
+    const { stats, equity_curve, monthly_pnl, daily_pnl, best_worst } = data;
+
+    // Stats grid
+    if (stats) {
+      const set = (id, val, cls) => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.textContent = val;
+        if (cls) el.className = 'metric-value ' + cls;
+      };
+      const colorClass = (v) => v > 0 ? 'positive' : v < 0 ? 'negative' : 'neutral';
+      set('anTotalTrades', stats.total_trades ?? '—');
+      set('anWinRate', stats.win_rate != null ? stats.win_rate.toFixed(1) + '%' : '—', colorClass(stats.win_rate - 50));
+      set('anProfitFactor', stats.profit_factor != null ? stats.profit_factor.toFixed(2) : '—', colorClass(stats.profit_factor - 1));
+      set('anSharpe', stats.sharpe_ratio != null ? stats.sharpe_ratio.toFixed(2) : '—', colorClass(stats.sharpe_ratio));
+      set('anSortino', stats.sortino_ratio != null ? stats.sortino_ratio.toFixed(2) : '—', colorClass(stats.sortino_ratio));
+      set('anMaxDD', stats.max_drawdown != null ? '-' + stats.max_drawdown.toFixed(1) + '%' : '—', 'negative');
+      set('anTotalPnl', stats.total_pnl != null ? (stats.total_pnl >= 0 ? '+' : '') + fmt.format(stats.total_pnl) + ' ₽' : '—', colorClass(stats.total_pnl));
+      set('anRoi', stats.roi_pct != null ? (stats.roi_pct >= 0 ? '+' : '') + stats.roi_pct.toFixed(2) + '%' : '—', colorClass(stats.roi_pct));
+    }
+
+    // Equity curve
+    if (equity_curve?.length) {
+      QFChart.line('analyticsEquityChart', equity_curve.map(p => ({ time: p.ts, value: p.equity })));
+      const first = equity_curve[0]?.equity || 0, last = equity_curve[equity_curve.length - 1]?.equity || 0;
+      const diff = last - first;
+      const sub = document.getElementById('equitySubtitle');
+      if (sub) {
+        sub.textContent = `${equity_curve.length} точек · ${diff >= 0 ? '+' : ''}${fmt.format(diff)} ₽`;
+        sub.className = 'card-subtitle ' + (diff >= 0 ? 'sub-positive' : 'sub-negative');
+      }
+    }
+
+    // Monthly P&L chart using ECharts
+    if (monthly_pnl?.length && typeof echarts !== 'undefined') {
+      const existing = echarts.getInstanceByDom(document.getElementById('analyticsMonthlyChart'));
+      if (existing) existing.dispose();
+      const chart = echarts.init(document.getElementById('analyticsMonthlyChart'), 'dark');
+      chart.setOption({
+        backgroundColor: 'transparent',
+        grid: { top: 20, right: 10, bottom: 30, left: 60 },
+        xAxis: { type: 'category', data: monthly_pnl.map(m => m.month), axisLabel: { color: '#848e9c', fontSize: 11 } },
+        yAxis: { type: 'value', axisLabel: { color: '#848e9c', fontSize: 11, formatter: v => (v/1000).toFixed(0) + 'K' } },
+        series: [{
+          type: 'bar', data: monthly_pnl.map(m => ({
+            value: m.pnl,
+            itemStyle: { color: m.pnl >= 0 ? '#00c076' : '#f6465d' }
+          }))
+        }],
+        tooltip: { trigger: 'axis', formatter: p => `${p[0].name}<br/>${p[0].value >= 0 ? '+' : ''}${p[0].value.toFixed(0)} ₽` }
+      });
+    }
+
+    // Daily PnL table
+    const dailyBody = document.getElementById('analyticsDailyBody');
+    if (dailyBody) {
+      dailyBody.innerHTML = (daily_pnl || []).length
+        ? [...(daily_pnl || [])].reverse().map(d => {
+            const cls = d.pnl >= 0 ? 'positive' : 'negative';
+            return `<tr><td class="ts-cell">${d.day}</td><td class="${cls}">${d.pnl >= 0 ? '+' : ''}${fmt.format(d.pnl)}</td><td>${d.trades}</td></tr>`;
+          }).join('')
+        : '<tr><td colspan="3" class="empty">Нет данных</td></tr>';
+    }
+
+    // Best/worst trades
+    const renderTrades = (id, trades) => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      el.innerHTML = (trades || []).map(t => {
+        const cls = (t.pnl || 0) >= 0 ? 'positive' : 'negative';
+        return `<div class="recent-item"><span class="recent-ticker">${t.ticker}</span><span class="${cls}">${(t.pnl||0) >= 0 ? '+' : ''}${fmt.format(t.pnl||0)} ₽</span></div>`;
+      }).join('') || '<div class="empty">—</div>';
+    };
+    renderTrades('analyticsBestTrades', best_worst?.best);
+    renderTrades('analyticsWorstTrades', best_worst?.worst);
+
+    // Closed trades history table
+    const tradesData = await QFApi.paperTrades(30).catch(() => ({ trades: [] }));
+    const tradesBody = document.getElementById('tradesHistoryBody');
+    const tradesMeta = document.getElementById('tradesHistoryMeta');
+    if (tradesBody) {
+      const trades = tradesData.trades || [];
+      if (tradesMeta) tradesMeta.textContent = `${trades.length} сделок`;
+      tradesBody.innerHTML = trades.map(t => {
+        const cls = (t.pnl || 0) >= 0 ? 'positive' : 'negative';
+        const reasonBadge = { SL_HIT: 'badge-error', TP_HIT: 'badge-buy', manual: 'badge-hold', SIGNAL: 'badge-info' }[t.close_reason] || 'badge-hold';
+        return `<tr>
+          <td class="ticker-cell">${t.ticker}</td>
+          <td>${QFUI.badge(t.direction)}</td>
+          <td class="price-cell">${fmt.format(t.entry_price)}</td>
+          <td class="price-cell">${fmt.format(t.exit_price)}</td>
+          <td>${t.quantity}</td>
+          <td class="${cls}">${(t.pnl||0) >= 0 ? '+' : ''}${fmt.format(t.pnl||0)}</td>
+          <td class="${cls}">${((t.pnl_pct||0)*100).toFixed(2)}%</td>
+          <td class="price-cell">${fmt.format(t.commission||0)}</td>
+          <td><span class="badge ${reasonBadge}">${t.close_reason || 'manual'}</span></td>
+          <td class="ts-cell">${(t.closed_at || '').slice(0, 16)}</td>
+        </tr>`;
+      }).join('') || '<tr><td colspan="10" class="empty">Нет сделок</td></tr>';
+    }
+
+  } catch (err) {
+    console.warn('[Analytics]', err);
+  }
+}
+
+viewHandlers.analytics = loadAnalytics;
+
+document.getElementById('refreshAnalyticsBtn')?.addEventListener('click', loadAnalytics);
+
 window.showView = showView;
 window.loadTickerChart = loadTickerChart;
 window.dashboardRefresh = dashboardRefresh;
@@ -471,3 +605,82 @@ window.dashboardRefreshCore = dashboardRefreshCore;
 window.fetchJSON = fetchJSON;
 window.dashboardApiHeaders = dashboardApiHeaders;
 window.setRiskBar = setRiskBar;
+
+/* ── Paper Trading Live Feed ── */
+(function initPaperFeed() {
+  const MAX_ITEMS = 30;
+
+  function renderFeedItem(data) {
+    const feed = document.getElementById('paperFeedList');
+    if (!feed) return;
+    const empty = feed.querySelector('.empty');
+    if (empty) empty.remove();
+
+    const status = document.getElementById('paperFeedStatus');
+    if (status) { status.textContent = 'Live'; status.className = 'badge badge-buy'; }
+
+    const action = (data.action || 'OPEN').toUpperCase();
+    const ticker = data.ticker || '—';
+    const price = data.entry_price ? fmt.format(data.entry_price) : '—';
+    const prob = data.probability_pct ? ` · ${data.probability_pct}%` : '';
+    const cls = ['BUY', 'LONG', 'OPEN'].includes(action) ? 'badge-buy' : 'badge-sell';
+    const ts = new Date().toLocaleTimeString('ru-RU', { hour12: false });
+
+    const item = document.createElement('div');
+    item.className = 'paper-feed-item';
+    item.innerHTML = `<span class="badge ${cls}">${action}</span><span class="feed-ticker">${ticker}</span><span class="feed-price">${price}${prob}</span><span class="feed-ts">${ts}</span>`;
+
+    feed.insertBefore(item, feed.firstChild);
+    while (feed.children.length > MAX_ITEMS) feed.removeChild(feed.lastChild);
+  }
+
+  function renderCloseFeedItem(data) {
+    const feed = document.getElementById('paperFeedList');
+    if (!feed) return;
+    const empty = feed.querySelector('.empty');
+    if (empty) empty.remove();
+
+    const status = document.getElementById('paperFeedStatus');
+    if (status) { status.textContent = 'Live'; status.className = 'badge badge-buy'; }
+
+    const ticker = data.ticker || '—';
+    const pnl = data.pnl != null ? (data.pnl >= 0 ? '+' : '') + fmt.format(data.pnl) : '—';
+    const reason = data.reason || 'close';
+    const cls = (data.pnl >= 0) ? 'badge-buy' : 'badge-sell';
+    const ts = new Date().toLocaleTimeString('ru-RU', { hour12: false });
+
+    const item = document.createElement('div');
+    item.className = 'paper-feed-item';
+    item.innerHTML = `<span class="badge ${cls}">CLOSE</span><span class="feed-ticker">${ticker}</span><span class="feed-price">P&amp;L ${pnl}</span><span class="feed-ts">${ts} · ${reason}</span>`;
+
+    feed.insertBefore(item, feed.firstChild);
+    while (feed.children.length > MAX_ITEMS) feed.removeChild(feed.lastChild);
+  }
+
+  if (typeof QFStore !== 'undefined') {
+    QFStore.on?.('event:paper_trade_executed', (payload) => {
+      const raw = payload?.raw || payload || {};
+      renderFeedItem(raw?.data || raw);
+    });
+    QFStore.on?.('event:paper_position_closed', (payload) => {
+      const raw = payload?.raw || payload || {};
+      renderCloseFeedItem(raw?.data || raw);
+    });
+    QFStore.on?.('sync:complete', () => {
+      const state = QFStore.get();
+      const positions = state.paperPositions || [];
+      if (positions.length) {
+        const status = document.getElementById('paperFeedStatus');
+        if (status && status.textContent === 'Ожидание…') {
+          status.textContent = `${positions.length} позиций`;
+          status.className = 'badge badge-buy';
+        }
+      }
+    });
+  }
+
+  document.addEventListener('sseEvent', (e) => {
+    if (e.detail?.type === 'paper_trade_executed') renderFeedItem(e.detail.data || {});
+    if (e.detail?.type === 'paper_position_closed') renderCloseFeedItem(e.detail.data || {});
+  });
+})();

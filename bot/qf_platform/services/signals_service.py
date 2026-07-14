@@ -256,5 +256,5 @@ class SignalsService:
             "take_profit_1": signal.take_profit_1,
             "exchange": signal.exchange,
         })
-        self._repo.update_status(signal_id, "executing")
+        self._repo.update_status(signal_id, "filled")
         return result

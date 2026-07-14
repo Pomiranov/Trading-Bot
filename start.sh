@@ -11,17 +11,28 @@ echo "Проект: $PROJECT_DIR"
 # ─── 1. Останавливаем старые процессы ─────────────────────────────────────
 echo ""
 echo "[1/4] Остановка старых процессов..."
-pkill -9 -f "Python.*main.py" 2>/dev/null && echo "  ✓ Старые main.py остановлены" || true
-pkill -9 -f "Python.*dashboard.py" 2>/dev/null && echo "  ✓ Старый dashboard.py остановлен" || true
+# Graceful shutdown first (SIGTERM → wait 5s → SIGKILL)
+pkill -TERM -f "Python.*main.py" 2>/dev/null && echo "  ✓ SIGTERM → main.py" || true
+pkill -TERM -f "Python.*dashboard.py" 2>/dev/null && echo "  ✓ SIGTERM → dashboard.py" || true
+sleep 5
+pkill -9 -f "Python.*main.py" 2>/dev/null || true
+pkill -9 -f "Python.*dashboard.py" 2>/dev/null || true
 rm -f "$PROJECT_DIR/.bot.pid" "$PROJECT_DIR/bot/.bot.pid"
-sleep 2
 
 # ─── 2. База данных ───────────────────────────────────────────────────────
 echo ""
 echo "[2/4] Запуск базы данных..."
 cd "$PROJECT_DIR"
 docker-compose up -d 2>&1 | grep -E "Starting|Running|healthy|error" || true
-sleep 2
+# Wait for PostgreSQL to be ready (up to 30s)
+echo "  Ожидание готовности PostgreSQL..."
+for i in $(seq 1 15); do
+    if docker exec trading_db pg_isready -q 2>/dev/null; then
+        echo "  ✓ PostgreSQL готов"
+        break
+    fi
+    sleep 2
+done
 
 # ─── 3. Dashboard ─────────────────────────────────────────────────────────
 echo ""

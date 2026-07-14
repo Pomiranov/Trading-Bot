@@ -3,13 +3,13 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>QuantFlow — Professional Trading Terminal</title>
+  <title>QuantFlow — Paper Trading Platform</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="{{ url_for('static', filename='design-system.css') }}?v=5" />
-  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=5" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='design-system.css') }}?v=6" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=6" />
   <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="{{ url_for('static', filename='miniapp/miniapp.css') }}?v=5" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='miniapp/miniapp.css') }}?v=6" />
   <script src="https://unpkg.com/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
 </head>
@@ -43,6 +43,10 @@
       <svg class="nav-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M4 10H2l2-3 2 3H4zm0 4h8a4 4 0 100-8H6"/></svg>
       <span class="nav-label">Backtest</span>
     </a>
+    <a href="#" data-view="analytics">
+      <svg class="nav-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 17L7 11l4 4 3-5 3 6"/><path d="M3 3v14h14"/></svg>
+      <span class="nav-label">Analytics</span>
+    </a>
 
     <div class="nav-divider"></div>
     <div class="nav-section-label">Apps</div>
@@ -61,7 +65,7 @@
 
   <div class="sidebar-footer">
     <div class="sidebar-kbd nav-label">
-      <kbd>1</kbd><kbd>2</kbd><kbd>3</kbd><kbd>4</kbd><kbd>5</kbd> навигация · <kbd>R</kbd> обновить
+      <kbd>1</kbd><kbd>2</kbd><kbd>3</kbd><kbd>4</kbd><kbd>5</kbd><kbd>6</kbd> навигация · <kbd>R</kbd> обновить
     </div>
     <button class="sidebar-collapse-btn" id="sidebarToggle" type="button">
       <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M10 2L4 8l6 6"/></svg>
@@ -147,9 +151,17 @@
               <div class="card-subtitle" id="signalsUpdated"></div>
             </div>
             <div class="table-wrap">
-              <table><thead><tr><th>Время</th><th>Тикер</th><th>Сигнал</th><th>Цена</th><th>Скор</th></tr></thead>
+              <table><thead><tr><th>Время</th><th>Тикер</th><th>Сигнал</th><th>Цена</th><th>Уверен.</th></tr></thead>
               <tbody id="signalsBody"><tr><td colspan="5" class="empty">Загрузка…</td></tr></tbody></table>
             </div>
+          </div>
+
+          <div class="card">
+            <div class="card-header">
+              <div><div class="card-title">Paper Trading — Live Feed</div><div class="card-subtitle">Песочница · Автоматические сделки</div></div>
+              <span class="badge badge-warn" id="paperFeedStatus">Ожидание…</span>
+            </div>
+            <div class="paper-feed" id="paperFeedList"><div class="empty">Запустите бот через Telegram для автоматических сделок</div></div>
           </div>
         </div>
 
@@ -300,7 +312,7 @@
       <div class="card">
         <div class="card-header"><div class="card-title">Журнал сигналов</div><div class="card-subtitle" id="signalsLiveUpdated"></div></div>
         <div class="table-wrap">
-          <table class="qf-table pro-table"><thead><tr><th>Asset</th><th>Exchange</th><th>Strategy</th><th>Direction</th><th>Entry</th><th>SL</th><th>TP</th><th>RR</th><th>Conf.%</th><th>Time</th><th>Status</th><th></th></tr></thead>
+          <table class="qf-table pro-table"><thead><tr><th>Asset</th><th>Exchange</th><th>Strategy</th><th>Direction</th><th>Entry</th><th>SL</th><th>TP1+</th><th>RR</th><th>Conf.%</th><th>Time</th><th>Status</th><th></th></tr></thead>
           <tbody id="signalsLiveBody"><tr><td colspan="12" class="empty">—</td></tr></tbody></table>
         </div>
       </div>
@@ -412,6 +424,88 @@
       </div>
     </section>
 
+    <!-- ── ANALYTICS ── -->
+    <section id="view-analytics" class="view">
+      <div class="page-header">
+        <div>
+          <h1 class="page-title">Analytics</h1>
+          <p class="page-desc">Paper Trading Performance · Strategy Analysis · Risk Metrics</p>
+        </div>
+        <div class="signals-toolbar">
+          <button class="btn btn-primary" id="engineStartBtn" type="button">▶ Запустить движок</button>
+          <button class="btn btn-secondary btn-action" id="refreshAnalyticsBtn" type="button">Обновить</button>
+        </div>
+      </div>
+
+      <!-- Engine Status Bar -->
+      <div class="card analytics-status-bar" id="engineStatusBar">
+        <div class="analytics-status-grid">
+          <div class="as-item"><span class="as-label">Статус</span><span class="as-val" id="engineStatusText">Загрузка…</span></div>
+          <div class="as-item"><span class="as-label">Комиссия</span><span class="as-val">0.03%</span></div>
+          <div class="as-item"><span class="as-label">Проскальзывание</span><span class="as-val">0.01%</span></div>
+          <div class="as-item"><span class="as-label">Источник данных</span><span class="as-val">MOEX · DB</span></div>
+        </div>
+      </div>
+
+      <!-- Stats Grid (8 key metrics) -->
+      <div class="analytics-stats-grid" id="analyticsStatsGrid">
+        <div class="card metric-card"><div class="metric-label">Всего сделок</div><div class="metric-value neutral" id="anTotalTrades">—</div></div>
+        <div class="card metric-card"><div class="metric-label">Win Rate</div><div class="metric-value neutral" id="anWinRate">—</div></div>
+        <div class="card metric-card"><div class="metric-label">Profit Factor</div><div class="metric-value neutral" id="anProfitFactor">—</div></div>
+        <div class="card metric-card"><div class="metric-label">Sharpe Ratio</div><div class="metric-value neutral" id="anSharpe">—</div></div>
+        <div class="card metric-card"><div class="metric-label">Sortino Ratio</div><div class="metric-value neutral" id="anSortino">—</div></div>
+        <div class="card metric-card"><div class="metric-label">Max Drawdown</div><div class="metric-value neutral" id="anMaxDD">—</div></div>
+        <div class="card metric-card"><div class="metric-label">Total PnL</div><div class="metric-value neutral" id="anTotalPnl">—</div></div>
+        <div class="card metric-card"><div class="metric-label">ROI %</div><div class="metric-value neutral" id="anRoi">—</div></div>
+      </div>
+
+      <!-- Charts Row -->
+      <div class="analytics-charts-row">
+        <div class="card chart-card">
+          <div class="card-header"><div class="card-title">Equity Curve</div><div class="card-subtitle" id="equitySubtitle">Paper Trading · Full History</div></div>
+          <div class="chart-wrap" style="height:260px"><div id="analyticsEquityChart" class="chart-container"></div></div>
+        </div>
+        <div class="card chart-card">
+          <div class="card-header"><div class="card-title">Monthly P&amp;L</div><div class="card-subtitle">По месяцам</div></div>
+          <div class="chart-wrap" style="height:260px"><div id="analyticsMonthlyChart" class="chart-container"></div></div>
+        </div>
+      </div>
+
+      <!-- Daily PnL + Best/Worst -->
+      <div class="analytics-bottom-row">
+        <div class="card">
+          <div class="card-header"><div class="card-title">Дневная P&amp;L (30 дней)</div></div>
+          <div class="table-wrap" style="max-height:280px;overflow-y:auto">
+            <table class="qf-table"><thead><tr><th>Дата</th><th>P&amp;L</th><th>Сделок</th></tr></thead>
+            <tbody id="analyticsDailyBody"><tr><td colspan="3" class="empty">—</td></tr></tbody></table>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header"><div class="card-title">Лучшие сделки</div></div>
+          <div id="analyticsBestTrades" class="recent-list"><div class="empty">—</div></div>
+        </div>
+        <div class="card">
+          <div class="card-header"><div class="card-title">Худшие сделки</div></div>
+          <div id="analyticsWorstTrades" class="recent-list"><div class="empty">—</div></div>
+        </div>
+      </div>
+
+      <!-- Closed Trades Table -->
+      <div class="card" style="margin-top:12px">
+        <div class="card-header">
+          <div class="card-title">История Paper Trades</div>
+          <div class="card-subtitle" id="tradesHistoryMeta"></div>
+        </div>
+        <div class="table-wrap">
+          <table class="qf-table pro-table"><thead><tr>
+            <th>Тикер</th><th>Dir</th><th>Entry</th><th>Exit</th><th>Qty</th>
+            <th>PnL</th><th>PnL%</th><th>Комис.</th><th>Причина</th><th>Закрыта</th>
+          </tr></thead>
+          <tbody id="tradesHistoryBody"><tr><td colspan="10" class="empty">—</td></tr></tbody></table>
+        </div>
+      </div>
+    </section>
+
     <!-- ── MINI APP (Quant Hunter) — inline embed, no iframe ── -->
     <section id="view-miniapp" class="view view--fullscreen ma-embed">
       <div id="app" class="ma-root miniapp-shell responsive-container">
@@ -473,24 +567,49 @@
               <div class="game-hud-block">
                 <span class="hud-label">XP</span>
                 <div class="xp-track"><div class="xp-fill" id="xpBar"></div></div>
-                <span class="hud-sub" id="gameXp">0/105</span>
+                <span class="hud-sub" id="gameXp">0/108</span>
               </div>
             </div>
+            <div class="game-hud-row2 holo-panel">
+              <div class="vol-wrap">
+                <span class="hud-label">📊 Volatility</span>
+                <div class="vol-track"><div class="vol-bar" id="volatilityBar" style="width:50%"></div></div>
+              </div>
+              <div id="powerupStatus" class="powerup-status"></div>
+            </div>
+            <div id="eventBanner" class="event-banner"></div>
             <div class="quant-legend holo-panel">
-              <span class="ql common">◇ Common +1</span>
-              <span class="ql rare">◆ Rare +10</span>
-              <span class="ql epic">✦ Epic +100</span>
-              <span class="ql legendary">★ Legend +1000</span>
+              <span class="ql common">◇ +1</span>
+              <span class="ql rare">◆ +10</span>
+              <span class="ql epic">✦ +100</span>
+              <span class="ql legendary">★ +1000</span>
+              <span class="ql powerup">⚡ Power-up</span>
             </div>
             <div class="game-arena holo-panel" id="gameArena">
               <canvas id="gameCanvas"></canvas>
               <div class="game-combo" id="gameCombo"></div>
-              <div class="game-hint">Охоться за Quant · -1 Energy за поимку</div>
               <div id="particles" class="particles"></div>
             </div>
             <div class="game-actions">
-              <button class="ma-btn primary" id="dailyRewardBtn" type="button">Daily Reward</button>
-              <button class="ma-btn ghost" id="leaderboardBtn" type="button">Leaderboard</button>
+              <button class="ma-btn primary" id="dailyRewardBtn" type="button">🎁 Daily</button>
+              <button class="ma-btn ghost"   id="chartPredBtn"   type="button">📈 Predict</button>
+              <button class="ma-btn ghost"   id="leaderboardBtn" type="button">🏆 Rank</button>
+            </div>
+            <div id="predictionOverlay" class="pred-overlay">
+              <div class="pred-card holo-panel">
+                <div class="pred-header">
+                  <span class="pred-title">📈 Chart Prediction</span>
+                  <span class="pred-ticker" id="predTicker">SBER · 5M</span>
+                  <button class="pred-close" type="button">✕</button>
+                </div>
+                <p class="pred-desc">Куда пойдёт следующая свеча?</p>
+                <div class="pred-chart-wrap"><canvas id="predChart" width="260" height="100"></canvas></div>
+                <div class="pred-actions">
+                  <button class="pred-btn up" id="predUpBtn" type="button">📈 UP</button>
+                  <button class="pred-btn down" id="predDownBtn" type="button">📉 DOWN</button>
+                </div>
+                <p class="pred-reward">✅ Верно → +200 pts и XP</p>
+              </div>
             </div>
             <div class="ma-section holo-panel">
               <div class="ma-section-title">Daily Missions</div>
@@ -514,18 +633,18 @@
   </main>
 </div>
 
-<script src="{{ url_for('static', filename='components.js') }}?v=5"></script>
-<script src="{{ url_for('static', filename='charts.js') }}?v=5"></script>
-<script src="{{ url_for('static', filename='core/format.js') }}?v=5"></script>
-<script src="{{ url_for('static', filename='core/api.js') }}?v=5"></script>
-<script src="{{ url_for('static', filename='core/store.js') }}?v=5"></script>
-<script src="{{ url_for('static', filename='core/assets.js') }}?v=5"></script>
-<script src="{{ url_for('static', filename='core/sync.js') }}?v=5"></script>
-<script src="{{ url_for('static', filename='core/layout.js') }}?v=5"></script>
-<script src="{{ url_for('static', filename='views/render.js') }}?v=5"></script>
-<script src="{{ url_for('static', filename='miniapp/game.js') }}?v=5"></script>
-<script src="{{ url_for('static', filename='miniapp/miniapp.js') }}?v=5"></script>
-<script src="{{ url_for('static', filename='app.js') }}?v=5"></script>
-<script src="{{ url_for('static', filename='platform.js') }}?v=5"></script>
+<script src="{{ url_for('static', filename='components.js') }}?v=6"></script>
+<script src="{{ url_for('static', filename='charts.js') }}?v=6"></script>
+<script src="{{ url_for('static', filename='core/format.js') }}?v=6"></script>
+<script src="{{ url_for('static', filename='core/api.js') }}?v=6"></script>
+<script src="{{ url_for('static', filename='core/store.js') }}?v=6"></script>
+<script src="{{ url_for('static', filename='core/assets.js') }}?v=6"></script>
+<script src="{{ url_for('static', filename='core/sync.js') }}?v=6"></script>
+<script src="{{ url_for('static', filename='core/layout.js') }}?v=6"></script>
+<script src="{{ url_for('static', filename='views/render.js') }}?v=6"></script>
+<script src="{{ url_for('static', filename='miniapp/game.js') }}?v=6"></script>
+<script src="{{ url_for('static', filename='miniapp/miniapp.js') }}?v=6"></script>
+<script src="{{ url_for('static', filename='app.js') }}?v=6"></script>
+<script src="{{ url_for('static', filename='platform.js') }}?v=6"></script>
 </body>
 </html>

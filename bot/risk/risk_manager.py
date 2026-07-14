@@ -1,6 +1,7 @@
 """Управление рисками: размер позиции через ATR, стоп-лосс, дневной лимит убытков."""
 
 import logging
+import threading
 from dataclasses import dataclass
 from typing import Optional
 
@@ -45,6 +46,7 @@ class RiskManager:
         self.cfg = config.risk
         self._daily_pnl: float = 0.0
         self._open_positions: dict[str, PositionSizing] = {}
+        self._lock = threading.Lock()
 
     # ─── Размер позиции ───────────────────────────────────────────────
 
@@ -124,16 +126,21 @@ class RiskManager:
 
         is_buy = direction.lower() in ("buy", "long")
 
+        with self._lock:
+            pos_count = len(self._open_positions)
+            has_ticker = ticker in self._open_positions
+            daily_pnl = self._daily_pnl
+
         if is_buy:
             # Лимит открытых позиций
-            if len(self._open_positions) >= self.cfg.max_open_positions:
+            if pos_count >= self.cfg.max_open_positions:
                 return RiskCheckResult(
                     allowed=False,
                     reason=f"Достигнут лимит открытых позиций: {self.cfg.max_open_positions}",
                 )
 
             # Уже в позиции по этому тикеру
-            if ticker in self._open_positions:
+            if has_ticker:
                 return RiskCheckResult(
                     allowed=False,
                     reason=f"Позиция по {ticker} уже открыта",
@@ -141,12 +148,12 @@ class RiskManager:
 
         # Дневной лимит убытков
         max_daily_loss = portfolio_value * self.cfg.max_daily_loss_pct
-        if self._daily_pnl <= -max_daily_loss:
+        if daily_pnl <= -max_daily_loss:
             return RiskCheckResult(
                 allowed=False,
                 reason=(
                     f"Достигнут дневной лимит убытков: "
-                    f"{self._daily_pnl:.2f} руб. (лимит -{max_daily_loss:.2f} руб.)"
+                    f"{daily_pnl:.2f} руб. (лимит -{max_daily_loss:.2f} руб.)"
                 ),
             )
 
@@ -163,17 +170,20 @@ class RiskManager:
 
     def register_open(self, position: PositionSizing) -> None:
         """Зарегистрировать открытие позиции."""
-        self._open_positions[position.ticker] = position
+        with self._lock:
+            self._open_positions[position.ticker] = position
         logger.info("Открыта позиция: %s", position.ticker)
 
     def register_close(self, ticker: str, exit_price: float) -> float:
         """Зарегистрировать закрытие позиции, вернуть PnL."""
-        position = self._open_positions.pop(ticker, None)
+        with self._lock:
+            position = self._open_positions.pop(ticker, None)
         if position is None:
             return 0.0
 
         pnl = (exit_price - position.entry_price) * position.shares
-        self._daily_pnl += pnl
+        with self._lock:
+            self._daily_pnl += pnl
         logger.info(
             "Закрыта позиция %s: вход %.2f, выход %.2f, PnL %.2f руб.",
             ticker, position.entry_price, exit_price, pnl,
@@ -182,16 +192,19 @@ class RiskManager:
 
     def reset_daily(self) -> None:
         """Сбросить суточный PnL (вызывать в начале торговой сессии)."""
-        self._daily_pnl = 0.0
+        with self._lock:
+            self._daily_pnl = 0.0
         logger.info("Дневной PnL сброшен")
 
     @property
     def daily_pnl(self) -> float:
-        return self._daily_pnl
+        with self._lock:
+            return self._daily_pnl
 
     @property
     def open_positions(self) -> dict[str, PositionSizing]:
-        return dict(self._open_positions)
+        with self._lock:
+            return dict(self._open_positions)
 
     def trailing_stop(
         self,
@@ -203,7 +216,8 @@ class RiskManager:
         Рассчитать скользящий стоп для открытой позиции.
         Возвращает новый уровень стоп-лосса или None если позиция не найдена.
         """
-        position = self._open_positions.get(ticker)
+        with self._lock:
+            position = self._open_positions.get(ticker)
         if position is None:
             return None
 
@@ -213,7 +227,8 @@ class RiskManager:
                 "Trailing stop %s: %.2f → %.2f",
                 ticker, position.stop_price, new_stop,
             )
-            position.stop_price = new_stop
+            with self._lock:
+                position.stop_price = new_stop
 
         return position.stop_price
 

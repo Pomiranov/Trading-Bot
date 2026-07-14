@@ -301,7 +301,7 @@ def api_paper_position_close(pos_id: int):
     body = request.get_json(silent=True) or {}
     reason = body.get("reason", "manual")
     from engine.paper_engine import paper_engine
-    paper_engine._db_engine = _engine
+    paper_engine.set_db_engine(_engine)
     try:
         result = paper_engine.close_trade(pos_id, reason=reason)
         return jsonify({"ok": True, **result})
@@ -320,7 +320,7 @@ def api_paper_position_partial(pos_id: int):
     body = request.get_json(silent=True) or {}
     qty_pct = float(body.get("qty_pct", 0.5))
     from engine.paper_engine import paper_engine
-    paper_engine._db_engine = _engine
+    paper_engine.set_db_engine(_engine)
     try:
         result = paper_engine.close_trade_partial(pos_id, qty_pct=qty_pct)
         return jsonify({"ok": True, **result})
@@ -402,6 +402,7 @@ def api_sse_stream():
     """SSE endpoint for real-time updates."""
 
     def generate():
+        import queue as _queue
         q = sse_hub.subscribe()
         try:
             yield sse_hub.format_sse({
@@ -413,7 +414,7 @@ def api_sse_stream():
                 try:
                     payload = q.get(timeout=25)
                     yield sse_hub.format_sse(payload)
-                except Exception:
+                except _queue.Empty:
                     yield ": keepalive\n\n"
         finally:
             sse_hub.unsubscribe(q)

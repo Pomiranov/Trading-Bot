@@ -136,19 +136,18 @@ async def cb_bot_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     if not await require_auth(update, context):
         await query.answer()
         return
-    await query.answer()
 
     if trading_engine.is_running():
         await query.answer("Бот уже запущен", show_alert=True)
         return
 
+    await query.answer()
     trading_engine.start()
     paper_auto_engine.start()
     logger.info("Trading bot started via Telegram")
     try:
         from tg.notifications.dispatcher import notify_bot_started
-        import asyncio
-        asyncio.create_task(notify_bot_started())
+        await notify_bot_started()
     except Exception:
         pass
     await _render(update, context)
@@ -159,12 +158,12 @@ async def cb_bot_pause(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     if not await require_auth(update, context):
         await query.answer()
         return
-    await query.answer()
 
     if not trading_engine.is_running():
         await query.answer("Бот не запущен", show_alert=True)
         return
 
+    await query.answer()
     trading_engine.pause()
     paper_auto_engine.stop()
     logger.info("Trading bot paused via Telegram")
@@ -194,8 +193,7 @@ async def cb_bot_stop(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
     logger.info("Trading bot stopped via Telegram")
     try:
         from tg.notifications.dispatcher import notify_bot_stopped
-        import asyncio
-        asyncio.create_task(notify_bot_stopped())
+        await notify_bot_stopped()
     except Exception:
         pass
     await _render(update, context)

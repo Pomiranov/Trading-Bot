@@ -34,7 +34,7 @@
   }
   window.maToast = toast;
 
-  let activeTab = inDashboard ? 'game' : 'trade';
+  let activeTab = inDashboard ? 'game' : (new URLSearchParams(location.search).get('tab') === 'trade' ? 'trade' : 'game');
   let started = false;
   let tabsWired = false;
   let syncIv = null;
@@ -83,13 +83,24 @@
     return [...map.values()];
   }
 
+  function _confBar(conf) {
+    const pct = Math.round((conf || 0) * 100);
+    const filled = Math.max(0, Math.min(10, Math.round((conf || 0) * 10)));
+    return `<span class="ma-conf-bar">${'█'.repeat(filled)}${'░'.repeat(10 - filled)}</span> ${pct}%`;
+  }
+
+  function _sigTypeIcon(t) {
+    return t === 'LONG' ? '🟢' : t === 'SHORT' ? '🔴' : '⚪';
+  }
+
   async function syncTrade() {
     const dot = document.getElementById('maSyncDot');
     try {
-      const [overview, posData, signals] = await Promise.all([
+      const [overview, posData, signals, analytics] = await Promise.all([
         QFApi.overview(),
         fetchPositions(),
         QFApi.signals({ limit: 30 }),
+        fetch('/api/platform/analytics/summary').then(r => r.json()).catch(() => null),
       ]);
       dot?.classList.add('live');
       const list = posData.positions || [];
@@ -105,6 +116,12 @@
       document.getElementById('maSignals').textContent = String(uniqueSignals.length);
       document.getElementById('maSyncTime').textContent = new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
 
+      if (analytics && document.getElementById('maWinRate')) {
+        document.getElementById('maWinRate').textContent = `${QFFmt.pct(analytics.win_rate)}`;
+        document.getElementById('maTotalPnl').textContent = QFFmt.money(analytics.total_pnl, '₽');
+        document.getElementById('maTrades').textContent = String(analytics.total_trades || 0);
+      }
+
       document.getElementById('maPositions').innerHTML = list.length
         ? list.map(p => {
           const side = (p.direction || 'long').toUpperCase();
@@ -116,9 +133,23 @@
         : '<div class="ma-empty">Нет позиций</div>';
 
       document.getElementById('maSignalList').innerHTML = uniqueSignals.length
-        ? uniqueSignals.slice(0, 8).map(s => `<div class="ma-row"><div><div class="ma-row-ticker">${s.asset}</div>
-            <div class="ma-row-meta">${s.exchange} · ${s.signal_type}</div></div>
-            <span>${s.probability_pct}%</span></div>`).join('')
+        ? uniqueSignals.slice(0, 8).map(s => {
+          const meta = s.metadata || {};
+          const strategy = meta.strategy || '';
+          const conf = meta.confidence;
+          const regime = meta.regime || '';
+          return `<div class="ma-sig-card">
+            <div class="ma-sig-top">
+              <span class="ma-sig-ticker">${_sigTypeIcon(s.signal_type)} ${s.asset}</span>
+              <span class="ma-sig-type ${s.signal_type === 'LONG' ? 'long' : 'short'}">${s.signal_type}</span>
+            </div>
+            ${strategy ? `<div class="ma-sig-strategy">${strategy}</div>` : ''}
+            <div class="ma-sig-bottom">
+              ${conf != null ? `<span class="ma-sig-conf">${_confBar(conf)}</span>` : `<span>${s.probability_pct}%</span>`}
+              ${regime ? `<span class="ma-sig-regime">${regime}</span>` : ''}
+            </div>
+          </div>`;
+        }).join('')
         : '<div class="ma-empty">Нет сигналов</div>';
     } catch (_) {
       dot?.classList.remove('live');
@@ -176,7 +207,13 @@
     syncTrade,
   };
 
+  // Wire prediction overlay buttons (in standalone page)
+  document.querySelector('.pred-up')?.addEventListener('click', () => {
+    document.getElementById('predictionOverlay')?.querySelectorAll('.pred-up,.pred-down')
+      .forEach(b => { if (b.className.includes('up')) b.click(); });
+  });
+
   if (!inDashboard) {
-    start({ tab: params.get('tab') === 'game' ? 'game' : 'trade' });
+    start({ tab: 'game' });
   }
 })();

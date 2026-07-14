@@ -56,7 +56,7 @@ async def _render_paper_main(update: Update, context: ContextTypes.DEFAULT_TYPE)
     portfolio_text = "<i>DB недоступна</i>"
     if db_engine:
         try:
-            paper_engine._db_engine = db_engine
+            paper_engine.set_db_engine(db_engine)
             portfolio = paper_engine.get_portfolio()
             account = portfolio["account"]
             pnl = portfolio["pnl"]
@@ -129,12 +129,11 @@ async def cb_paper_toggle(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     if not await require_auth(update, context):
         await query.answer()
         return
-    await query.answer()
 
     from engine.paper_engine import paper_engine
     db_engine = context.bot_data.get("db_engine")
     if db_engine:
-        paper_engine._db_engine = db_engine
+        paper_engine.set_db_engine(db_engine)
 
     if paper_engine.is_running():
         paper_engine.stop()
@@ -145,7 +144,20 @@ async def cb_paper_toggle(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         await query.answer("▶ Paper движок запущен", show_alert=True)
         logger.info("PaperEngine started via Telegram")
 
-    await _render_paper_main(update, context)
+    # Query is already answered above — edit the message directly without re-answering
+    is_running = paper_engine.is_running()
+    kb = _paper_menu_keyboard(is_running)
+    engine_status = "🟢 Работает" if is_running else "🔴 Остановлен"
+    try:
+        await query.edit_message_text(
+            f"<b>📊 Paper Trading</b>\n─────────────────────────\n"
+            f"Движок: {engine_status}\n\n"
+            f"<i>Нажмите 🔄 Обновить для загрузки данных счёта</i>",
+            reply_markup=kb,
+            parse_mode="HTML",
+        )
+    except Exception:
+        pass
 
 
 async def cb_paper_stats(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -209,7 +221,7 @@ async def cb_paper_positions(update: Update, context: ContextTypes.DEFAULT_TYPE)
     if db_engine:
         try:
             from engine.paper_engine import paper_engine
-            paper_engine._db_engine = db_engine
+            paper_engine.set_db_engine(db_engine)
             portfolio = paper_engine.get_portfolio()
             positions = portfolio["positions"]
             account = portfolio["account"]
@@ -330,7 +342,7 @@ async def cb_paper_risk(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
         if db_engine:
             try:
                 from engine.paper_engine import paper_engine
-                paper_engine._db_engine = db_engine
+                paper_engine.set_db_engine(db_engine)
                 port = paper_engine.get_portfolio()
                 portfolio_value = float(port["account"].get("balance", 0))
             except Exception:

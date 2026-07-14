@@ -66,11 +66,15 @@ class PaperEngine:
             pass
         # Fallback via HTTP (if in bot process)
         try:
+            import os
             import requests
             from config import config
+            token = os.getenv("QF_INTERNAL_TOKEN", "")
+            headers = {"X-Internal-Token": token} if token else {}
             requests.post(
                 f"http://127.0.0.1:{config.dashboard.port}/api/internal/push",
                 json={"event_type": event_type, **data},
+                headers=headers,
                 timeout=2,
             )
         except Exception:
@@ -531,11 +535,28 @@ class PaperEngine:
 
             try:
                 entry_reason = meta.get("entry_reason", "")
+                # Resolve actual market price to validate signal SL/TP are on the correct side.
+                # Signals can be stale (generated at a different price), so SL/TP may be
+                # inverted relative to the actual fill price.
+                actual_price = self._get_market_price(sig.asset)
+                sig_sl = float(sig.stop_loss) if sig.stop_loss else None
+                sig_tp = float(sig.take_profit_1) if sig.take_profit_1 else None
+                if actual_price:
+                    if direction == "long":
+                        if sig_sl and sig_sl >= actual_price:
+                            sig_sl = None  # wrong side — let open_trade() compute from fill
+                        if sig_tp and sig_tp <= actual_price:
+                            sig_tp = None
+                    else:  # short
+                        if sig_sl and sig_sl <= actual_price:
+                            sig_sl = None  # wrong side — let open_trade() compute from fill
+                        if sig_tp and sig_tp >= actual_price:
+                            sig_tp = None
                 result = self.open_trade(
                     ticker=sig.asset,
                     direction=direction,
-                    stop_loss=float(sig.stop_loss) if sig.stop_loss else None,
-                    take_profit=float(sig.take_profit_1) if sig.take_profit_1 else None,
+                    stop_loss=sig_sl,
+                    take_profit=sig_tp,
                     exchange=getattr(sig, "exchange", "paper"),
                     signal_id=sig.id,
                     entry_reason=entry_reason,
@@ -717,6 +738,11 @@ class PaperEngine:
             self._running = False
             self._push_sse("engine_stopped", {"engine": "paper", "ts": datetime.utcnow().isoformat()})
             logger.info("PaperEngine stopped")
+
+    def set_db_engine(self, db_engine) -> None:
+        """Inject a db engine without starting background threads (used by dashboard routes)."""
+        if self._db_engine is None:
+            self._db_engine = db_engine
 
     def is_running(self) -> bool:
         return self._running

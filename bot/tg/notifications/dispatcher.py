@@ -97,12 +97,18 @@ def notify_paper_trade_close_sync(
         _send_telegram_sync(chat_id, text)
 
 
+def _internal_headers() -> dict:
+    import os
+    token = os.getenv("QF_INTERNAL_TOKEN", "")
+    return {"X-Internal-Token": token} if token else {}
+
+
 async def _push_sse(event_type: str, data: dict) -> None:
     """Push event to dashboard SSE hub via HTTP (fire-and-forget)."""
     try:
         url = f"http://127.0.0.1:{config.dashboard.port}/api/internal/push"
         async with httpx.AsyncClient(timeout=1.0) as client:
-            await client.post(url, json={"event_type": event_type, **data})
+            await client.post(url, json={"event_type": event_type, **data}, headers=_internal_headers())
     except Exception:
         pass  # dashboard may not be running
 

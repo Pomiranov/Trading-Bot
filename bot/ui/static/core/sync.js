@@ -19,6 +19,26 @@ const QFSync = (() => {
     sse.addEventListener('portfolio_updated', refresh('portfolio_updated'));
     sse.addEventListener('signals_updated', refresh('signals_updated'));
     sse.addEventListener('trade_executed', refresh('trade_executed'));
+    sse.addEventListener('paper_trade_executed', (e) => {
+      let raw = {};
+      try { raw = JSON.parse(e.data || '{}'); } catch (_) {}
+      QFStore.emit('event:paper_trade_executed', { type: 'paper_trade_executed', raw });
+      handleEvent('paper_trade_executed');
+    });
+    sse.addEventListener('paper_position_closed', (e) => {
+      let raw = {};
+      try { raw = JSON.parse(e.data || '{}'); } catch (_) {}
+      QFStore.emit('event:paper_position_closed', { type: 'paper_position_closed', raw });
+      handleEvent('paper_position_closed');
+    });
+    sse.addEventListener('engine_started', () => {
+      QFStore.patch({ engineRunning: true });
+      QFStore.emit('event:engine_started', {});
+    });
+    sse.addEventListener('engine_stopped', () => {
+      QFStore.patch({ engineRunning: false });
+      QFStore.emit('event:engine_stopped', {});
+    });
     sse.addEventListener('backtest_complete', refresh('backtest_complete'));
 
     sse.onerror = () => {

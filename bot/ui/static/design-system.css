@@ -491,6 +491,80 @@ table tbody tr:hover td {
 .qf-progress.good  .qf-progress-fill { background: var(--qf-long); }
 .qf-progress.danger .qf-progress-fill { background: var(--qf-short); }
 
+/* ── Signals table extras ── */
+.tp-more {
+  display: inline-block;
+  margin-left: 3px;
+  padding: 1px 4px;
+  background: rgba(0, 192, 118, 0.12);
+  border: 1px solid rgba(0, 192, 118, 0.2);
+  border-radius: 3px;
+  font-size: 9px;
+  color: var(--qf-long);
+  vertical-align: middle;
+  font-family: var(--qf-font);
+}
+
+/* ── Paper trading live feed ── */
+.paper-feed {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 220px;
+  overflow-y: auto;
+}
+.paper-feed-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: var(--qf-surface);
+  border: 1px solid var(--qf-border);
+  border-radius: var(--qf-radius-sm);
+  font-size: var(--qf-text-xs);
+  animation: feedSlideIn 0.3s var(--qf-ease) both;
+}
+@keyframes feedSlideIn {
+  from { opacity: 0; transform: translateX(-8px); }
+  to   { opacity: 1; transform: none; }
+}
+.paper-feed-item .feed-ticker { font-family: var(--qf-font-mono); font-weight: 600; color: var(--qf-text); }
+.paper-feed-item .feed-price  { font-family: var(--qf-font-mono); color: var(--qf-text-2); }
+.paper-feed-item .feed-ts     { color: var(--qf-text-muted); margin-left: auto; }
+
+/* ── Analytics view ── */
+.analytics-status-bar { margin-bottom: 12px; }
+.analytics-status-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  padding: 12px 20px;
+}
+.as-item { display: flex; flex-direction: column; gap: 2px; }
+.as-label { font-size: var(--qf-text-xs); color: var(--qf-text-muted); text-transform: uppercase; letter-spacing: 0.06em; }
+.as-val { font-family: var(--qf-font-mono); font-size: var(--qf-text-sm); color: var(--qf-text); font-weight: 500; }
+
+.analytics-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap: 10px;
+  margin-bottom: 12px;
+}
+@media (max-width: 1400px) { .analytics-stats-grid { grid-template-columns: repeat(4, 1fr); } }
+
+.analytics-charts-row {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.analytics-bottom-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
 /* ═══════════════════════════════════════════════════════════════
    REDUCE MOTION
 ═══════════════════════════════════════════════════════════════ */

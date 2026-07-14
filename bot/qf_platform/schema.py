@@ -235,4 +235,13 @@ CREATE TABLE IF NOT EXISTS forward_state (
     updated_at          TIMESTAMPTZ     DEFAULT NOW(),
     PRIMARY KEY (strategy_id, ticker)
 );
+
+-- ── Paper engine enhancements (idempotent migrations) ─────────────────────
+ALTER TABLE paper_trades ADD COLUMN IF NOT EXISTS commission    NUMERIC(18,4) NOT NULL DEFAULT 0;
+ALTER TABLE paper_trades ADD COLUMN IF NOT EXISTS slippage      NUMERIC(18,4) NOT NULL DEFAULT 0;
+ALTER TABLE paper_trades ADD COLUMN IF NOT EXISTS close_reason  VARCHAR(32)   NOT NULL DEFAULT 'manual';
+ALTER TABLE paper_trades ADD COLUMN IF NOT EXISTS entry_reason  TEXT;
+ALTER TABLE paper_positions ADD COLUMN IF NOT EXISTS trailing_stop_pct NUMERIC(10,6);
+ALTER TABLE paper_positions ADD COLUMN IF NOT EXISTS signal_id         INTEGER;
+ALTER TABLE paper_positions ADD COLUMN IF NOT EXISTS entry_reason      TEXT;
 """

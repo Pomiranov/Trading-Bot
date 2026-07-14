@@ -32,6 +32,7 @@ from tg.handlers.dashboard import cb_dashboard, cmd_dashboard, cb_dashboard_refr
 from tg.handlers.portfolio import cb_portfolio, cb_portfolio_refresh, cmd_portfolio
 from tg.handlers.positions import (
     cb_positions, cb_positions_page, cb_positions_refresh, cmd_positions,
+    cb_position_detail,
 )
 from tg.handlers.orders import (
     cb_orders, cb_orders_filter, cb_orders_refresh, cb_order_cancel, cmd_orders,
@@ -177,10 +178,22 @@ def _build_application() -> Application:
     app.add_handler(CallbackQueryHandler(cb_help,                pattern=r"^m_help$"))
     app.add_handler(CallbackQueryHandler(cb_game,                pattern=r"^m_game$"))
 
-    # No-op callbacks (pagination labels)
+    # ── Positions detail ──────────────────────────────────────────────────────
+    app.add_handler(CallbackQueryHandler(cb_position_detail, pattern=r"^pos_detail_"))
+
+    # No-op callbacks (pagination labels, unimplemented history)
     app.add_handler(CallbackQueryHandler(
         lambda u, c: u.callback_query.answer(),
-        pattern=r"^(pos_noop|ops_noop)$",
+        pattern=r"^(pos_noop|ops_noop|pos_hist_.+)$",
+    ))
+
+    # ── Stub handlers for settings sections not yet implemented ───────────────
+    async def _cb_coming_soon(update, context):
+        await update.callback_query.answer("Раздел в разработке", show_alert=True)
+
+    app.add_handler(CallbackQueryHandler(
+        _cb_coming_soon,
+        pattern=r"^(set_tokens|set_timezone|set_currency|set_risk|set_interval|set_security|sig_filter_active)$",
     ))
 
     # ── Command: /game ────────────────────────────────────────────────────

@@ -81,6 +81,16 @@ const QFApi = (() => {
       headers: headers({ 'Content-Type': 'application/json' }),
       body: JSON.stringify({ action: 'close', position_id: positionId, mode }),
     }),
+    analytics() { return request('/api/platform/analytics'); },
+    engineStatus() { return request('/api/platform/engine/status'); },
+    engineStart() { return request('/api/platform/engine/start', { method: 'POST' }); },
+    engineStop() { return request('/api/platform/engine/stop', { method: 'POST' }); },
+    paperTrades(limit = 50) { return request(`/api/platform/paper/trades?limit=${limit}`); },
+    closePaperPosition(posId, reason = 'manual') {
+      return request(`/api/platform/paper/position/${posId}/close`, {
+        method: 'POST', headers: headers({'Content-Type': 'application/json'}), body: JSON.stringify({ reason })
+      });
+    },
   };
 })();
 

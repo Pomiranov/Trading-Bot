@@ -9,7 +9,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 
 import pandas as pd
-from flask import Flask, jsonify, render_template, request
+from flask import Flask, jsonify, render_template, request, send_from_directory
 
 _ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(_ROOT))
@@ -49,6 +49,13 @@ register_dashboard_security(app)
 
 from qf_platform.bootstrap import ensure_platform_schema
 from ui.api.platform_routes import init_platform_routes, platform_bp
+from realtime.sse_hub import sse_hub
+
+# Module-level singletons — reused across requests (saves CPU on each /api/signals/live call)
+from signals.indicators import IndicatorEngine as _IndicatorEngine
+from signals.rules_engine import RulesEngine as _RulesEngine
+_live_signal_engine = _IndicatorEngine()
+_live_signal_rules = _RulesEngine()
 
 # ── Database connection ───────────────────────────────────────────────────────
 
@@ -186,7 +193,7 @@ def _candle_equity() -> list[dict]:
 def _db_signals() -> list[dict]:
     rows = _query("""
         SELECT t.opened_at AS ts, t.ticker, t.direction, t.entry_price AS price,
-               t.quantity, tf.outcome, tf.signals
+               t.quantity, t.buy_score, t.sell_score, tf.outcome, tf.signals
         FROM trades t
         LEFT JOIN trade_feedback tf ON tf.trade_id = t.id
         ORDER BY t.opened_at DESC LIMIT 50
@@ -195,15 +202,22 @@ def _db_signals() -> list[dict]:
         raise ValueError("trades table is empty")
     result = []
     for r in rows:
-        direction = (r.get("direction") or "").lower()
-        action = "BUY" if direction == "long" else "SELL" if direction == "short" else "HOLD"
+        raw_dir = (r.get("direction") or "").upper()
+        if raw_dir in ("BUY", "LONG"):
+            action = "BUY"
+        elif raw_dir in ("SELL", "SHORT"):
+            action = "SELL"
+        else:
+            action = "HOLD"
         signals_json = r.get("signals")
-        score = float(signals_json.get("score", 0) or 0) if isinstance(signals_json, dict) else 0.0
+        score_from_json = float(signals_json.get("score", 0) or 0) if isinstance(signals_json, dict) else 0.0
+        buy_score = float(r.get("buy_score") or 0)
+        score = buy_score if buy_score else score_from_json
         result.append({
             "ts": _fmt_ts(r["ts"]),
             "ticker": r["ticker"],
             "action": action,
-            "score": score,
+            "score": round(score, 2),
             "price": float(r.get("price") or 0),
             "rules": int(r.get("quantity") or 1),
         })
@@ -307,6 +321,49 @@ def _tinkoff_error_response(exc: Exception):
 
 
 # ── Routes ────────────────────────────────────────────────────────────────────
+
+_MINIAPP_DIR = _UI_DIR / "static" / "miniapp"
+
+
+@app.route("/miniapp")
+@app.route("/miniapp/")
+def miniapp_index():
+    """Serve Quant Hunt as standalone Telegram Mini App."""
+    return send_from_directory(str(_MINIAPP_DIR), "index.html")
+
+
+@app.route("/miniapp/<path:filename>")
+def miniapp_static(filename):
+    return send_from_directory(str(_MINIAPP_DIR), filename)
+
+
+_INTERNAL_TOKEN = os.getenv("QF_INTERNAL_TOKEN", "")
+
+
+@app.route("/api/internal/push", methods=["POST"])
+def api_internal_push():
+    """Receive trade events from bot process and broadcast to SSE subscribers.
+
+    Protected by a shared internal token (QF_INTERNAL_TOKEN env var).
+    Falls back to localhost-only check when token is not configured.
+    """
+    if _INTERNAL_TOKEN:
+        import hmac as _hmac
+        provided = request.headers.get("X-Internal-Token", "")
+        if not _hmac.compare_digest(provided, _INTERNAL_TOKEN):
+            return jsonify({"error": "Unauthorized"}), 401
+    else:
+        # No token configured — restrict to loopback only
+        host = (request.headers.get("X-Forwarded-For") or "").split(",")[0].strip()
+        host = host or (request.remote_addr or "")
+        if host not in {"127.0.0.1", "::1", "localhost", ""}:
+            return jsonify({"error": "Unauthorized"}), 401
+
+    data = request.json or {}
+    event_type = data.pop("event_type", "trade_executed")
+    sse_hub.publish(event_type, data)
+    return jsonify({"ok": True})
+
 
 @app.route("/")
 def index():
@@ -571,10 +628,8 @@ def api_signals_live():
     if not DB_AVAILABLE:
         return jsonify([])
     try:
-        from signals.indicators import IndicatorEngine
-        from signals.rules_engine import RulesEngine
-        engine = IndicatorEngine()
-        rules = RulesEngine()
+        engine = _live_signal_engine
+        rules = _live_signal_rules
 
         tickers = [r["ticker"] for r in _query(
             "SELECT DISTINCT ticker FROM candles ORDER BY ticker"

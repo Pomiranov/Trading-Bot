@@ -361,15 +361,27 @@ const QFRender = (() => {
     const cards = latestPerAsset(data);
     if (grid) grid.innerHTML = cards.slice(0, 16).map(s => QFUI.signalCard(s)).join('');
     if (tbody) {
-      tbody.innerHTML = data.map(s => `
-        <tr>
+      tbody.innerHTML = data.map(s => {
+        const tp1 = s.take_profit_1 ? QFFmt.num(s.take_profit_1) : '—';
+        const tp2 = s.take_profit_2 ? QFFmt.num(s.take_profit_2) : '—';
+        const tp3 = s.take_profit_3 ? QFFmt.num(s.take_profit_3) : '—';
+        const tpCell = s.take_profit_2
+          ? `<span title="TP1: ${tp1} · TP2: ${tp2} · TP3: ${tp3}">${tp1}<span class="tp-more">+2</span></span>`
+          : tp1;
+        const rr = s.risk_reward ? Number(s.risk_reward).toFixed(1) + 'R' : '—';
+        const prob = s.probability_pct != null ? `${s.probability_pct}%` : '—';
+        const statusClass = { new: 'badge-info', executing: 'badge-warn', done: 'badge-buy', expired: 'badge-hold', cancelled: 'badge-error' }[s.status] || 'badge-hold';
+        return `<tr>
           <td class="ticker-cell">${s.asset}</td><td>${s.exchange}</td><td>${s.source || '—'}</td>
           <td>${QFUI.badge(s.signal_type)}</td><td class="price-cell">${QFFmt.num(s.entry_price)}</td>
-          <td>${s.stop_loss ? QFFmt.num(s.stop_loss) : '—'}</td><td>${s.take_profit_1 ? QFFmt.num(s.take_profit_1) : '—'}</td>
-          <td>${s.risk_reward || '—'}</td><td>${s.probability_pct}%</td>
-          <td class="ts-cell">${QFFmt.ts(s.generated_at)}</td><td><span class="badge badge-info">${s.status}</span></td>
-          <td><button class="btn btn-sm btn-ghost" onclick="executeSignal(${s.id})">Open</button></td>
-        </tr>`).join('');
+          <td class="price-cell negative">${s.stop_loss ? QFFmt.num(s.stop_loss) : '—'}</td>
+          <td class="price-cell positive">${tpCell}</td>
+          <td class="price-cell">${rr}</td><td>${prob}</td>
+          <td class="ts-cell">${QFFmt.ts(s.generated_at)}</td>
+          <td><span class="badge ${statusClass}">${s.status}</span></td>
+          <td><button class="btn btn-sm btn-ghost" onclick="executeSignal(${s.id})" title="Execute as paper trade">▶</button></td>
+        </tr>`;
+      }).join('');
     }
     document.getElementById('signalsLiveUpdated')?.replaceChildren(document.createTextNode(`${data.length} сигналов`));
   }

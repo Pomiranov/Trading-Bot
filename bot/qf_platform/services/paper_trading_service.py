@@ -12,6 +12,9 @@ from qf_platform.repositories.paper_repository import PaperRepository
 
 logger = logging.getLogger(__name__)
 
+COMMISSION_PCT = 0.0003   # 0.03% per side (must match engine/paper_engine.py)
+SLIPPAGE_PCT   = 0.0001   # 0.01% slippage
+
 
 class PaperTradingService:
     def __init__(self, engine: Engine):
@@ -88,52 +91,63 @@ class PaperTradingService:
             raise ValueError(f"Нет рыночных данных для {ticker}")
 
         available = float(account["available_balance"])
+        # Apply slippage (worse fill for the trader)
+        fill_price = price * (1 + SLIPPAGE_PCT) if direction == "long" else price * (1 - SLIPPAGE_PCT)
+
         if quantity is None:
             risk_capital = available * 0.05
-            quantity = max(1, int(risk_capital / price))
-        cost = price * quantity
+            quantity = max(1, int(risk_capital / fill_price))
+        cost = fill_price * quantity
+        commission = cost * COMMISSION_PCT
 
-        if cost > available:
+        if cost + commission > available:
             raise ValueError("Недостаточно средств на paper-счёте")
 
-        if stop_loss is None and price > 0:
-            stop_loss = round(price * 0.97, 4) if direction == "long" else round(price * 1.03, 4)
+        if stop_loss is None and fill_price > 0:
+            stop_loss = round(fill_price * 0.97, 4) if direction == "long" else round(fill_price * 1.03, 4)
         if take_profit is None:
-            take_profit = round(price * 1.06, 4) if direction == "long" else round(price * 0.94, 4)
+            take_profit = round(fill_price * 1.06, 4) if direction == "long" else round(fill_price * 0.94, 4)
 
         pos_id = self._repo.insert_position(account_id, {
             "ticker": ticker.upper(),
             "exchange": exchange,
             "direction": direction,
             "quantity": quantity,
-            "entry_price": price,
+            "entry_price": fill_price,
             "stop_loss": stop_loss,
             "take_profit": take_profit,
         })
 
-        new_available = available - cost
-        balance = float(account["balance"]) - cost + cost  # balance unchanged until close
+        new_available = available - cost - commission
+        balance = float(account["balance"])  # total balance unchanged until close
         margin = float(account["margin_used"]) + cost
         self._repo.update_account_balances(account_id, balance, new_available, margin)
 
-        logger.info("Paper position opened: %s %s qty=%s @ %s", ticker, direction, quantity, price)
-        return {"position_id": pos_id, "entry_price": price, "quantity": quantity}
+        logger.info(
+            "Paper position opened: %s %s qty=%s @ %.4f (commission=%.2f)",
+            ticker, direction, quantity, fill_price, commission,
+        )
+        return {"position_id": pos_id, "entry_price": fill_price, "quantity": quantity}
 
     def close_position(self, position_id: int) -> dict:
         pos = self._repo.get_position(position_id)
         if not pos:
             raise ValueError("Позиция не найдена")
 
-        price = self._get_market_price(pos["ticker"], self._repo._engine) or float(pos["entry_price"])
+        exit_price = self._get_market_price(pos["ticker"], self._repo._engine) or float(pos["entry_price"])
         qty = float(pos["quantity"])
         entry = float(pos["entry_price"])
         direction = (pos["direction"] or "long").lower()
         account_id = int(pos["account_id"])
 
+        # Apply slippage on exit (worse fill)
+        fill_exit = exit_price * (1 - SLIPPAGE_PCT) if direction == "long" else exit_price * (1 + SLIPPAGE_PCT)
+        commission = fill_exit * qty * COMMISSION_PCT
+
         if direction == "short":
-            pnl = (entry - price) * qty
+            pnl = (entry - fill_exit) * qty - commission
         else:
-            pnl = (price - entry) * qty
+            pnl = (fill_exit - entry) * qty - commission
         pnl_pct = pnl / (entry * qty) if entry * qty else 0
 
         self._repo.insert_trade(account_id, {
@@ -142,7 +156,7 @@ class PaperTradingService:
             "exchange": pos["exchange"],
             "direction": direction,
             "entry_price": entry,
-            "exit_price": price,
+            "exit_price": fill_exit,
             "quantity": qty,
             "pnl": pnl,
             "pnl_pct": pnl_pct,
@@ -153,7 +167,7 @@ class PaperTradingService:
         account = self._repo._query(
             "SELECT * FROM paper_accounts WHERE id = :id", {"id": account_id}
         )[0]
-        proceeds = price * qty
+        proceeds = fill_exit * qty - commission
         new_available = float(account["available_balance"]) + proceeds
         margin = max(0, float(account["margin_used"]) - entry * qty)
         realized = float(self._repo.pnl_periods(account_id).get("realized_pnl") or 0)
@@ -163,7 +177,7 @@ class PaperTradingService:
         balance = initial + realized + unrealized
         self._repo.update_account_balances(account_id, balance, new_available, margin)
 
-        return {"pnl": round(pnl, 2), "exit_price": price}
+        return {"pnl": round(pnl, 2), "exit_price": fill_exit}
 
     def execute_from_signal(self, signal: dict) -> dict:
         account = self.get_account()

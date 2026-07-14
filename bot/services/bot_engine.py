@@ -1,8 +1,8 @@
 """Trading engine state manager — bridges main trading loop with Telegram bot."""
 from __future__ import annotations
 
-import asyncio
 import logging
+import threading
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from enum import Enum
@@ -47,9 +47,9 @@ class TradingEngine:
 
     def __init__(self) -> None:
         self._state = EngineState()
-        self._pause_event = asyncio.Event()
-        self._pause_event.set()
-        self._stop_event = asyncio.Event()
+        self._pause_event = threading.Event()
+        self._pause_event.set()   # set = not paused (engine can run)
+        self._stop_event = threading.Event()
 
     @property
     def state(self) -> EngineState:
@@ -107,11 +107,11 @@ class TradingEngine:
         self.set_status(BotStatus.RUNNING)
 
     @property
-    def stop_event(self) -> asyncio.Event:
+    def stop_event(self) -> threading.Event:
         return self._stop_event
 
     @property
-    def pause_event(self) -> asyncio.Event:
+    def pause_event(self) -> threading.Event:
         return self._pause_event
 
     def summary(self) -> dict:

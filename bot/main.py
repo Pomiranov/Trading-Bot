@@ -14,6 +14,8 @@ from pathlib import Path
 # Ensure bot/ directory is on sys.path so all internal imports resolve
 sys.path.insert(0, str(Path(__file__).parent))
 
+from sqlalchemy import create_engine as _create_engine
+
 from config import config
 from security.bootstrap import bootstrap_security
 from data.loader import loader
@@ -37,6 +39,18 @@ from tg.notifications.dispatcher import (
 
 bootstrap_security(config, service_name="trading-bot")
 logger = logging.getLogger(__name__)
+
+_paper_sqlalchemy_engine = None
+
+
+def _get_paper_engine():
+    global _paper_sqlalchemy_engine
+    if _paper_sqlalchemy_engine is None:
+        _paper_sqlalchemy_engine = _create_engine(
+            config.db.dsn, pool_size=2, max_overflow=2, pool_pre_ping=True
+        )
+    return _paper_sqlalchemy_engine
+
 
 # Строим IndicatorEngine с параметрами из rules.yaml (periods, divergence params)
 indicator_engine = IndicatorEngine(**{
@@ -62,7 +76,10 @@ async def trading_loop():
     await notify_bot_started()
 
     while not trading_engine.stop_event.is_set():
-        await trading_engine.pause_event.wait()
+        # threading.Event.wait() is blocking — poll asynchronously instead
+        if not trading_engine.pause_event.is_set():
+            await asyncio.sleep(1)
+            continue
 
         if trading_engine.stop_event.is_set():
             break
@@ -188,6 +205,31 @@ async def _process_ticker(ticker: str, orchestrator: TradingOrchestrator):
                 trading_engine.state.add_log(f"BUY {ticker} @ {indicators.close:.2f}")
                 await notify_trade_open(ticker, indicators.close, pos.lot_size, pos.stop_price)
 
+                # Paper trade mirror — always record in paper account for dashboard
+                try:
+                    from qf_platform.services.paper_trading_service import PaperTradingService
+                    from qf_platform.repositories.signals_repository import SignalsRepository
+                    _pe = _get_paper_engine()
+                    _pts = PaperTradingService(_pe)
+                    _acc = _pts.get_account()
+                    _pts.open_position(
+                        account_id=int(_acc["id"]),
+                        ticker=ticker,
+                        direction="long",
+                        stop_loss=pos.stop_price,
+                    )
+                    SignalsRepository(_pe).insert({
+                        "asset": ticker, "exchange": "moex", "timeframe": "1h",
+                        "signal_type": "LONG", "entry_price": indicators.close,
+                        "stop_loss": pos.stop_price,
+                        "take_profit_1": round(indicators.close + 2 * (indicators.close - pos.stop_price), 4),
+                        "probability_pct": round(min(95, 50 + sig.buy_score * 5), 1),
+                        "status": "executing", "source": "trading_loop", "asset_class": "stocks",
+                        "metadata": {"rules": [r.name for r in sig.triggered_rules], "buy_score": sig.buy_score},
+                    })
+                except Exception as _pe_exc:
+                    logger.warning("Paper trade mirror (BUY) error: %s", _pe_exc)
+
         elif sig.action == Action.SELL and ticker in open_positions:
             pos = open_positions[ticker]
             instrument = tinkoff_client.find_instrument(ticker)
@@ -231,6 +273,19 @@ async def _process_ticker(ticker: str, orchestrator: TradingOrchestrator):
                 trading_engine.state.add_log(f"SELL {ticker} @ {indicators.close:.2f} PnL={pnl:+.2f}")
                 await notify_trade_close(ticker, indicators.close, pnl)
 
+                # Paper position close mirror
+                try:
+                    from qf_platform.services.paper_trading_service import PaperTradingService
+                    _pe = _get_paper_engine()
+                    _pts = PaperTradingService(_pe)
+                    _acc = _pts.get_account()
+                    for _ppos in _pts._repo.list_positions(int(_acc["id"])):
+                        if _ppos["ticker"].upper() == ticker.upper():
+                            _pts.close_position(int(_ppos["id"]))
+                            break
+                except Exception as _pe_exc:
+                    logger.warning("Paper trade mirror (SELL) error: %s", _pe_exc)
+
         elif ticker in open_positions:
             risk_manager.trailing_stop(ticker, indicators.close, indicators.atr)
 
@@ -255,6 +310,13 @@ def _acquire_pid_lock() -> bool:
             return False
         except (ProcessLookupError, ValueError):
             pass  # старый PID-файл от упавшего процесса
+        except PermissionError:
+            # Windows: PermissionError means the process EXISTS but we lack permission to signal it
+            logger.error(
+                "Бот уже запущен (PID %d). Остановите предыдущий процесс.",
+                int(_PID_FILE.read_text().strip()),
+            )
+            return False
     _PID_FILE.write_text(str(os.getpid()))
     return True
 

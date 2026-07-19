@@ -1,0 +1,61 @@
+{
+  "seo": {
+    "title": "QuantFlow: Knowledge is frozen. Trust is fluid.",
+    "description": "QuantFlow tracks which proven trading rules are actually working, and sizes conviction accordingly. A statistical belief-updating system for MOEX and Bybit, built on Schwager's rules, not invented alpha."
+  },
+  "nav": {
+    "explore": "Explore QuantFlow",
+    "requestAccess": "Request Private Access"
+  },
+  "hero": {
+    "tagline1": "Knowledge is frozen.",
+    "tagline2": "Trust is fluid.",
+    "subline": "QuantFlow doesn't invent trading signals. It tracks which proven rules are actually working, and sizes conviction accordingly.",
+    "statusLive": "LIVE",
+    "statusMarket": "MOEX D1",
+    "statusStrategy": "osc_range_moex_d1_fwd"
+  },
+  "scene": {
+    "hero": {
+      "caption": "Rule confidence, live"
+    },
+    "frozenStrategies": {
+      "label": "Frozen"
+    },
+    "trustArchitecture": {
+      "label": "Trust architecture"
+    },
+    "quantEngine": {
+      "label": "Quant engine"
+    },
+    "finalCta": {
+      "label": "Belief network"
+    }
+  },
+  "footer": {
+    "manifesto": "Manifesto",
+    "system": "System",
+    "research": "Research",
+    "contact": "Contact",
+    "buildLabel": "Build"
+  },
+  "sections": {
+    "philosophy": "Philosophy",
+    "enginePipeline": "Engine pipeline",
+    "learningSystem": "Learning system",
+    "dashboardPreview": "Dashboard preview",
+    "dashboardPreviewNote": "Live capture of the operational dashboard. Pending asset, Phase 3.",
+    "strategyLayer": "Strategy layer",
+    "strategyTableHeaders": {
+      "strategy": "Strategy",
+      "market": "Market",
+      "timeframe": "Timeframe",
+      "status": "Status",
+      "lastUpdate": "Last update"
+    },
+    "ctaHeading": "Request private access",
+    "minTradesFloorLabel": "Min trades for confidence",
+    "minConfidenceLabel": "Confidence floor",
+    "maxConfidenceLabel": "Confidence ceiling"
+  }
+}

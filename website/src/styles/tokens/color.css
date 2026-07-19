@@ -1,0 +1,39 @@
+/**
+ * QuantFlow color system — "Signal Amber on Instrument Black".
+ *
+ * Single dark theme by deliberate brand decision (control-room / instrument
+ * aesthetic, not a toggleable light/dark product surface). One accent only,
+ * capped under ~3% of pixels. FROZEN/LIVE strategy status is encoded by
+ * presence-of-color, not a second hue: live = accent, frozen = desaturated
+ * text-tertiary/border tones.
+ */
+
+@theme {
+  --color-bg: #0a0a0b;
+  --color-surface: #111113;
+  --color-border: rgba(255, 255, 255, 0.08);
+
+  --color-text-primary: #f5f5f7;
+  --color-text-secondary: rgba(245, 245, 247, 0.6); /* 6.8:1 on --color-bg */
+  /* 0.48, not the more "designed-looking" 0.35 — that only hit 2.97:1 on
+     --color-bg, failing WCAG AA even for large text (3:1), and this token
+     is real small text (11px mono labels, captions), not decoration.
+     0.48 clears 4.5:1 (small-text AA) with a small margin. */
+  --color-text-tertiary: rgba(245, 245, 247, 0.48);
+
+  /* Signal Amber — the one signature color. */
+  --color-accent: #e8a33d;
+  --color-accent-dim: rgba(232, 163, 61, 0.5);
+  --color-accent-glow: rgba(232, 163, 61, 0.18);
+
+  /* Semantic aliases matching StrategyRecord.status 1:1 — components should
+     reference these, not --color-accent directly, so the mapping stays
+     centralized. */
+  --color-live: var(--color-accent);
+  --color-frozen: var(--color-text-tertiary);
+  --color-stabilized: var(--color-text-secondary);
+
+  /* Functional-only exception to the one-accent rule (impeccable's
+     destructive-emphasis rule): form/error states only, never decorative. */
+  --color-danger: #e5484d;
+}

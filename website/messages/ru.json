@@ -1,0 +1,61 @@
+{
+  "seo": {
+    "title": "QuantFlow: Знание заморожено. Доверие текуче.",
+    "description": "QuantFlow отслеживает, какие проверенные торговые правила работают прямо сейчас, и соразмеряет им доверие капитала. Статистическая система обновления доверия для MOEX и Bybit, построенная на правилах Швагера, а не на изобретённой альфе."
+  },
+  "nav": {
+    "explore": "Изучить QuantFlow",
+    "requestAccess": "Запросить закрытый доступ"
+  },
+  "hero": {
+    "tagline1": "Знание заморожено.",
+    "tagline2": "Доверие текуче.",
+    "subline": "QuantFlow не изобретает торговые сигналы. Система отслеживает, какие проверенные правила работают прямо сейчас, и соразмеряет им доверие капитала.",
+    "statusLive": "LIVE",
+    "statusMarket": "MOEX D1",
+    "statusStrategy": "osc_range_moex_d1_fwd"
+  },
+  "scene": {
+    "hero": {
+      "caption": "Доверие к правилу, в реальном времени"
+    },
+    "frozenStrategies": {
+      "label": "Заморожено"
+    },
+    "trustArchitecture": {
+      "label": "Архитектура доверия"
+    },
+    "quantEngine": {
+      "label": "Квант-движок"
+    },
+    "finalCta": {
+      "label": "Сеть убеждений"
+    }
+  },
+  "footer": {
+    "manifesto": "Манифест",
+    "system": "Система",
+    "research": "Исследования",
+    "contact": "Контакты",
+    "buildLabel": "Сборка"
+  },
+  "sections": {
+    "philosophy": "Философия",
+    "enginePipeline": "Конвейер движка",
+    "learningSystem": "Система обучения",
+    "dashboardPreview": "Превью дашборда",
+    "dashboardPreviewNote": "Реальный снимок рабочего дашборда. Актив в ожидании, Phase 3.",
+    "strategyLayer": "Слой стратегий",
+    "strategyTableHeaders": {
+      "strategy": "Стратегия",
+      "market": "Рынок",
+      "timeframe": "Таймфрейм",
+      "status": "Статус",
+      "lastUpdate": "Обновлено"
+    },
+    "ctaHeading": "Запросить закрытый доступ",
+    "minTradesFloorLabel": "Мин. сделок для доверия",
+    "minConfidenceLabel": "Нижняя граница доверия",
+    "maxConfidenceLabel": "Верхняя граница доверия"
+  }
+}

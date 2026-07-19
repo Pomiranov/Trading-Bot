@@ -1,0 +1,17 @@
+/**
+ * Shared motion tokens. Durations here are mirrored as JS constants in
+ * src/components/motion (for Framer Motion transition configs) so GSAP and
+ * Framer animations read as one system rather than two products glued
+ * together. Never bounce/spring-past-target; ease-out-expo/quart only.
+ */
+
+@theme {
+  --duration-micro: 150ms;
+  --duration-base: 300ms;
+  --duration-reveal: 600ms;
+  --duration-count-up: 700ms;
+
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);
+  --ease-lenis: cubic-bezier(0.32, 0, 0.15, 1);
+}

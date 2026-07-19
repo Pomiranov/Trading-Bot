@@ -1,0 +1,101 @@
+@import "tailwindcss";
+
+@import "../styles/tokens/color.css";
+@import "../styles/tokens/typography.css";
+@import "../styles/tokens/spacing.css";
+@import "../styles/tokens/motion.css";
+@import "../styles/tokens/z-index.css";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+/* No light/dark toggle — single locked dark theme by deliberate brand
+   decision (see src/styles/tokens/color.css, "Page Theme Lock"). shadcn's
+   semantic tokens are wired directly onto our own brand tokens below,
+   instead of the CLI-generated :root/.dark oklch pair (removed). */
+
+@theme {
+  --breakpoint-sm: 375px;
+  --breakpoint-md: 768px;
+  --breakpoint-lg: 1024px;
+  --breakpoint-xl: 1440px;
+}
+
+html {
+  color-scheme: dark;
+}
+
+body {
+  background: var(--color-bg);
+  color: var(--color-text-primary);
+  font-family: var(--font-sans);
+  font-size: var(--text-body);
+  line-height: var(--text-body--line-height);
+  letter-spacing: var(--text-body--letter-spacing);
+}
+
+* {
+  border-color: var(--color-border);
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 3px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* shadcn semantic tokens, mapped once onto our own brand tokens — no
+   separate light/dark palette. Components (Button, etc.) consume these
+   names so they inherit the brand automatically without per-component
+   overrides. */
+@theme inline {
+  --color-background: var(--color-bg);
+  --color-foreground: var(--color-text-primary);
+  --color-card: var(--color-surface);
+  --color-card-foreground: var(--color-text-primary);
+  --color-popover: var(--color-surface);
+  --color-popover-foreground: var(--color-text-primary);
+  --color-primary: var(--color-accent);
+  --color-primary-foreground: var(--color-bg);
+  --color-secondary: var(--color-surface);
+  --color-secondary-foreground: var(--color-text-primary);
+  --color-muted: var(--color-surface);
+  --color-muted-foreground: var(--color-text-secondary);
+  /* Deliberately no --color-accent / --color-accent-foreground override
+     here: our brand --color-accent (Signal Amber) is defined once in
+     color.css and must stay THE one accent everywhere. shadcn's generated
+     components that reach for a neutral "bg-accent" hover surface are
+     patched directly in src/components/ui/* to use --color-surface
+     instead, rather than aliasing that name to something un-amber here. */
+  --color-destructive: var(--color-danger);
+  /* --color-border is already defined once in tokens/color.css — no
+     self-referencing redeclaration here (that would be circular/invalid). */
+  --color-input: var(--color-border);
+  --color-ring: var(--color-accent);
+
+  /* One radius scale, sharp/instrument-leaning per taste-skill's Shape
+     Consistency Lock — not the default soft-corporate 0.625rem. */
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+}
+
+:root {
+  --radius: 0.375rem;
+}
+
+@layer base {
+  body {
+    @apply bg-background text-foreground;
+  }
+}

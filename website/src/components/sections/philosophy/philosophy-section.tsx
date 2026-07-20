@@ -1,6 +1,7 @@
 import { getTranslations } from "next-intl/server";
 import { contentSource } from "@/content-layer/source";
 import { SectionHeading } from "@/components/ui/section-heading";
+import { Reveal } from "@/components/motion/reveal";
 
 /**
  * Not three equal cards — an escalating single column. The content is a
@@ -27,19 +28,25 @@ export async function PhilosophySection({ locale }: { locale: string }) {
       className="px-[var(--space-page-x)] py-[var(--space-section-y)]"
     >
       <div className="mx-auto flex max-w-[900px] flex-col gap-16">
-        <SectionHeading id="philosophy-heading" className="max-w-[20ch]">
-          {t("philosophy")}
-        </SectionHeading>
+        <Reveal>
+          <SectionHeading id="philosophy-heading" className="max-w-[20ch]">
+            {t("philosophy")}
+          </SectionHeading>
+        </Reveal>
         <div className="flex flex-col divide-y divide-[color:var(--color-border)]">
           {blocks.map((block, i) => (
-            <div key={block.id} className="flex flex-col gap-4 py-8 first:pt-0 last:pb-0">
+            <Reveal
+              key={block.id}
+              index={i}
+              className="flex flex-col gap-4 py-8 first:pt-0 last:pb-0"
+            >
               <h3 className="font-mono text-[length:var(--text-label)] uppercase tracking-[var(--text-label--letter-spacing)] text-[color:var(--color-text-tertiary)]">
                 {block.heading}
               </h3>
               <div className={`max-w-[62ch] ${weight[i] ?? weight[weight.length - 1]}`}>
                 {block.body}
               </div>
-            </div>
+            </Reveal>
           ))}
         </div>
       </div>

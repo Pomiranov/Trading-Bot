@@ -1,6 +1,7 @@
 import { getTranslations } from "next-intl/server";
 import { contentSource } from "@/content-layer/source";
 import { SectionHeading } from "@/components/ui/section-heading";
+import { Reveal } from "@/components/motion/reveal";
 import { StatusPill, type StrategyStatus } from "@/components/ui/status-pill";
 import type { StrategyMetrics } from "@/content-layer/types";
 
@@ -55,10 +56,12 @@ export async function StrategyTable({ locale }: { locale: string }) {
       aria-labelledby="strategy-layer-heading"
       className="flex flex-col gap-8 px-[var(--space-page-x)] py-[var(--space-section-y)]"
     >
-      <SectionHeading id="strategy-layer-heading" className="max-w-[20ch]">
-        {t("strategyLayer")}
-      </SectionHeading>
-      <div className="overflow-x-auto">
+      <Reveal>
+        <SectionHeading id="strategy-layer-heading" className="max-w-[20ch]">
+          {t("strategyLayer")}
+        </SectionHeading>
+      </Reveal>
+      <Reveal index={1} className="overflow-x-auto">
         <table className="w-full min-w-[760px] border-collapse text-left">
           <thead>
             <tr className="border-b border-[color:var(--color-border)]">
@@ -126,7 +129,7 @@ export async function StrategyTable({ locale }: { locale: string }) {
             })}
           </tbody>
         </table>
-      </div>
+      </Reveal>
     </section>
   );
 }

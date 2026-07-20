@@ -1,5 +1,6 @@
 import { getTranslations } from "next-intl/server";
 import { SectionHeading } from "@/components/ui/section-heading";
+import { Reveal } from "@/components/motion/reveal";
 import { DashboardMockup } from "./dashboard-mockup";
 
 /**
@@ -17,15 +18,17 @@ export async function DashboardPreviewSection({ locale }: { locale: string }) {
       aria-labelledby="dashboard-preview-heading"
       className="flex flex-col gap-8 px-[var(--space-page-x)] py-[var(--space-section-y)]"
     >
-      <SectionHeading id="dashboard-preview-heading" className="max-w-[20ch]">
-        {t("dashboardPreview")}
-      </SectionHeading>
-      <div className="mx-auto w-full max-w-[900px]">
+      <Reveal>
+        <SectionHeading id="dashboard-preview-heading" className="max-w-[20ch]">
+          {t("dashboardPreview")}
+        </SectionHeading>
+      </Reveal>
+      <Reveal index={1} className="mx-auto w-full max-w-[900px]">
         <DashboardMockup />
         <p className="mt-4 font-mono text-[11px] uppercase tracking-[0.1em] text-[color:var(--color-text-tertiary)]">
           {t("dashboardPreviewNote")}
         </p>
-      </div>
+      </Reveal>
     </section>
   );
 }

@@ -2,6 +2,7 @@ import { getTranslations } from "next-intl/server";
 import { contentSource } from "@/content-layer/source";
 import { SectionHeading } from "@/components/ui/section-heading";
 import { StatNumber } from "@/components/ui/stat-number";
+import { Reveal } from "@/components/motion/reveal";
 import { ConfidenceTrajectoryChart } from "./confidence-trajectory-chart";
 
 /**
@@ -21,11 +22,13 @@ export async function LearningSystemSection({ locale }: { locale: string }) {
       aria-labelledby="learning-system-heading"
       className="px-[var(--space-page-x)] py-[var(--space-section-y)]"
     >
-      <SectionHeading id="learning-system-heading" className="mb-10 max-w-[20ch]">
-        {t("learningSystem")}
-      </SectionHeading>
+      <Reveal>
+        <SectionHeading id="learning-system-heading" className="mb-10 max-w-[20ch]">
+          {t("learningSystem")}
+        </SectionHeading>
+      </Reveal>
       <div className="grid grid-cols-1 gap-12 lg:grid-cols-2 lg:gap-16">
-        <div className="flex flex-col gap-10">
+        <Reveal index={1} className="flex flex-col gap-10">
           <div className="max-w-[60ch] text-[color:var(--color-text-secondary)]">
             {copy.intro}
           </div>
@@ -46,10 +49,10 @@ export async function LearningSystemSection({ locale }: { locale: string }) {
               locale={locale}
             />
           </div>
-        </div>
-        <div className="flex items-center">
+        </Reveal>
+        <Reveal index={2} className="flex items-center">
           <ConfidenceTrajectoryChart caption={t("confidenceChartCaption")} />
-        </div>
+        </Reveal>
       </div>
     </section>
   );

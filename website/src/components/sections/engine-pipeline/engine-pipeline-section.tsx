@@ -2,12 +2,14 @@ import { getTranslations } from "next-intl/server";
 import { contentSource } from "@/content-layer/source";
 import { SectionHeading } from "@/components/ui/section-heading";
 import { MonoLabel } from "@/components/ui/mono-label";
+import { Reveal } from "@/components/motion/reveal";
+import { EnginePipelineScroller } from "./engine-pipeline-scroller";
 
 /**
- * Static horizontal scroll-snap track on desktop (mobile stays a plain
- * vertical stack — brief spec). This is the Phase 3 static shape; Phase 4
- * adds the GSAP pin/scrub on the exact same DOM via ScrollTrigger.matchMedia,
- * no restructuring needed then.
+ * Mobile: plain vertical stack, no JS. Desktop: pinned horizontal-pan
+ * track via EnginePipelineScroller (GSAP ScrollTrigger, matchMedia-gated
+ * to md+, see that file for the pin mechanics). Same stage data renders
+ * both — only the container differs.
  */
 export async function EnginePipelineSection({ locale }: { locale: string }) {
   const [stages, t] = await Promise.all([
@@ -20,12 +22,14 @@ export async function EnginePipelineSection({ locale }: { locale: string }) {
       aria-labelledby="engine-pipeline-heading"
       className="flex flex-col gap-12 py-[var(--space-section-y)]"
     >
-      <SectionHeading
-        id="engine-pipeline-heading"
-        className="max-w-[20ch] px-[var(--space-page-x)]"
-      >
-        {t("enginePipeline")}
-      </SectionHeading>
+      <Reveal>
+        <SectionHeading
+          id="engine-pipeline-heading"
+          className="max-w-[20ch] px-[var(--space-page-x)]"
+        >
+          {t("enginePipeline")}
+        </SectionHeading>
+      </Reveal>
 
       {/* Mobile: vertical stack */}
       <ol className="flex flex-col divide-y divide-[color:var(--color-border)] px-[var(--space-page-x)] md:hidden">
@@ -47,8 +51,8 @@ export async function EnginePipelineSection({ locale }: { locale: string }) {
         ))}
       </ol>
 
-      {/* Desktop: horizontal scroll-snap track */}
-      <ol className="hidden gap-6 overflow-x-auto px-[var(--space-page-x)] pb-4 [scroll-snap-type:x_mandatory] md:flex">
+      {/* Desktop: pinned horizontal-pan track */}
+      <EnginePipelineScroller>
         {stages.map((stage) => (
           <li
             key={stage.id}
@@ -68,7 +72,7 @@ export async function EnginePipelineSection({ locale }: { locale: string }) {
             ) : null}
           </li>
         ))}
-      </ol>
+      </EnginePipelineScroller>
     </section>
   );
 }

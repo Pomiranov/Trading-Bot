@@ -3,9 +3,11 @@ import { contentSource } from "@/content-layer/source";
 import { SectionHeading } from "@/components/ui/section-heading";
 
 /**
- * Phase 1 skeleton: stacked blocks in document order. The brief's
- * three-column contrast layout (or a single long-form alternative) is a
- * Phase 3 art-direction decision, not decided here.
+ * Not three equal cards — an escalating single column. The content is a
+ * rhetorical arc (what others do -> what we reject -> what we actually
+ * do), so typographic weight escalates block to block instead of
+ * flattening all three into identical grid cells. Hairline dividers
+ * between blocks, not borders around them.
  */
 export async function PhilosophySection({ locale }: { locale: string }) {
   const [blocks, t] = await Promise.all([
@@ -13,25 +15,33 @@ export async function PhilosophySection({ locale }: { locale: string }) {
     getTranslations({ locale, namespace: "sections" }),
   ]);
 
+  const weight = [
+    "text-[color:var(--color-text-tertiary)] text-[15px] leading-relaxed",
+    "text-[color:var(--color-text-secondary)] text-[length:var(--text-lead)] leading-[var(--text-lead--line-height)]",
+    "text-[color:var(--color-text-primary)] text-[length:var(--text-lead)] leading-[var(--text-lead--line-height)] font-medium",
+  ];
+
   return (
     <section
       aria-labelledby="philosophy-heading"
-      className="flex flex-col gap-12 px-[var(--space-page-x)] py-[var(--space-section-y)]"
+      className="px-[var(--space-page-x)] py-[var(--space-section-y)]"
     >
-      <SectionHeading id="philosophy-heading" className="max-w-[20ch]">
-        {t("philosophy")}
-      </SectionHeading>
-      <div className="grid grid-cols-1 gap-8 md:grid-cols-3">
-        {blocks.map((block) => (
-          <div key={block.id} className="flex flex-col gap-3">
-            <h3 className="font-mono text-[length:var(--text-label)] uppercase tracking-[var(--text-label--letter-spacing)] text-[color:var(--color-text-tertiary)]">
-              {block.heading}
-            </h3>
-            <div className="max-w-[60ch] text-[color:var(--color-text-secondary)]">
-              {block.body}
+      <div className="mx-auto flex max-w-[900px] flex-col gap-16">
+        <SectionHeading id="philosophy-heading" className="max-w-[20ch]">
+          {t("philosophy")}
+        </SectionHeading>
+        <div className="flex flex-col divide-y divide-[color:var(--color-border)]">
+          {blocks.map((block, i) => (
+            <div key={block.id} className="flex flex-col gap-4 py-8 first:pt-0 last:pb-0">
+              <h3 className="font-mono text-[length:var(--text-label)] uppercase tracking-[var(--text-label--letter-spacing)] text-[color:var(--color-text-tertiary)]">
+                {block.heading}
+              </h3>
+              <div className={`max-w-[62ch] ${weight[i] ?? weight[weight.length - 1]}`}>
+                {block.body}
+              </div>
             </div>
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
     </section>
   );

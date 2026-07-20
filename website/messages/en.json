@@ -44,16 +44,19 @@
     "enginePipeline": "Engine pipeline",
     "learningSystem": "Learning system",
     "dashboardPreview": "Dashboard preview",
-    "dashboardPreviewNote": "Live capture of the operational dashboard. Pending asset, Phase 3.",
+    "dashboardPreviewNote": "Illustrative recreation of the operational dashboard interface. Same field names as the real system, representative values.",
     "strategyLayer": "Strategy layer",
     "strategyTableHeaders": {
       "strategy": "Strategy",
       "market": "Market",
       "timeframe": "Timeframe",
       "status": "Status",
+      "metrics": "OOS metrics",
       "lastUpdate": "Last update"
     },
+    "strategyMetricsUnavailable": "n/a",
     "ctaHeading": "Request private access",
+    "confidenceChartCaption": "osc_range_moex_d1_fwd, illustrative confidence path over 29 forward-test trades",
     "minTradesFloorLabel": "Min trades for confidence",
     "minConfidenceLabel": "Confidence floor",
     "maxConfidenceLabel": "Confidence ceiling"

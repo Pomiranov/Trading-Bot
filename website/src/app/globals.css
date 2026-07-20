@@ -13,8 +13,15 @@
    semantic tokens are wired directly onto our own brand tokens below,
    instead of the CLI-generated :root/.dark oklch pair (removed). */
 
+/* 375/768/1024/1440 are the brief's required test breakpoints, but `sm:`
+   must stay a real min-width gate (Tailwind default 640px) — overriding it
+   to 375px made `sm:` fire almost immediately on phones too, silently
+   defeating every "not mobile" `sm:` utility on the site (caught via a
+   grid-cols overlap bug on the Dashboard Preview stat tiles). Only xl is
+   customized, to match the brief's 1440 "wide" tier (Tailwind default
+   1280) — md/lg already equal Tailwind's defaults, kept here just as
+   explicit documentation of the brief's breakpoint spec. */
 @theme {
-  --breakpoint-sm: 375px;
   --breakpoint-md: 768px;
   --breakpoint-lg: 1024px;
   --breakpoint-xl: 1440px;

@@ -44,16 +44,19 @@
     "enginePipeline": "Конвейер движка",
     "learningSystem": "Система обучения",
     "dashboardPreview": "Превью дашборда",
-    "dashboardPreviewNote": "Реальный снимок рабочего дашборда. Актив в ожидании, Phase 3.",
+    "dashboardPreviewNote": "Иллюстративная реконструкция интерфейса рабочего дашборда. Те же названия полей, что и в реальной системе, значения представительные.",
     "strategyLayer": "Слой стратегий",
     "strategyTableHeaders": {
       "strategy": "Стратегия",
       "market": "Рынок",
       "timeframe": "Таймфрейм",
       "status": "Статус",
+      "metrics": "Метрики OOS",
       "lastUpdate": "Обновлено"
     },
+    "strategyMetricsUnavailable": "н/д",
     "ctaHeading": "Запросить закрытый доступ",
+    "confidenceChartCaption": "osc_range_moex_d1_fwd, иллюстративная траектория доверия за 29 сделок форвард-теста",
     "minTradesFloorLabel": "Мин. сделок для доверия",
     "minConfidenceLabel": "Нижняя граница доверия",
     "maxConfidenceLabel": "Верхняя граница доверия"

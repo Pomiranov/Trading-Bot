@@ -1,12 +1,13 @@
 import { getTranslations } from "next-intl/server";
 import { SectionHeading } from "@/components/ui/section-heading";
-import { Panel } from "@/components/ui/panel";
+import { DashboardMockup } from "./dashboard-mockup";
 
 /**
- * Phase 1 skeleton only. Per the plan's flagged decision: this asset
- * should be a real screenshot/capture of the operational bot/ui/ Flask
- * dashboard (sanitized data), not a div-based fake screenshot — resolved
- * and populated in Phase 3.
+ * Illustrative recreation of the real bot/ui/ operational dashboard —
+ * same field names as the real /api/metrics response, real forward-test
+ * tickers, illustrative values (see dashboardPreviewNote caption). Not a
+ * live screenshot: the real dashboard has no seed/demo data to capture
+ * without standing up TimescaleDB, which is out of this site's scope.
  */
 export async function DashboardPreviewSection({ locale }: { locale: string }) {
   const t = await getTranslations({ locale, namespace: "sections" });
@@ -19,11 +20,12 @@ export async function DashboardPreviewSection({ locale }: { locale: string }) {
       <SectionHeading id="dashboard-preview-heading" className="max-w-[20ch]">
         {t("dashboardPreview")}
       </SectionHeading>
-      <Panel className="flex min-h-[320px] items-center justify-center p-6">
-        <p className="font-mono text-[length:var(--text-label)] uppercase tracking-[var(--text-label--letter-spacing)] text-[color:var(--color-text-tertiary)]">
+      <div className="mx-auto w-full max-w-[900px]">
+        <DashboardMockup />
+        <p className="mt-4 font-mono text-[11px] uppercase tracking-[0.1em] text-[color:var(--color-text-tertiary)]">
           {t("dashboardPreviewNote")}
         </p>
-      </Panel>
+      </div>
     </section>
   );
 }

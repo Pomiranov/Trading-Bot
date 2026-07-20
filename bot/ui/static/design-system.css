@@ -88,6 +88,14 @@
   --qf-shadow-md:  0 4px 24px rgba(0, 0, 0, 0.5);
   --qf-shadow-lg:  0 12px 48px rgba(0, 0, 0, 0.6);
   --qf-shadow-glow: 0 0 24px var(--qf-accent-glow);
+
+  /* ── Liquid Glass ── */
+  --qf-glass-sheen:        rgba(255, 255, 255, 0.07);
+  --qf-glass-sheen-2:      rgba(255, 255, 255, 0.03);
+  --qf-glass-blur:         20px;
+  --qf-glass-blur-lg:      28px;
+  --qf-glass-ring:         inset 0 1px 0 rgba(255,255,255,.07), inset 0 0 0 1px rgba(255,255,255,.025);
+  --qf-glass-ring-hover:   inset 0 1px 0 rgba(255,255,255,.10), inset 0 0 0 1px rgba(255,255,255,.04);
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -136,6 +144,10 @@
   white-space: nowrap;
 }
 .btn:disabled { opacity: 0.45; cursor: not-allowed; }
+.btn:active:not(:disabled),
+.btn-icon:active,
+.btn-refresh:active,
+.btn-action:active { transform: scale(0.96); }
 
 /* Primary — Orange */
 .btn-primary {
@@ -208,12 +220,14 @@ button.btn-primary {
    CARDS
 ═══════════════════════════════════════════════════════════════ */
 .qf-card, .card {
-  background: var(--qf-glass);
-  backdrop-filter: blur(16px) saturate(1.4);
-  -webkit-backdrop-filter: blur(16px) saturate(1.4);
+  background:
+    linear-gradient(180deg, var(--qf-glass-sheen) 0%, var(--qf-glass-sheen-2) 12%, transparent 45%),
+    var(--qf-glass);
+  backdrop-filter: blur(var(--qf-glass-blur)) saturate(1.5);
+  -webkit-backdrop-filter: blur(var(--qf-glass-blur)) saturate(1.5);
   border: 1px solid var(--qf-glass-border);
   border-radius: var(--qf-radius-lg);
-  box-shadow: var(--qf-shadow-sm);
+  box-shadow: var(--qf-shadow-sm), var(--qf-glass-ring);
   transition:
     border-color var(--qf-duration) var(--qf-ease),
     box-shadow var(--qf-duration) var(--qf-ease),
@@ -221,6 +235,8 @@ button.btn-primary {
 }
 .qf-card:hover, .card:hover {
   border-color: var(--qf-border-hover);
+  transform: translateY(-1px);
+  box-shadow: var(--qf-shadow-md), var(--qf-glass-ring-hover), 0 0 0 1px rgba(247,147,26,.05);
 }
 
 .qf-card-header, .card-header {
@@ -563,6 +579,124 @@ table tbody tr:hover td {
   grid-template-columns: 1fr 1fr 1fr;
   gap: 12px;
   margin-bottom: 12px;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   LOGO MARK
+═══════════════════════════════════════════════════════════════ */
+.qf-logo-mark {
+  filter: drop-shadow(0 0 5px var(--qf-accent-glow));
+  transition: filter var(--qf-duration) var(--qf-ease);
+}
+.sidebar-logo:hover .qf-logo-mark { filter: drop-shadow(0 0 9px var(--qf-accent-glow)); }
+
+/* ═══════════════════════════════════════════════════════════════
+   TOOLTIPS — [data-tooltip], rendered as a body-level portal by
+   core/enhance.js (escapes the sidebar's clipped scroll containers)
+═══════════════════════════════════════════════════════════════ */
+.qf-tooltip {
+  position: fixed;
+  background: var(--qf-surface-3);
+  color: var(--qf-text);
+  border: 1px solid var(--qf-border-hover);
+  padding: 6px 10px;
+  border-radius: var(--qf-radius-sm);
+  font-size: var(--qf-text-xs);
+  font-weight: 500;
+  font-family: var(--qf-font);
+  white-space: nowrap;
+  box-shadow: var(--qf-shadow-md);
+  opacity: 0;
+  pointer-events: none;
+  z-index: 900;
+  transform: translateY(-50%) translateX(-4px);
+  transition: opacity var(--qf-duration) var(--qf-ease), transform var(--qf-duration) var(--qf-ease);
+}
+.qf-tooltip.show {
+  opacity: 1;
+  transform: translateY(-50%) translateX(0);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   RADIAL GAUGE — .qf-gauge[style="--gauge-value:NN"]
+═══════════════════════════════════════════════════════════════ */
+.qf-gauge {
+  --gauge-value: 0;
+  --gauge-color: var(--qf-accent);
+  position: relative;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: conic-gradient(var(--gauge-color) calc(var(--gauge-value) * 3.6deg), rgba(255,255,255,.07) 0deg);
+  transition: background 0.6s var(--qf-ease);
+}
+.qf-gauge::before {
+  content: '';
+  position: absolute;
+  inset: 5px;
+  border-radius: 50%;
+  background: var(--qf-surface-2);
+  box-shadow: inset 0 1px 2px rgba(0,0,0,.4);
+}
+.qf-gauge-label {
+  position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--qf-font-mono);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--qf-text);
+}
+.qf-gauge-sm { width: 40px; height: 40px; }
+.qf-gauge-sm::before { inset: 4px; }
+.qf-gauge-sm .qf-gauge-label { font-size: 10px; }
+
+/* ═══════════════════════════════════════════════════════════════
+   ANIMATED HAMBURGER / COLLAPSE ICONS
+═══════════════════════════════════════════════════════════════ */
+.qf-burger {
+  position: relative;
+  width: 16px; height: 12px;
+  flex-shrink: 0;
+}
+.qf-burger span {
+  position: absolute; left: 0; right: 0; height: 2px;
+  border-radius: 2px;
+  background: currentColor;
+  transition: transform var(--qf-duration) var(--qf-ease), opacity var(--qf-duration-fast) var(--qf-ease), top var(--qf-duration) var(--qf-ease);
+}
+.qf-burger span:nth-child(1) { top: 0; }
+.qf-burger span:nth-child(2) { top: 5px; }
+.qf-burger span:nth-child(3) { top: 10px; }
+body.sidebar-open .qf-burger span:nth-child(1) { top: 5px; transform: rotate(45deg); }
+body.sidebar-open .qf-burger span:nth-child(2) { opacity: 0; }
+body.sidebar-open .qf-burger span:nth-child(3) { top: 5px; transform: rotate(-45deg); }
+
+.sidebar-collapse-btn svg { transition: transform var(--qf-duration-slow) var(--qf-ease); }
+body.sidebar-collapsed .sidebar-collapse-btn svg { transform: rotate(180deg); }
+
+/* ═══════════════════════════════════════════════════════════════
+   ROW / CARD ENTRANCE STAGGER
+═══════════════════════════════════════════════════════════════ */
+.qf-row-in {
+  animation: fadeInUp 0.35s var(--qf-ease) both;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   CLICK RIPPLE
+═══════════════════════════════════════════════════════════════ */
+.qf-ripple {
+  position: absolute;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255,255,255,.22) 0%, rgba(255,255,255,0) 70%);
+  transform: scale(0);
+  pointer-events: none;
+  animation: qf-ripple-out 0.55s var(--qf-ease);
+  z-index: 10;
+}
+@keyframes qf-ripple-out {
+  from { transform: scale(0);   opacity: 1; }
+  to   { transform: scale(1);   opacity: 0; }
 }
 
 /* ═══════════════════════════════════════════════════════════════

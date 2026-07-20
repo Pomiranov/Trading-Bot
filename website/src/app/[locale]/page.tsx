@@ -6,6 +6,7 @@ import { DashboardPreviewSection } from "@/components/sections/dashboard-preview
 import { StrategyTable } from "@/components/sections/strategy-layer/strategy-table";
 import { CtaSection } from "@/components/sections/cta/cta-section";
 import { Footer } from "@/components/sections/footer/footer";
+import { ScrollAnalytics } from "@/components/analytics/scroll-analytics";
 
 export default async function HomePage({
   params,
@@ -24,6 +25,7 @@ export default async function HomePage({
       <StrategyTable locale={locale} />
       <CtaSection locale={locale} />
       <Footer locale={locale} />
+      <ScrollAnalytics />
     </main>
   );
 }

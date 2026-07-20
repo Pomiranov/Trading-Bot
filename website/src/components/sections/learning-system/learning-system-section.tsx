@@ -3,13 +3,13 @@ import { contentSource } from "@/content-layer/source";
 import { SectionHeading } from "@/components/ui/section-heading";
 import { StatNumber } from "@/components/ui/stat-number";
 import { Reveal } from "@/components/motion/reveal";
-import { ConfidenceTrajectoryChart } from "./confidence-trajectory-chart";
+import { ConfidenceSlider } from "./confidence-slider";
 
 /**
- * Static pass: intro + real belief_updater.py constants + the trajectory
- * chart (illustrative shape, see confidence-trajectory-chart.tsx for what's
- * real vs reconstructed). The interactive drag slider is Phase 4 — same
- * numbers, added motion, not a different layout.
+ * Intro + real belief_updater.py constants + the interactive confidence
+ * slider (see confidence-slider.tsx for the drag mechanics, and
+ * confidence-data.ts for what's real vs reconstructed in the trajectory
+ * shape itself).
  */
 export async function LearningSystemSection({ locale }: { locale: string }) {
   const [copy, t] = await Promise.all([
@@ -51,7 +51,10 @@ export async function LearningSystemSection({ locale }: { locale: string }) {
           </div>
         </Reveal>
         <Reveal index={2} className="flex items-center">
-          <ConfidenceTrajectoryChart caption={t("confidenceChartCaption")} />
+          <ConfidenceSlider
+            caption={t("confidenceChartCaption")}
+            dragHint={t("confidenceSliderDragHint")}
+          />
         </Reveal>
       </div>
     </section>

@@ -57,8 +57,16 @@
     "strategyMetricsUnavailable": "н/д",
     "ctaHeading": "Запросить закрытый доступ",
     "confidenceChartCaption": "osc_range_moex_d1_fwd, иллюстративная траектория доверия за 29 сделок форвард-теста",
+    "confidenceSliderDragHint": "Потяните, чтобы увидеть доверие на каждой сделке",
     "minTradesFloorLabel": "Мин. сделок для доверия",
     "minConfidenceLabel": "Нижняя граница доверия",
     "maxConfidenceLabel": "Верхняя граница доверия"
+  },
+  "beta": {
+    "emailLabel": "Адрес электронной почты",
+    "emailPlaceholder": "you@fund.com",
+    "submit": "Запросить доступ",
+    "success": "Заявка получена. Мы свяжемся, если это совпадение.",
+    "error": "Введите корректный адрес электронной почты."
   }
 }

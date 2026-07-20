@@ -3,6 +3,7 @@ import { contentSource } from "@/content-layer/source";
 import { SectionHeading } from "@/components/ui/section-heading";
 import { MonoLabel } from "@/components/ui/mono-label";
 import { Reveal } from "@/components/motion/reveal";
+import { SectionSceneMount } from "@/components/scene/section-scene-mount";
 import { EnginePipelineScroller } from "./engine-pipeline-scroller";
 
 /**
@@ -12,9 +13,10 @@ import { EnginePipelineScroller } from "./engine-pipeline-scroller";
  * both — only the container differs.
  */
 export async function EnginePipelineSection({ locale }: { locale: string }) {
-  const [stages, t] = await Promise.all([
+  const [stages, t, tScene] = await Promise.all([
     contentSource.getPipelineStages(locale),
     getTranslations({ locale, namespace: "sections" }),
+    getTranslations({ locale, namespace: "scene" }),
   ]);
 
   return (
@@ -22,14 +24,16 @@ export async function EnginePipelineSection({ locale }: { locale: string }) {
       aria-labelledby="engine-pipeline-heading"
       className="flex flex-col gap-12 py-[var(--space-section-y)]"
     >
-      <Reveal>
-        <SectionHeading
-          id="engine-pipeline-heading"
-          className="max-w-[20ch] px-[var(--space-page-x)]"
-        >
-          {t("enginePipeline")}
-        </SectionHeading>
-      </Reveal>
+      <div className="flex items-start justify-between gap-8 px-[var(--space-page-x)]">
+        <Reveal>
+          <SectionHeading id="engine-pipeline-heading" className="max-w-[20ch]">
+            {t("enginePipeline")}
+          </SectionHeading>
+        </Reveal>
+        <Reveal index={1} className="hidden w-[140px] shrink-0 lg:block">
+          <SectionSceneMount mode="quant-engine" caption={tScene("quantEngine.label")} />
+        </Reveal>
+      </div>
 
       {/* Mobile: vertical stack */}
       <ol className="flex flex-col divide-y divide-[color:var(--color-border)] px-[var(--space-page-x)] md:hidden">

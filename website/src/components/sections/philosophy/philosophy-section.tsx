@@ -2,6 +2,7 @@ import { getTranslations } from "next-intl/server";
 import { contentSource } from "@/content-layer/source";
 import { SectionHeading } from "@/components/ui/section-heading";
 import { Reveal } from "@/components/motion/reveal";
+import { SectionSceneMount } from "@/components/scene/section-scene-mount";
 
 /**
  * Not three equal cards — an escalating single column. The content is a
@@ -11,9 +12,10 @@ import { Reveal } from "@/components/motion/reveal";
  * between blocks, not borders around them.
  */
 export async function PhilosophySection({ locale }: { locale: string }) {
-  const [blocks, t] = await Promise.all([
+  const [blocks, t, tScene] = await Promise.all([
     contentSource.getPhilosophyBlocks(locale),
     getTranslations({ locale, namespace: "sections" }),
+    getTranslations({ locale, namespace: "scene" }),
   ]);
 
   const weight = [
@@ -28,11 +30,19 @@ export async function PhilosophySection({ locale }: { locale: string }) {
       className="px-[var(--space-page-x)] py-[var(--space-section-y)]"
     >
       <div className="mx-auto flex max-w-[900px] flex-col gap-16">
-        <Reveal>
-          <SectionHeading id="philosophy-heading" className="max-w-[20ch]">
-            {t("philosophy")}
-          </SectionHeading>
-        </Reveal>
+        <div className="flex items-start justify-between gap-8">
+          <Reveal>
+            <SectionHeading id="philosophy-heading" className="max-w-[20ch]">
+              {t("philosophy")}
+            </SectionHeading>
+          </Reveal>
+          <Reveal index={1} className="hidden w-[140px] shrink-0 lg:block">
+            <SectionSceneMount
+              mode="trust-architecture"
+              caption={tScene("trustArchitecture.label")}
+            />
+          </Reveal>
+        </div>
         <div className="flex flex-col divide-y divide-[color:var(--color-border)]">
           {blocks.map((block, i) => (
             <Reveal

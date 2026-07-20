@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Image from "next/image";
 import { BeliefNetworkSceneLazy } from "@/components/scene/belief-network-scene.lazy";
 import { useSceneCapability } from "@/components/scene/use-scene-capability";
+import { track } from "@/lib/analytics/events";
 
 /**
  * Hero is the one eager instance (above the fold) — still dynamically
@@ -15,11 +16,23 @@ import { useSceneCapability } from "@/components/scene/use-scene-capability";
 export function HeroSceneMount({ caption }: { caption: string }) {
   const { ready, canRender3D } = useSceneCapability();
   const [firstFrame, setFirstFrame] = useState(false);
+  const [engaged, setEngaged] = useState(false);
+
+  useEffect(() => {
+    if (ready && !canRender3D) {
+      track({ name: "scene_interaction", props: { mode: "hero", state: "fallback_shown" } });
+    }
+  }, [ready, canRender3D]);
 
   return (
     <div
       className="relative aspect-square w-full max-w-[560px] shrink-0"
       aria-hidden="true"
+      onPointerEnter={() => {
+        if (engaged) return;
+        setEngaged(true);
+        track({ name: "scene_interaction", props: { mode: "hero", state: "pointer_engaged" } });
+      }}
     >
       {!ready ? (
         // Same markup on server + first client paint — no hydration
@@ -33,7 +46,10 @@ export function HeroSceneMount({ caption }: { caption: string }) {
           <BeliefNetworkSceneLazy
             mode="hero"
             className="absolute inset-0"
-            onFirstFrame={() => setFirstFrame(true)}
+            onFirstFrame={() => {
+              setFirstFrame(true);
+              track({ name: "scene_interaction", props: { mode: "hero", state: "mounted" } });
+            }}
           />
         </>
       ) : (

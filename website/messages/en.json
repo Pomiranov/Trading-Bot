@@ -57,8 +57,16 @@
     "strategyMetricsUnavailable": "n/a",
     "ctaHeading": "Request private access",
     "confidenceChartCaption": "osc_range_moex_d1_fwd, illustrative confidence path over 29 forward-test trades",
+    "confidenceSliderDragHint": "Drag to see confidence at each trade",
     "minTradesFloorLabel": "Min trades for confidence",
     "minConfidenceLabel": "Confidence floor",
     "maxConfidenceLabel": "Confidence ceiling"
+  },
+  "beta": {
+    "emailLabel": "Email address",
+    "emailPlaceholder": "you@fund.com",
+    "submit": "Request access",
+    "success": "Request received. We follow up if it's a fit.",
+    "error": "Enter a valid email address."
   }
 }

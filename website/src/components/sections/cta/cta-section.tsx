@@ -1,29 +1,39 @@
 import { getTranslations } from "next-intl/server";
 import { SectionHeading } from "@/components/ui/section-heading";
-import { Button } from "@/components/ui/button";
+import { Reveal } from "@/components/motion/reveal";
+import { SectionSceneMount } from "@/components/scene/section-scene-mount";
+import { BetaForm } from "./beta-form";
+import { ExploreLink } from "./explore-link";
 
-/**
- * Phase 1 skeleton: static buttons, no form yet. The real
- * app/api/beta/route.ts + validated email field lands in Phase 4.
- */
 export async function CtaSection({ locale }: { locale: string }) {
-  const [t, tNav] = await Promise.all([
+  const [t, tNav, tBeta, tScene] = await Promise.all([
     getTranslations({ locale, namespace: "sections" }),
     getTranslations({ locale, namespace: "nav" }),
+    getTranslations({ locale, namespace: "beta" }),
+    getTranslations({ locale, namespace: "scene" }),
   ]);
 
   return (
     <section
       aria-labelledby="cta-heading"
-      className="flex flex-col items-start gap-6 px-[var(--space-page-x)] py-[var(--space-section-y)]"
+      className="flex flex-col items-start gap-10 px-[var(--space-page-x)] py-[var(--space-section-y)] lg:flex-row lg:items-center lg:justify-between"
     >
-      <SectionHeading id="cta-heading" className="max-w-[20ch]">
-        {t("ctaHeading")}
-      </SectionHeading>
-      <div className="flex flex-wrap gap-3">
-        <Button>{tNav("requestAccess")}</Button>
-        <Button variant="outline">{tNav("explore")}</Button>
-      </div>
+      <Reveal className="flex flex-col items-start gap-6">
+        <SectionHeading id="cta-heading" className="max-w-[20ch]">
+          {t("ctaHeading")}
+        </SectionHeading>
+        <BetaForm
+          emailLabel={tBeta("emailLabel")}
+          emailPlaceholder={tBeta("emailPlaceholder")}
+          submitLabel={tBeta("submit")}
+          successMessage={tBeta("success")}
+          errorMessage={tBeta("error")}
+        />
+        <ExploreLink label={tNav("explore")} />
+      </Reveal>
+      <Reveal index={1} className="hidden w-[180px] shrink-0 lg:block">
+        <SectionSceneMount mode="final-cta" caption={tScene("finalCta.label")} />
+      </Reveal>
     </section>
   );
 }

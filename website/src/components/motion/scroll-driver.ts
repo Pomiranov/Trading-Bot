@@ -43,17 +43,6 @@ export function initScrollDriver(): () => void {
   gsap.ticker.add(tick);
   gsap.ticker.lagSmoothing(0);
 
-  if (process.env.NODE_ENV === "development") {
-    // TEMP debug hook — verifying the pin/scrub tween via ScrollTrigger's
-    // own API since this session's browser-automation tool can't reliably
-    // dispatch trusted wheel events to test real scrolling. Remove before
-    // shipping; dev-only guard keeps it out of the production bundle
-    // either way.
-    (window as unknown as { __gsap: typeof gsap; __ScrollTrigger: typeof ScrollTrigger; __lenis: Lenis }).__gsap = gsap;
-    (window as unknown as { __gsap: typeof gsap; __ScrollTrigger: typeof ScrollTrigger; __lenis: Lenis }).__ScrollTrigger = ScrollTrigger;
-    (window as unknown as { __gsap: typeof gsap; __ScrollTrigger: typeof ScrollTrigger; __lenis: Lenis }).__lenis = lenis;
-  }
-
   return () => {
     if (tickerFn) gsap.ticker.remove(tickerFn);
     lenis.destroy();

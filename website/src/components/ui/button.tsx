@@ -3,31 +3,43 @@ import { cva, type VariantProps } from "class-variance-authority";
 
 import { cn } from "@/lib/utils";
 
-/**
- * Customized from shadcn's generated default (never shipped in default
- * state per the design skills' rule): dead `dark:` variants stripped (no
- * light/dark toggle exists — single locked dark theme), radius/contrast
- * tuned to the instrument-panel aesthetic instead of the generic soft-SaaS
- * defaults.
- */
 const buttonVariants = cva(
-  "group/button inline-flex shrink-0 items-center justify-center gap-1.5 rounded-[var(--radius-md)] border border-transparent font-mono text-[13px] uppercase tracking-[0.06em] whitespace-nowrap transition-colors duration-[var(--duration-micro)] outline-none select-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/50 active:translate-y-px disabled:pointer-events-none disabled:opacity-40 aria-invalid:border-destructive [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+  "group/button btn-liquid-glass inline-flex shrink-0 items-center justify-center gap-1.5 rounded-[var(--radius-md)] border border-transparent font-mono text-[13px] uppercase tracking-[0.1em] whitespace-nowrap transition-all duration-300 outline-none select-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/50 active:scale-[0.97] disabled:pointer-events-none disabled:opacity-40 aria-invalid:border-destructive [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
   {
     variants: {
       variant: {
-        default: "bg-primary text-primary-foreground hover:bg-primary/85",
-        outline:
-          "border-border bg-transparent text-foreground hover:bg-secondary",
-        secondary: "bg-secondary text-secondary-foreground hover:bg-border",
-        ghost: "text-foreground hover:bg-secondary",
-        destructive:
-          "bg-destructive/10 text-destructive hover:bg-destructive/20",
-        link: "text-primary underline-offset-4 hover:underline",
+        default: [
+          "bg-[linear-gradient(135deg,#ff8a1e_0%,#d96a12_100%)]",
+          "text-[#040404] font-semibold",
+          "shadow-[0_0_0_1px_rgba(255,138,30,0.25),0_4px_20px_rgba(255,138,30,0.18),inset_0_1px_0_rgba(255,255,255,0.18)]",
+          "hover:shadow-[0_0_0_1px_rgba(255,138,30,0.45),0_8px_32px_rgba(255,138,30,0.28),inset_0_1px_0_rgba(255,255,255,0.22)]",
+          "hover:brightness-[1.08] hover:-translate-y-px",
+        ].join(" "),
+        outline: [
+          "bg-[rgba(255,255,255,0.03)] backdrop-blur-[12px]",
+          "border-[rgba(255,255,255,0.1)]",
+          "text-[color:var(--color-text-primary)]",
+          "shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]",
+          "hover:bg-[rgba(255,255,255,0.06)] hover:border-[rgba(255,138,30,0.2)] hover:-translate-y-px",
+          "hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.07),0_0_16px_rgba(255,138,30,0.07)]",
+        ].join(" "),
+        secondary: [
+          "bg-[color:var(--color-surface)]",
+          "text-[color:var(--color-text-secondary)]",
+          "border-[color:var(--color-border)]",
+          "hover:bg-[color:var(--color-panel)] hover:text-[color:var(--color-text-primary)]",
+        ].join(" "),
+        ghost: [
+          "text-[color:var(--color-text-secondary)]",
+          "hover:bg-[rgba(255,255,255,0.05)] hover:text-[color:var(--color-text-primary)]",
+        ].join(" "),
+        destructive: "bg-[color:var(--color-danger-dim)] text-[color:var(--color-danger)] hover:bg-[rgba(229,72,77,0.25)]",
+        link: "text-[color:var(--color-accent)] underline-offset-4 hover:underline",
       },
       size: {
         default: "h-10 px-5",
         sm: "h-8 px-3.5 text-[11px]",
-        lg: "h-12 px-7",
+        lg: "h-12 px-8 text-[13px]",
         icon: "size-10",
       },
     },

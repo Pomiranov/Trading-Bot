@@ -2,7 +2,7 @@
 .env
 *.env.local
 Password.env
-Projects/trading-bot/Password.env
+Projects/
 
 # ─── Python ───────────────────────────────────────────────────────────────────
 __pycache__/
@@ -21,8 +21,13 @@ bot/data/user_prefs.json
 bot/data/credential_vault.json
 bot/data/credential_vault.json.tmp
 data/credential_vault.json
+data/user_prefs.json
 .bot.pid
 bot/.bot.pid
+
+# ─── Raw knowledge books (copyright, large binaries) ──────────────────────────
+knowledge/raw/books/
+*.pdf
 
 # ─── Logs ─────────────────────────────────────────────────────────────────────
 logs/

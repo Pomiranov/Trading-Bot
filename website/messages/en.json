@@ -1,23 +1,29 @@
 {
   "seo": {
-    "title": "QuantFlow: Knowledge is frozen. Trust is fluid.",
-    "description": "QuantFlow tracks which proven trading rules are actually working, and sizes conviction accordingly. A statistical belief-updating system for MOEX and Bybit, built on Schwager's rules, not invented alpha."
+    "title": "QuantFlow — The edge isn't invented. It's observed.",
+    "description": "QuantFlow measures which proven trading rules are currently working and allocates capital by statistical conviction. A belief-updating engine for MOEX and Bybit, built on Schwager's rules — not invented alpha."
   },
   "nav": {
     "explore": "Explore QuantFlow",
-    "requestAccess": "Request Private Access"
+    "requestAccess": "Request Private Access",
+    "product": "Dashboard",
+    "engine": "Engine",
+    "telegram": "Telegram bot",
+    "pricing": "Pricing",
+    "faq": "FAQ",
+    "menu": "Menu"
   },
   "hero": {
-    "tagline1": "Knowledge is frozen.",
-    "tagline2": "Trust is fluid.",
-    "subline": "QuantFlow doesn't invent trading signals. It tracks which proven rules are actually working, and sizes conviction accordingly.",
+    "tagline1": "The edge isn't invented.",
+    "tagline2": "It's observed.",
+    "subline": "QuantFlow doesn't predict markets. It measures which proven trading rules are currently working and sizes every position by statistical conviction alone.",
     "statusLive": "LIVE",
     "statusMarket": "MOEX D1",
     "statusStrategy": "osc_range_moex_d1_fwd"
   },
   "scene": {
     "hero": {
-      "caption": "Rule confidence, live"
+      "caption": "Signal propagation through the trading engine"
     },
     "frozenStrategies": {
       "label": "Frozen"
@@ -44,7 +50,7 @@
     "enginePipeline": "Engine pipeline",
     "learningSystem": "Learning system",
     "dashboardPreview": "Dashboard preview",
-    "dashboardPreviewNote": "Illustrative recreation of the operational dashboard interface. Same field names as the real system, representative values.",
+    "dashboardPreviewNote": "Illustrative recreation of the operational dashboard. Same field names as the live system, representative values.",
     "strategyLayer": "Strategy layer",
     "strategyTableHeaders": {
       "strategy": "Strategy",
@@ -56,17 +62,72 @@
     },
     "strategyMetricsUnavailable": "n/a",
     "ctaHeading": "Request private access",
-    "confidenceChartCaption": "osc_range_moex_d1_fwd, illustrative confidence path over 29 forward-test trades",
+    "confidenceChartCaption": "osc_range_moex_d1_fwd — illustrative path shape over a real 29-trade forward-test (58.6% win rate, 1.16 profit factor)",
     "confidenceSliderDragHint": "Drag to see confidence at each trade",
     "minTradesFloorLabel": "Min trades for confidence",
     "minConfidenceLabel": "Confidence floor",
     "maxConfidenceLabel": "Confidence ceiling"
+  },
+  "telegramBot": {
+    "heading": "Runs where you already are",
+    "intro": "The Telegram bot is the operator surface, not a marketing add-on. Every strategy status change, fill and drawdown alert reaches you there, and every switch you can flip on the dashboard has a Telegram equivalent.",
+    "feature1Title": "Real-time notifications",
+    "feature1Body": "Position opened, position closed, strategy frozen. The same event dispatcher that writes to the trade ledger fans out to Telegram.",
+    "feature2Title": "Menu-driven control",
+    "feature2Body": "Check balances, review open positions, pause a strategy. Inline keyboards, no command syntax to memorize.",
+    "feature3Title": "One account, two surfaces",
+    "feature3Body": "The dashboard and the bot read the same platform state. Nothing in the bot is a simplified or delayed copy."
+  },
+  "brokerIntegrations": {
+    "heading": "Real accounts, real brokers",
+    "intro": "Orders route through actual broker APIs, not a simulated matching engine dressed up as one. Sandbox mode exists precisely so you can verify that before risking capital.",
+    "tinkoffTitle": "T-Invest (Tinkoff)",
+    "tinkoffBody": "MOEX equities and derivatives. Sandbox and live modes share one client.",
+    "bybitTitle": "Bybit",
+    "bybitBody": "Crypto spot and derivatives, for strategies scoped to that market.",
+    "finamTitle": "Finam",
+    "finamBody": "A second MOEX route, kept independent from the Tinkoff client."
+  },
+  "sandbox": {
+    "heading": "Paper trade before it's real",
+    "intro": "The paper trading engine executes the exact same signal path as live trading, against simulated fills instead of a broker. It's how a strategy earns its way onto the live strategy layer, not a toy demo mode.",
+    "point1": "Same RulesEngine, same belief gate, same RiskManager",
+    "point2": "Simulated fills at observed market price, not idealized ones",
+    "point3": "A strategy's paper track record is what feeds its initial confidence"
+  },
+  "pricing": {
+    "heading": "Pricing",
+    "note": "Not launched yet. Shown here as the planned structure, not a live offer. Nothing below is billable today.",
+    "planFreeTitle": "Research",
+    "planFreePrice": "Free",
+    "planFreeBody": "Dashboard read access, strategy layer, philosophy and engine docs. No live or paper trading.",
+    "planCoreTitle": "Operator",
+    "planCorePrice": "Planned",
+    "planCoreBody": "Paper trading, Telegram bot, full notification stream. Priced once the beta closes.",
+    "planLiveTitle": "Live",
+    "planLivePrice": "Planned",
+    "planLiveBody": "Live broker connection, real capital. Gated behind a manual review, not self-serve.",
+    "cta": "Join the waitlist"
+  },
+  "faq": {
+    "heading": "Frequently asked",
+    "q1": "Is this actually AI?",
+    "a1": "Not in the LLM or deep-learning sense. Rules come from trading literature, not a trained model. What updates statistically is confidence in each rule — bounded above and below so it never claims certainty.",
+    "q2": "Which markets and brokers?",
+    "a2": "MOEX via T-Invest (Tinkoff) and Finam, and crypto via Bybit. See the Broker Integrations section above.",
+    "q3": "Can I try it without risking money?",
+    "a3": "Yes. Paper trading runs the identical signal path against simulated fills. See Sandbox above.",
+    "q4": "What happens to a strategy that stops working?",
+    "a4": "It's frozen, not deleted or hidden. The Strategy Layer table shows FROZEN strategies with their real numbers, same as LIVE ones.",
+    "q5": "Is pricing available now?",
+    "a5": "No. QuantFlow is in private beta. Pricing shown is the planned structure, not a current offer."
   },
   "beta": {
     "emailLabel": "Email address",
     "emailPlaceholder": "you@fund.com",
     "submit": "Request access",
     "success": "Request received. We follow up if it's a fit.",
-    "error": "Enter a valid email address."
+    "error": "Enter a valid email address.",
+    "networkError": "Something went wrong on our end. Try again in a moment."
   }
 }

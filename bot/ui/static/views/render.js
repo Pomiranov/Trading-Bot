@@ -35,26 +35,40 @@ const QFRender = (() => {
   /* ── Dashboard ── */
   function dashboard(state) {
     const { overview, portfolio, stats, positions, signals, equity } = state;
-    if (!overview) return;
 
-    const cur = overview.currency === 'USDT' ? 'USDT' : '₽';
-    const src = document.getElementById('heroSource');
-    if (src) {
-      src.textContent = sourceLabel(portfolio?.source);
-      src.className = 'badge ' + (portfolio?.source === 'paper' ? 'badge-warn' : 'badge-buy');
+    // overview is one of several independent API calls (see QFSync.fullSync) —
+    // if only it fails, the rest of this function must still render whatever
+    // portfolio/stats/equity/signals data did come back, instead of leaving
+    // every card stuck on its loading skeleton.
+    if (overview) {
+      const cur = overview.currency === 'USDT' ? 'USDT' : '₽';
+      const src = document.getElementById('heroSource');
+      if (src) {
+        src.textContent = sourceLabel(portfolio?.source);
+        src.className = 'badge ' + (portfolio?.source === 'paper' ? 'badge-warn' : 'badge-buy');
+      }
+
+      const bal = document.getElementById('metPortfolio');
+      if (bal) { bal.className = 'hero-value neutral'; animateValue(bal, overview.balance, v => QFFmt.money(v, cur)); }
+
+      const trades = document.getElementById('metTrades');
+      if (trades) trades.textContent = `${overview.open_trades} открытых · ${overview.closed_trades} закрытых`;
+
+      const pnl = document.getElementById('metPnl');
+      if (pnl) { animateValue(pnl, overview.pnl_day, v => (v >= 0 ? '+' : '') + QFFmt.num(v)); applyColor(pnl, overview.pnl_day); }
+
+      const pnlPct = document.getElementById('metPnlPct');
+      if (pnlPct) pnlPct.textContent = `${overview.signals_new} новых сигналов`;
+
+      renderBrokers(overview.brokers);
+      renderSystem(overview.system, overview.websocket_status);
+      renderRecent('recentTradesList', overview.recent_trades, t =>
+        `<div class="recent-item"><span class="recent-ticker">${t.ticker}</span><span class="${QFFmt.colorClass(t.pnl)}">${QFFmt.num(t.pnl)}</span></div>`);
+      renderRecent('recentSignalsList', overview.recent_signals, s =>
+        `<div class="recent-item"><span class="recent-ticker">${s.asset}</span>${QFUI.badge(s.signal_type)}</div>`);
+      renderRecent('recentErrorsList', overview.recent_errors, e =>
+        `<div class="recent-item">${QFUI.logBadge(e.level)}<span class="log-msg">${(e.message || '').slice(0, 40)}</span></div>`);
     }
-
-    const bal = document.getElementById('metPortfolio');
-    if (bal) { bal.className = 'hero-value neutral'; animateValue(bal, overview.balance, v => QFFmt.money(v, cur)); }
-
-    const trades = document.getElementById('metTrades');
-    if (trades) trades.textContent = `${overview.open_trades} открытых · ${overview.closed_trades} закрытых`;
-
-    const pnl = document.getElementById('metPnl');
-    if (pnl) { animateValue(pnl, overview.pnl_day, v => (v >= 0 ? '+' : '') + QFFmt.num(v)); applyColor(pnl, overview.pnl_day); }
-
-    const pnlPct = document.getElementById('metPnlPct');
-    if (pnlPct) pnlPct.textContent = `${overview.signals_new} новых сигналов`;
 
     if (portfolio) {
       ['dashPnlWeek', 'dashPnlMonth'].forEach((id, i) => {
@@ -76,15 +90,6 @@ const QFRender = (() => {
       const sh = document.getElementById('metSharpe');
       if (sh && stats.sharpe_ratio != null) { sh.textContent = QFFmt.num(stats.sharpe_ratio); sh.className = 'metric-value ' + QFFmt.colorClass(stats.sharpe_ratio); }
     }
-
-    renderBrokers(overview.brokers);
-    renderSystem(overview.system, overview.websocket_status);
-    renderRecent('recentTradesList', overview.recent_trades, t =>
-      `<div class="recent-item"><span class="recent-ticker">${t.ticker}</span><span class="${QFFmt.colorClass(t.pnl)}">${QFFmt.num(t.pnl)}</span></div>`);
-    renderRecent('recentSignalsList', overview.recent_signals, s =>
-      `<div class="recent-item"><span class="recent-ticker">${s.asset}</span>${QFUI.badge(s.signal_type)}</div>`);
-    renderRecent('recentErrorsList', overview.recent_errors, e =>
-      `<div class="recent-item">${QFUI.logBadge(e.level)}<span class="log-msg">${(e.message || '').slice(0, 40)}</span></div>`);
 
     renderDashboardPositions(positions);
     renderDashboardSignals(signals);

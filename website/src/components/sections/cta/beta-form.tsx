@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { betaSignupSchema, type BetaSignupInput } from "@/lib/beta/schema";
-import { Button } from "@/components/ui/button";
+import { MagneticButton } from "@/components/ui/magnetic-button";
 import { track } from "@/lib/analytics/events";
 
 export function BetaForm({
@@ -13,12 +13,14 @@ export function BetaForm({
   submitLabel,
   successMessage,
   errorMessage,
+  networkErrorMessage,
 }: {
   emailLabel: string;
   emailPlaceholder: string;
   submitLabel: string;
   successMessage: string;
   errorMessage: string;
+  networkErrorMessage: string;
 }) {
   const [status, setStatus] = useState<"idle" | "success" | "error">("idle");
   const {
@@ -56,14 +58,22 @@ export function BetaForm({
 
   if (status === "success") {
     return (
-      <p
+      <div
+        className="inline-flex items-center gap-2 rounded-xl px-4 py-3 font-mono text-[13px]"
         role="status"
-        className="font-mono text-[13px] text-[color:var(--color-accent)]"
+        style={{
+          background: "rgba(44,233,123,0.08)",
+          border: "1px solid rgba(44,233,123,0.2)",
+          color: "var(--color-success)",
+        }}
       >
+        <span className="size-1.5 rounded-full" style={{ backgroundColor: "var(--color-success)" }} />
         {successMessage}
-      </p>
+      </div>
     );
   }
+
+  const emailRegistration = register("email");
 
   return (
     <form
@@ -81,10 +91,28 @@ export function BetaForm({
           placeholder={emailPlaceholder}
           autoComplete="email"
           aria-invalid={!!errors.email}
-          className="h-10 w-64 rounded-[var(--radius-md)] border border-[color:var(--color-border)] bg-transparent px-3.5 font-mono text-[13px] text-[color:var(--color-text-primary)] outline-none placeholder:text-[color:var(--color-text-tertiary)] focus-visible:border-[color:var(--color-accent)]"
-          {...register("email")}
+          className="h-12 w-64 rounded-[var(--radius-md)] px-4 font-mono text-[13px] outline-none transition-all duration-200"
+          style={{
+            background: "rgba(255,255,255,0.04)",
+            border: errors.email
+              ? "1px solid rgba(229,72,77,0.5)"
+              : "1px solid rgba(255,255,255,0.1)",
+            backdropFilter: "blur(12px)",
+            color: "var(--color-text-primary)",
+            boxShadow: "inset 0 1px 0 rgba(255,255,255,0.04)",
+          }}
+          {...emailRegistration}
+          onFocus={(e) => {
+            e.currentTarget.style.border = "1px solid rgba(255,138,30,0.4)";
+            e.currentTarget.style.boxShadow = "inset 0 1px 0 rgba(255,255,255,0.04), 0 0 0 3px rgba(255,138,30,0.08)";
+          }}
+          onBlur={(e) => {
+            emailRegistration.onBlur(e);
+            e.currentTarget.style.border = "1px solid rgba(255,255,255,0.1)";
+            e.currentTarget.style.boxShadow = "inset 0 1px 0 rgba(255,255,255,0.04)";
+          }}
         />
-        {/* Honeypot: visually and semantically hidden from real users, left for bots that fill every field. */}
+        {/* Honeypot */}
         <input
           type="text"
           tabIndex={-1}
@@ -94,19 +122,19 @@ export function BetaForm({
           {...register("company")}
         />
         {errors.email ? (
-          <p className="font-mono text-[11px] text-[color:var(--color-danger)]">
+          <p className="font-mono text-[11px]" style={{ color: "var(--color-danger)" }}>
             {errorMessage}
           </p>
         ) : null}
         {status === "error" ? (
-          <p role="alert" className="font-mono text-[11px] text-[color:var(--color-danger)]">
-            {errorMessage}
+          <p role="alert" className="font-mono text-[11px]" style={{ color: "var(--color-danger)" }}>
+            {networkErrorMessage}
           </p>
         ) : null}
       </div>
-      <Button type="submit" disabled={isSubmitting}>
+      <MagneticButton type="submit" size="lg" disabled={isSubmitting}>
         {submitLabel}
-      </Button>
+      </MagneticButton>
     </form>
   );
 }

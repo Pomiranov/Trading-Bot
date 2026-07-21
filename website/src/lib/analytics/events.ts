@@ -20,5 +20,6 @@ export type AnalyticsEvent =
 
 export function track(event: AnalyticsEvent) {
   if (typeof window === "undefined") return;
+  if (!process.env.NEXT_PUBLIC_POSTHOG_KEY) return;
   posthog.capture(event.name, event.props);
 }

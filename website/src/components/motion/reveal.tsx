@@ -19,13 +19,13 @@ export function Reveal({ index = 0, children, style, ...props }: RevealProps) {
 
   return (
     <motion.div
-      initial={reduce ? false : { opacity: 0, y: 24 }}
+      initial={reduce ? false : { opacity: 0, y: 20 }}
       whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true, amount: 0.3 }}
+      viewport={{ once: true, amount: 0.25 }}
       transition={{
-        duration: 0.6,
-        delay: index * 0.06,
-        ease: [0.16, 1, 0.3, 1],
+        duration: 0.7,
+        delay: index * 0.07,
+        ease: [0.22, 1, 0.36, 1],
       }}
       style={style}
       {...props}

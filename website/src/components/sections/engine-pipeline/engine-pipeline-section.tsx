@@ -1,53 +1,59 @@
 import { getTranslations } from "next-intl/server";
 import { contentSource } from "@/content-layer/source";
 import { SectionHeading } from "@/components/ui/section-heading";
-import { MonoLabel } from "@/components/ui/mono-label";
 import { Reveal } from "@/components/motion/reveal";
-import { SectionSceneMount } from "@/components/scene/section-scene-mount";
 import { EnginePipelineScroller } from "./engine-pipeline-scroller";
 
-/**
- * Mobile: plain vertical stack, no JS. Desktop: pinned horizontal-pan
- * track via EnginePipelineScroller (GSAP ScrollTrigger, matchMedia-gated
- * to md+, see that file for the pin mechanics). Same stage data renders
- * both — only the container differs.
- */
 export async function EnginePipelineSection({ locale }: { locale: string }) {
-  const [stages, t, tScene] = await Promise.all([
+  const [stages, t] = await Promise.all([
     contentSource.getPipelineStages(locale),
     getTranslations({ locale, namespace: "sections" }),
-    getTranslations({ locale, namespace: "scene" }),
   ]);
 
   return (
     <section
       aria-labelledby="engine-pipeline-heading"
-      className="flex flex-col gap-12 py-[var(--space-section-y)]"
+      className="relative flex flex-col gap-12 py-[var(--space-section-y)]"
     >
-      <div className="flex items-start justify-between gap-8 px-[var(--space-page-x)]">
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute right-0 top-0 w-[500px] h-[500px] rounded-full"
+        style={{
+          background: "radial-gradient(circle, rgba(255,138,30,0.04) 0%, transparent 60%)",
+          filter: "blur(80px)",
+        }}
+      />
+
+      <div className="px-[var(--space-page-x)]">
         <Reveal>
-          <SectionHeading id="engine-pipeline-heading" className="max-w-[20ch]">
+          <SectionHeading id="engine-pipeline-heading" className="max-w-[22ch]">
             {t("enginePipeline")}
           </SectionHeading>
-        </Reveal>
-        <Reveal index={1} className="hidden w-[140px] shrink-0 lg:block">
-          <SectionSceneMount mode="quant-engine" caption={tScene("quantEngine.label")} />
         </Reveal>
       </div>
 
       {/* Mobile: vertical stack */}
-      <ol className="flex flex-col divide-y divide-[color:var(--color-border)] px-[var(--space-page-x)] md:hidden">
+      <ol className="flex flex-col px-[var(--space-page-x)] md:hidden">
         {stages.map((stage) => (
-          <li key={stage.id} className="flex flex-col gap-2 py-6 first:pt-0">
-            <MonoLabel as="span">{String(stage.order).padStart(2, "0")}</MonoLabel>
-            <p className="font-medium text-[color:var(--color-text-primary)]">
+          <li
+            key={stage.id}
+            className="flex flex-col gap-2.5 py-6"
+            style={{ borderBottom: "1px solid rgba(255,255,255,0.05)" }}
+          >
+            <span
+              className="font-mono tabular-nums text-[10px] uppercase tracking-[0.16em]"
+              style={{ color: "var(--color-accent)", opacity: 0.7 }}
+            >
+              {String(stage.order).padStart(2, "0")}
+            </span>
+            <p className="font-medium" style={{ color: "var(--color-text-primary)" }}>
               {stage.title}
             </p>
-            <div className="text-[color:var(--color-text-secondary)]">
+            <div className="text-[14px]" style={{ color: "var(--color-text-secondary)" }}>
               {stage.description}
             </div>
             {stage.sourceRef ? (
-              <p className="font-mono text-xs text-[color:var(--color-text-tertiary)]">
+              <p className="font-mono text-xs" style={{ color: "rgba(255,255,255,0.25)" }}>
                 {stage.sourceRef}
               </p>
             ) : null}
@@ -60,17 +66,49 @@ export async function EnginePipelineSection({ locale }: { locale: string }) {
         {stages.map((stage) => (
           <li
             key={stage.id}
-            className="flex w-[300px] shrink-0 flex-col gap-3 border-l border-[color:var(--color-border)] pl-6 [scroll-snap-align:start]"
+            className="group flex w-[340px] shrink-0 flex-col gap-5 rounded-2xl p-7 [scroll-snap-align:start] transition-all duration-300 hover:border-white/[0.11]"
+            style={{
+              background: "rgba(255,255,255,0.025)",
+              border: "1px solid rgba(255,255,255,0.08)",
+              backdropFilter: "blur(16px)",
+            }}
           >
-            <MonoLabel as="span">{String(stage.order).padStart(2, "0")}</MonoLabel>
-            <p className="font-medium text-[color:var(--color-text-primary)]">
+            <div className="flex items-center gap-3">
+              <span
+                className="size-6 rounded-md flex items-center justify-center font-mono tabular-nums text-[9px] tracking-[0.08em] shrink-0"
+                style={{
+                  color: "var(--color-accent)",
+                  background: "rgba(255,138,30,0.08)",
+                  border: "1px solid rgba(255,138,30,0.12)",
+                }}
+              >
+                {String(stage.order).padStart(2, "0")}
+              </span>
+              <div
+                className="h-px flex-1"
+                style={{ background: "rgba(255,255,255,0.05)" }}
+              />
+            </div>
+            <p
+              className="text-[15px] font-medium leading-snug"
+              style={{ color: "rgba(255,255,255,0.92)", letterSpacing: "-0.01em" }}
+            >
               {stage.title}
             </p>
-            <div className="text-[15px] text-[color:var(--color-text-secondary)]">
+            <div
+              className="flex-1 text-[14px] leading-relaxed"
+              style={{ color: "rgba(255,255,255,0.58)" }}
+            >
               {stage.description}
             </div>
             {stage.sourceRef ? (
-              <p className="mt-auto pt-4 font-mono text-xs text-[color:var(--color-text-tertiary)]">
+              <p
+                className="mt-auto pt-4 font-mono text-[10px] uppercase tracking-[0.1em]"
+                style={{
+                  color: "rgba(255,255,255,0.18)",
+                  borderTop: "1px solid rgba(255,255,255,0.05)",
+                }}
+              >
                 {stage.sourceRef}
               </p>
             ) : null}

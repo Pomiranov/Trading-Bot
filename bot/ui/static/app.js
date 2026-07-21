@@ -122,9 +122,12 @@ function showView(name) {
   document.querySelectorAll('.view').forEach(v =>
     v.classList.toggle('active', v.id === `view-${name}`)
   );
-  document.querySelectorAll('.sidebar-nav a[data-view], .nav a[data-view]').forEach(a =>
-    a.classList.toggle('active', a.dataset.view === name)
-  );
+  document.querySelectorAll('.sidebar-nav a[data-view], .nav a[data-view]').forEach(a => {
+    const isActive = a.dataset.view === name;
+    a.classList.toggle('active', isActive);
+    if (isActive) a.setAttribute('aria-current', 'page');
+    else a.removeAttribute('aria-current');
+  });
   currentView = name;
 
   if (name === 'miniapp') {
@@ -628,7 +631,7 @@ window.setRiskBar = setRiskBar;
 
     const item = document.createElement('div');
     item.className = 'paper-feed-item';
-    item.innerHTML = `<span class="badge ${cls}">${action}</span><span class="feed-ticker">${ticker}</span><span class="feed-price">${price}${prob}</span><span class="feed-ts">${ts}</span>`;
+    item.innerHTML = `<span class="badge ${cls}">${esc(action)}</span><span class="feed-ticker">${esc(ticker)}</span><span class="feed-price">${esc(price)}${esc(prob)}</span><span class="feed-ts">${esc(ts)}</span>`;
 
     feed.insertBefore(item, feed.firstChild);
     while (feed.children.length > MAX_ITEMS) feed.removeChild(feed.lastChild);
@@ -651,7 +654,7 @@ window.setRiskBar = setRiskBar;
 
     const item = document.createElement('div');
     item.className = 'paper-feed-item';
-    item.innerHTML = `<span class="badge ${cls}">CLOSE</span><span class="feed-ticker">${ticker}</span><span class="feed-price">P&amp;L ${pnl}</span><span class="feed-ts">${ts} · ${reason}</span>`;
+    item.innerHTML = `<span class="badge ${cls}">CLOSE</span><span class="feed-ticker">${esc(ticker)}</span><span class="feed-price">P&amp;L ${esc(pnl)}</span><span class="feed-ts">${esc(ts)} · ${esc(reason)}</span>`;
 
     feed.insertBefore(item, feed.firstChild);
     while (feed.children.length > MAX_ITEMS) feed.removeChild(feed.lastChild);

@@ -8,13 +8,16 @@ import { useReducedMotion } from "motion/react";
 gsap.registerPlugin(ScrollTrigger);
 
 /**
- * Pinned horizontal-pan track, desktop only (taste-skill canonical
- * skeleton, Section 5.B) — gated by ScrollTrigger.matchMedia so the pin
- * logic is entirely absent below md, not just visually hidden (matters
- * for the mobile performance budget and avoids a pinned-but-invisible
- * container eating scroll). Reduced motion skips GSAP setup entirely;
- * the track still renders as a plain scrollable row (overflow-x-auto in
- * the className below), just without the pin/scrub choreography.
+ * Pinned horizontal-pan track, desktop only.
+ *
+ * Cards stagger in cinematically on enter, then the track pans horizontally
+ * as the user scrolls. The section fades out gracefully rather than snapping
+ * away — no abrupt release, no excessive scroll distance.
+ *
+ * Cards are ALWAYS visible (natural state). GSAP only adds a visual
+ * enhancement — if the trigger doesn't fire, nothing breaks.
+ *
+ * Reduced-motion: standard overflow-x scroll, no GSAP at all.
  */
 export function EnginePipelineScroller({ children }: { children: ReactNode }) {
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -34,6 +37,28 @@ export function EnginePipelineScroller({ children }: { children: ReactNode }) {
           const distance = track.scrollWidth - wrap.clientWidth;
           if (distance <= 0) return;
 
+          const cards = Array.from(track.querySelectorAll<HTMLElement>("li"));
+
+          // Cinematic stagger: animate FROM hidden state so cards are always
+          // visible by default — immediateRender: false prevents the from-state
+          // from being applied until the trigger actually fires.
+          ScrollTrigger.create({
+            trigger: wrap,
+            start: "top 82%",
+            once: true,
+            onEnter: () => {
+              gsap.from(cards, {
+                autoAlpha: 0,
+                y: 20,
+                duration: 0.65,
+                stagger: 0.08,
+                ease: "power3.out",
+                immediateRender: false,
+              });
+            },
+          });
+
+          // Horizontal pan — faster scrub, graceful exit fade
           gsap.to(track, {
             x: -distance,
             ease: "none",
@@ -42,8 +67,18 @@ export function EnginePipelineScroller({ children }: { children: ReactNode }) {
               start: "top top",
               end: () => `+=${distance}`,
               pin: true,
-              scrub: 1,
+              pinSpacing: true,
+              scrub: 0.9,
               invalidateOnRefresh: true,
+              onUpdate(self) {
+                // Begin fade at 80% progress, complete at 100%
+                if (self.progress > 0.80) {
+                  const p = (self.progress - 0.80) / 0.20;
+                  wrap!.style.opacity = String(Math.max(0, 1 - p * p));
+                } else {
+                  wrap!.style.opacity = "1";
+                }
+              },
             },
           });
         },
@@ -54,10 +89,11 @@ export function EnginePipelineScroller({ children }: { children: ReactNode }) {
   }, [reduce]);
 
   return (
-    <div ref={wrapRef} className="relative hidden md:block">
+    <div ref={wrapRef} className="relative hidden md:block" style={{ zIndex: 1 }}>
       <ol
         ref={trackRef}
         className="flex gap-6 overflow-x-auto px-[var(--space-page-x)] pb-4 [scroll-snap-type:x_mandatory]"
+        style={{ willChange: "transform" }}
       >
         {children}
       </ol>

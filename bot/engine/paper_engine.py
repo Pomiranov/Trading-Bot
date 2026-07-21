@@ -461,23 +461,39 @@ class PaperEngine:
                 time.sleep(1)
         logger.info("PaperEngine signal_loop stopped")
 
-    def _check_risk_limits(self, ticker: str, portfolio_value: float) -> tuple[bool, str]:
-        """Gate trade against risk rules. Returns (allowed, reason)."""
+    def _check_risk_limits(
+        self, ticker: str, account_id: Optional[int], portfolio_value: float
+    ) -> tuple[bool, str]:
+        """Gate trade against risk rules. Returns (allowed, reason).
+
+        Scoped to this paper account's own positions/PnL (paper_positions /
+        paper_trades) — must NOT touch risk.risk_manager. That tracker holds
+        real broker positions/PnL for main.py's live trading loop; paper
+        trades registering into it meant simulated activity here counted
+        against (and could trip) the real max_open_positions /
+        max_daily_loss_pct limits, and vice versa — a cross-contamination
+        bug between simulated and real risk accounting.
+        """
+        if account_id is None:
+            return True, ""
         try:
-            from risk.risk_manager import risk_manager
             from config import config
 
-            if ticker in risk_manager.open_positions:
+            repo = self._get_repo()
+            open_positions = repo.list_positions(account_id)
+
+            if any((p.get("ticker") or "").upper() == ticker.upper() for p in open_positions):
                 return False, f"Позиция по {ticker} уже открыта"
 
-            if len(risk_manager.open_positions) >= config.risk.max_open_positions:
+            if len(open_positions) >= config.risk.max_open_positions:
                 return False, f"Лимит позиций ({config.risk.max_open_positions}) достигнут"
 
+            daily_pnl = float(repo.pnl_periods(account_id).get("pnl_day", 0) or 0)
             max_daily_loss = portfolio_value * config.risk.max_daily_loss_pct
-            if risk_manager.daily_pnl <= -max_daily_loss:
+            if daily_pnl <= -max_daily_loss:
                 return False, (
                     f"Дневной лимит убытков: "
-                    f"{risk_manager.daily_pnl:.2f} ₽ (лимит -{max_daily_loss:.2f} ₽)"
+                    f"{daily_pnl:.2f} ₽ (лимит -{max_daily_loss:.2f} ₽)"
                 )
         except Exception as exc:
             logger.debug("Risk check error: %s", exc)
@@ -500,8 +516,10 @@ class PaperEngine:
         self._push_sse("signals_updated", {"count": len(signals), "source": "paper_engine"})
 
         # Get portfolio value for risk checks
+        account_id = None
         try:
             account = self._get_repo().get_or_create_account()
+            account_id = int(account["id"])
             portfolio_value = float(account.get("available_balance", 100_000))
         except Exception:
             portfolio_value = 100_000.0
@@ -517,7 +535,7 @@ class PaperEngine:
             meta = sig.metadata if isinstance(sig.metadata, dict) else {}
 
             # Risk gate
-            allowed, reject_reason = self._check_risk_limits(sig.asset, portfolio_value)
+            allowed, reject_reason = self._check_risk_limits(sig.asset, account_id, portfolio_value)
             if not allowed:
                 logger.info("PaperEngine: REJECTED %s — %s", sig.asset, reject_reason)
                 self._push_sse("signal_rejected", {
@@ -564,22 +582,10 @@ class PaperEngine:
                 )
                 result["strategy"] = meta.get("strategy", "")
 
-                # Register in risk manager for tracking
-                try:
-                    from risk.risk_manager import risk_manager, PositionSizing
-                    sl_price = float(sig.stop_loss) if sig.stop_loss else result["entry_price"] * 0.97
-                    ps = PositionSizing(
-                        ticker=sig.asset,
-                        entry_price=result["entry_price"],
-                        stop_price=sl_price,
-                        lot_size=1,
-                        shares=int(result["quantity"]),
-                        risk_amount=abs(result["entry_price"] - sl_price) * result["quantity"],
-                        position_value=result["entry_price"] * result["quantity"],
-                    )
-                    risk_manager.register_open(ps)
-                except Exception:
-                    pass
+                # open_trade() above already persisted this position to
+                # paper_positions (repo.insert_position) — that's the paper
+                # engine's own source of truth, not risk.risk_manager (see
+                # _check_risk_limits docstring for why those must stay separate).
 
                 executed += 1
                 logger.info(

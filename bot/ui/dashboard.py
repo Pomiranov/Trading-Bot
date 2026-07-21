@@ -292,8 +292,10 @@ _ALLOWED_TOKEN_KEYS = {"TINKOFF_TOKEN", "TINKOFF_ACCOUNT_ID"}
 
 
 def _client_ip() -> str:
-    forwarded = (request.headers.get("X-Forwarded-For") or "").split(",")[0].strip()
-    return forwarded or (request.remote_addr or "")
+    # request.remote_addr only — X-Forwarded-For is client-supplied and
+    # would let an attacker spoof their audit-log identity or, worse, the
+    # loopback check in api_internal_push below.
+    return request.remote_addr or ""
 
 
 def _save_env_key(key: str, value: str) -> None:
@@ -353,9 +355,10 @@ def api_internal_push():
         if not _hmac.compare_digest(provided, _INTERNAL_TOKEN):
             return jsonify({"error": "Unauthorized"}), 401
     else:
-        # No token configured — restrict to loopback only
-        host = (request.headers.get("X-Forwarded-For") or "").split(",")[0].strip()
-        host = host or (request.remote_addr or "")
+        # No token configured — restrict to loopback only. Must use the
+        # real TCP peer, not X-Forwarded-For, which a remote client can
+        # set to "127.0.0.1" to spoof this check.
+        host = request.remote_addr or ""
         if host not in {"127.0.0.1", "::1", "localhost", ""}:
             return jsonify({"error": "Unauthorized"}), 401
 

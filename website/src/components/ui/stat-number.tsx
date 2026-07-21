@@ -6,21 +6,17 @@ interface StatNumberProps extends Omit<ComponentPropsWithoutRef<"div">, "childre
   label?: string;
   prefix?: string;
   suffix?: string;
-  /** BCP-47 locale for number formatting; defaults to the ambient page locale via the caller. */
   locale?: string;
+  accent?: boolean;
 }
 
-/**
- * Static numeric display for now — tabular figures, mono, locale-aware
- * formatting. Count-up-on-scroll motion is wired in Phase 4 (Framer
- * useMotionValue), this component's DOM shape stays the same then.
- */
 export function StatNumber({
   value,
   label,
   prefix,
   suffix,
   locale = "en",
+  accent = false,
   className,
   ...props
 }: StatNumberProps) {
@@ -28,14 +24,32 @@ export function StatNumber({
     typeof value === "number" ? new Intl.NumberFormat(locale).format(value) : value;
 
   return (
-    <div className={cn("flex flex-col gap-1", className)} {...props}>
-      <p className="font-mono text-[clamp(1.5rem,3vw,2.5rem)] tabular-nums leading-none text-[color:var(--color-text-primary)]">
+    <div className={cn("flex flex-col gap-1.5", className)} {...props}>
+      <p
+        className="font-mono tabular-nums leading-none"
+        style={{
+          fontSize: "clamp(1.75rem, 3vw, 2.75rem)",
+          fontWeight: 600,
+          letterSpacing: "-0.04em",
+          color: accent ? "var(--color-accent)" : "var(--color-text-primary)",
+          ...(accent && {
+            textShadow: "0 0 30px rgba(255,138,30,0.3)",
+          }),
+        }}
+      >
         {prefix}
         {formatted}
         {suffix}
       </p>
       {label ? (
-        <p className="font-mono text-[length:var(--text-label)] uppercase tracking-[var(--text-label--letter-spacing)] text-[color:var(--color-text-tertiary)]">
+        <p
+          className="font-mono uppercase"
+          style={{
+            fontSize: "10px",
+            letterSpacing: "0.16em",
+            color: "rgba(255,255,255,0.35)",
+          }}
+        >
           {label}
         </p>
       ) : null}

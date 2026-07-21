@@ -29,6 +29,8 @@ const SidebarProvider = (() => {
       '--qf-sidebar-current',
       state.mode === 'COLLAPSED' ? collapsedW : openW
     );
+    document.getElementById('mobileMenuBtn')?.setAttribute('aria-expanded', String(state.mobileOpen));
+    document.getElementById('sidebarToggle')?.setAttribute('aria-expanded', String(state.mode !== 'COLLAPSED'));
     emit('sidebar:change', { ...state });
   }
 

@@ -26,9 +26,17 @@ export async function EnginePipelineSection({ locale }: { locale: string }) {
 
       <div className="px-[var(--space-page-x)]">
         <Reveal>
-          <SectionHeading id="engine-pipeline-heading" className="max-w-[22ch]">
-            {t("enginePipeline")}
-          </SectionHeading>
+          <div className="flex flex-col gap-3">
+            <span
+              className="font-mono text-[10px] uppercase tracking-[0.18em]"
+              style={{ color: "var(--color-accent)", opacity: 0.7 }}
+            >
+              02
+            </span>
+            <SectionHeading id="engine-pipeline-heading" className="max-w-[22ch]">
+              {t("enginePipeline")}
+            </SectionHeading>
+          </div>
         </Reveal>
       </div>
 

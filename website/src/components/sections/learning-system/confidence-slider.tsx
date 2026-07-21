@@ -32,9 +32,19 @@ const LAST_INDEX = CONFIDENCE_BY_TRADE.length - 1;
 export function ConfidenceSlider({
   caption,
   dragHint,
+  tradeLabel,
+  confidenceLabel,
+  ceilingLabel = "0.95 ceiling",
+  floorLabel = "0.05 floor",
+  tradeFloorLabel = "trade 20",
 }: {
   caption: string;
   dragHint: string;
+  tradeLabel: string;
+  confidenceLabel: string;
+  ceilingLabel?: string;
+  floorLabel?: string;
+  tradeFloorLabel?: string;
 }) {
   const reduce = useReducedMotion();
   const svgRef = useRef<SVGSVGElement>(null);
@@ -52,7 +62,7 @@ export function ConfidenceSlider({
       handleRef.current.setAttribute("aria-valuenow", String(clamped + 1));
     }
     if (labelRef.current) {
-      labelRef.current.textContent = `Trade ${clamped + 1}: confidence ${CONFIDENCE_BY_TRADE[clamped].toFixed(2)}`;
+      labelRef.current.textContent = `${tradeLabel} ${clamped + 1}: ${confidenceLabel} ${CONFIDENCE_BY_TRADE[clamped].toFixed(2)}`;
     }
   }
 
@@ -95,8 +105,14 @@ export function ConfidenceSlider({
   }
 
   if (reduce) {
-    // Reduced motion: static chart, no drag affordance.
-    return <ConfidenceTrajectoryChart caption={caption} />;
+    return (
+      <ConfidenceTrajectoryChart
+        caption={caption}
+        ceilingLabel={ceilingLabel}
+        floorLabel={floorLabel}
+        tradeFloorLabel={tradeFloorLabel}
+      />
+    );
   }
 
   const points = CONFIDENCE_BY_TRADE.map((c, i) => `${tradeToX(i + 1)},${confidenceToY(c)}`).join(
@@ -141,7 +157,7 @@ export function ConfidenceSlider({
             textAnchor="end"
             className="font-mono text-[9px] fill-[var(--color-text-tertiary)]"
           >
-            0.95 ceiling
+            {ceilingLabel}
           </text>
           <text
             x={CHART_WIDTH - PAD_X}
@@ -149,7 +165,7 @@ export function ConfidenceSlider({
             textAnchor="end"
             className="font-mono text-[9px] fill-[var(--color-text-tertiary)]"
           >
-            0.05 floor
+            {floorLabel}
           </text>
           <line
             x1={tradeToX(FLOOR_TRADE)}
@@ -164,7 +180,7 @@ export function ConfidenceSlider({
             textAnchor="middle"
             className="font-mono text-[9px] fill-[var(--color-text-tertiary)]"
           >
-            trade 20
+            {tradeFloorLabel}
           </text>
           <polyline
             points={points}
@@ -192,7 +208,7 @@ export function ConfidenceSlider({
         />
       </div>
       <p ref={labelRef} className="font-mono text-[13px] text-[color:var(--color-text-secondary)] tabular-nums">
-        {`Trade ${CONFIDENCE_BY_TRADE.length}: confidence ${CONFIDENCE_BY_TRADE[LAST_INDEX].toFixed(2)}`}
+        {`${tradeLabel} ${CONFIDENCE_BY_TRADE.length}: ${confidenceLabel} ${CONFIDENCE_BY_TRADE[LAST_INDEX].toFixed(2)}`}
       </p>
       <figcaption className="font-mono text-[11px] uppercase tracking-[0.1em] text-[color:var(--color-text-tertiary)]">
         {caption}

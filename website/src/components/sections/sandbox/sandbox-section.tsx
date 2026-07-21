@@ -73,9 +73,9 @@ export async function SandboxSection({ locale }: { locale: string }) {
             style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}
           >
             {[
-              { label: "Signal path", value: "Identical to live" },
-              { label: "Fill simulation", value: "Observed market price" },
-              { label: "Risk manager", value: "Active" },
+              { label: t("statSignalPath"), value: t("statSignalPathValue") },
+              { label: t("statFillSim"), value: t("statFillSimValue") },
+              { label: t("statRiskMgr"), value: t("statRiskMgrValue") },
             ].map(({ label, value }) => (
               <div key={label} className="flex flex-col gap-0.5">
                 <span

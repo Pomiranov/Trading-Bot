@@ -17,7 +17,17 @@ import {
  * as-is by ConfidenceSlider (adds the draggable handle on top) and as the
  * reduced-motion fallback (no drag affordance, still fully legible).
  */
-export function ConfidenceTrajectoryChart({ caption }: { caption: string }) {
+export function ConfidenceTrajectoryChart({
+  caption,
+  ceilingLabel = "0.95 ceiling",
+  floorLabel = "0.05 floor",
+  tradeFloorLabel = "trade 20",
+}: {
+  caption: string;
+  ceilingLabel?: string;
+  floorLabel?: string;
+  tradeFloorLabel?: string;
+}) {
   const points = CONFIDENCE_BY_TRADE.map((c, i) => `${tradeToX(i + 1)},${confidenceToY(c)}`).join(
     " ",
   );
@@ -53,7 +63,7 @@ export function ConfidenceTrajectoryChart({ caption }: { caption: string }) {
           textAnchor="end"
           className="font-mono text-[9px] fill-[var(--color-text-tertiary)]"
         >
-          0.95 ceiling
+          {ceilingLabel}
         </text>
         <text
           x={CHART_WIDTH - PAD_X}
@@ -61,7 +71,7 @@ export function ConfidenceTrajectoryChart({ caption }: { caption: string }) {
           textAnchor="end"
           className="font-mono text-[9px] fill-[var(--color-text-tertiary)]"
         >
-          0.05 floor
+          {floorLabel}
         </text>
 
         {/* 20-trade threshold */}
@@ -78,7 +88,7 @@ export function ConfidenceTrajectoryChart({ caption }: { caption: string }) {
           textAnchor="middle"
           className="font-mono text-[9px] fill-[var(--color-text-tertiary)]"
         >
-          trade 20
+          {tradeFloorLabel}
         </text>
 
         {/* Trajectory */}

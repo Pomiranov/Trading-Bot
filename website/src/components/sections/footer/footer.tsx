@@ -52,9 +52,9 @@ export async function Footer({ locale }: { locale: string }) {
             className="max-w-[36ch] text-[12px] leading-relaxed"
             style={{ color: "rgba(255,255,255,0.3)" }}
           >
-            Institutional-grade algorithmic trading.
+            {t("tagline1")}
             <br />
-            Built on statistical belief, not invented alpha.
+            {t("tagline2")}
           </p>
           {/* Status indicator */}
           <div className="flex items-center gap-2">
@@ -69,7 +69,7 @@ export async function Footer({ locale }: { locale: string }) {
               className="text-[10px] uppercase tracking-[0.14em]"
               style={{ color: "rgba(255,255,255,0.3)" }}
             >
-              Systems operational
+              {t("systemsOperational")}
             </span>
           </div>
         </div>
@@ -101,7 +101,7 @@ export async function Footer({ locale }: { locale: string }) {
             className="text-[10px] uppercase tracking-[0.1em]"
             style={{ color: "rgba(255,255,255,0.15)" }}
           >
-            © 2026 QuantFlow. Private beta.
+            {t("copyright")}
           </p>
         </div>
       </div>

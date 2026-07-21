@@ -113,7 +113,7 @@ export async function BrokerIntegrationsSection({ locale }: { locale: string }) 
                   className="font-mono text-[10px] uppercase tracking-[0.12em]"
                   style={{ color: "rgba(255,255,255,0.3)" }}
                 >
-                  Integrated
+                  {t("integrated")}
                 </span>
               </div>
             </div>

@@ -32,9 +32,17 @@ export async function PhilosophySection({ locale }: { locale: string }) {
       <div className="mx-auto flex max-w-[960px] flex-col gap-16 relative">
         <div className="flex items-start justify-between gap-8">
           <Reveal>
-            <SectionHeading id="philosophy-heading" className="max-w-[20ch]">
-              {t("philosophy")}
-            </SectionHeading>
+            <div className="flex flex-col gap-3">
+              <span
+                className="font-mono text-[10px] uppercase tracking-[0.18em]"
+                style={{ color: "var(--color-accent)", opacity: 0.7 }}
+              >
+                01
+              </span>
+              <SectionHeading id="philosophy-heading" className="max-w-[20ch]">
+                {t("philosophy")}
+              </SectionHeading>
+            </div>
           </Reveal>
         </div>
 

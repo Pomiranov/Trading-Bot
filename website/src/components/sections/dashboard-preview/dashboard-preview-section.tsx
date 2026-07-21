@@ -22,9 +22,17 @@ export async function DashboardPreviewSection({ locale }: { locale: string }) {
 
       <div className="relative flex flex-col items-start gap-4 md:flex-row md:items-end md:justify-between">
         <Reveal>
-          <SectionHeading id="dashboard-preview-heading" className="max-w-[22ch]">
-            {t("dashboardPreview")}
-          </SectionHeading>
+          <div className="flex flex-col gap-3">
+            <span
+              className="font-mono text-[10px] uppercase tracking-[0.18em]"
+              style={{ color: "var(--color-accent)", opacity: 0.7 }}
+            >
+              04
+            </span>
+            <SectionHeading id="dashboard-preview-heading" className="max-w-[22ch]">
+              {t("dashboardPreview")}
+            </SectionHeading>
+          </div>
         </Reveal>
         <Reveal index={1}>
           <p

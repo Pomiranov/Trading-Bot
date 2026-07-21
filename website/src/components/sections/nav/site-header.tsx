@@ -2,6 +2,7 @@ import { getTranslations } from "next-intl/server";
 import { Monogram } from "@/components/ui/monogram";
 import { Link } from "@/lib/i18n/navigation";
 import { HeaderCta } from "./header-cta";
+import { MobileNav } from "./mobile-nav";
 
 const LOCALES = [
   { code: "en" as const, label: "EN" },
@@ -20,6 +21,14 @@ const LINK_TARGETS: Record<(typeof LINK_KEYS)[number], string> = {
 export async function SiteHeader({ locale }: { locale: string }) {
   const t = await getTranslations({ locale, namespace: "nav" });
 
+  const otherLocale = LOCALES.find((l) => l.code !== locale) ?? LOCALES[0];
+
+  const mobileLinks = LINK_KEYS.map((key) => ({
+    key,
+    label: t(key),
+    href: LINK_TARGETS[key],
+  }));
+
   return (
     <header className="fixed inset-x-0 top-0 z-[var(--z-nav)] flex justify-center px-[var(--space-page-x)] pt-4">
       <div
@@ -27,7 +36,7 @@ export async function SiteHeader({ locale }: { locale: string }) {
         style={{
           borderRadius: "0.75rem",
           border: "1px solid rgba(255,255,255,0.07)",
-          background: "rgba(5,5,5,0.8)",
+          background: "rgba(5,5,5,0.82)",
           backdropFilter: "blur(28px)",
           WebkitBackdropFilter: "blur(28px)",
           boxShadow: "inset 0 1px 0 rgba(255,255,255,0.04), 0 4px 24px rgba(0,0,0,0.3)",
@@ -37,7 +46,7 @@ export async function SiteHeader({ locale }: { locale: string }) {
         <a
           href="#hero-heading"
           aria-label="QuantFlow"
-          className="flex items-center gap-2.5 no-underline"
+          className="flex items-center gap-2.5 no-underline shrink-0"
         >
           <Monogram
             className="h-5 w-5"
@@ -51,7 +60,7 @@ export async function SiteHeader({ locale }: { locale: string }) {
           </span>
         </a>
 
-        {/* Primary nav */}
+        {/* Primary nav — desktop only */}
         <nav aria-label="Primary" className="hidden items-center gap-7 lg:flex">
           {LINK_KEYS.map((key) => (
             <a
@@ -66,10 +75,11 @@ export async function SiteHeader({ locale }: { locale: string }) {
         </nav>
 
         {/* Right side */}
-        <div className="flex items-center gap-5">
+        <div className="flex items-center gap-4">
+          {/* Language switcher — desktop */}
           <nav
             aria-label="Language"
-            className="flex items-center gap-3 font-mono text-[11px] uppercase tracking-[0.1em]"
+            className="hidden items-center gap-3 font-mono text-[11px] uppercase tracking-[0.1em] sm:flex"
           >
             {LOCALES.map(({ code, label }) => (
               <Link
@@ -89,11 +99,24 @@ export async function SiteHeader({ locale }: { locale: string }) {
           </nav>
 
           <div
-            className="hidden h-4 w-px sm:block"
+            className="hidden h-4 w-px sm:block lg:block"
             style={{ background: "rgba(255,255,255,0.1)" }}
           />
 
-          <HeaderCta label={t("requestAccess")} />
+          {/* Desktop CTA */}
+          <div className="hidden lg:block">
+            <HeaderCta label={t("requestAccess")} />
+          </div>
+
+          {/* Mobile nav (includes CTA inside dropdown) */}
+          <MobileNav
+            links={mobileLinks}
+            ctaLabel={t("requestAccess")}
+            localeSwitchLabel={otherLocale.label}
+            localeSwitchHref={`/${otherLocale.code}`}
+            openLabel={t("menuOpen")}
+            closeLabel={t("menuClose")}
+          />
         </div>
       </div>
     </header>

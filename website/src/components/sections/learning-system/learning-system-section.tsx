@@ -27,19 +27,27 @@ export async function LearningSystemSection({ locale }: { locale: string }) {
       />
 
       <Reveal>
-        <SectionHeading id="learning-system-heading" className="mb-12 max-w-[20ch]">
-          {t("learningSystem")}
-        </SectionHeading>
+        <div className="flex flex-col gap-3 mb-12">
+          <span
+            className="font-mono text-[10px] uppercase tracking-[0.18em]"
+            style={{ color: "var(--color-accent)", opacity: 0.7 }}
+          >
+            03
+          </span>
+          <SectionHeading id="learning-system-heading" className="max-w-[20ch]">
+            {t("learningSystem")}
+          </SectionHeading>
+        </div>
       </Reveal>
 
       <div className="relative grid grid-cols-1 gap-12 lg:grid-cols-2 lg:gap-20">
         <Reveal index={1} className="flex flex-col gap-10">
-          <p
+          <div
             className="max-w-[56ch] text-[15px] leading-relaxed"
             style={{ color: "var(--color-text-secondary)" }}
           >
             {copy.intro}
-          </p>
+          </div>
 
           {/* Stat trio */}
           <div
@@ -85,6 +93,11 @@ export async function LearningSystemSection({ locale }: { locale: string }) {
           <ConfidenceSlider
             caption={t("confidenceChartCaption")}
             dragHint={t("confidenceSliderDragHint")}
+            tradeLabel={t("confidenceSliderTradeLabel")}
+            confidenceLabel={t("confidenceSliderConfidenceLabel")}
+            ceilingLabel={t("confidenceCeilingLabel")}
+            floorLabel={t("confidenceFloorLabel")}
+            tradeFloorLabel={t("confidenceTradeFloorLabel")}
           />
         </Reveal>
       </div>

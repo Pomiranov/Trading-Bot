@@ -9,21 +9,22 @@ function FaqItem({ q, a, index }: { q: string; a: string; index: number }) {
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 16 }}
-      animate={{ opacity: 1, y: 0 }}
+      initial={{ opacity: 0, y: 14 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, amount: 0.3 }}
       transition={{ duration: 0.5, delay: index * 0.06, ease: [0.22, 1, 0.36, 1] }}
       style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}
     >
       <button
         onClick={() => setOpen((o) => !o)}
         aria-expanded={open}
-        className="flex w-full cursor-pointer items-center justify-between gap-4 py-5 text-left"
+        className="flex w-full cursor-pointer items-center justify-between gap-6 py-5 text-left"
         style={{ background: "none", border: "none", outline: "none" }}
       >
         <span
           className="font-medium text-[15px] leading-snug transition-colors duration-200"
           style={{
-            color: open ? "rgba(255,255,255,0.95)" : "rgba(255,255,255,0.75)",
+            color: open ? "rgba(255,255,255,0.95)" : "rgba(255,255,255,0.72)",
             letterSpacing: "-0.01em",
           }}
         >
@@ -33,7 +34,7 @@ function FaqItem({ q, a, index }: { q: string; a: string; index: number }) {
           className="flex size-6 shrink-0 items-center justify-center rounded-md transition-all duration-300"
           style={{
             background: open ? "rgba(255,138,30,0.12)" : "rgba(255,255,255,0.04)",
-            border: `1px solid ${open ? "rgba(255,138,30,0.2)" : "rgba(255,255,255,0.07)"}`,
+            border: `1px solid ${open ? "rgba(255,138,30,0.22)" : "rgba(255,255,255,0.07)"}`,
             color: open ? "var(--color-accent)" : "rgba(255,255,255,0.3)",
             transform: open ? "rotate(45deg)" : "rotate(0deg)",
             fontSize: "16px",
@@ -58,7 +59,7 @@ function FaqItem({ q, a, index }: { q: string; a: string; index: number }) {
           >
             <p
               className="pb-5 max-w-[62ch] text-[15px] leading-relaxed"
-              style={{ color: "rgba(255,255,255,0.62)" }}
+              style={{ color: "rgba(255,255,255,0.58)" }}
             >
               {a}
             </p>
@@ -84,7 +85,13 @@ export function FaqSection() {
       className="px-[var(--space-page-x)] py-[var(--space-section-y)]"
     >
       <div className="mx-auto flex max-w-[760px] flex-col gap-10">
-        <div>
+        <div className="flex flex-col gap-3">
+          <span
+            className="font-mono text-[10px] uppercase tracking-[0.18em]"
+            style={{ color: "var(--color-accent)", opacity: 0.7 }}
+          >
+            FAQ
+          </span>
           <h2
             id="faq-heading"
             style={{
@@ -99,7 +106,7 @@ export function FaqSection() {
           </h2>
         </div>
 
-        <div className="flex flex-col">
+        <div className="flex flex-col" style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}>
           {items.map((item, i) => (
             <FaqItem key={item.q} q={item.q} a={item.a} index={i} />
           ))}

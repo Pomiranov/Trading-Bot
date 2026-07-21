@@ -1,17 +1,11 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { useTranslations } from "next-intl";
 import { DASHBOARD_COLORS } from "./dashboard-colors";
 
 const TABS = ["Overview", "Positions", "Strategies", "Signals"] as const;
 type Tab = (typeof TABS)[number];
-
-const METRICS = [
-  { label: "Portfolio Value", value: "₽1,048,230", sub: "+0.59% today", color: undefined as string | undefined },
-  { label: "PnL Today", value: "+₽6,140", sub: "vs yesterday", color: DASHBOARD_COLORS.long },
-  { label: "Max Drawdown", value: "−4.8%", sub: "within limits", color: undefined },
-  { label: "Sharpe Ratio", value: "1.34", sub: "90-day rolling", color: undefined },
-];
 
 const POSITIONS = [
   { ticker: "SBER", side: "LONG" as const, confidence: 0.71, pnlPct: "+1.9%", size: "₽124,400", entry: "₽272.80" },
@@ -38,7 +32,7 @@ const EQUITY_POINTS_RAW = [
   0, 1.2, -0.4, 2.1, 3.4, 2.8, 4.1, 5.6, 4.8, 6.3, 7.1, 6.4, 7.9, 7.2, 8.1, 8.3,
 ];
 
-function EquityChart({ animated }: { animated: boolean }) {
+function EquityChart({ animated, label }: { animated: boolean; label: string }) {
   const N = EQUITY_POINTS_RAW.length;
   const minV = Math.min(...EQUITY_POINTS_RAW);
   const maxV = Math.max(...EQUITY_POINTS_RAW);
@@ -60,7 +54,7 @@ function EquityChart({ animated }: { animated: boolean }) {
     <div className="px-5 py-4" style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
       <div className="flex items-center justify-between mb-2">
         <span className="font-mono text-[10px] uppercase tracking-[0.14em]" style={{ color: "rgba(255,255,255,0.28)" }}>
-          Equity curve · 29-trade fwd test
+          {label}
         </span>
         <span className="font-mono text-[11px]" style={{ color: DASHBOARD_COLORS.long }}>
           +8.3% total
@@ -108,8 +102,8 @@ function ConfBar({ value, max = 1, color }: { value: number; max?: number; color
 
 function NotificationToast({ msg, onDone }: { msg: string; onDone: () => void }) {
   useEffect(() => {
-    const t = setTimeout(onDone, 3200);
-    return () => clearTimeout(t);
+    const timer = setTimeout(onDone, 3200);
+    return () => clearTimeout(timer);
   }, [onDone]);
 
   return (
@@ -131,17 +125,28 @@ function NotificationToast({ msg, onDone }: { msg: string; onDone: () => void })
 }
 
 export function DashboardMockup() {
+  const t = useTranslations("dashboardMockup");
+
+  const TAB_LABELS: Record<Tab, string> = {
+    Overview: t("tabOverview"),
+    Positions: t("tabPositions"),
+    Strategies: t("tabStrategies"),
+    Signals: t("tabSignals"),
+  };
+
+  const METRICS = [
+    { label: t("metricPortfolioValue"), value: "₽1,048,230", sub: t("metricPortfolioSub"), color: undefined as string | undefined },
+    { label: t("metricPnlToday"), value: "+₽6,140", sub: t("metricPnlSub"), color: DASHBOARD_COLORS.long },
+    { label: t("metricDrawdown"), value: "−4.8%", sub: t("metricDrawdownSub"), color: undefined },
+    { label: t("metricSharpe"), value: "1.34", sub: t("metricSharpeSub"), color: undefined },
+  ];
+
   const [activeTab, setActiveTab] = useState<Tab>("Overview");
   const [mounted, setMounted] = useState(false);
   const [hoveredRow, setHoveredRow] = useState<number | null>(null);
   const [notification, setNotification] = useState<string | null>(null);
   const [stratFilter, setStratFilter] = useState<"all" | "live" | "frozen">("all");
-  const notifQueue = useRef([
-    "Signal: SBER LONG · conf 0.71",
-    "Strategy osc_range frozen · conf below 0.30",
-    "Position LKOH closed · +0.4%",
-    "New signal: VTBR SHORT · blocked",
-  ]);
+  const notifQueue = useRef([t("notif1"), t("notif2"), t("notif3"), t("notif4")]);
   const notifIdx = useRef(0);
 
   useEffect(() => {
@@ -159,6 +164,12 @@ export function DashboardMockup() {
     if (stratFilter === "frozen") return s.status === "FROZEN";
     return true;
   });
+
+  const FILTERS: { key: "all" | "live" | "frozen"; label: string }[] = [
+    { key: "all", label: t("filterAll") },
+    { key: "live", label: t("filterLive") },
+    { key: "frozen", label: t("filterFrozen") },
+  ];
 
   return (
     <>
@@ -231,7 +242,7 @@ export function DashboardMockup() {
                 outline: "none",
               }}
             >
-              {tab}
+              {TAB_LABELS[tab]}
             </button>
           ))}
         </div>
@@ -270,12 +281,12 @@ export function DashboardMockup() {
             </div>
 
             {/* Equity chart */}
-            <EquityChart animated={mounted} />
+            <EquityChart animated={mounted} label={t("equityCurveLabel")} />
 
             {/* Strategy status */}
             <div className="px-5 py-3" style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
               <span className="font-mono text-[10px] uppercase tracking-[0.14em]" style={{ color: "rgba(255,255,255,0.28)" }}>
-                Active strategies
+                {t("activeStrategies")}
               </span>
               <div className="mt-2 flex flex-col gap-1.5">
                 {STRATEGIES.filter((s) => s.status !== "FROZEN").map((s) => (
@@ -322,14 +333,14 @@ export function DashboardMockup() {
           <div className="px-5 py-4">
             <div className="flex items-center justify-between mb-3">
               <span className="font-mono text-[10px] uppercase tracking-[0.14em]" style={{ color: "rgba(255,255,255,0.28)" }}>
-                Open positions · MOEX
+                {t("openPositions")}
               </span>
               <span className="font-mono text-[10px]" style={{ color: DASHBOARD_COLORS.long }}>+₽6,140 today</span>
             </div>
             <div className="flex flex-col gap-1">
               {/* Table header */}
               <div className="grid grid-cols-6 gap-2 pb-2 font-mono text-[9px] uppercase tracking-[0.12em]" style={{ color: "rgba(255,255,255,0.2)", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
-                <span>Ticker</span><span>Side</span><span>Entry</span><span>Size</span><span className="col-span-1">Conf</span><span className="text-right">PnL</span>
+                <span>{t("colTicker")}</span><span>{t("colSide")}</span><span>{t("colEntry")}</span><span>{t("colSize")}</span><span className="col-span-1">{t("colConf")}</span><span className="text-right">{t("colPnl")}</span>
               </div>
               {POSITIONS.map((p, i) => (
                 <div
@@ -350,7 +361,7 @@ export function DashboardMockup() {
             </div>
             {/* Summary */}
             <div className="mt-4 rounded-lg px-4 py-3 flex items-center justify-between" style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.05)" }}>
-              <span className="font-mono text-[10px] uppercase tracking-[0.1em]" style={{ color: "rgba(255,255,255,0.28)" }}>Total exposure</span>
+              <span className="font-mono text-[10px] uppercase tracking-[0.1em]" style={{ color: "rgba(255,255,255,0.28)" }}>{t("totalExposure")}</span>
               <span className="font-mono text-[13px] tabular-nums" style={{ color: "rgba(255,255,255,0.75)" }}>₽254,700</span>
             </div>
           </div>
@@ -360,26 +371,28 @@ export function DashboardMockup() {
         {activeTab === "Strategies" && (
           <div className="px-5 py-4">
             <div className="flex items-center gap-2 mb-3">
-              {(["all", "live", "frozen"] as const).map((f) => (
+              {FILTERS.map((f) => (
                 <button
-                  key={f}
-                  onClick={() => setStratFilter(f)}
+                  key={f.key}
+                  onClick={() => setStratFilter(f.key)}
                   className="font-mono text-[10px] uppercase tracking-[0.1em] px-2.5 py-1 rounded-md transition-all duration-150"
                   style={{
-                    background: stratFilter === f ? "rgba(255,138,30,0.1)" : "rgba(255,255,255,0.04)",
-                    border: `1px solid ${stratFilter === f ? "rgba(255,138,30,0.3)" : "rgba(255,255,255,0.07)"}`,
-                    color: stratFilter === f ? DASHBOARD_COLORS.accent : "rgba(255,255,255,0.35)",
+                    background: stratFilter === f.key ? "rgba(255,138,30,0.1)" : "rgba(255,255,255,0.04)",
+                    border: `1px solid ${stratFilter === f.key ? "rgba(255,138,30,0.3)" : "rgba(255,255,255,0.07)"}`,
+                    color: stratFilter === f.key ? DASHBOARD_COLORS.accent : "rgba(255,255,255,0.35)",
                     cursor: "pointer",
                   }}
                 >
-                  {f}
+                  {f.label}
                 </button>
               ))}
-              <span className="ml-auto font-mono text-[10px]" style={{ color: "rgba(255,255,255,0.22)" }}>{filteredStrats.length} strategies</span>
+              <span className="ml-auto font-mono text-[10px]" style={{ color: "rgba(255,255,255,0.22)" }}>
+                {t("strategiesCount", { n: filteredStrats.length })}
+              </span>
             </div>
             <div className="flex flex-col gap-0">
               <div className="grid grid-cols-5 gap-2 pb-2 font-mono text-[9px] uppercase tracking-[0.12em]" style={{ color: "rgba(255,255,255,0.2)", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
-                <span className="col-span-2">Strategy</span><span>Status</span><span>Trades</span><span className="text-right">Confidence</span>
+                <span className="col-span-2">{t("colStrategy")}</span><span>{t("colStatus")}</span><span>{t("colTrades")}</span><span className="text-right">{t("colConfidence")}</span>
               </div>
               {filteredStrats.map((s, i) => (
                 <div
@@ -408,7 +421,7 @@ export function DashboardMockup() {
         {activeTab === "Signals" && (
           <div className="px-5 py-4">
             <div className="flex items-center justify-between mb-3">
-              <span className="font-mono text-[10px] uppercase tracking-[0.14em]" style={{ color: "rgba(255,255,255,0.28)" }}>Signal log · today</span>
+              <span className="font-mono text-[10px] uppercase tracking-[0.14em]" style={{ color: "rgba(255,255,255,0.28)" }}>{t("signalLog")}</span>
               <span className="flex items-center gap-1.5 font-mono text-[10px] uppercase" style={{ color: DASHBOARD_COLORS.accent }}>
                 <span className="size-1.5 rounded-full" style={{ backgroundColor: DASHBOARD_COLORS.accent, animation: "qf-blink 2s ease-in-out infinite" }} />
                 live

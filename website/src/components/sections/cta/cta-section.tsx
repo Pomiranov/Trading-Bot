@@ -40,7 +40,7 @@ export async function CtaSection({ locale }: { locale: string }) {
               className="size-1.5 rounded-full"
               style={{ backgroundColor: "var(--color-accent)", boxShadow: "0 0 6px var(--color-accent)" }}
             />
-            Private beta · Limited access
+            {t("ctaBadge")}
           </span>
 
           <SectionHeading id="cta-heading" className="max-w-[20ch]">
@@ -49,11 +49,7 @@ export async function CtaSection({ locale }: { locale: string }) {
 
           {/* Trust signals */}
           <div className="flex flex-col gap-2">
-            {[
-              "No credit card required",
-              "Manual review — not self-serve",
-              "MOEX & Crypto market access",
-            ].map((item) => (
+            {[t("ctaTrust1"), t("ctaTrust2"), t("ctaTrust3")].map((item) => (
               <div key={item} className="flex items-center gap-2.5">
                 <span
                   className="size-1.5 rounded-full shrink-0"
@@ -83,10 +79,10 @@ export async function CtaSection({ locale }: { locale: string }) {
         {/* Right side: metrics block */}
         <Reveal index={1} className="hidden lg:flex lg:flex-col lg:gap-4 lg:min-w-[220px]">
           {[
-            { label: "Win rate", value: "58.6%", highlight: true },
-            { label: "Profit factor", value: "1.16×", highlight: false },
-            { label: "Strategies tracked", value: "3 active", highlight: false },
-            { label: "Markets", value: "MOEX + Crypto", highlight: false },
+            { label: t("ctaStatWinRateLabel"), value: t("ctaStatWinRateValue"), highlight: true },
+            { label: t("ctaStatProfitLabel"), value: t("ctaStatProfitValue"), highlight: false },
+            { label: t("ctaStatStrategiesLabel"), value: t("ctaStatStrategiesValue"), highlight: false },
+            { label: t("ctaStatMarketsLabel"), value: t("ctaStatMarketsValue"), highlight: false },
           ].map(({ label, value, highlight }) => (
             <div
               key={label}

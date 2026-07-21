@@ -18,6 +18,8 @@ export function generateStaticParams() {
   return routing.locales.map((locale) => ({ locale }));
 }
 
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://quantflow.app";
+
 export async function generateMetadata({
   params,
 }: {
@@ -26,14 +28,36 @@ export async function generateMetadata({
   const { locale } = await params;
   const t = await getTranslations({ locale, namespace: "seo" });
 
+  const title = t("title");
+  const description = t("description");
+
   return {
-    title: t("title"),
-    description: t("description"),
+    metadataBase: new URL(SITE_URL),
+    title,
+    description,
     alternates: {
+      canonical: `/${locale}`,
       languages: {
         en: "/en",
         ru: "/ru",
       },
+    },
+    openGraph: {
+      type: "website",
+      url: `/${locale}`,
+      title,
+      description,
+      siteName: "QuantFlow",
+      locale: locale === "ru" ? "ru_RU" : "en_US",
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+    },
+    robots: {
+      index: true,
+      follow: true,
     },
   };
 }

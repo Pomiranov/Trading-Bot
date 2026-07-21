@@ -1,8 +1,15 @@
 import { getTranslations } from "next-intl/server";
 import { HeroSignalFlow } from "./hero-signal-flow";
+import { HeroCta } from "./hero-cta";
 
 export async function HeroSection({ locale }: { locale: string }) {
   const t = await getTranslations({ locale, namespace: "hero" });
+
+  const stats = [
+    { value: "58.6%", label: t("statWinRate") },
+    { value: "1.16×", label: t("statProfitFactor") },
+    { value: "29", label: t("statTrades") },
+  ];
 
   return (
     <section
@@ -25,7 +32,10 @@ export async function HeroSection({ locale }: { locale: string }) {
       </div>
 
       {/* ── Left column: headline + CTA ── */}
-      <div className="relative z-10 flex flex-col items-start gap-7 md:max-w-[54%]" style={{ animation: "qf-hero-enter 0.8s cubic-bezier(0.22,1,0.36,1) both" }}>
+      <div
+        className="relative z-10 flex flex-col items-start gap-6 md:max-w-[52%]"
+        style={{ animation: "qf-hero-enter 0.8s cubic-bezier(0.22,1,0.36,1) both" }}
+      >
         {/* Live status pill */}
         <div
           className="inline-flex items-center gap-2 rounded-full border px-3 py-1.5 max-w-full overflow-hidden"
@@ -85,7 +95,7 @@ export async function HeroSection({ locale }: { locale: string }) {
 
         {/* Subline */}
         <p
-          className="max-w-[52ch]"
+          className="max-w-[50ch]"
           style={{
             fontSize: "var(--text-lead)",
             lineHeight: "var(--text-lead--line-height)",
@@ -96,12 +106,11 @@ export async function HeroSection({ locale }: { locale: string }) {
         </p>
 
         {/* Stats row */}
-        <div className="flex flex-wrap items-center gap-6 py-2">
-          {[
-            { value: "58.6%", label: "Win rate" },
-            { value: "1.16×", label: "Profit factor" },
-            { value: "29", label: "Trades tracked" },
-          ].map(({ value, label }) => (
+        <div
+          className="flex flex-wrap items-center gap-6 py-2 border-y w-full"
+          style={{ borderColor: "rgba(255,255,255,0.06)" }}
+        >
+          {stats.map(({ value, label }) => (
             <div key={label} className="flex flex-col gap-0.5">
               <span
                 className="font-mono tabular-nums"
@@ -128,10 +137,15 @@ export async function HeroSection({ locale }: { locale: string }) {
           ))}
         </div>
 
+        {/* CTA buttons */}
+        <HeroCta label={t("cta")} secondaryLabel={t("ctaSecondary")} />
       </div>
 
       {/* ── Right column: signal flow visualization ── */}
-      <div className="relative z-10 hidden md:flex flex-col items-end w-full max-w-[480px] shrink-0" style={{ animation: "qf-hero-enter 0.9s 0.15s cubic-bezier(0.22,1,0.36,1) both" }}>
+      <div
+        className="relative z-10 hidden md:flex flex-col items-end w-full max-w-[480px] shrink-0"
+        style={{ animation: "qf-hero-enter 0.9s 0.15s cubic-bezier(0.22,1,0.36,1) both" }}
+      >
         <div
           className="w-full rounded-2xl overflow-hidden"
           style={{
@@ -157,8 +171,18 @@ export async function HeroSection({ locale }: { locale: string }) {
             >
               signal propagation · live
             </span>
-            <span className="ml-auto flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.1em]" style={{ color: "var(--color-accent)" }}>
-              <span className="size-1.5 rounded-full" style={{ backgroundColor: "var(--color-accent)", boxShadow: "0 0 5px var(--color-accent)", animation: "qf-blink 2s ease-in-out infinite" }} />
+            <span
+              className="ml-auto flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.1em]"
+              style={{ color: "var(--color-accent)" }}
+            >
+              <span
+                className="size-1.5 rounded-full"
+                style={{
+                  backgroundColor: "var(--color-accent)",
+                  boxShadow: "0 0 5px var(--color-accent)",
+                  animation: "qf-blink 2s ease-in-out infinite",
+                }}
+              />
               running
             </span>
           </div>
@@ -172,7 +196,7 @@ export async function HeroSection({ locale }: { locale: string }) {
       <div
         aria-hidden="true"
         className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2"
-        style={{ opacity: 0.4 }}
+        style={{ opacity: 0.35 }}
       >
         <span
           className="font-mono uppercase"

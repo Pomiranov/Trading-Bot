@@ -522,30 +522,28 @@ def api_learning_strategies():
             FROM belief_system
             ORDER BY confidence DESC, total_trades DESC
         """)
-        # Add confidence history (last 10 confidence updates from trades)
-        for row in rows:
-            sid = row["strategy_id"]
-            history = _db_rows("""
-                SELECT closed_at, confidence, pnl
-                FROM trades
-                WHERE strategy_id = %s
-                  AND closed_at IS NOT NULL
-                  AND confidence IS NOT NULL
-                ORDER BY closed_at DESC
-                LIMIT 20
-            """ if False else """
-                SELECT closed_at, confidence, pnl
-                FROM trades
-                WHERE strategy_id = :sid
-                  AND closed_at IS NOT NULL
-                  AND confidence IS NOT NULL
-                ORDER BY closed_at DESC
-                LIMIT 20
-            """, {"sid": sid})
-            row["confidence_history"] = [
-                {"ts": h["closed_at"], "value": float(h["confidence"] or 0)}
-                for h in reversed(history)
-            ]
+        if rows:
+            sids = [r["strategy_id"] for r in rows]
+            history_rows = _db_rows("""
+                SELECT strategy_id, closed_at, confidence
+                FROM (
+                    SELECT strategy_id, closed_at, confidence,
+                           ROW_NUMBER() OVER (PARTITION BY strategy_id ORDER BY closed_at DESC) AS rn
+                    FROM trades
+                    WHERE strategy_id = ANY(:sids)
+                      AND closed_at IS NOT NULL
+                      AND confidence IS NOT NULL
+                ) t
+                WHERE rn <= 20
+                ORDER BY strategy_id, closed_at
+            """, {"sids": sids})
+            history_by_sid: dict = {}
+            for h in history_rows:
+                history_by_sid.setdefault(h["strategy_id"], []).append(
+                    {"ts": h["closed_at"], "value": float(h["confidence"] or 0)}
+                )
+            for row in rows:
+                row["confidence_history"] = history_by_sid.get(row["strategy_id"], [])
         return jsonify(rows)
     except Exception as exc:
         logger.warning("learning strategies error: %s", exc)
@@ -559,14 +557,9 @@ def api_learning_hypotheses():
     if err:
         return err
     try:
-        stage_filter = request.args.get("stage")
-        params = {}
-        where = ""
-        if stage_filter:
-            where = " WHERE stage = :stage"
-            params["stage"] = stage_filter
+        stage_filter = request.args.get("stage") or None
 
-        rows = _db_rows(f"""
+        rows = _db_rows("""
             SELECT hypothesis_id, description,
                    conditions->>'strategy_id' AS strategy_id,
                    conditions,
@@ -575,7 +568,7 @@ def api_learning_hypotheses():
                    created_at, promoted_at, rejected_at,
                    stat_test_result->>'rejection_reason' AS rejection_reason
             FROM hypotheses
-            {where}
+            WHERE (:stage IS NULL OR stage = :stage)
             ORDER BY
                 CASE stage
                     WHEN 'active' THEN 0
@@ -584,7 +577,7 @@ def api_learning_hypotheses():
                     WHEN 'rejected' THEN 3
                 END,
                 total_trades DESC
-        """, params)
+        """, {"stage": stage_filter})
         return jsonify(rows)
     except Exception as exc:
         logger.warning("learning hypotheses error: %s", exc)

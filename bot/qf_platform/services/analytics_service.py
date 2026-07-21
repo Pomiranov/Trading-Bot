@@ -175,9 +175,9 @@ class AnalyticsService:
                 pass
         avg_hold_time = sum(hold_times) / len(hold_times) if hold_times else 0.0
 
-        # Sharpe from equity snapshots
-        sharpe = self._compute_sharpe(aid)
-        sortino = self._compute_sortino(aid)
+        returns = self._daily_equity_returns(aid)
+        sharpe = self._sharpe_from_returns(returns)
+        sortino = self._sortino_from_returns(returns)
         max_dd = self._compute_max_drawdown(aid)
 
         # ROI
@@ -209,7 +209,8 @@ class AnalyticsService:
             "losing_trades": len(losses),
         }
 
-    def _compute_sharpe(self, account_id: int) -> float:
+    def _daily_equity_returns(self, account_id: int) -> list[float]:
+        """Daily equity returns from equity_snapshots (shared by Sharpe/Sortino)."""
         rows = self._query(
             """
             SELECT DATE(snapshot_at) AS day, AVG(equity) AS eq
@@ -221,9 +222,11 @@ class AnalyticsService:
             {"aid": account_id},
         )
         if len(rows) < 2:
-            return 0.0
+            return []
         equities = [float(r["eq"]) for r in rows]
-        returns = [(equities[i] - equities[i - 1]) / equities[i - 1] for i in range(1, len(equities))]
+        return [(equities[i] - equities[i - 1]) / equities[i - 1] for i in range(1, len(equities))]
+
+    def _sharpe_from_returns(self, returns: list[float]) -> float:
         if not returns:
             return 0.0
         mean_r = sum(returns) / len(returns)
@@ -233,21 +236,7 @@ class AnalyticsService:
             return 0.0
         return (mean_r / std_r) * math.sqrt(252)
 
-    def _compute_sortino(self, account_id: int) -> float:
-        rows = self._query(
-            """
-            SELECT DATE(snapshot_at) AS day, AVG(equity) AS eq
-            FROM equity_snapshots
-            WHERE account_id = :aid
-            GROUP BY day
-            ORDER BY day ASC
-            """,
-            {"aid": account_id},
-        )
-        if len(rows) < 2:
-            return 0.0
-        equities = [float(r["eq"]) for r in rows]
-        returns = [(equities[i] - equities[i - 1]) / equities[i - 1] for i in range(1, len(equities))]
+    def _sortino_from_returns(self, returns: list[float]) -> float:
         if not returns:
             return 0.0
         mean_r = sum(returns) / len(returns)
@@ -259,6 +248,12 @@ class AnalyticsService:
         if downside_std == 0:
             return 0.0
         return (mean_r / downside_std) * math.sqrt(252)
+
+    def _compute_sharpe(self, account_id: int) -> float:
+        return self._sharpe_from_returns(self._daily_equity_returns(account_id))
+
+    def _compute_sortino(self, account_id: int) -> float:
+        return self._sortino_from_returns(self._daily_equity_returns(account_id))
 
     def _compute_max_drawdown(self, account_id: int) -> float:
         """Return max drawdown as a fraction (e.g. 0.15 = 15%)."""

@@ -2,10 +2,11 @@
 
 const QFUI = {
   empty(icon, title, desc, action = '') {
+    const _e = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
     return `<div class="qf-empty empty-state">
       <div class="qf-empty-icon empty-state-icon">${icon}</div>
-      <div class="qf-empty-title empty-state-title">${title}</div>
-      <div class="qf-empty-desc empty-state-desc">${desc}</div>
+      <div class="qf-empty-title empty-state-title">${_e(title)}</div>
+      <div class="qf-empty-desc empty-state-desc">${_e(desc)}</div>
       ${action ? `<div class="qf-empty-action">${action}</div>` : ''}
     </div>`;
   },

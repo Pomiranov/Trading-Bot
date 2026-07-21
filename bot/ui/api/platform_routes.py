@@ -85,12 +85,16 @@ def api_signals_list():
     err = _require_engine()
     if err:
         return err
+    try:
+        limit = min(max(int(request.args.get("limit", 100) or 100), 1), 1000)
+    except (ValueError, TypeError):
+        limit = 100
     svc = SignalsService(_engine)
     signals = svc.list_signals(
         exchange=request.args.get("exchange"),
         asset_class=request.args.get("asset_class"),
         status=request.args.get("status"),
-        limit=int(request.args.get("limit", 100)),
+        limit=limit,
     )
     return jsonify([to_dict(s) for s in signals])
 
@@ -274,8 +278,11 @@ def api_paper_trades():
     err = _require_engine()
     if err:
         return err
-    limit = int(request.args.get("limit", 50))
-    offset = int(request.args.get("offset", 0))
+    try:
+        limit = min(max(int(request.args.get("limit", 50)), 1), 500)
+        offset = max(int(request.args.get("offset", 0)), 0)
+    except (ValueError, TypeError):
+        return jsonify({"error": "Invalid limit or offset"}), 400
     from sqlalchemy import text
     svc = PaperTradingService(_engine)
     account = svc.get_account()

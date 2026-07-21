@@ -143,8 +143,8 @@ const QFRender = (() => {
         <td class="ts-cell">${QFFmt.ts(s.generated_at)}</td>
         <td class="ticker-cell">${s.asset}</td>
         <td>${QFUI.badge(s.signal_type)}</td>
-        <td class="price-cell">${QFFmt.num(s.entry_price)}</td>
-        <td>${s.probability_pct ?? '—'}%</td>
+        <td class="price-cell num">${QFFmt.num(s.entry_price)}</td>
+        <td class="num">${s.probability_pct ?? '—'}%</td>
       </tr>`).join('');
     const su = document.getElementById('signalsUpdated');
     if (su) su.textContent = new Date().toLocaleTimeString('ru-RU', { hour12: false });
@@ -400,10 +400,11 @@ const QFRender = (() => {
         const statusClass = { new: 'badge-info', executing: 'badge-warn', done: 'badge-buy', filled: 'badge-buy', expired: 'badge-hold', cancelled: 'badge-error' }[(s.status || '').toLowerCase()] || 'badge-hold';
         return `<tr>
           <td class="ticker-cell">${s.asset}</td><td>${s.exchange}</td><td>${s.source || '—'}</td>
-          <td>${QFUI.badge(s.signal_type)}</td><td class="price-cell">${QFFmt.num(s.entry_price)}</td>
-          <td class="price-cell negative">${s.stop_loss ? QFFmt.num(s.stop_loss) : '—'}</td>
-          <td class="price-cell positive">${tpCell}</td>
-          <td class="price-cell">${rr}</td><td>${prob}</td>
+          <td>${QFUI.badge(s.signal_type)}</td>
+          <td class="price-cell num">${QFFmt.num(s.entry_price)}</td>
+          <td class="price-cell num negative">${s.stop_loss ? QFFmt.num(s.stop_loss) : '—'}</td>
+          <td class="price-cell num positive">${tpCell}</td>
+          <td class="num">${rr}</td><td class="num">${prob}</td>
           <td class="ts-cell">${QFFmt.ts(s.generated_at)}</td>
           <td><span class="badge ${statusClass}">${s.status}</span></td>
           <td><button class="btn btn-sm btn-ghost" onclick="executeSignal(${s.id})" title="Execute as paper trade">▶</button></td>
@@ -437,6 +438,7 @@ const QFRender = (() => {
     if (currentView === 'dashboard') dashboard(s);
     else if (currentView === 'portfolio') portfolio(s);
     else if (currentView === 'signals') signals(s);
+    else viewHandlers[currentView]?.();
   }
 
   return { dashboard, portfolio, signals, backtestMetrics, refreshCurrentView, filterSignals, renderAssetPanel, animateValue, applyColor };

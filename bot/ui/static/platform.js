@@ -143,10 +143,10 @@
       QFRender.backtestMetrics(metrics);
 
       document.getElementById('backtestBody').innerHTML = (r.trades || []).map(t => `
-        <tr><td class="ticker-cell">${esc(t.ticker)}</td><td class="mono">${QFFmt.num(t.entry_price)}</td>
-        <td class="mono">${QFFmt.num(t.exit_price)}</td>
-        <td class="mono ${QFFmt.colorClass(t.pnl)}">${t.pnl >= 0 ? '+' : ''}${QFFmt.money(t.pnl)}</td>
-        <td class="mono">${t.pnl_pct}%</td><td>${esc(t.status)}</td></tr>`).join('') || '<tr><td colspan="6" class="empty">Нет сделок</td></tr>';
+        <tr><td class="ticker-cell">${esc(t.ticker)}</td><td class="mono num">${QFFmt.num(t.entry_price)}</td>
+        <td class="mono num">${QFFmt.num(t.exit_price)}</td>
+        <td class="mono num ${QFFmt.colorClass(t.pnl)}">${t.pnl >= 0 ? '+' : ''}${QFFmt.money(t.pnl)}</td>
+        <td class="mono num">${t.pnl_pct}%</td><td>${esc(t.status)}</td></tr>`).join('') || '<tr><td colspan="6" class="empty">Нет сделок</td></tr>';
 
       QFChart.line('backtestChart', (r.equity_curve || []).map(e => ({ time: e.ts, value: e.equity })));
       QFChart.drawdown('backtestDrawdownChart', r.drawdown_curve || []);
@@ -212,10 +212,10 @@
 
       document.getElementById('backtestBody').innerHTML = (r.trades || []).slice(0, 50).map(t => {
         const pnlPct = t.pnl_pct != null ? Number(t.pnl_pct).toFixed(2) : '—';
-        return `<tr><td class="ticker-cell">${esc(t.ticker)}</td><td class="mono">${QFFmt.num(t.entry_price)}</td>
-        <td class="mono">${QFFmt.num(t.exit_price)}</td>
-        <td class="mono ${QFFmt.colorClass(t.pnl)}">${t.pnl >= 0 ? '+' : ''}${QFFmt.money(t.pnl)}</td>
-        <td class="mono">${pnlPct}%</td><td>${esc(t.status)}</td></tr>`;
+        return `<tr><td class="ticker-cell">${esc(t.ticker)}</td><td class="mono num">${QFFmt.num(t.entry_price)}</td>
+        <td class="mono num">${QFFmt.num(t.exit_price)}</td>
+        <td class="mono num ${QFFmt.colorClass(t.pnl)}">${t.pnl >= 0 ? '+' : ''}${QFFmt.money(t.pnl)}</td>
+        <td class="mono num">${pnlPct}%</td><td>${esc(t.status)}</td></tr>`;
       }).join('') || '<tr><td colspan="6" class="empty">Нет сделок</td></tr>';
 
       QFChart.line('backtestChart', (r.equity_curve || []).map(e => ({ time: e.ts, value: e.equity })));

@@ -6,11 +6,16 @@ const PAGE_TITLES = {
   signals: ['Signals', 'Center · Live'],
   backtest: ['Backtest', 'Simulation · Analytics'],
   analytics: ['Analytics', 'Performance · Risk · History'],
+  learning: ['Learning', 'Autonomous · AI · Sandbox'],
   settings: ['Settings', 'Configuration'],
   miniapp: ['Quant Hunter', 'Cryptonite · Mini App'],
 };
 
-const KEY_VIEWS = { '1': 'dashboard', '2': 'portfolio', '3': 'signals', '4': 'backtest', '5': 'miniapp', '6': 'analytics' };
+const KEY_VIEWS = {
+  '1': 'dashboard', '2': 'portfolio', '3': 'signals',
+  '4': 'backtest',  '5': 'miniapp',  '6': 'analytics',
+  '7': 'learning',  '8': 'settings',
+};
 const TICKER_COLORS = { SBER: '#F7931A', GAZP: '#3861fb', LKOH: '#00c076', NVTK: '#f6465d', YNDX: '#8b5cf6' };
 
 const fmt = new Intl.NumberFormat('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -257,8 +262,8 @@ async function loadSignals() {
   }
   tbody.innerHTML = data.slice(0, 20).map(r => `
     <tr><td class="ts-cell">${esc(r.ts)}</td><td class="ticker-cell">${esc(r.ticker)}</td>
-    <td>${badgeHTML(r.action)}</td><td class="price-cell">${fmt.format(r.price)}</td>
-    <td>${fmt.format(r.score)}</td></tr>`).join('');
+    <td>${badgeHTML(r.action)}</td><td class="price-cell num">${fmt.format(r.price)}</td>
+    <td class="num">${fmt.format(r.score)}</td></tr>`).join('');
   const su = document.getElementById('signalsUpdated');
   if (su) su.textContent = new Date().toLocaleTimeString('ru-RU', { hour12: false });
 }
@@ -634,12 +639,12 @@ async function loadAnalytics() {
         return `<tr>
           <td class="ticker-cell">${t.ticker}</td>
           <td>${QFUI.badge(t.direction)}</td>
-          <td class="price-cell">${fmt.format(t.entry_price)}</td>
-          <td class="price-cell">${fmt.format(t.exit_price)}</td>
-          <td>${t.quantity}</td>
-          <td class="${cls}">${(t.pnl||0) >= 0 ? '+' : ''}${fmt.format(t.pnl||0)} ₽</td>
-          <td class="${cls}">${((t.pnl_pct||0)*100).toFixed(2)}%</td>
-          <td class="price-cell">${fmt.format(t.commission||0)} ₽</td>
+          <td class="price-cell num">${fmt.format(t.entry_price)}</td>
+          <td class="price-cell num">${fmt.format(t.exit_price)}</td>
+          <td class="num">${t.quantity}</td>
+          <td class="num ${cls}">${(t.pnl||0) >= 0 ? '+' : ''}${fmt.format(t.pnl||0)} ₽</td>
+          <td class="num ${cls}">${((t.pnl_pct||0)*100).toFixed(2)}%</td>
+          <td class="price-cell num">${fmt.format(t.commission||0)} ₽</td>
           <td><span class="badge ${reasonBadge}">${t.close_reason || 'manual'}</span></td>
           <td class="ts-cell">${(t.closed_at || '').slice(0, 16)}</td>
         </tr>`;

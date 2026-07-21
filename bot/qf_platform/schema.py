@@ -169,7 +169,8 @@ CREATE TABLE IF NOT EXISTS equity_snapshots (
     snapshot_at TIMESTAMPTZ   NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX IF NOT EXISTS idx_equity_snapshots_source ON equity_snapshots (source, snapshot_at DESC);
+CREATE INDEX IF NOT EXISTS idx_equity_snapshots_source  ON equity_snapshots (source, snapshot_at DESC);
+CREATE INDEX IF NOT EXISTS idx_equity_snapshots_account ON equity_snapshots (account_id, snapshot_at DESC);
 
 CREATE TABLE IF NOT EXISTS trading_signals (
     id              SERIAL PRIMARY KEY,

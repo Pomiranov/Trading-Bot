@@ -246,7 +246,7 @@ body.sidebar-collapsed .sidebar-kbd { opacity: 0; width: 0; overflow: hidden; }
 /* ── Content area ── */
 .content {
   flex: 1; overflow-y: auto; overflow-x: hidden;
-  padding: 16px 20px 24px;
+  padding: 14px 18px 24px;
 }
 
 .view { display: none; animation: viewIn 0.35s var(--qf-ease) both; }
@@ -350,7 +350,7 @@ body.layout-miniapp .content {
   grid-template-columns: repeat(4, 1fr);
   gap: 12px;
 }
-.metric-card { padding: 16px 18px; position: relative; }
+.metric-card { padding: 14px 16px; position: relative; }
 
 .metric-card-icon {
   position: absolute; top: 14px; right: 14px;
@@ -933,4 +933,113 @@ kbd {
 @media (max-width: 480px) and (max-height: 700px) {
   .sidebar { width: 100%; }
   body.sidebar-collapsed .sidebar { width: 100%; }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   BLOOMBERG TERMINAL QUALITY — LAYOUT REFINEMENTS
+═══════════════════════════════════════════════════════════════ */
+
+/* ── Gap refinements for denser layouts ── */
+.dash-grid { gap: 10px; }
+.dash-main-col { gap: 10px; }
+.dash-side-col { gap: 10px; }
+.dash-hero { gap: 10px; margin-bottom: 12px; }
+
+/* ── Side column cards: smaller headers, tighter padding ── */
+.dash-side-col .card-header { min-height: 36px; padding: 8px 14px; }
+.dash-side-col .card-title { font-size: var(--qf-text-sm); }
+
+/* ── Hero value — larger for the main balance card ── */
+.dash-hero-main .hero-value { font-size: 38px; }
+
+/* ── Card: reduce hover lift for data-dense panels (subtle) ── */
+.dash-side-col .card:hover { transform: translateY(-0.5px); }
+
+/* ── Topbar: slightly tighter ── */
+.topbar { padding: 0 16px; }
+.topbar-left { gap: 12px; }
+.topbar-right { gap: 10px; }
+
+/* ── Table: first column slightly more left-padded ── */
+.qf-table tbody td:first-child,
+.qf-table thead th:first-child { padding-left: 16px; }
+
+/* ── Metric card icon smaller in compact mode ── */
+.dash-hero .metric-card-icon { width: 22px; height: 22px; top: 12px; right: 12px; }
+.dash-hero .metric-card-icon svg { width: 12px; height: 12px; }
+
+/* ── Learning section overrides ── */
+#view-learning .section-header { margin-bottom: 14px; }
+#view-learning .card-header { background: transparent; }
+
+/* ── Backtest form: tighter field layout ── */
+.backtest-form-grid { gap: 10px; padding: 14px; }
+.backtest-form-grid .form-field label { margin-bottom: 4px; }
+
+/* ── Data density for portfolio view ── */
+.portfolio-highlights { gap: 10px; margin-bottom: 10px; }
+.portfolio-layout-4 { gap: 10px; margin-bottom: 10px; }
+
+/* ── Signals view: tighter stats bar ── */
+.signals-stats { gap: 8px; margin-bottom: 10px; }
+.signal-stat-pill { padding: 6px 12px; }
+.signal-stat-pill strong { font-size: var(--qf-text-sm); }
+
+/* ── Dense metrics grid (Portfolio page) ── */
+.metrics-grid {
+  grid-template-columns: repeat(auto-fill, minmax(136px, 1fr));
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.metric-mini { padding: 10px 14px; }
+
+/* ── Sparkline container in hero ── */
+.hero-sparkline { margin-top: 10px; height: 32px; opacity: 0.65; }
+
+/* ── Paper feed: tighter items ── */
+.paper-feed { gap: 4px; max-height: 200px; }
+.paper-feed-item { padding: 6px 10px; }
+
+/* ── Log entries: tighter ── */
+.log-entry { padding: 5px 14px; }
+
+/* ── Risk rows: tighter ── */
+.risk-row { margin-bottom: 8px; }
+.risk-grid { padding: 10px 14px; }
+
+/* ── Section divider between major content areas ── */
+.content-divider {
+  height: 1px; background: var(--qf-divider);
+  margin: 12px 0;
+}
+
+/* ── Better learning hyp grid (already has inline CSS but add density) ── */
+.learning-hyp-grid { gap: 10px; }
+.learning-decision-list, .learning-skipped-list { max-height: 320px; overflow-y: auto; }
+
+/* ── Analytics: tighter history table ── */
+#view-analytics .card { margin-bottom: 10px !important; }
+#view-analytics .card:last-child { margin-bottom: 0 !important; }
+
+/* ── Table empty state ── */
+.table-empty {
+  padding: 24px 16px; text-align: center;
+  color: var(--qf-text-muted); font-size: var(--qf-text-sm);
+}
+
+/* ── Chart-card: tighter chart wrap ── */
+.chart-card .chart-wrap { height: 260px; padding: 6px; }
+
+/* ── Page header in section-header style ── */
+.page-header {
+  display: flex; align-items: flex-start; justify-content: space-between;
+  padding-bottom: 12px; margin-bottom: 14px;
+  border-bottom: 1px solid var(--qf-divider);
+  position: relative; gap: 16px;
+}
+.page-header::after {
+  content: ''; position: absolute; bottom: -1px; left: 0;
+  width: 44px; height: 2px;
+  background: linear-gradient(90deg, var(--qf-accent), rgba(247,147,26,.2));
+  border-radius: 2px;
 }

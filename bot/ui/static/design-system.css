@@ -241,16 +241,19 @@ button.btn-primary {
 
 .qf-card-header, .card-header {
   display: flex; align-items: center; justify-content: space-between;
-  padding: var(--qf-space-4) var(--qf-space-5);
+  padding: 10px 16px;
   border-bottom: 1px solid var(--qf-divider);
+  min-height: 42px;
+  gap: 12px;
 }
 .qf-card-title, .card-title {
   font-size: var(--qf-text-md); font-weight: 600; color: var(--qf-text);
+  white-space: nowrap;
 }
 .qf-card-sub, .card-subtitle {
-  font-size: var(--qf-text-xs); color: var(--qf-text-muted); margin-top: 2px;
+  font-size: var(--qf-text-xs); color: var(--qf-text-muted); margin-top: 1px;
 }
-.qf-card-body, .card-body { padding: var(--qf-space-4) var(--qf-space-5); }
+.qf-card-body, .card-body { padding: 12px 16px; }
 
 /* ═══════════════════════════════════════════════════════════════
    TABLES
@@ -260,19 +263,27 @@ button.btn-primary {
   width: 100%; border-collapse: collapse; font-size: var(--qf-text-sm);
 }
 .qf-table th, table thead th {
-  padding: 10px 14px; text-align: left;
-  font-size: var(--qf-text-xs); font-weight: 500;
+  padding: 7px 12px; text-align: left;
+  font-size: var(--qf-text-xs); font-weight: 600;
   color: var(--qf-text-muted); text-transform: uppercase;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.07em;
   border-bottom: 1px solid var(--qf-divider);
-  background: rgba(0,0,0,.25);
+  background: rgba(0,0,0,.22);
   position: sticky; top: 0; z-index: 1;
+  white-space: nowrap;
 }
 .qf-table td, table tbody td {
-  padding: 10px 14px;
+  padding: 7px 12px;
   border-bottom: 1px solid var(--qf-divider);
   color: var(--qf-text-2);
   transition: background var(--qf-duration-fast) var(--qf-ease);
+}
+/* Numeric column — right-aligned monospace */
+.qf-table th.num, table thead th.num,
+.qf-table td.num, table tbody td.num {
+  text-align: right;
+  font-family: var(--qf-font-mono);
+  letter-spacing: -0.01em;
 }
 .qf-table tbody tr:hover td,
 table tbody tr:hover td {
@@ -573,36 +584,40 @@ table tbody tr:hover td {
 .paper-feed-item .feed-ts     { color: var(--qf-text-muted); margin-left: auto; }
 
 /* ── Analytics view ── */
-.analytics-status-bar { margin-bottom: 12px; }
+.analytics-status-bar { margin-bottom: 8px; }
+/* Status bar uses qf-data-strip inside .card now */
+.analytics-status-bar .qf-data-strip,
+#engineStatusBar .qf-data-strip { min-height: 44px; }
+#engineStatusBar .qf-strip-item { min-width: 140px; }
+#engineStatusBar .qf-strip-value { font-size: var(--qf-text-sm); }
+/* Legacy grid (kept for compat if not converted) */
 .analytics-status-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 16px;
-  padding: 14px 20px;
+  display: flex; align-items: stretch;
+  gap: 0;
 }
-.as-item { display: flex; flex-direction: column; gap: 4px; }
+.as-item { display: flex; flex-direction: column; justify-content: center; gap: 3px; padding: 10px 20px; border-right: 1px solid var(--qf-divider); flex-shrink: 0; }
 .as-label { font-size: 10px; color: var(--qf-text-muted); text-transform: uppercase; letter-spacing: 0.07em; font-weight: 500; }
 .as-val { font-family: var(--qf-font-mono); font-size: var(--qf-text-sm); color: var(--qf-text); font-weight: 600; }
 
+/* Analytics stats: horizontal data strip (Bloomberg-style) */
 .analytics-stats-grid {
-  display: grid;
-  grid-template-columns: repeat(8, 1fr);
-  gap: 10px;
-  margin-bottom: 12px;
+  margin-bottom: 10px;
 }
-@media (max-width: 1400px) { .analytics-stats-grid { grid-template-columns: repeat(4, 1fr); } }
+.analytics-stats-grid .qf-data-strip { min-height: 60px; }
+.analytics-stats-grid .qf-strip-item { min-width: 100px; flex: 1; }
+.analytics-stats-grid .qf-strip-value { font-size: 16px; }
 
 .analytics-charts-row {
   display: grid;
   grid-template-columns: 2fr 1fr;
-  gap: 12px;
-  margin-bottom: 12px;
+  gap: 10px;
+  margin-bottom: 10px;
 }
 .analytics-bottom-row {
   display: grid;
   grid-template-columns: 1fr 1fr 1fr;
-  gap: 12px;
-  margin-bottom: 12px;
+  gap: 10px;
+  margin-bottom: 10px;
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -748,3 +763,111 @@ body.sidebar-collapsed .sidebar-collapse-btn svg { transform: rotate(180deg); }
     transition-duration: 0.01ms !important;
   }
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   BLOOMBERG TERMINAL QUALITY ADDITIONS
+═══════════════════════════════════════════════════════════════ */
+
+/* ── Dense table variant ── */
+.qf-table.dense th, .qf-table.dense td,
+table.dense thead th, table.dense tbody td {
+  padding: 5px 10px;
+}
+
+/* ── Tick flash — applied by JS on price change ── */
+@keyframes tick-up   { 0%,25% { background: rgba(0,192,118,.12); color: var(--qf-long);  } 100% { background: transparent; color: inherit; } }
+@keyframes tick-down { 0%,25% { background: rgba(246,70,93,.09);  color: var(--qf-short); } 100% { background: transparent; color: inherit; } }
+.tick-up   { animation: tick-up   1s ease both; }
+.tick-down { animation: tick-down 1s ease both; }
+
+/* ── Live dot — pulsing green beacon ── */
+.live-dot {
+  display: inline-block; flex-shrink: 0;
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--qf-long);
+  box-shadow: 0 0 5px var(--qf-long-glow);
+  animation: pulse-dot 2s ease infinite;
+  vertical-align: middle;
+  margin-right: 5px;
+}
+
+/* ── Data strip — horizontal Bloomberg-style metric bar ── */
+.qf-data-strip {
+  display: flex; align-items: stretch;
+  overflow-x: auto; scrollbar-width: none;
+  min-height: 52px;
+}
+.qf-data-strip::-webkit-scrollbar { display: none; }
+.qf-strip-item {
+  display: flex; flex-direction: column; justify-content: center;
+  padding: 10px 20px;
+  border-right: 1px solid var(--qf-divider);
+  flex-shrink: 0; min-width: 110px;
+  transition: background var(--qf-duration) var(--qf-ease);
+}
+.qf-strip-item:last-child { border-right: none; }
+.qf-strip-item:hover { background: rgba(247,147,26,.03); }
+.qf-strip-label {
+  font-size: 10px; font-weight: 500;
+  color: var(--qf-text-muted); text-transform: uppercase;
+  letter-spacing: .07em; white-space: nowrap;
+}
+.qf-strip-value {
+  font-family: var(--qf-font-mono); font-size: var(--qf-text-md);
+  font-weight: 600; color: var(--qf-text);
+  margin-top: 3px; letter-spacing: -0.01em; white-space: nowrap;
+}
+.qf-strip-sub {
+  font-size: 10px; color: var(--qf-text-3); margin-top: 1px; white-space: nowrap;
+}
+
+/* ── Section header — accent line under title ── */
+.section-header {
+  display: flex; align-items: flex-start; justify-content: space-between;
+  padding-bottom: 12px;
+  margin-bottom: 16px;
+  border-bottom: 1px solid var(--qf-divider);
+  position: relative;
+  gap: 16px;
+}
+.section-header::after {
+  content: '';
+  position: absolute; bottom: -1px; left: 0;
+  width: 44px; height: 2px;
+  background: linear-gradient(90deg, var(--qf-accent), rgba(247,147,26,.2));
+  border-radius: 2px;
+}
+.section-title {
+  font-size: 17px; font-weight: 700;
+  letter-spacing: -0.025em; color: var(--qf-text);
+}
+.section-subtitle {
+  font-size: var(--qf-text-xs); color: var(--qf-text-muted); margin-top: 3px;
+}
+
+/* ── Page header override — match section-header style ── */
+.page-title {
+  font-size: 17px !important;
+  font-weight: 700 !important;
+  letter-spacing: -0.025em !important;
+}
+.page-desc {
+  font-size: var(--qf-text-xs) !important;
+  margin-top: 3px !important;
+}
+
+/* ── Card accent-border variants ── */
+.card.accent-left  { border-left: 3px solid var(--qf-accent); }
+.card.accent-long  { border-left: 3px solid var(--qf-long); }
+.card.accent-short { border-left: 3px solid var(--qf-short); }
+.card.accent-blue  { border-left: 3px solid var(--qf-blue); }
+
+/* ── Stat highlight row (pairs label:value horizontally) ── */
+.stat-row {
+  display: flex; align-items: baseline; justify-content: space-between;
+  padding: 6px 0; border-bottom: 1px solid var(--qf-divider);
+  font-size: var(--qf-text-xs);
+}
+.stat-row:last-child { border-bottom: none; }
+.stat-key { color: var(--qf-text-muted); }
+.stat-val { font-family: var(--qf-font-mono); font-weight: 600; color: var(--qf-text); }

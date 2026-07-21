@@ -524,7 +524,11 @@ async function loadAnalytics() {
         const el = document.getElementById(id);
         if (!el) return;
         el.textContent = val;
-        if (cls) el.className = 'metric-value ' + cls;
+        if (cls) {
+          // preserve base class (qf-strip-value, metric-value, etc.), swap only color
+          const base = (el.className || 'metric-value').replace(/\b(positive|negative|neutral)\b/g, '').trim() || 'metric-value';
+          el.className = base + ' ' + cls;
+        }
       };
       const colorClass = (v) => v > 0 ? 'positive' : v < 0 ? 'negative' : 'neutral';
       set('anTotalTrades', stats.total_trades ?? '—');

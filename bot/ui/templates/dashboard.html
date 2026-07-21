@@ -7,10 +7,10 @@
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230c0e14'/%3E%3Cline x1='16' y1='7.5' x2='9.2' y2='24' stroke='%23F7931A' stroke-width='1.8' stroke-linecap='round' opacity='0.4'/%3E%3Cline x1='16' y1='7.5' x2='23.4' y2='21.5' stroke='%23F7931A' stroke-width='2.8' stroke-linecap='round'/%3E%3Ccircle cx='16' cy='7.5' r='4.2' fill='%23F7931A'/%3E%3Ccircle cx='9.2' cy='24' r='2.5' fill='%23c9701a'/%3E%3Ccircle cx='23.4' cy='21.5' r='3.4' fill='%23F7931A'/%3E%3C/svg%3E" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="{{ url_for('static', filename='design-system.css') }}?v=13" />
-  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=13" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='design-system.css') }}?v=15" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=15" />
   <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="{{ url_for('static', filename='miniapp/miniapp.css') }}?v=13" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='miniapp/miniapp.css') }}?v=15" />
   <script src="https://unpkg.com/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
 </head>
@@ -186,7 +186,7 @@
               <div class="card-subtitle" id="signalsUpdated"></div>
             </div>
             <div class="table-wrap">
-              <table class="qf-table"><thead><tr><th>Время</th><th>Тикер</th><th>Сигнал</th><th>Цена</th><th>Уверен.</th></tr></thead>
+              <table class="qf-table dense"><thead><tr><th>Время</th><th>Тикер</th><th>Сигнал</th><th>Цена</th><th class="num">Уверен.</th></tr></thead>
               <tbody id="signalsBody"><tr><td colspan="5" class="empty">Загрузка…</td></tr></tbody></table>
             </div>
           </div>
@@ -244,8 +244,11 @@
 
     <!-- ── PORTFOLIO ── -->
     <section id="view-portfolio" class="view">
-      <div class="page-header">
-        <div><h1 class="page-title">Portfolio</h1><p class="page-desc">Allocation · Equity · PnL · ROI</p></div>
+      <div class="section-header">
+        <div>
+          <div class="section-title">Portfolio</div>
+          <div class="section-subtitle">Allocation · Equity · PnL · ROI</div>
+        </div>
         <div class="page-badges">
           <span class="badge badge-info" id="portfolioSource">—</span>
           <span class="badge badge-info" id="portfolioUpdated"></span>
@@ -289,7 +292,7 @@
       <div class="card positions-table-card glass-panel">
         <div class="card-header"><div class="card-title">История операций</div><div class="card-subtitle" id="opsHistoryMeta">Синхронизация Dashboard · Telegram · API</div></div>
         <div class="table-wrap table-scroll-x">
-          <table class="qf-table pro-table"><thead><tr><th>Дата</th><th>Тип</th><th>Symbol</th><th>Exchange</th><th>Side</th><th>PnL</th><th>Status</th></tr></thead>
+          <table class="qf-table pro-table dense"><thead><tr><th>Дата</th><th>Тип</th><th>Symbol</th><th>Exchange</th><th>Side</th><th class="num">PnL</th><th>Status</th></tr></thead>
           <tbody id="portfolioOpsTable"><tr><td colspan="7" class="empty">Нет операций</td></tr></tbody></table>
         </div>
       </div>
@@ -297,9 +300,9 @@
       <div class="card positions-table-card glass-panel">
         <div class="card-header"><div class="card-title">Открытые позиции</div><div class="card-subtitle">Live sync · SSE + polling</div></div>
         <div class="table-wrap table-scroll-x">
-          <table class="qf-table pro-table"><thead><tr>
-            <th>Symbol</th><th>Exchange</th><th>Side</th><th>Entry</th><th>Current</th><th>Amount</th>
-            <th>Lev</th><th>Margin</th><th>Unreal. PnL</th><th>ROI %</th><th>SL</th><th>TP</th><th>Open Time</th><th>Status</th>
+          <table class="qf-table pro-table dense"><thead><tr>
+            <th>Symbol</th><th>Exchange</th><th>Side</th><th class="num">Entry</th><th class="num">Current</th><th class="num">Amount</th>
+            <th class="num">Lev</th><th class="num">Margin</th><th class="num">Unreal. PnL</th><th class="num">ROI %</th><th class="num">SL</th><th class="num">TP</th><th>Open Time</th><th>Status</th>
           </tr></thead>
           <tbody id="portfolioPositionsTable"><tr><td colspan="14" class="empty">Нет позиций</td></tr></tbody></table>
         </div>
@@ -327,8 +330,11 @@
 
     <!-- ── SIGNALS ── -->
     <section id="view-signals" class="view">
-      <div class="page-header">
-        <div><h1 class="page-title">Signals Center</h1><p class="page-desc">AI · Indicators · Strategy</p></div>
+      <div class="section-header">
+        <div>
+          <div class="section-title">Signals Center</div>
+          <div class="section-subtitle">AI · Indicators · Strategy</div>
+        </div>
         <div class="signals-toolbar signals-filters">
           <select id="filterExchange" class="qf-select filter-select"><option value="">Все биржи</option><option value="bybit">Bybit</option><option value="finam">Finam</option><option value="tinkoff">Т-Банк</option><option value="moex">MOEX</option></select>
           <input id="filterAsset" class="qf-input filter-select" placeholder="Asset" />
@@ -347,7 +353,7 @@
       <div class="card">
         <div class="card-header"><div class="card-title">Журнал сигналов</div><div class="card-subtitle" id="signalsLiveUpdated"></div></div>
         <div class="table-wrap">
-          <table class="qf-table pro-table"><thead><tr><th>Asset</th><th>Exchange</th><th>Strategy</th><th>Direction</th><th>Entry</th><th>SL</th><th>TP1+</th><th>RR</th><th>Conf.%</th><th>Time</th><th>Status</th><th></th></tr></thead>
+          <table class="qf-table pro-table dense"><thead><tr><th>Asset</th><th>Exchange</th><th>Strategy</th><th>Direction</th><th class="num">Entry</th><th class="num">SL</th><th class="num">TP1+</th><th class="num">RR</th><th class="num">Conf.%</th><th>Time</th><th>Status</th><th></th></tr></thead>
           <tbody id="signalsLiveBody"><tr><td colspan="12" class="empty">—</td></tr></tbody></table>
         </div>
       </div>
@@ -359,8 +365,11 @@
 
     <!-- ── BACKTEST ── -->
     <section id="view-backtest" class="view">
-      <div class="page-header">
-        <div><h1 class="page-title">Backtest</h1><p class="page-desc">Strategy simulation · Full analytics</p></div>
+      <div class="section-header">
+        <div>
+          <div class="section-title">Backtest</div>
+          <div class="section-subtitle">Strategy simulation · Full analytics</div>
+        </div>
         <div class="signals-toolbar">
           <button class="btn btn-primary" id="runBacktestBtn" type="button">Запустить</button>
           <button class="btn btn-secondary btn-action" id="exportBacktestBtn" type="button">Экспорт</button>
@@ -407,7 +416,7 @@
         <div class="card" style="margin-bottom:12px">
           <div class="card-header"><div class="card-title">Журнал сделок</div></div>
           <div class="table-wrap">
-            <table><thead><tr><th>Тикер</th><th>Вход</th><th>Выход</th><th>PnL</th><th>%</th><th>Статус</th></tr></thead>
+            <table class="qf-table dense"><thead><tr><th>Тикер</th><th class="num">Вход</th><th class="num">Выход</th><th class="num">PnL</th><th class="num">%</th><th>Статус</th></tr></thead>
             <tbody id="backtestBody"></tbody></table>
           </div>
         </div>
@@ -420,8 +429,11 @@
 
     <!-- ── SETTINGS ── -->
     <section id="view-settings" class="view">
-      <div class="page-header">
-        <div><h1 class="page-title">Settings</h1><p class="page-desc">Platform configuration</p></div>
+      <div class="section-header">
+        <div>
+          <div class="section-title">Settings</div>
+          <div class="section-subtitle">Platform configuration</div>
+        </div>
       </div>
       <div class="settings-layout">
         <div class="settings-grid" id="settingsGrid"><div class="empty">Загрузка…</div></div>
@@ -524,10 +536,10 @@
 
     <!-- ── ANALYTICS ── -->
     <section id="view-analytics" class="view">
-      <div class="page-header">
+      <div class="section-header">
         <div>
-          <h1 class="page-title">Analytics</h1>
-          <p class="page-desc">Paper Trading Performance · Strategy Analysis · Risk Metrics</p>
+          <div class="section-title">Analytics</div>
+          <div class="section-subtitle">Paper Trading Performance · Strategy Analysis · Risk Metrics</div>
         </div>
         <div class="signals-toolbar">
           <button class="btn btn-primary" id="engineStartBtn" type="button">▶ Запустить движок</button>
@@ -535,26 +547,68 @@
         </div>
       </div>
 
-      <!-- Engine Status Bar -->
-      <div class="card analytics-status-bar" id="engineStatusBar">
-        <div class="analytics-status-grid">
-          <div class="as-item"><span class="as-label">Статус</span><span class="as-val" id="engineStatusText">Загрузка…</span></div>
-          <div class="as-item"><span class="as-label">Комиссия</span><span class="as-val">0.03%</span></div>
-          <div class="as-item"><span class="as-label">Проскальзывание</span><span class="as-val">0.01%</span></div>
-          <div class="as-item"><span class="as-label">Источник данных</span><span class="as-val">MOEX · DB</span></div>
+      <!-- Engine Status Strip -->
+      <div class="card analytics-status-bar" id="engineStatusBar" style="margin-bottom:8px">
+        <div class="qf-data-strip">
+          <div class="qf-strip-item" style="min-width:160px">
+            <div class="qf-strip-label"><span class="live-dot"></span>Статус движка</div>
+            <div class="qf-strip-value" id="engineStatusText">Загрузка…</div>
+          </div>
+          <div class="qf-strip-item">
+            <div class="qf-strip-label">Комиссия</div>
+            <div class="qf-strip-value">0.03%</div>
+          </div>
+          <div class="qf-strip-item">
+            <div class="qf-strip-label">Проскальзывание</div>
+            <div class="qf-strip-value">0.01%</div>
+          </div>
+          <div class="qf-strip-item">
+            <div class="qf-strip-label">Источник данных</div>
+            <div class="qf-strip-value">MOEX · DB</div>
+          </div>
+          <div class="qf-strip-item" style="margin-left:auto;border-right:none">
+            <div class="qf-strip-label">Режим</div>
+            <div class="qf-strip-value" style="color:var(--qf-accent)">Paper Trading</div>
+          </div>
         </div>
       </div>
 
-      <!-- Stats Grid (8 key metrics) -->
-      <div class="analytics-stats-grid" id="analyticsStatsGrid">
-        <div class="card metric-card"><div class="metric-label">Всего сделок</div><div class="metric-value neutral" id="anTotalTrades">—</div></div>
-        <div class="card metric-card"><div class="metric-label">Win Rate</div><div class="metric-value neutral" id="anWinRate">—</div></div>
-        <div class="card metric-card"><div class="metric-label">Profit Factor</div><div class="metric-value neutral" id="anProfitFactor">—</div></div>
-        <div class="card metric-card"><div class="metric-label">Sharpe Ratio</div><div class="metric-value neutral" id="anSharpe">—</div></div>
-        <div class="card metric-card"><div class="metric-label">Sortino Ratio</div><div class="metric-value neutral" id="anSortino">—</div></div>
-        <div class="card metric-card"><div class="metric-label">Max Drawdown</div><div class="metric-value neutral" id="anMaxDD">—</div></div>
-        <div class="card metric-card"><div class="metric-label">Total PnL</div><div class="metric-value neutral" id="anTotalPnl">—</div></div>
-        <div class="card metric-card"><div class="metric-label">ROI %</div><div class="metric-value neutral" id="anRoi">—</div></div>
+      <!-- Stats Strip (8 key metrics — Bloomberg-style) -->
+      <div class="analytics-stats-grid card" id="analyticsStatsGrid" style="margin-bottom:10px;padding:0;overflow:hidden">
+        <div class="qf-data-strip">
+          <div class="qf-strip-item">
+            <div class="qf-strip-label">Всего сделок</div>
+            <div class="qf-strip-value neutral" id="anTotalTrades">—</div>
+          </div>
+          <div class="qf-strip-item">
+            <div class="qf-strip-label">Win Rate</div>
+            <div class="qf-strip-value neutral" id="anWinRate">—</div>
+          </div>
+          <div class="qf-strip-item">
+            <div class="qf-strip-label">Profit Factor</div>
+            <div class="qf-strip-value neutral" id="anProfitFactor">—</div>
+          </div>
+          <div class="qf-strip-item">
+            <div class="qf-strip-label">Sharpe Ratio</div>
+            <div class="qf-strip-value neutral" id="anSharpe">—</div>
+          </div>
+          <div class="qf-strip-item">
+            <div class="qf-strip-label">Sortino Ratio</div>
+            <div class="qf-strip-value neutral" id="anSortino">—</div>
+          </div>
+          <div class="qf-strip-item">
+            <div class="qf-strip-label">Max Drawdown</div>
+            <div class="qf-strip-value neutral" id="anMaxDD">—</div>
+          </div>
+          <div class="qf-strip-item">
+            <div class="qf-strip-label">Total PnL</div>
+            <div class="qf-strip-value neutral" id="anTotalPnl">—</div>
+          </div>
+          <div class="qf-strip-item" style="border-right:none">
+            <div class="qf-strip-label">ROI %</div>
+            <div class="qf-strip-value neutral" id="anRoi">—</div>
+          </div>
+        </div>
       </div>
 
       <!-- Charts Row -->
@@ -574,7 +628,7 @@
         <div class="card">
           <div class="card-header"><div class="card-title">Дневная P&amp;L (30 дней)</div></div>
           <div class="table-wrap" style="max-height:280px;overflow-y:auto">
-            <table class="qf-table"><thead><tr><th>Дата</th><th>P&amp;L</th><th>Сделок</th></tr></thead>
+            <table class="qf-table dense"><thead><tr><th>Дата</th><th class="num">P&amp;L</th><th class="num">Сделок</th></tr></thead>
             <tbody id="analyticsDailyBody"><tr><td colspan="3" class="empty">—</td></tr></tbody></table>
           </div>
         </div>
@@ -595,9 +649,9 @@
           <div class="card-subtitle" id="tradesHistoryMeta"></div>
         </div>
         <div class="table-wrap">
-          <table class="qf-table pro-table"><thead><tr>
-            <th>Тикер</th><th>Dir</th><th>Entry</th><th>Exit</th><th>Qty</th>
-            <th>PnL</th><th>PnL%</th><th>Комис.</th><th>Причина</th><th>Закрыта</th>
+          <table class="qf-table pro-table dense"><thead><tr>
+            <th>Тикер</th><th>Dir</th><th class="num">Entry</th><th class="num">Exit</th><th class="num">Qty</th>
+            <th class="num">PnL</th><th class="num">PnL%</th><th class="num">Комис.</th><th>Причина</th><th>Закрыта</th>
           </tr></thead>
           <tbody id="tradesHistoryBody"><tr><td colspan="10" class="empty">—</td></tr></tbody></table>
         </div>
@@ -839,20 +893,20 @@
   </main>
 </div>
 
-<script src="{{ url_for('static', filename='components.js') }}?v=13"></script>
-<script src="{{ url_for('static', filename='charts.js') }}?v=13"></script>
-<script src="{{ url_for('static', filename='core/format.js') }}?v=13"></script>
-<script src="{{ url_for('static', filename='core/api.js') }}?v=13"></script>
-<script src="{{ url_for('static', filename='core/store.js') }}?v=13"></script>
-<script src="{{ url_for('static', filename='core/assets.js') }}?v=13"></script>
-<script src="{{ url_for('static', filename='core/sync.js') }}?v=13"></script>
-<script src="{{ url_for('static', filename='core/layout.js') }}?v=13"></script>
-<script src="{{ url_for('static', filename='views/render.js') }}?v=13"></script>
-<script src="{{ url_for('static', filename='miniapp/game.js') }}?v=13"></script>
-<script src="{{ url_for('static', filename='miniapp/miniapp.js') }}?v=13"></script>
-<script src="{{ url_for('static', filename='app.js') }}?v=13"></script>
-<script src="{{ url_for('static', filename='platform.js') }}?v=13"></script>
-<script src="{{ url_for('static', filename='views/learning.js') }}?v=14"></script>
-<script src="{{ url_for('static', filename='core/enhance.js') }}?v=13"></script>
+<script src="{{ url_for('static', filename='components.js') }}?v=15"></script>
+<script src="{{ url_for('static', filename='charts.js') }}?v=15"></script>
+<script src="{{ url_for('static', filename='core/format.js') }}?v=15"></script>
+<script src="{{ url_for('static', filename='core/api.js') }}?v=15"></script>
+<script src="{{ url_for('static', filename='core/store.js') }}?v=15"></script>
+<script src="{{ url_for('static', filename='core/assets.js') }}?v=15"></script>
+<script src="{{ url_for('static', filename='core/sync.js') }}?v=15"></script>
+<script src="{{ url_for('static', filename='core/layout.js') }}?v=15"></script>
+<script src="{{ url_for('static', filename='views/render.js') }}?v=15"></script>
+<script src="{{ url_for('static', filename='miniapp/game.js') }}?v=15"></script>
+<script src="{{ url_for('static', filename='miniapp/miniapp.js') }}?v=15"></script>
+<script src="{{ url_for('static', filename='app.js') }}?v=15"></script>
+<script src="{{ url_for('static', filename='platform.js') }}?v=15"></script>
+<script src="{{ url_for('static', filename='views/learning.js') }}?v=15"></script>
+<script src="{{ url_for('static', filename='core/enhance.js') }}?v=15"></script>
 </body>
 </html>

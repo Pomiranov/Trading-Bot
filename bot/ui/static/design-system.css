@@ -413,11 +413,28 @@ table tbody tr:hover td {
   background: var(--qf-surface);
   border: 1px solid var(--qf-border);
   border-radius: var(--qf-radius-sm);
-  transition: border-color var(--qf-duration) var(--qf-ease);
+  transition:
+    border-color var(--qf-duration) var(--qf-ease),
+    transform var(--qf-duration) var(--qf-ease);
 }
-.metric-mini:hover { border-color: rgba(247,147,26,.2); }
-.metric-mini-label { font-size: var(--qf-text-xs); color: var(--qf-text-muted); }
-.metric-mini-value { font-family: var(--qf-font-mono); font-size: var(--qf-text-md); font-weight: 600; margin-top: 2px; }
+.metric-mini:hover {
+  border-color: rgba(247,147,26,.2);
+  transform: translateY(-1px);
+}
+.metric-mini-label {
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--qf-text-muted);
+  text-transform: uppercase;
+  letter-spacing: .05em;
+}
+.metric-mini-value {
+  font-family: var(--qf-font-mono);
+  font-size: var(--qf-text-sm);
+  font-weight: 600;
+  margin-top: 3px;
+  letter-spacing: -.01em;
+}
 
 /* ═══════════════════════════════════════════════════════════════
    SIGNAL CARDS
@@ -433,15 +450,22 @@ table tbody tr:hover td {
 }
 .signal-card::before {
   content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px;
+  transition: opacity var(--qf-duration) var(--qf-ease);
 }
-.signal-card.type-long::before,  .signal-card.type-buy::before  { background: var(--qf-long); }
-.signal-card.type-short::before, .signal-card.type-sell::before { background: var(--qf-short); }
+.signal-card.type-long::before,  .signal-card.type-buy::before  {
+  background: linear-gradient(180deg, var(--qf-long) 0%, rgba(0,192,118,.4) 100%);
+}
+.signal-card.type-short::before, .signal-card.type-sell::before {
+  background: linear-gradient(180deg, var(--qf-short) 0%, rgba(246,70,93,.4) 100%);
+}
 .signal-card.type-hold::before { background: var(--qf-accent); }
 .signal-card:hover {
-  border-color: var(--qf-accent-dim);
+  border-color: rgba(247,147,26,.2);
   transform: translateY(-2px);
-  box-shadow: var(--qf-shadow-md);
+  box-shadow: var(--qf-shadow-md), 0 0 0 1px rgba(247,147,26,.04);
 }
+.signal-card.type-long:hover { border-color: rgba(0,192,118,.2); }
+.signal-card.type-short:hover { border-color: rgba(246,70,93,.2); }
 
 /* ═══════════════════════════════════════════════════════════════
    CHART CONTAINERS
@@ -554,11 +578,11 @@ table tbody tr:hover td {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 16px;
-  padding: 12px 20px;
+  padding: 14px 20px;
 }
-.as-item { display: flex; flex-direction: column; gap: 2px; }
-.as-label { font-size: var(--qf-text-xs); color: var(--qf-text-muted); text-transform: uppercase; letter-spacing: 0.06em; }
-.as-val { font-family: var(--qf-font-mono); font-size: var(--qf-text-sm); color: var(--qf-text); font-weight: 500; }
+.as-item { display: flex; flex-direction: column; gap: 4px; }
+.as-label { font-size: 10px; color: var(--qf-text-muted); text-transform: uppercase; letter-spacing: 0.07em; font-weight: 500; }
+.as-val { font-family: var(--qf-font-mono); font-size: var(--qf-text-sm); color: var(--qf-text); font-weight: 600; }
 
 .analytics-stats-grid {
   display: grid;

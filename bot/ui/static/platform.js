@@ -123,14 +123,22 @@
       QFUI.toast(`Backtest #${r.run_id} завершён`, 'success');
       document.getElementById('backtestMeta').textContent = `Run #${r.run_id} · ${r.strategy}`;
 
+      const _fmt2 = (v, d = 2) => v != null ? Number(v).toFixed(d) : '—';
       const metrics = [
-        ['Баланс', QFFmt.money(r.final_balance)], ['PnL', (r.total_pnl >= 0 ? '+' : '') + QFFmt.money(r.total_pnl)],
-        ['Просадка', r.max_drawdown + '%'], ['Win Rate', r.win_rate + '%'],
-        ['Profit Factor', r.profit_factor], ['Sharpe', r.sharpe_ratio],
-        ['Sortino', r.sortino_ratio], ['Calmar', r.calmar_ratio],
-        ['Сделок', r.total_trades], ['Макс.+', QFFmt.money(r.max_profit)],
-        ['Макс.−', QFFmt.money(r.max_loss)], ['Ср.+', QFFmt.money(r.avg_profit)],
-        ['Ср.−', QFFmt.money(r.avg_loss)], ['Hold', r.avg_hold_bars + ' bars'],
+        ['Баланс', QFFmt.money(r.final_balance)],
+        ['PnL', (r.total_pnl >= 0 ? '+' : '') + QFFmt.money(r.total_pnl)],
+        ['Просадка', r.max_drawdown != null ? '-' + _fmt2(Math.abs(r.max_drawdown)) + '%' : '—'],
+        ['Win Rate', r.win_rate != null ? _fmt2(r.win_rate, 1) + '%' : '—'],
+        ['Profit Factor', r.profit_factor != null ? _fmt2(r.profit_factor) : '—'],
+        ['Sharpe', r.sharpe_ratio != null ? _fmt2(r.sharpe_ratio) : '—'],
+        ['Sortino', r.sortino_ratio != null ? _fmt2(r.sortino_ratio) : '—'],
+        ['Calmar', r.calmar_ratio != null ? _fmt2(r.calmar_ratio) : '—'],
+        ['Сделок', r.total_trades ?? '—'],
+        ['Макс.+', QFFmt.money(r.max_profit)],
+        ['Макс.−', QFFmt.money(r.max_loss)],
+        ['Ср.+', QFFmt.money(r.avg_profit)],
+        ['Ср.−', QFFmt.money(r.avg_loss)],
+        ['Hold', r.avg_hold_bars != null ? r.avg_hold_bars + ' bars' : '—'],
       ];
       QFRender.backtestMetrics(metrics);
 
@@ -188,20 +196,27 @@
       document.getElementById('backtestStatus').innerHTML = QFUI.empty('📂', `Run #${runId}`, `${r.ticker} · ${r.total_trades} сделок`);
       document.getElementById('backtestMeta').textContent = `Run #${runId} · ${r.strategy}`;
 
+      const fmtMetric = (v, decimals = 2) => v != null ? Number(v).toFixed(decimals) : '—';
       const metrics = [
-        ['Баланс', QFFmt.money(r.final_balance)], ['PnL', (r.total_pnl >= 0 ? '+' : '') + QFFmt.money(r.total_pnl)],
-        ['Просадка', r.max_drawdown + '%'], ['Win Rate', r.win_rate + '%'],
-        ['Profit Factor', r.profit_factor], ['Sharpe', r.sharpe_ratio],
-        ['Sortino', r.sortino_ratio], ['Calmar', r.calmar_ratio],
-        ['Сделок', r.total_trades],
+        ['Баланс', QFFmt.money(r.final_balance)],
+        ['PnL', (r.total_pnl >= 0 ? '+' : '') + QFFmt.money(r.total_pnl)],
+        ['Просадка', r.max_drawdown != null ? '-' + fmtMetric(Math.abs(r.max_drawdown)) + '%' : '—'],
+        ['Win Rate', r.win_rate != null ? fmtMetric(r.win_rate, 1) + '%' : '—'],
+        ['Profit Factor', r.profit_factor != null ? fmtMetric(r.profit_factor) : '—'],
+        ['Sharpe', r.sharpe_ratio != null ? fmtMetric(r.sharpe_ratio) : '—'],
+        ['Sortino', r.sortino_ratio != null ? fmtMetric(r.sortino_ratio) : '—'],
+        ['Calmar', r.calmar_ratio != null ? fmtMetric(r.calmar_ratio) : '—'],
+        ['Сделок', r.total_trades ?? '—'],
       ];
       QFRender.backtestMetrics(metrics);
 
-      document.getElementById('backtestBody').innerHTML = (r.trades || []).slice(0, 50).map(t => `
-        <tr><td class="ticker-cell">${esc(t.ticker)}</td><td class="mono">${QFFmt.num(t.entry_price)}</td>
+      document.getElementById('backtestBody').innerHTML = (r.trades || []).slice(0, 50).map(t => {
+        const pnlPct = t.pnl_pct != null ? Number(t.pnl_pct).toFixed(2) : '—';
+        return `<tr><td class="ticker-cell">${esc(t.ticker)}</td><td class="mono">${QFFmt.num(t.entry_price)}</td>
         <td class="mono">${QFFmt.num(t.exit_price)}</td>
         <td class="mono ${QFFmt.colorClass(t.pnl)}">${t.pnl >= 0 ? '+' : ''}${QFFmt.money(t.pnl)}</td>
-        <td class="mono">${t.pnl_pct}%</td><td>${esc(t.status)}</td></tr>`).join('') || '<tr><td colspan="6" class="empty">Нет сделок</td></tr>';
+        <td class="mono">${pnlPct}%</td><td>${esc(t.status)}</td></tr>`;
+      }).join('') || '<tr><td colspan="6" class="empty">Нет сделок</td></tr>';
 
       QFChart.line('backtestChart', (r.equity_curve || []).map(e => ({ time: e.ts, value: e.equity })));
       QFChart.drawdown('backtestDrawdownChart', r.drawdown_curve || []);

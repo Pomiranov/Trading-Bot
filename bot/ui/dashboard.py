@@ -70,6 +70,20 @@ try:
     ensure_platform_schema(_engine)
     init_platform_routes(_engine)
     app.register_blueprint(platform_bp)
+
+    # ── Autonomous sandbox: attach learning loop to paper engine ──────────────
+    try:
+        from engine.paper_engine import paper_engine
+        from learning.sandbox_learning_loop import SandboxLearningLoop
+        _learning_loop = SandboxLearningLoop(dsn=config.db.dsn)
+        paper_engine.set_db_engine(_engine)
+        paper_engine.set_learning_loop(_learning_loop)
+        # Auto-start the engine so the sandbox runs immediately on dashboard boot
+        paper_engine.start()
+        logger.info("Dashboard: PaperEngine + SandboxLearningLoop started automatically")
+    except Exception as _learn_exc:
+        logger.warning("Dashboard: could not auto-start paper engine: %s", _learn_exc)
+
 except Exception as exc:
     logger.warning("DB unavailable: %s", exc)
     DB_AVAILABLE = False

@@ -44,6 +44,7 @@ const QFChart = (() => {
     if (observers.has(id)) { observers.get(id).disconnect(); observers.delete(id); }
     const inst = instances.get(id);
     if (!inst) return;
+    if (inst._flatBadge) { try { inst._flatBadge.remove(); } catch (_) {} }
     if (inst.type === 'lw' && inst.chart) inst.chart.remove();
     else if (inst.type === 'echarts' && inst.chart) inst.chart.dispose();
     instances.delete(id);
@@ -80,9 +81,33 @@ const QFChart = (() => {
     if (!data?.length) { showEmpty(id); return null; }
     if (typeof LightweightCharts === 'undefined') { showEmpty(id, 'Chart library loading…'); return null; }
 
+    const points = data
+      .map((d, i) => ({ time: normalizeTime(d.time ?? d.ts, i), value: Number(d.value ?? d.equity ?? d.close ?? 0) }))
+      .filter(p => !isNaN(p.value));
+
+    if (!points.length) { showEmpty(id); return null; }
+
+    // Detect flat equity — when the range is < 0.05% of the mean, notify but still render
+    const vals = points.map(p => p.value);
+    const minVal = Math.min(...vals), maxVal = Math.max(...vals);
+    const meanVal = vals.reduce((s, v) => s + v, 0) / vals.length;
+    const rangePct = meanVal > 0 ? (maxVal - minVal) / meanVal * 100 : 0;
+    const isFlat = rangePct < 0.05 && points.length > 1;
+
     el.innerHTML = '';
     const h = el.clientHeight || 260;
-    const chart = LightweightCharts.createChart(el, { ...lwOpts, width: el.clientWidth, height: h });
+
+    // For flat charts, use a custom autoscale to pad context around the change
+    const priceScaleOpts = isFlat
+      ? { autoScale: true, scaleMargins: { top: 0.3, bottom: 0.3 } }
+      : {};
+
+    const chart = LightweightCharts.createChart(el, {
+      ...lwOpts,
+      width: el.clientWidth,
+      height: h,
+      rightPriceScale: { ...lwOpts.rightPriceScale, ...priceScaleOpts },
+    });
 
     const color = opts.color || COLORS.long;
     const series = chart.addAreaSeries({
@@ -95,15 +120,23 @@ const QFChart = (() => {
       crosshairMarkerVisible: true,
     });
 
-    const points = data
-      .map((d, i) => ({ time: normalizeTime(d.time ?? d.ts, i), value: Number(d.value ?? d.equity ?? d.close ?? 0) }))
-      .filter(p => !isNaN(p.value));
-
-    if (!points.length) { showEmpty(id); return null; }
     series.setData(points);
     chart.timeScale().fitContent();
     instances.set(id, { type: 'lw', chart, series });
     observeResize(id, chart, 'lw');
+
+    // Add flat indicator overlay
+    if (isFlat) {
+      const badge = document.createElement('div');
+      badge.style.cssText = 'position:absolute;top:8px;left:50%;transform:translateX(-50%);background:rgba(247,147,26,.12);border:1px solid rgba(247,147,26,.25);border-radius:4px;padding:3px 8px;font-size:10px;color:#F7931A;white-space:nowrap;pointer-events:none;z-index:2;font-family:var(--qf-font-mono)';
+      badge.textContent = `Δ ${(maxVal - minVal).toFixed(2)} · стабильный портфель`;
+      const parent = el.parentElement;
+      if (parent && getComputedStyle(parent).position === 'static') parent.style.position = 'relative';
+      parent?.appendChild(badge);
+      // Remove badge when chart is destroyed
+      instances.get(id)._flatBadge = badge;
+    }
+
     return chart;
   }
 
@@ -208,20 +241,44 @@ const QFChart = (() => {
       return null;
     }
     const days = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
+    // Build full 7×2 grid so all rows are visible; fill missing days with 0
+    const byDay = new Map(data.map(d => [Number(d.day), d]));
+    const fullData = days.flatMap((_, i) => {
+      const d = byDay.get(i) || { wins: 0, losses: 0 };
+      return [[0, i, d.wins || 0], [1, i, d.losses || 0]];
+    });
     const maxVal = Math.max(...data.flatMap(d => [d.wins || 0, d.losses || 0]), 1);
     const chart = echarts.init(el, null, { renderer: 'canvas' });
     chart.setOption({
       backgroundColor: 'transparent',
-      tooltip: { backgroundColor: '#161a22', borderColor: '#2a2e38', textStyle: { color: '#eaecef' } },
-      grid: { top: 8, bottom: 24, left: 36, right: 8 },
-      xAxis: { type: 'category', data: ['Win', 'Loss'], axisLabel: { color: COLORS.text, fontSize: 10 }, axisLine: { show: false } },
-      yAxis: { type: 'category', data: days, axisLabel: { color: COLORS.text, fontSize: 10 }, axisLine: { show: false } },
-      visualMap: { min: 0, max: maxVal, show: false, inRange: { color: ['#161a22', COLORS.long, COLORS.accent] } },
+      tooltip: {
+        backgroundColor: '#161a22', borderColor: '#2a2e38', textStyle: { color: '#eaecef' },
+        formatter: p => `${days[p.data[1]]} · ${p.seriesName === 'Win' ? 'Wins' : 'Losses'}: <b>${p.data[2]}</b>`,
+      },
+      grid: { top: 8, bottom: 28, left: 36, right: 8 },
+      xAxis: {
+        type: 'category', data: ['Win', 'Loss'],
+        axisLabel: { color: COLORS.text, fontSize: 10 },
+        axisLine: { show: false }, axisTick: { show: false },
+        splitLine: { show: false },
+      },
+      yAxis: {
+        type: 'category', data: days,
+        axisLabel: { color: COLORS.text, fontSize: 10 },
+        axisLine: { show: false }, axisTick: { show: false },
+        splitLine: { show: false },
+      },
+      visualMap: { min: 0, max: maxVal, show: false, inRange: { color: ['#1e2230', COLORS.long, COLORS.accent] } },
       series: [{
         type: 'heatmap',
-        data: data.flatMap(d => [[0, Number(d.day), d.wins || 0], [1, Number(d.day), d.losses || 0]]),
-        label: { show: true, color: '#eaecef', fontSize: 10 },
-        itemStyle: { borderRadius: 4 },
+        name: 'Win',
+        data: fullData,
+        label: {
+          show: true, color: '#eaecef', fontSize: 10,
+          formatter: p => p.data[2] > 0 ? String(p.data[2]) : '',
+        },
+        itemStyle: { borderRadius: 3, borderColor: '#0c0e14', borderWidth: 2 },
+        emphasis: { itemStyle: { shadowBlur: 8, shadowColor: 'rgba(247,147,26,0.4)' } },
       }],
     });
     instances.set(id, { type: 'echarts', chart });

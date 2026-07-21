@@ -7,10 +7,10 @@
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230c0e14'/%3E%3Cline x1='16' y1='7.5' x2='9.2' y2='24' stroke='%23F7931A' stroke-width='1.8' stroke-linecap='round' opacity='0.4'/%3E%3Cline x1='16' y1='7.5' x2='23.4' y2='21.5' stroke='%23F7931A' stroke-width='2.8' stroke-linecap='round'/%3E%3Ccircle cx='16' cy='7.5' r='4.2' fill='%23F7931A'/%3E%3Ccircle cx='9.2' cy='24' r='2.5' fill='%23c9701a'/%3E%3Ccircle cx='23.4' cy='21.5' r='3.4' fill='%23F7931A'/%3E%3C/svg%3E" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="{{ url_for('static', filename='design-system.css') }}?v=6" />
-  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=6" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='design-system.css') }}?v=13" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=13" />
   <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="{{ url_for('static', filename='miniapp/miniapp.css') }}?v=6" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='miniapp/miniapp.css') }}?v=13" />
   <script src="https://unpkg.com/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
 </head>
@@ -55,6 +55,11 @@
     <a href="#" data-view="analytics" data-tooltip="Analytics">
       <svg class="nav-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 17L7 11l4 4 3-5 3 6"/><path d="M3 3v14h14"/></svg>
       <span class="nav-label">Analytics</span>
+    </a>
+
+    <a href="#" data-view="learning" data-tooltip="Learning">
+      <svg class="nav-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M10 2a8 8 0 100 16A8 8 0 0010 2z"/><path d="M10 6v4l3 2"/></svg>
+      <span class="nav-label">Learning</span>
     </a>
 
     <div class="nav-divider"></div>
@@ -330,7 +335,7 @@
           <select id="filterStrategy" class="qf-select filter-select"><option value="">Все стратегии</option><option value="rules_engine">Rules Engine</option><option value="indicators">Indicators</option><option value="ml">ML</option></select>
           <select id="filterDirection" class="qf-select filter-select"><option value="">Направление</option><option value="LONG">LONG</option><option value="SHORT">SHORT</option></select>
           <select id="filterAssetClass" class="qf-select filter-select"><option value="">Все классы</option><option value="crypto">Crypto</option><option value="stocks">Stocks</option><option value="forex">Forex</option><option value="futures">Futures</option><option value="etf">ETF</option></select>
-          <input type="date" id="filterDateFrom" class="qf-input filter-select" title="Дата от" />
+          <input type="date" id="filterDateFrom" class="qf-input filter-select" title="From date" />
           <button class="btn btn-secondary btn-action" id="generateSignalsBtn" type="button">Сгенерировать</button>
           <button class="btn btn-ghost btn-action" id="refreshSignalsBtn" type="button">Обновить</button>
         </div>
@@ -367,8 +372,8 @@
           <div class="form-field"><label>Стратегия</label><select id="btStrategy" class="filter-select"><option value="rules_engine">Rules Engine</option></select></div>
           <div class="form-field"><label>Биржа</label><select id="btExchange" class="filter-select"><option value="moex">MOEX</option><option value="bybit">Bybit</option></select></div>
           <div class="form-field"><label>Инструмент</label><input id="btTicker" value="SBER" class="filter-select" /></div>
-          <div class="form-field"><label>Период с</label><input type="date" id="btPeriodStart" class="filter-select" /></div>
-          <div class="form-field"><label>Период по</label><input type="date" id="btPeriodEnd" class="filter-select" /></div>
+          <div class="form-field"><label>Period from</label><input type="date" id="btPeriodStart" class="filter-select" /></div>
+          <div class="form-field"><label>Period to</label><input type="date" id="btPeriodEnd" class="filter-select" /></div>
           <div class="form-field"><label>Капитал</label><input id="btCapital" value="1000000" class="filter-select" /></div>
           <div class="form-field"><label>Риск %</label><input id="btRisk" value="0.05" class="filter-select" /></div>
           <div class="form-field"><label>Комиссия</label><input id="btCommission" value="0.0003" class="filter-select" /></div>
@@ -416,39 +421,102 @@
     <!-- ── SETTINGS ── -->
     <section id="view-settings" class="view">
       <div class="page-header">
-        <div><h1 class="page-title">Settings</h1><p class="page-desc">Конфигурация платформы</p></div>
+        <div><h1 class="page-title">Settings</h1><p class="page-desc">Platform configuration</p></div>
       </div>
       <div class="settings-layout">
         <div class="settings-grid" id="settingsGrid"><div class="empty">Загрузка…</div></div>
-        <div class="card settings-section" id="tinkoffBrokerCard">
-          <div class="card-header"><div><div class="card-title">Брокер (Tinkoff)</div><div class="card-subtitle">Токены в .env · не логируются</div></div></div>
-          <div class="settings-rows" id="tinkoffInfoRows"></div>
-          <div class="credential-group">
-            <div class="credential-label">Tinkoff API Token</div>
-            <div class="credential-input-row">
-              <input type="password" id="inputTinkoffToken" class="credential-input" placeholder="t.xxx…" autocomplete="new-password" />
-              <button class="btn-eye" id="eyeTinkoffToken" type="button">👁</button>
+
+        <!-- Broker management -->
+        <div class="card settings-section">
+          <div class="card-header">
+            <div>
+              <div class="card-title">Brokers</div>
+              <div class="card-subtitle">Credentials stored in .env · never logged</div>
             </div>
-            <div class="credential-actions"><button class="btn-save" id="saveTinkoffToken" type="button">Сохранить</button><button class="btn-clear" id="clearTinkoffToken" type="button">Очистить</button></div>
-            <div class="credential-status" id="statusTinkoffToken"></div>
           </div>
-          <div class="credential-group">
-            <div class="credential-label">Dashboard API Key</div>
-            <div class="credential-input-row">
-              <input type="password" id="inputDashboardApiKey" class="credential-input" autocomplete="off" />
-              <button class="btn-eye" id="eyeDashboardApiKey" type="button">👁</button>
-            </div>
-            <div class="credential-actions"><button class="btn-save" id="saveDashboardApiKey" type="button">Сохранить</button><button class="btn-clear" id="clearDashboardApiKey" type="button">Очистить</button></div>
-            <div class="credential-status" id="statusDashboardApiKey"></div>
+          <div class="broker-tabs" id="brokerTabs">
+            <button class="broker-tab active" data-broker="tinkoff" type="button">
+              <span class="broker-tab-dot" id="brokerDotTinkoff"></span>T-Bank
+            </button>
+            <button class="broker-tab" data-broker="bybit" type="button">
+              <span class="broker-tab-dot" id="brokerDotBybit"></span>Bybit
+            </button>
+            <button class="broker-tab broker-tab-future" data-broker="finam" type="button">Finam <span class="broker-tab-soon">soon</span></button>
           </div>
-          <div class="credential-group">
-            <div class="credential-label">Tinkoff Account ID</div>
-            <div class="credential-input-row">
-              <input type="password" id="inputTinkoffAccountId" class="credential-input" autocomplete="new-password" />
-              <button class="btn-eye" id="eyeTinkoffAccountId" type="button">👁</button>
+
+          <!-- Tinkoff / T-Bank -->
+          <div class="broker-panel" id="brokerPanel-tinkoff">
+            <div class="settings-rows" id="tinkoffInfoRows"></div>
+            <div class="credential-group">
+              <div class="credential-label">T-Bank / Tinkoff API Token</div>
+              <div class="credential-input-row">
+                <input type="password" id="inputTinkoffToken" class="credential-input" placeholder="t.xxx…" autocomplete="new-password" />
+                <button class="btn-eye" id="eyeTinkoffToken" type="button" title="Toggle visibility">
+                  <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M1 7s2-4 6-4 6 4 6 4-2 4-6 4-6-4-6-4z"/><circle cx="7" cy="7" r="1.5"/></svg>
+                </button>
+              </div>
+              <div class="credential-actions"><button class="btn btn-sm btn-secondary" id="saveTinkoffToken" type="button">Save</button><button class="btn btn-sm btn-ghost" id="clearTinkoffToken" type="button">Clear</button></div>
+              <div class="credential-status" id="statusTinkoffToken"></div>
             </div>
-            <div class="credential-actions"><button class="btn-save" id="saveTinkoffAccountId" type="button">Сохранить</button><button class="btn-clear" id="clearTinkoffAccountId" type="button">Очистить</button></div>
-            <div class="credential-status" id="statusTinkoffAccountId"></div>
+            <div class="credential-group">
+              <div class="credential-label">Account ID</div>
+              <div class="credential-input-row">
+                <input type="password" id="inputTinkoffAccountId" class="credential-input" autocomplete="new-password" />
+                <button class="btn-eye" id="eyeTinkoffAccountId" type="button" title="Toggle visibility">
+                  <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M1 7s2-4 6-4 6 4 6 4-2 4-6 4-6-4-6-4z"/><circle cx="7" cy="7" r="1.5"/></svg>
+                </button>
+              </div>
+              <div class="credential-actions"><button class="btn btn-sm btn-secondary" id="saveTinkoffAccountId" type="button">Save</button><button class="btn btn-sm btn-ghost" id="clearTinkoffAccountId" type="button">Clear</button></div>
+              <div class="credential-status" id="statusTinkoffAccountId"></div>
+            </div>
+            <div class="credential-group">
+              <div class="credential-label">Dashboard API Key</div>
+              <div class="credential-input-row">
+                <input type="password" id="inputDashboardApiKey" class="credential-input" autocomplete="off" />
+                <button class="btn-eye" id="eyeDashboardApiKey" type="button" title="Toggle visibility">
+                  <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M1 7s2-4 6-4 6 4 6 4-2 4-6 4-6-4-6-4z"/><circle cx="7" cy="7" r="1.5"/></svg>
+                </button>
+              </div>
+              <div class="credential-actions"><button class="btn btn-sm btn-secondary" id="saveDashboardApiKey" type="button">Save</button><button class="btn btn-sm btn-ghost" id="clearDashboardApiKey" type="button">Clear</button></div>
+              <div class="credential-status" id="statusDashboardApiKey"></div>
+            </div>
+          </div>
+
+          <!-- Bybit -->
+          <div class="broker-panel" id="brokerPanel-bybit" style="display:none">
+            <div class="settings-rows">
+              <div class="settings-row"><span class="settings-key">Network</span><span class="settings-val">Mainnet / Testnet via .env</span></div>
+            </div>
+            <div class="credential-group">
+              <div class="credential-label">Bybit API Key</div>
+              <div class="credential-input-row">
+                <input type="password" id="inputBybitApiKey" class="credential-input" autocomplete="new-password" />
+                <button class="btn-eye" id="eyeBybitApiKey" type="button" title="Toggle visibility">
+                  <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M1 7s2-4 6-4 6 4 6 4-2 4-6 4-6-4-6-4z"/><circle cx="7" cy="7" r="1.5"/></svg>
+                </button>
+              </div>
+              <div class="credential-actions"><button class="btn btn-sm btn-secondary" id="saveBybitApiKey" type="button">Save</button><button class="btn btn-sm btn-ghost" id="clearBybitApiKey" type="button">Clear</button></div>
+              <div class="credential-status" id="statusBybitApiKey"></div>
+            </div>
+            <div class="credential-group">
+              <div class="credential-label">Bybit API Secret</div>
+              <div class="credential-input-row">
+                <input type="password" id="inputBybitApiSecret" class="credential-input" autocomplete="new-password" />
+                <button class="btn-eye" id="eyeBybitApiSecret" type="button" title="Toggle visibility">
+                  <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M1 7s2-4 6-4 6 4 6 4-2 4-6 4-6-4-6-4z"/><circle cx="7" cy="7" r="1.5"/></svg>
+                </button>
+              </div>
+              <div class="credential-actions"><button class="btn btn-sm btn-secondary" id="saveBybitApiSecret" type="button">Save</button><button class="btn btn-sm btn-ghost" id="clearBybitApiSecret" type="button">Clear</button></div>
+              <div class="credential-status" id="statusBybitApiSecret"></div>
+            </div>
+          </div>
+
+          <!-- Future brokers placeholder -->
+          <div class="broker-panel" id="brokerPanel-finam" style="display:none">
+            <div class="qf-empty empty-state" style="padding:32px 24px">
+              <div class="qf-empty-title" style="font-size:14px">Finam integration coming soon</div>
+              <div class="qf-empty-desc">MOEX equities · FIX protocol · Scheduled Q4 2026</div>
+            </div>
           </div>
         </div>
       </div>
@@ -537,6 +605,114 @@
     </section>
 
     <!-- ── MINI APP (Quant Hunter) — inline embed, no iframe ── -->
+    <!-- ── LEARNING ── -->
+    <section id="view-learning" class="view">
+      <div class="section-header">
+        <div>
+          <h2 class="section-title">Learning System</h2>
+          <div class="section-subtitle">Autonomous sandbox — live learning intelligence</div>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <span id="learningStatusBadge" class="badge badge-warn">Connecting…</span>
+          <button class="btn btn-sm" id="btnRunCycle" type="button" title="Force full learning cycle">Run Cycle</button>
+        </div>
+      </div>
+
+      <!-- Hero metrics -->
+      <div class="metrics-grid" id="learningHero">
+        <div class="metric-card">
+          <div class="metric-label">Strategies</div>
+          <div class="metric-value" id="lrnStrategies">—</div>
+          <div class="metric-sub">in belief system</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">Avg Confidence</div>
+          <div class="metric-value" id="lrnAvgConf">—</div>
+          <div class="metric-sub">across strategies</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">Active Hypotheses</div>
+          <div class="metric-value positive" id="lrnHypActive">—</div>
+          <div class="metric-sub">influencing trades</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">Trades Evaluated</div>
+          <div class="metric-value" id="lrnEvaluated">—</div>
+          <div class="metric-sub">with quality score</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">Avg Decision Quality</div>
+          <div class="metric-value" id="lrnAvgQuality">—</div>
+          <div class="metric-sub">0 = poor · 1 = perfect</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">Total Trades</div>
+          <div class="metric-value" id="lrnTotalTrades">—</div>
+          <div class="metric-sub">in learning memory</div>
+        </div>
+      </div>
+
+      <!-- Strategy beliefs table -->
+      <div class="card" style="margin-top:20px">
+        <div class="card-header">
+          <span class="card-title">Strategy Beliefs</span>
+          <span class="badge badge-info" id="lrnStratBadge">loading…</span>
+        </div>
+        <div class="table-wrap">
+          <table class="data-table" id="lrnStratTable">
+            <thead>
+              <tr>
+                <th>Strategy</th>
+                <th class="num">Confidence</th>
+                <th class="num">Win Rate</th>
+                <th class="num">Trades</th>
+                <th class="num">Profit Factor</th>
+                <th class="num">Expectancy</th>
+                <th>Best Regime</th>
+                <th>Updated</th>
+              </tr>
+            </thead>
+            <tbody id="lrnStratBody">
+              <tr><td colspan="8" class="table-empty">Loading…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Hypothesis lifecycle -->
+      <div class="card" style="margin-top:20px">
+        <div class="card-header">
+          <span class="card-title">Hypothesis Lifecycle</span>
+          <div style="display:flex;gap:6px">
+            <button class="btn btn-sm lrn-hyp-filter active" data-stage="" type="button">All</button>
+            <button class="btn btn-sm lrn-hyp-filter" data-stage="active" type="button">Active</button>
+            <button class="btn btn-sm lrn-hyp-filter" data-stage="candidate" type="button">Candidate</button>
+            <button class="btn btn-sm lrn-hyp-filter" data-stage="observation" type="button">Observation</button>
+            <button class="btn btn-sm lrn-hyp-filter" data-stage="rejected" type="button">Rejected</button>
+          </div>
+        </div>
+        <div id="lrnHypGrid" class="learning-hyp-grid">
+          <div class="table-empty">Loading hypotheses…</div>
+        </div>
+      </div>
+
+      <!-- Decision quality stream -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:20px">
+        <div class="card">
+          <div class="card-header"><span class="card-title">Decision Quality — Recent Trades</span></div>
+          <div id="lrnDecisionList" class="learning-decision-list">
+            <div class="table-empty">Loading…</div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header"><span class="card-title">Skipped Signals</span></div>
+          <div id="lrnSkippedList" class="learning-skipped-list">
+            <div class="table-empty">Loading…</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
     <section id="view-miniapp" class="view view--fullscreen ma-embed">
       <div id="app" class="ma-root miniapp-shell responsive-container">
         <header class="ma-header holo-panel">
@@ -663,19 +839,20 @@
   </main>
 </div>
 
-<script src="{{ url_for('static', filename='components.js') }}?v=6"></script>
-<script src="{{ url_for('static', filename='charts.js') }}?v=6"></script>
-<script src="{{ url_for('static', filename='core/format.js') }}?v=6"></script>
-<script src="{{ url_for('static', filename='core/api.js') }}?v=6"></script>
-<script src="{{ url_for('static', filename='core/store.js') }}?v=6"></script>
-<script src="{{ url_for('static', filename='core/assets.js') }}?v=6"></script>
-<script src="{{ url_for('static', filename='core/sync.js') }}?v=6"></script>
-<script src="{{ url_for('static', filename='core/layout.js') }}?v=6"></script>
-<script src="{{ url_for('static', filename='views/render.js') }}?v=6"></script>
-<script src="{{ url_for('static', filename='miniapp/game.js') }}?v=6"></script>
-<script src="{{ url_for('static', filename='miniapp/miniapp.js') }}?v=6"></script>
-<script src="{{ url_for('static', filename='app.js') }}?v=6"></script>
-<script src="{{ url_for('static', filename='platform.js') }}?v=6"></script>
-<script src="{{ url_for('static', filename='core/enhance.js') }}?v=6"></script>
+<script src="{{ url_for('static', filename='components.js') }}?v=13"></script>
+<script src="{{ url_for('static', filename='charts.js') }}?v=13"></script>
+<script src="{{ url_for('static', filename='core/format.js') }}?v=13"></script>
+<script src="{{ url_for('static', filename='core/api.js') }}?v=13"></script>
+<script src="{{ url_for('static', filename='core/store.js') }}?v=13"></script>
+<script src="{{ url_for('static', filename='core/assets.js') }}?v=13"></script>
+<script src="{{ url_for('static', filename='core/sync.js') }}?v=13"></script>
+<script src="{{ url_for('static', filename='core/layout.js') }}?v=13"></script>
+<script src="{{ url_for('static', filename='views/render.js') }}?v=13"></script>
+<script src="{{ url_for('static', filename='miniapp/game.js') }}?v=13"></script>
+<script src="{{ url_for('static', filename='miniapp/miniapp.js') }}?v=13"></script>
+<script src="{{ url_for('static', filename='app.js') }}?v=13"></script>
+<script src="{{ url_for('static', filename='platform.js') }}?v=13"></script>
+<script src="{{ url_for('static', filename='views/learning.js') }}?v=14"></script>
+<script src="{{ url_for('static', filename='core/enhance.js') }}?v=13"></script>
 </body>
 </html>

@@ -292,8 +292,9 @@ CREATE TABLE IF NOT EXISTS hypotheses (
     updated_at      TIMESTAMPTZ     DEFAULT NOW()
 );
 
-CREATE INDEX IF NOT EXISTS idx_hypotheses_stage  ON hypotheses (stage);
-CREATE INDEX IF NOT EXISTS idx_hypotheses_market ON hypotheses (market);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_hypotheses_desc   ON hypotheses (description);
+CREATE INDEX        IF NOT EXISTS idx_hypotheses_stage  ON hypotheses (stage);
+CREATE INDEX        IF NOT EXISTS idx_hypotheses_market ON hypotheses (market);
 
 -- ── Seed belief_system strategies (idempotent) ───────────────────────────────
 INSERT INTO belief_system (strategy_id, strategy_name, market, description)

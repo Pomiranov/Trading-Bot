@@ -71,6 +71,13 @@ try:
     init_platform_routes(_engine)
     app.register_blueprint(platform_bp)
 
+    # ── Seed knowledge-base rules as initial hypotheses ───────────────────────
+    try:
+        from learning.knowledge_seeder import seed_knowledge_hypotheses
+        seed_knowledge_hypotheses(_engine)
+    except Exception as _seed_exc:
+        logger.warning("Dashboard: knowledge seeding failed: %s", _seed_exc)
+
     # ── Autonomous sandbox: attach learning loop to paper engine ──────────────
     try:
         from engine.paper_engine import paper_engine

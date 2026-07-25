@@ -35,32 +35,46 @@ const QFRender = (() => {
   /* ── Dashboard ── */
   function dashboard(state) {
     const { overview, portfolio, stats, positions, signals, equity } = state;
-    if (!overview) return;
 
-    const cur = overview.currency === 'USDT' ? 'USDT' : '₽';
-    const src = document.getElementById('heroSource');
-    if (src) {
-      src.textContent = sourceLabel(portfolio?.source);
-      src.className = 'badge ' + (portfolio?.source === 'paper' ? 'badge-warn' : 'badge-buy');
+    // overview is one of several independent API calls (see QFSync.fullSync) —
+    // if only it fails, the rest of this function must still render whatever
+    // portfolio/stats/equity/signals data did come back, instead of leaving
+    // every card stuck on its loading skeleton.
+    if (overview) {
+      const cur = overview.currency === 'USDT' ? 'USDT' : '₽';
+      const src = document.getElementById('heroSource');
+      if (src) {
+        src.textContent = sourceLabel(portfolio?.source);
+        src.className = 'badge ' + (portfolio?.source === 'paper' ? 'badge-warn' : 'badge-buy');
+      }
+
+      const bal = document.getElementById('metPortfolio');
+      if (bal) { bal.className = 'hero-value neutral'; animateValue(bal, overview.balance, v => QFFmt.money(v, cur)); }
+
+      const trades = document.getElementById('metTrades');
+      if (trades) trades.textContent = `${overview.open_trades} открытых · ${overview.closed_trades} закрытых`;
+
+      const pnl = document.getElementById('metPnl');
+      if (pnl) { animateValue(pnl, overview.pnl_day, v => (v >= 0 ? '+' : '') + QFFmt.money(v)); applyColor(pnl, overview.pnl_day); }
+
+      const pnlPct = document.getElementById('metPnlPct');
+      if (pnlPct) pnlPct.textContent = `${overview.signals_new} новых сигналов`;
+
+      renderBrokers(overview.brokers);
+      renderSystem(overview.system, overview.websocket_status);
+      renderRecent('recentTradesList', overview.recent_trades, t =>
+        `<div class="recent-item"><span class="recent-ticker">${t.ticker}</span><span class="${QFFmt.colorClass(t.pnl)}">${QFFmt.num(t.pnl)}</span></div>`);
+      renderRecent('recentSignalsList', overview.recent_signals, s =>
+        `<div class="recent-item"><span class="recent-ticker">${s.asset}</span>${QFUI.badge(s.signal_type)}</div>`);
+      renderRecent('recentErrorsList', overview.recent_errors, e =>
+        `<div class="recent-item">${QFUI.logBadge(e.level)}<span class="log-msg">${(e.message || '').slice(0, 40)}</span></div>`);
     }
-
-    const bal = document.getElementById('metPortfolio');
-    if (bal) { bal.className = 'hero-value neutral'; animateValue(bal, overview.balance, v => QFFmt.money(v, cur)); }
-
-    const trades = document.getElementById('metTrades');
-    if (trades) trades.textContent = `${overview.open_trades} открытых · ${overview.closed_trades} закрытых`;
-
-    const pnl = document.getElementById('metPnl');
-    if (pnl) { animateValue(pnl, overview.pnl_day, v => (v >= 0 ? '+' : '') + QFFmt.num(v)); applyColor(pnl, overview.pnl_day); }
-
-    const pnlPct = document.getElementById('metPnlPct');
-    if (pnlPct) pnlPct.textContent = `${overview.signals_new} новых сигналов`;
 
     if (portfolio) {
       ['dashPnlWeek', 'dashPnlMonth'].forEach((id, i) => {
         const el = document.getElementById(id);
         const v = i === 0 ? portfolio.pnl_week : portfolio.pnl_month;
-        if (el) { el.textContent = QFFmt.pct(v); applyColor(el, v); }
+        if (el) { el.textContent = (v >= 0 ? '+' : '') + QFFmt.money(v); applyColor(el, v); }
       });
       if (portfolio.equity_history?.length) {
         QFChart.line('heroSparkline', portfolio.equity_history.map(h => ({ time: h.ts, value: h.equity })), { color: '#F7931A', fill: 'rgba(247,147,26,0.15)' });
@@ -69,22 +83,23 @@ const QFRender = (() => {
     }
 
     if (stats) {
+      const ddVal = stats.max_drawdown != null ? Math.abs(stats.max_drawdown) : null;
       const dd = document.getElementById('metDrawdown');
-      if (dd && stats.max_drawdown != null) { dd.textContent = QFFmt.pct(-Math.abs(stats.max_drawdown)); applyColor(dd, -stats.max_drawdown); }
+      if (dd && ddVal != null) {
+        dd.textContent = '-' + ddVal.toFixed(1) + '%';
+        applyColor(dd, -ddVal);
+        // Update gauge color — green <5%, orange 5-15%, red >15%
+        const gauge = dd.closest('.qf-gauge');
+        if (gauge) {
+          gauge.style.setProperty('--gauge-value', Math.min(ddVal * 5, 100));
+          gauge.style.setProperty('--gauge-color', ddVal < 5 ? 'var(--qf-long)' : ddVal < 15 ? 'var(--qf-accent)' : 'var(--qf-short)');
+        }
+      }
       const wr = document.getElementById('metWinRate');
-      if (wr && stats.win_rate != null) wr.textContent = 'Win rate ' + QFFmt.num(stats.win_rate) + '%';
+      if (wr && stats.win_rate != null) wr.textContent = 'Win ' + stats.win_rate.toFixed(1) + '%';
       const sh = document.getElementById('metSharpe');
-      if (sh && stats.sharpe_ratio != null) { sh.textContent = QFFmt.num(stats.sharpe_ratio); sh.className = 'metric-value ' + QFFmt.colorClass(stats.sharpe_ratio); }
+      if (sh && stats.sharpe_ratio != null) { sh.textContent = stats.sharpe_ratio.toFixed(2); sh.className = 'metric-value ' + QFFmt.colorClass(stats.sharpe_ratio); }
     }
-
-    renderBrokers(overview.brokers);
-    renderSystem(overview.system, overview.websocket_status);
-    renderRecent('recentTradesList', overview.recent_trades, t =>
-      `<div class="recent-item"><span class="recent-ticker">${t.ticker}</span><span class="${QFFmt.colorClass(t.pnl)}">${QFFmt.num(t.pnl)}</span></div>`);
-    renderRecent('recentSignalsList', overview.recent_signals, s =>
-      `<div class="recent-item"><span class="recent-ticker">${s.asset}</span>${QFUI.badge(s.signal_type)}</div>`);
-    renderRecent('recentErrorsList', overview.recent_errors, e =>
-      `<div class="recent-item">${QFUI.logBadge(e.level)}<span class="log-msg">${(e.message || '').slice(0, 40)}</span></div>`);
 
     renderDashboardPositions(positions);
     renderDashboardSignals(signals);
@@ -128,8 +143,8 @@ const QFRender = (() => {
         <td class="ts-cell">${QFFmt.ts(s.generated_at)}</td>
         <td class="ticker-cell">${s.asset}</td>
         <td>${QFUI.badge(s.signal_type)}</td>
-        <td class="price-cell">${QFFmt.num(s.entry_price)}</td>
-        <td>${s.probability_pct ?? '—'}%</td>
+        <td class="price-cell num">${QFFmt.num(s.entry_price)}</td>
+        <td class="num">${s.probability_pct ?? '—'}%</td>
       </tr>`).join('');
     const su = document.getElementById('signalsUpdated');
     if (su) su.textContent = new Date().toLocaleTimeString('ru-RU', { hour12: false });
@@ -139,7 +154,7 @@ const QFRender = (() => {
     if (!portfolio || typeof setRiskBar !== 'function') return;
     const balance = portfolio.total_balance || 1;
     const unreal = portfolio.unrealized_pnl || 0;
-    setRiskBar('riskDailyBar', 'riskDailyVal', Math.min(Math.abs(unreal) / balance * 100, 100), (unreal >= 0 ? '+' : '') + QFFmt.num(unreal), 25, 50);
+    setRiskBar('riskDailyBar', 'riskDailyVal', Math.min(Math.abs(unreal) / balance * 100, 100), (unreal >= 0 ? '+' : '') + QFFmt.money(unreal), 25, 50);
     const dd = Math.abs(stats?.max_drawdown || 0);
     setRiskBar('riskDdBar', 'riskDdVal', Math.min(dd, 100), QFFmt.pct(-dd), 10, 20);
     const maxPos = window._maxOpenPositions || 10;
@@ -201,8 +216,10 @@ const QFRender = (() => {
       const metrics = [
         ['Баланс', QFFmt.money(p.total_balance), ''], ['Доступно', QFFmt.money(p.available_funds), ''],
         ['Маржа', QFFmt.money(p.margin_used), ''], ['PnL', (p.total_pnl >= 0 ? '+' : '') + QFFmt.money(p.total_pnl), QFFmt.colorClass(p.total_pnl)],
-        ['День', QFFmt.pct(p.pnl_day), QFFmt.colorClass(p.pnl_day)], ['Неделя', QFFmt.pct(p.pnl_week), QFFmt.colorClass(p.pnl_week)],
-        ['Месяц', QFFmt.pct(p.pnl_month), QFFmt.colorClass(p.pnl_month)], ['ROI', QFFmt.pct(p.roi), QFFmt.colorClass(p.roi)],
+        ['День', (p.pnl_day >= 0 ? '+' : '') + QFFmt.money(p.pnl_day), QFFmt.colorClass(p.pnl_day)],
+        ['Неделя', (p.pnl_week >= 0 ? '+' : '') + QFFmt.money(p.pnl_week), QFFmt.colorClass(p.pnl_week)],
+        ['Месяц', (p.pnl_month >= 0 ? '+' : '') + QFFmt.money(p.pnl_month), QFFmt.colorClass(p.pnl_month)],
+        ['ROI', QFFmt.pct(p.roi), QFFmt.colorClass(p.roi)],
         ['Unrealized', QFFmt.money(unrealized), QFFmt.colorClass(unrealized)],
         ['Позиций', posCount, ''], ['Сделок', p.closed_trades_count, ''],
       ];
@@ -358,8 +375,18 @@ const QFRender = (() => {
       return;
     }
 
+    // Count how many raw signals exist per asset key for the count badge
+    const countPerKey = new Map();
+    for (const s of data) {
+      const key = `${s.asset}|${s.exchange}`;
+      countPerKey.set(key, (countPerKey.get(key) || 0) + 1);
+    }
     const cards = latestPerAsset(data);
-    if (grid) grid.innerHTML = cards.slice(0, 16).map(s => QFUI.signalCard(s)).join('');
+    if (grid) grid.innerHTML = cards.slice(0, 16).map(s => {
+      const key = `${s.asset}|${s.exchange}`;
+      const cnt = countPerKey.get(key) || 1;
+      return QFUI.signalCard(s, true, cnt > 1 ? cnt : 0);
+    }).join('');
     if (tbody) {
       tbody.innerHTML = data.map(s => {
         const tp1 = s.take_profit_1 ? QFFmt.num(s.take_profit_1) : '—';
@@ -370,13 +397,14 @@ const QFRender = (() => {
           : tp1;
         const rr = s.risk_reward ? Number(s.risk_reward).toFixed(1) + 'R' : '—';
         const prob = s.probability_pct != null ? `${s.probability_pct}%` : '—';
-        const statusClass = { new: 'badge-info', executing: 'badge-warn', done: 'badge-buy', expired: 'badge-hold', cancelled: 'badge-error' }[s.status] || 'badge-hold';
+        const statusClass = { new: 'badge-info', executing: 'badge-warn', done: 'badge-buy', filled: 'badge-buy', expired: 'badge-hold', cancelled: 'badge-error' }[(s.status || '').toLowerCase()] || 'badge-hold';
         return `<tr>
           <td class="ticker-cell">${s.asset}</td><td>${s.exchange}</td><td>${s.source || '—'}</td>
-          <td>${QFUI.badge(s.signal_type)}</td><td class="price-cell">${QFFmt.num(s.entry_price)}</td>
-          <td class="price-cell negative">${s.stop_loss ? QFFmt.num(s.stop_loss) : '—'}</td>
-          <td class="price-cell positive">${tpCell}</td>
-          <td class="price-cell">${rr}</td><td>${prob}</td>
+          <td>${QFUI.badge(s.signal_type)}</td>
+          <td class="price-cell num">${QFFmt.num(s.entry_price)}</td>
+          <td class="price-cell num negative">${s.stop_loss ? QFFmt.num(s.stop_loss) : '—'}</td>
+          <td class="price-cell num positive">${tpCell}</td>
+          <td class="num">${rr}</td><td class="num">${prob}</td>
           <td class="ts-cell">${QFFmt.ts(s.generated_at)}</td>
           <td><span class="badge ${statusClass}">${s.status}</span></td>
           <td><button class="btn btn-sm btn-ghost" onclick="executeSignal(${s.id})" title="Execute as paper trade">▶</button></td>
@@ -410,6 +438,7 @@ const QFRender = (() => {
     if (currentView === 'dashboard') dashboard(s);
     else if (currentView === 'portfolio') portfolio(s);
     else if (currentView === 'signals') signals(s);
+    else viewHandlers[currentView]?.();
   }
 
   return { dashboard, portfolio, signals, backtestMetrics, refreshCurrentView, filterSignals, renderAssetPanel, animateValue, applyColor };

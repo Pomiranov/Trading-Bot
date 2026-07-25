@@ -6,11 +6,16 @@ const PAGE_TITLES = {
   signals: ['Signals', 'Center · Live'],
   backtest: ['Backtest', 'Simulation · Analytics'],
   analytics: ['Analytics', 'Performance · Risk · History'],
+  learning: ['Learning', 'Autonomous · AI · Sandbox'],
   settings: ['Settings', 'Configuration'],
   miniapp: ['Quant Hunter', 'Cryptonite · Mini App'],
 };
 
-const KEY_VIEWS = { '1': 'dashboard', '2': 'portfolio', '3': 'signals', '4': 'backtest', '5': 'miniapp', '6': 'analytics' };
+const KEY_VIEWS = {
+  '1': 'dashboard', '2': 'portfolio', '3': 'signals',
+  '4': 'backtest',  '5': 'miniapp',  '6': 'analytics',
+  '7': 'learning',  '8': 'settings',
+};
 const TICKER_COLORS = { SBER: '#F7931A', GAZP: '#3861fb', LKOH: '#00c076', NVTK: '#f6465d', YNDX: '#8b5cf6' };
 
 const fmt = new Intl.NumberFormat('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -20,7 +25,7 @@ const _ESC_MAP = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '
 function esc(s) { return String(s ?? '').replace(/[&<>"']/g, c => _ESC_MAP[c]); }
 
 function money(v) { return fmt.format(v) + ' ₽'; }
-function pct(v) { return (v >= 0 ? '+' : '') + fmt.format(v) + '%'; }
+function pct(v) { return QFFmt.pct(v); }
 function colorClass(v) { return v > 0 ? 'positive' : v < 0 ? 'negative' : 'neutral'; }
 
 function applyColor(el, v) {
@@ -122,9 +127,12 @@ function showView(name) {
   document.querySelectorAll('.view').forEach(v =>
     v.classList.toggle('active', v.id === `view-${name}`)
   );
-  document.querySelectorAll('.sidebar-nav a[data-view], .nav a[data-view]').forEach(a =>
-    a.classList.toggle('active', a.dataset.view === name)
-  );
+  document.querySelectorAll('.sidebar-nav a[data-view], .nav a[data-view]').forEach(a => {
+    const isActive = a.dataset.view === name;
+    a.classList.toggle('active', isActive);
+    if (isActive) a.setAttribute('aria-current', 'page');
+    else a.removeAttribute('aria-current');
+  });
   currentView = name;
 
   if (name === 'miniapp') {
@@ -254,8 +262,8 @@ async function loadSignals() {
   }
   tbody.innerHTML = data.slice(0, 20).map(r => `
     <tr><td class="ts-cell">${esc(r.ts)}</td><td class="ticker-cell">${esc(r.ticker)}</td>
-    <td>${badgeHTML(r.action)}</td><td class="price-cell">${fmt.format(r.price)}</td>
-    <td>${fmt.format(r.score)}</td></tr>`).join('');
+    <td>${badgeHTML(r.action)}</td><td class="price-cell num">${fmt.format(r.price)}</td>
+    <td class="num">${fmt.format(r.score)}</td></tr>`).join('');
   const su = document.getElementById('signalsUpdated');
   if (su) su.textContent = new Date().toLocaleTimeString('ru-RU', { hour12: false });
 }
@@ -360,7 +368,7 @@ function initCredentialField(inputId, eyeId, saveId, clearId, statusId, envKey) 
   eye?.addEventListener('click', () => {
     visible = !visible;
     input.type = visible ? 'text' : 'password';
-    if (eye) eye.textContent = visible ? '🙈' : '👁';
+    if (eye) eye.classList.toggle('active', visible);
   });
   async function persist(value) {
     if (save) save.disabled = true;
@@ -390,6 +398,22 @@ function initCredentialField(inputId, eyeId, saveId, clearId, statusId, envKey) 
 
 initCredentialField('inputTinkoffToken', 'eyeTinkoffToken', 'saveTinkoffToken', 'clearTinkoffToken', 'statusTinkoffToken', 'TINKOFF_TOKEN');
 initCredentialField('inputTinkoffAccountId', 'eyeTinkoffAccountId', 'saveTinkoffAccountId', 'clearTinkoffAccountId', 'statusTinkoffAccountId', 'TINKOFF_ACCOUNT_ID');
+initCredentialField('inputBybitApiKey', 'eyeBybitApiKey', 'saveBybitApiKey', 'clearBybitApiKey', 'statusBybitApiKey', 'BYBIT_API_KEY');
+initCredentialField('inputBybitApiSecret', 'eyeBybitApiSecret', 'saveBybitApiSecret', 'clearBybitApiSecret', 'statusBybitApiSecret', 'BYBIT_API_SECRET');
+
+// Broker tab switching
+(function initBrokerTabs() {
+  const tabs = document.querySelectorAll('.broker-tab[data-broker]');
+  tabs.forEach(tab => {
+    tab.addEventListener('click', () => {
+      const broker = tab.dataset.broker;
+      tabs.forEach(t => t.classList.toggle('active', t === tab));
+      document.querySelectorAll('.broker-panel').forEach(p => {
+        p.style.display = p.id === `brokerPanel-${broker}` ? '' : 'none';
+      });
+    });
+  });
+})();
 
 (function initDashboardApiKeyField() {
   const input = document.getElementById('inputDashboardApiKey');
@@ -404,7 +428,7 @@ initCredentialField('inputTinkoffAccountId', 'eyeTinkoffAccountId', 'saveTinkoff
   eye?.addEventListener('click', () => {
     visible = !visible;
     input.type = visible ? 'text' : 'password';
-    eye.textContent = visible ? '🙈' : '👁';
+    if (eye) eye.classList.toggle('active', visible);
   });
   save?.addEventListener('click', () => {
     sessionStorage.setItem('dashboard_api_key', input.value.trim());
@@ -422,14 +446,23 @@ initCredentialField('inputTinkoffAccountId', 'eyeTinkoffAccountId', 'saveTinkoff
 async function loadTokenStatus() {
   try {
     const d = await fetchJSON('/api/settings/tokens');
-    ['statusTinkoffToken', 'statusTinkoffAccountId'].forEach((id, i) => {
+    const pairs = [
+      ['statusTinkoffToken', d.has_tinkoff_token],
+      ['statusTinkoffAccountId', d.has_tinkoff_account_id],
+    ];
+    pairs.forEach(([id, ok]) => {
       const el = document.getElementById(id);
-      const ok = i === 0 ? d.has_tinkoff_token : d.has_tinkoff_account_id;
       if (el && !el.textContent) {
-        el.textContent = ok ? '● Настроен' : '○ Не задан';
+        el.textContent = ok ? '● Configured' : '○ Not set';
         el.className = 'credential-status ' + (ok ? 'cred-set' : 'cred-err');
       }
     });
+    // Update broker status dots
+    const tinkoffOk = d.has_tinkoff_token && d.has_tinkoff_account_id;
+    const dot = document.getElementById('brokerDotTinkoff');
+    if (dot) dot.className = 'broker-tab-dot ' + (tinkoffOk ? 'online' : 'offline');
+    const bybitDot = document.getElementById('brokerDotBybit');
+    if (bybitDot) bybitDot.className = 'broker-tab-dot'; // will check bybit separately when API supports it
   } catch (_) {}
 }
 
@@ -496,7 +529,11 @@ async function loadAnalytics() {
         const el = document.getElementById(id);
         if (!el) return;
         el.textContent = val;
-        if (cls) el.className = 'metric-value ' + cls;
+        if (cls) {
+          // preserve base class (qf-strip-value, metric-value, etc.), swap only color
+          const base = (el.className || 'metric-value').replace(/\b(positive|negative|neutral)\b/g, '').trim() || 'metric-value';
+          el.className = base + ' ' + cls;
+        }
       };
       const colorClass = (v) => v > 0 ? 'positive' : v < 0 ? 'negative' : 'neutral';
       set('anTotalTrades', stats.total_trades ?? '—');
@@ -521,24 +558,38 @@ async function loadAnalytics() {
       }
     }
 
-    // Monthly P&L chart using ECharts
-    if (monthly_pnl?.length && typeof echarts !== 'undefined') {
-      const existing = echarts.getInstanceByDom(document.getElementById('analyticsMonthlyChart'));
-      if (existing) existing.dispose();
-      const chart = echarts.init(document.getElementById('analyticsMonthlyChart'), 'dark');
-      chart.setOption({
-        backgroundColor: 'transparent',
-        grid: { top: 20, right: 10, bottom: 30, left: 60 },
-        xAxis: { type: 'category', data: monthly_pnl.map(m => m.month), axisLabel: { color: '#848e9c', fontSize: 11 } },
-        yAxis: { type: 'value', axisLabel: { color: '#848e9c', fontSize: 11, formatter: v => (v/1000).toFixed(0) + 'K' } },
-        series: [{
-          type: 'bar', data: monthly_pnl.map(m => ({
-            value: m.pnl,
-            itemStyle: { color: m.pnl >= 0 ? '#00c076' : '#f6465d' }
-          }))
-        }],
-        tooltip: { trigger: 'axis', formatter: p => `${p[0].name}<br/>${p[0].value >= 0 ? '+' : ''}${p[0].value.toFixed(0)} ₽` }
-      });
+    // Monthly P&L — bar chart for ≥2 months, stat tile for single month
+    const monthlyEl = document.getElementById('analyticsMonthlyChart');
+    if (monthlyEl && monthly_pnl?.length) {
+      if (monthly_pnl.length >= 2 && typeof echarts !== 'undefined') {
+        const existing = echarts.getInstanceByDom(monthlyEl);
+        if (existing) existing.dispose();
+        const chart = echarts.init(monthlyEl, 'dark');
+        chart.setOption({
+          backgroundColor: 'transparent',
+          grid: { top: 20, right: 10, bottom: 30, left: 60 },
+          xAxis: { type: 'category', data: monthly_pnl.map(m => m.month), axisLabel: { color: '#848e9c', fontSize: 11 } },
+          yAxis: { type: 'value', axisLabel: { color: '#848e9c', fontSize: 11, formatter: v => (v >= 0 ? '' : '-') + Math.abs(v/1000).toFixed(0) + 'K' } },
+          series: [{
+            type: 'bar', data: monthly_pnl.map(m => ({
+              value: m.pnl,
+              itemStyle: { color: m.pnl >= 0 ? '#00c076' : '#f6465d', borderRadius: [3, 3, 0, 0] }
+            })),
+            barMaxWidth: 40,
+          }],
+          tooltip: { trigger: 'axis', backgroundColor: '#161a22', borderColor: '#2a2e38', textStyle: { color: '#eaecef' }, formatter: p => `${p[0].name}<br/>${p[0].value >= 0 ? '+' : ''}${fmt.format(p[0].value)} ₽` }
+        });
+      } else {
+        // Single month — show as readable stat
+        const m = monthly_pnl[0];
+        const cls = (m.pnl || 0) >= 0 ? 'positive' : 'negative';
+        const sign = (m.pnl || 0) >= 0 ? '+' : '';
+        monthlyEl.innerHTML = `<div style="display:flex;align-items:center;justify-content:center;height:100%;flex-direction:column;gap:8px;padding:20px">
+          <div style="font-size:11px;color:var(--qf-text-muted);text-transform:uppercase;letter-spacing:.06em">${m.month || 'Current Month'}</div>
+          <div style="font-family:var(--qf-font-mono);font-size:28px;font-weight:700;letter-spacing:-.02em" class="${cls}">${sign}${fmt.format(m.pnl || 0)} ₽</div>
+          <div style="font-size:11px;color:var(--qf-text-muted)">${m.trades || 0} сделок</div>
+        </div>`;
+      }
     }
 
     // Daily PnL table
@@ -547,22 +598,33 @@ async function loadAnalytics() {
       dailyBody.innerHTML = (daily_pnl || []).length
         ? [...(daily_pnl || [])].reverse().map(d => {
             const cls = d.pnl >= 0 ? 'positive' : 'negative';
-            return `<tr><td class="ts-cell">${d.day}</td><td class="${cls}">${d.pnl >= 0 ? '+' : ''}${fmt.format(d.pnl)}</td><td>${d.trades}</td></tr>`;
+            return `<tr><td class="ts-cell">${d.day}</td><td class="${cls}">${d.pnl >= 0 ? '+' : ''}${fmt.format(d.pnl)} ₽</td><td>${d.trades}</td></tr>`;
           }).join('')
         : '<tr><td colspan="3" class="empty">Нет данных</td></tr>';
     }
 
-    // Best/worst trades
+    // Best/worst trades — labels adapt to whether all trades are losses
     const renderTrades = (id, trades) => {
       const el = document.getElementById(id);
       if (!el) return;
       el.innerHTML = (trades || []).map(t => {
-        const cls = (t.pnl || 0) >= 0 ? 'positive' : 'negative';
-        return `<div class="recent-item"><span class="recent-ticker">${t.ticker}</span><span class="${cls}">${(t.pnl||0) >= 0 ? '+' : ''}${fmt.format(t.pnl||0)} ₽</span></div>`;
+        const pnl = t.pnl || 0;
+        const cls = pnl >= 0 ? 'positive' : 'negative';
+        return `<div class="recent-item">
+          <span class="recent-ticker">${esc(t.ticker)}</span>
+          <span class="${cls}">${pnl >= 0 ? '+' : ''}${fmt.format(pnl)} ₽</span>
+        </div>`;
       }).join('') || '<div class="empty">—</div>';
     };
-    renderTrades('analyticsBestTrades', best_worst?.best);
-    renderTrades('analyticsWorstTrades', best_worst?.worst);
+    const bestTrades = best_worst?.best || [];
+    const worstTrades = best_worst?.worst || [];
+    // Relabel "Best" when all are negative (no profitable trades)
+    const allBestNegative = bestTrades.length > 0 && bestTrades.every(t => (t.pnl || 0) < 0);
+    const bestHeader = document.querySelector('#analyticsBestTrades')?.closest('.card')?.querySelector('.card-title');
+    if (bestHeader && allBestNegative) bestHeader.textContent = 'Наименьшие убытки';
+    else if (bestHeader) bestHeader.textContent = 'Лучшие сделки';
+    renderTrades('analyticsBestTrades', bestTrades);
+    renderTrades('analyticsWorstTrades', worstTrades);
 
     // Closed trades history table
     const tradesData = await QFApi.paperTrades(30).catch(() => ({ trades: [] }));
@@ -577,12 +639,12 @@ async function loadAnalytics() {
         return `<tr>
           <td class="ticker-cell">${t.ticker}</td>
           <td>${QFUI.badge(t.direction)}</td>
-          <td class="price-cell">${fmt.format(t.entry_price)}</td>
-          <td class="price-cell">${fmt.format(t.exit_price)}</td>
-          <td>${t.quantity}</td>
-          <td class="${cls}">${(t.pnl||0) >= 0 ? '+' : ''}${fmt.format(t.pnl||0)}</td>
-          <td class="${cls}">${((t.pnl_pct||0)*100).toFixed(2)}%</td>
-          <td class="price-cell">${fmt.format(t.commission||0)}</td>
+          <td class="price-cell num">${fmt.format(t.entry_price)}</td>
+          <td class="price-cell num">${fmt.format(t.exit_price)}</td>
+          <td class="num">${t.quantity}</td>
+          <td class="num ${cls}">${(t.pnl||0) >= 0 ? '+' : ''}${fmt.format(t.pnl||0)} ₽</td>
+          <td class="num ${cls}">${((t.pnl_pct||0)*100).toFixed(2)}%</td>
+          <td class="price-cell num">${fmt.format(t.commission||0)} ₽</td>
           <td><span class="badge ${reasonBadge}">${t.close_reason || 'manual'}</span></td>
           <td class="ts-cell">${(t.closed_at || '').slice(0, 16)}</td>
         </tr>`;
@@ -628,7 +690,7 @@ window.setRiskBar = setRiskBar;
 
     const item = document.createElement('div');
     item.className = 'paper-feed-item';
-    item.innerHTML = `<span class="badge ${cls}">${action}</span><span class="feed-ticker">${ticker}</span><span class="feed-price">${price}${prob}</span><span class="feed-ts">${ts}</span>`;
+    item.innerHTML = `<span class="badge ${cls}">${esc(action)}</span><span class="feed-ticker">${esc(ticker)}</span><span class="feed-price">${esc(price)}${esc(prob)}</span><span class="feed-ts">${esc(ts)}</span>`;
 
     feed.insertBefore(item, feed.firstChild);
     while (feed.children.length > MAX_ITEMS) feed.removeChild(feed.lastChild);
@@ -651,7 +713,7 @@ window.setRiskBar = setRiskBar;
 
     const item = document.createElement('div');
     item.className = 'paper-feed-item';
-    item.innerHTML = `<span class="badge ${cls}">CLOSE</span><span class="feed-ticker">${ticker}</span><span class="feed-price">P&amp;L ${pnl}</span><span class="feed-ts">${ts} · ${reason}</span>`;
+    item.innerHTML = `<span class="badge ${cls}">CLOSE</span><span class="feed-ticker">${esc(ticker)}</span><span class="feed-price">P&amp;L ${esc(pnl)}</span><span class="feed-ts">${esc(ts)} · ${esc(reason)}</span>`;
 
     feed.insertBefore(item, feed.firstChild);
     while (feed.children.length > MAX_ITEMS) feed.removeChild(feed.lastChild);

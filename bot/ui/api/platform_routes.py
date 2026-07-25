@@ -85,12 +85,16 @@ def api_signals_list():
     err = _require_engine()
     if err:
         return err
+    try:
+        limit = min(max(int(request.args.get("limit", 100) or 100), 1), 1000)
+    except (ValueError, TypeError):
+        limit = 100
     svc = SignalsService(_engine)
     signals = svc.list_signals(
         exchange=request.args.get("exchange"),
         asset_class=request.args.get("asset_class"),
         status=request.args.get("status"),
-        limit=int(request.args.get("limit", 100)),
+        limit=limit,
     )
     return jsonify([to_dict(s) for s in signals])
 
@@ -274,8 +278,11 @@ def api_paper_trades():
     err = _require_engine()
     if err:
         return err
-    limit = int(request.args.get("limit", 50))
-    offset = int(request.args.get("offset", 0))
+    try:
+        limit = min(max(int(request.args.get("limit", 50)), 1), 500)
+        offset = max(int(request.args.get("offset", 0)), 0)
+    except (ValueError, TypeError):
+        return jsonify({"error": "Invalid limit or offset"}), 400
     from sqlalchemy import text
     svc = PaperTradingService(_engine)
     account = svc.get_account()
@@ -428,3 +435,242 @@ def api_sse_stream():
             "Connection": "keep-alive",
         },
     )
+
+
+# ─── Learning API ─────────────────────────────────────────────────────────────
+
+def _db_rows(sql: str, params: dict | None = None) -> list[dict]:
+    """Execute raw SQL and return list of dicts."""
+    from sqlalchemy import text
+    with _engine.connect() as conn:
+        result = conn.execute(text(sql), params or {})
+        cols = list(result.keys())
+        return [
+            {
+                k: (str(v) if hasattr(v, "isoformat") or hasattr(v, "hex") else v)
+                for k, v in zip(cols, row)
+            }
+            for row in result.fetchall()
+        ]
+
+
+@platform_bp.route("/learning/overview")
+def api_learning_overview():
+    """High-level learning system state for the dashboard header."""
+    err = _require_engine()
+    if err:
+        return err
+    try:
+        # Strategy confidence summary
+        strategies = _db_rows("""
+            SELECT strategy_id, confidence, win_rate, total_trades,
+                   profit_factor, expectancy, best_regime, updated_at AS last_updated
+            FROM belief_system
+            ORDER BY confidence DESC
+        """)
+
+        # Active hypotheses count
+        hyp_counts = _db_rows("""
+            SELECT stage, COUNT(*) AS cnt
+            FROM hypotheses
+            GROUP BY stage
+        """)
+        hyp_by_stage = {r["stage"]: int(r["cnt"]) for r in hyp_counts}
+
+        # Recent decision quality
+        quality_rows = _db_rows("""
+            SELECT AVG(decision_quality) AS avg_quality,
+                   COUNT(*) AS evaluated,
+                   MAX(closed_at) AS last_trade
+            FROM trades
+            WHERE decision_quality IS NOT NULL
+              AND closed_at IS NOT NULL
+        """)
+        quality = quality_rows[0] if quality_rows else {}
+
+        # Learning loop status
+        learning_active = False
+        try:
+            from engine.paper_engine import paper_engine
+            status = paper_engine.status()
+            learning_active = status.get("learning_active", False)
+        except Exception:
+            pass
+
+        return jsonify({
+            "learning_active": learning_active,
+            "strategies": strategies,
+            "hypotheses": hyp_by_stage,
+            "decision_quality": {
+                "avg": round(float(quality.get("avg_quality") or 0), 3),
+                "evaluated": int(quality.get("evaluated") or 0),
+                "last_trade": quality.get("last_trade"),
+            },
+            "trades_total": sum(
+                int(s.get("total_trades") or 0) for s in strategies
+            ),
+        })
+    except Exception as exc:
+        logger.warning("learning overview error: %s", exc)
+        return jsonify({"error": str(exc)}), 500
+
+
+@platform_bp.route("/learning/strategies")
+def api_learning_strategies():
+    """All strategies from belief_system with full stats."""
+    err = _require_engine()
+    if err:
+        return err
+    try:
+        rows = _db_rows("""
+            SELECT strategy_id, confidence, win_rate, total_trades,
+                   profit_factor, expectancy, sharpe_ratio,
+                   best_regime, updated_at AS last_updated
+            FROM belief_system
+            ORDER BY confidence DESC, total_trades DESC
+        """)
+        if rows:
+            sids = [r["strategy_id"] for r in rows]
+            history_rows = _db_rows("""
+                SELECT strategy_id, closed_at, confidence
+                FROM (
+                    SELECT strategy_id, closed_at, confidence,
+                           ROW_NUMBER() OVER (PARTITION BY strategy_id ORDER BY closed_at DESC) AS rn
+                    FROM trades
+                    WHERE strategy_id = ANY(:sids)
+                      AND closed_at IS NOT NULL
+                      AND confidence IS NOT NULL
+                ) t
+                WHERE rn <= 20
+                ORDER BY strategy_id, closed_at
+            """, {"sids": sids})
+            history_by_sid: dict = {}
+            for h in history_rows:
+                history_by_sid.setdefault(h["strategy_id"], []).append(
+                    {"ts": h["closed_at"], "value": float(h["confidence"] or 0)}
+                )
+            for row in rows:
+                row["confidence_history"] = history_by_sid.get(row["strategy_id"], [])
+        return jsonify(rows)
+    except Exception as exc:
+        logger.warning("learning strategies error: %s", exc)
+        return jsonify({"error": str(exc)}), 500
+
+
+@platform_bp.route("/learning/hypotheses")
+def api_learning_hypotheses():
+    """Hypothesis lifecycle — all stages with stats."""
+    err = _require_engine()
+    if err:
+        return err
+    try:
+        stage_filter = request.args.get("stage") or None
+
+        rows = _db_rows("""
+            SELECT hypothesis_id, description,
+                   conditions->>'strategy_id' AS strategy_id,
+                   conditions,
+                   stage, win_rate, profit_factor,
+                   total_trades AS sample_size,
+                   created_at, promoted_at, rejected_at,
+                   stat_test_result->>'rejection_reason' AS rejection_reason
+            FROM hypotheses
+            WHERE (:stage IS NULL OR stage = :stage)
+            ORDER BY
+                CASE stage
+                    WHEN 'active' THEN 0
+                    WHEN 'candidate' THEN 1
+                    WHEN 'observation' THEN 2
+                    WHEN 'rejected' THEN 3
+                END,
+                total_trades DESC
+        """, {"stage": stage_filter})
+        return jsonify(rows)
+    except Exception as exc:
+        logger.warning("learning hypotheses error: %s", exc)
+        return jsonify({"error": str(exc)}), 500
+
+
+@platform_bp.route("/learning/decisions")
+def api_learning_decisions():
+    """Recent trade decisions with quality scores."""
+    err = _require_engine()
+    if err:
+        return err
+    try:
+        limit = min(int(request.args.get("limit", 50)), 200)
+        rows = _db_rows("""
+            SELECT trade_id, opened_at, closed_at, ticker, strategy_id,
+                   direction, entry_price, exit_price, pnl, pnl_r,
+                   confidence, decision_quality, randomness_factor,
+                   strategy_followed, exit_reason_type, entry_reason,
+                   market_regime
+            FROM trades
+            WHERE closed_at IS NOT NULL
+            ORDER BY closed_at DESC
+            LIMIT :limit
+        """, {"limit": limit})
+        return jsonify(rows)
+    except Exception as exc:
+        logger.warning("learning decisions error: %s", exc)
+        return jsonify({"error": str(exc)}), 500
+
+
+@platform_bp.route("/learning/activity")
+def api_learning_activity():
+    """Recent learning events — skipped signals + trade quality evolution."""
+    err = _require_engine()
+    if err:
+        return err
+    try:
+        limit = min(int(request.args.get("limit", 30)), 100)
+
+        # Skipped signals (rejected by orchestrator)
+        skipped = _db_rows("""
+            SELECT skip_id AS id, skipped_at AS created_at, strategy_id,
+                   skip_reason, ticker, direction, details
+            FROM skipped_signals
+            ORDER BY skipped_at DESC
+            LIMIT :limit
+        """, {"limit": limit})
+
+        # Recent quality trend (rolling 5-trade avg)
+        quality_trend = _db_rows("""
+            SELECT closed_at,
+                   decision_quality,
+                   AVG(decision_quality) OVER (
+                       ORDER BY closed_at
+                       ROWS BETWEEN 4 PRECEDING AND CURRENT ROW
+                   ) AS rolling_avg
+            FROM trades
+            WHERE decision_quality IS NOT NULL AND closed_at IS NOT NULL
+            ORDER BY closed_at DESC
+            LIMIT 50
+        """)
+
+        return jsonify({
+            "skipped_signals": skipped,
+            "quality_trend": list(reversed(quality_trend)),
+        })
+    except Exception as exc:
+        logger.warning("learning activity error: %s", exc)
+        return jsonify({"error": str(exc)}), 500
+
+
+@platform_bp.route("/learning/run_cycle", methods=["POST"])
+def api_learning_run_cycle():
+    """Manually trigger a full learning cycle (for admin use)."""
+    err = _require_engine()
+    if err:
+        return err
+    try:
+        from engine.paper_engine import paper_engine
+        ll = getattr(paper_engine, "_learning_loop", None)
+        if ll and ll.is_running():
+            ll.run_full_cycle()
+            return jsonify({"ok": True, "message": "Full learning cycle queued"})
+        return jsonify({"ok": False, "message": "Learning loop not running"}), 503
+    except Exception as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 500
+
+

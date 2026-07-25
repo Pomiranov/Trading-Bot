@@ -1,0 +1,47 @@
+/**
+ * QuantFlow color system — Premium Institutional Dark.
+ *
+ * Ultra-deep blacks, single orange accent family, liquid glass layer.
+ * Orange sits at ~3% of pixels max (institutional restraint).
+ */
+
+@theme {
+  --color-bg: #050505;
+  --color-surface: #0a0a0a;
+  --color-panel: #111111;
+  --color-border: rgba(255, 255, 255, 0.06);
+  --color-border-subtle: rgba(255, 255, 255, 0.04);
+
+  --color-text-primary: #ffffff;
+  --color-text-secondary: rgba(255, 255, 255, 0.7);
+  --color-text-tertiary: rgba(255, 255, 255, 0.38);
+
+  /* Signal Orange — the signature color family */
+  --color-accent: #ff8a1e;
+  --color-accent-highlight: #ffb45e;
+  --color-accent-dim: rgba(255, 138, 30, 0.45);
+  --color-accent-glow: rgba(255, 138, 30, 0.15);
+  --color-accent-glow-strong: rgba(255, 138, 30, 0.28);
+
+  /* Success */
+  --color-success: #2ce97b;
+  --color-success-dim: rgba(44, 233, 123, 0.18);
+
+  /* Strategy status */
+  --color-live: var(--color-accent);
+  --color-frozen: var(--color-text-tertiary);
+  --color-stabilized: var(--color-text-secondary);
+
+  /* Danger */
+  --color-danger: #e5484d;
+  --color-danger-dim: rgba(229, 72, 77, 0.18);
+
+  /* Liquid Glass layer — glass reads as elevation / material */
+  --color-glass-surface: rgba(12, 12, 14, 0.6);
+  --color-glass-surface-strong: rgba(10, 10, 12, 0.82);
+  --color-glass-border: rgba(255, 255, 255, 0.08);
+  --color-glass-highlight: rgba(255, 255, 255, 0.05);
+  --color-glass-glow: rgba(255, 138, 30, 0.06);
+  --blur-glass: 24px;
+  --blur-glass-sm: 12px;
+}

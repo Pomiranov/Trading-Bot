@@ -70,6 +70,11 @@ from tg.handlers.paper_trading import (
     cb_paper_stats, cb_paper_positions, cb_paper_trades,
     cb_paper_risk,
 )
+from tg.handlers.learning import (
+    cmd_learning,
+    cb_learning_overview, cb_learning_strategies,
+    cb_learning_hypotheses, cb_learning_decisions,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -207,6 +212,13 @@ def _build_application() -> Application:
     app.add_handler(CallbackQueryHandler(cb_paper_positions, pattern=r"^paper_positions$"))
     app.add_handler(CallbackQueryHandler(cb_paper_trades,    pattern=r"^paper_trades$"))
     app.add_handler(CallbackQueryHandler(cb_paper_risk,      pattern=r"^paper_risk$"))
+
+    # ── Learning System ───────────────────────────────────────────────────
+    app.add_handler(CommandHandler("learning",          cmd_learning))
+    app.add_handler(CallbackQueryHandler(cb_learning_overview,   pattern=r"^m_learning$"))
+    app.add_handler(CallbackQueryHandler(cb_learning_strategies, pattern=r"^learn_strategies$"))
+    app.add_handler(CallbackQueryHandler(cb_learning_hypotheses, pattern=r"^learn_hypotheses$"))
+    app.add_handler(CallbackQueryHandler(cb_learning_decisions,  pattern=r"^learn_decisions$"))
 
     return app
 

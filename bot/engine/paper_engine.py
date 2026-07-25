@@ -1,16 +1,17 @@
-"""Unified Paper Trading Engine — single source of truth for paper trading.
-
-DEPRECATED replacement target: bot/services/paper_auto_engine.py
-"""
+"""Unified Paper Trading Engine — single source of truth for paper trading."""
 from __future__ import annotations
 
 import logging
 import threading
 import time
-from datetime import datetime
-from typing import Optional
+from datetime import datetime, timezone
+from decimal import Decimal
+from typing import Optional, TYPE_CHECKING
 
 from realtime.sse_hub import sse_hub
+
+if TYPE_CHECKING:
+    from learning.sandbox_learning_loop import SandboxLearningLoop
 
 logger = logging.getLogger(__name__)
 
@@ -40,6 +41,11 @@ class PaperEngine:
         self._lock = threading.Lock()
         self._monitor_thread: Optional[threading.Thread] = None
         self._signal_thread: Optional[threading.Thread] = None
+
+        # Learning integration: maps paper position_id → learning trade_id
+        self._learning_loop: Optional["SandboxLearningLoop"] = None
+        self._trade_learning_map: dict[int, str] = {}  # position_id → trade_id
+        self._trade_open_context: dict[int, dict] = {}  # position_id → Trade kwargs
 
     # ------------------------------------------------------------------
     # Internal helpers
@@ -110,6 +116,10 @@ class PaperEngine:
         signal_id: Optional[int] = None,
         entry_reason: str = "",
         probability_pct: Optional[float] = None,
+        # Learning context (optional, passed by _run_signal_cycle)
+        strategy_id: str = "default_sandbox",
+        market_features: Optional[dict] = None,
+        learning_confidence: Optional[float] = None,
     ) -> dict:
         """Open a paper position with commission and slippage applied."""
         repo = self._get_repo()
@@ -204,7 +214,81 @@ class PaperEngine:
         except Exception as _exc:
             logger.debug("PaperEngine: telegram notify error: %s", _exc)
 
+        # Learning: record trade open in TradingOrchestrator
+        self._register_open_with_learning(
+            pos_id=pos_id,
+            ticker=ticker,
+            direction=direction,
+            fill_price=fill_price,
+            stop_loss=stop_loss,
+            take_profit=take_profit,
+            quantity=quantity,
+            commission=commission,
+            strategy_id=strategy_id,
+            market_features=market_features or {},
+            entry_reason=result.get("entry_reason", ""),
+            confidence=learning_confidence,
+        )
+
         return result
+
+    def _register_open_with_learning(
+        self,
+        pos_id: int,
+        ticker: str,
+        direction: str,
+        fill_price: float,
+        stop_loss: Optional[float],
+        take_profit: Optional[float],
+        quantity: float,
+        commission: float,
+        strategy_id: str,
+        market_features: dict,
+        entry_reason: str,
+        confidence: Optional[float],
+    ) -> None:
+        """Send trade-open event to SandboxLearningLoop (non-blocking)."""
+        if not self._learning_loop or not self._learning_loop.is_running():
+            return
+        try:
+            from learning.memory_writer import Trade, Market, Direction, ExitReasonType
+
+            sl_decimal = Decimal(str(stop_loss)) if stop_loss else Decimal(str(fill_price * 0.97))
+            tp_decimal = Decimal(str(take_profit)) if take_profit else None
+            qty_decimal = Decimal(str(quantity))
+            entry_decimal = Decimal(str(fill_price))
+            risk_amount = abs(entry_decimal - sl_decimal) * qty_decimal
+
+            trade = Trade(
+                market=Market.STOCKS,
+                ticker=ticker.upper(),
+                direction=Direction.BUY if direction.lower() == "long" else Direction.SELL,
+                strategy_id=strategy_id or "default_sandbox",
+                entry_price=entry_decimal,
+                stop_loss=sl_decimal,
+                take_profit=tp_decimal,
+                position_size=qty_decimal,
+                risk_amount=max(risk_amount, Decimal("1")),
+                commission=Decimal(str(commission)),
+                market_features=market_features,
+                entry_reason=entry_reason or None,
+                confidence=Decimal(str(round(confidence, 4))) if confidence is not None else None,
+                opened_at=datetime.now(timezone.utc),
+                is_sandbox=True,
+            )
+
+            learning_trade_id = self._learning_loop.on_trade_opened(trade)
+            if learning_trade_id:
+                self._trade_learning_map[pos_id] = learning_trade_id
+                self._trade_open_context[pos_id] = {
+                    "trade": trade,
+                    "strategy_id": strategy_id,
+                }
+                logger.debug(
+                    "PaperEngine: learning trade_id=%s for pos=%d", learning_trade_id[:8], pos_id
+                )
+        except Exception as exc:
+            logger.debug("PaperEngine: learning open error for pos %d: %s", pos_id, exc)
 
     def close_trade(
         self,
@@ -341,7 +425,69 @@ class PaperEngine:
         except Exception as _exc:
             logger.debug("PaperEngine: telegram notify (close) error: %s", _exc)
 
+        # Learning: trigger full learning cycle on trade close
+        self._trigger_learning_on_close(
+            position_id=position_id,
+            exit_price=fill_exit,
+            pnl=pnl,
+            reason=reason,
+            opened_at=pos.get("opened_at"),
+        )
+
         return result
+
+    def _trigger_learning_on_close(
+        self,
+        position_id: int,
+        exit_price: float,
+        pnl: float,
+        reason: str,
+        opened_at,
+    ) -> None:
+        """Fire-and-forget: send trade-close event to SandboxLearningLoop."""
+        if not self._learning_loop or not self._learning_loop.is_running():
+            return
+
+        learning_trade_id = self._trade_learning_map.pop(position_id, None)
+        ctx = self._trade_open_context.pop(position_id, None)
+
+        if not learning_trade_id or not ctx:
+            return
+
+        try:
+            from learning.memory_writer import Trade, ExitReasonType
+
+            reason_map = {
+                "SL_HIT": ExitReasonType.STOP_LOSS,
+                "TP_HIT": ExitReasonType.TAKE_PROFIT,
+                "manual": ExitReasonType.MANUAL,
+                "partial_full": ExitReasonType.MANUAL,
+            }
+            exit_reason_type = reason_map.get(reason.upper(), ExitReasonType.SIGNAL)
+
+            trade: Trade = ctx["trade"]
+            trade.trade_id = learning_trade_id
+            trade.exit_price = Decimal(str(exit_price))
+            trade.closed_at = datetime.now(timezone.utc)
+            trade.pnl = Decimal(str(round(pnl, 4)))
+            trade.exit_reason_type = exit_reason_type
+            trade.exit_reason = reason
+
+            self._learning_loop.on_trade_closed(trade)
+            logger.info(
+                "PaperEngine: learning cycle triggered for trade %s pnl=%.2f",
+                learning_trade_id[:8], pnl,
+            )
+
+            # Also notify Telegram about learning result (async, will resolve later)
+            self._learning_loop.notify_learning_event({
+                "ticker": trade.ticker,
+                "pnl": pnl,
+                "reason": reason,
+                "strategy_id": ctx.get("strategy_id", ""),
+            })
+        except Exception as exc:
+            logger.debug("PaperEngine: learning close error for pos %d: %s", position_id, exc)
 
     def close_trade_partial(self, position_id: int, qty_pct: float) -> dict:
         """Close a fraction of a position (qty_pct in 0..1)."""
@@ -461,23 +607,39 @@ class PaperEngine:
                 time.sleep(1)
         logger.info("PaperEngine signal_loop stopped")
 
-    def _check_risk_limits(self, ticker: str, portfolio_value: float) -> tuple[bool, str]:
-        """Gate trade against risk rules. Returns (allowed, reason)."""
+    def _check_risk_limits(
+        self, ticker: str, account_id: Optional[int], portfolio_value: float
+    ) -> tuple[bool, str]:
+        """Gate trade against risk rules. Returns (allowed, reason).
+
+        Scoped to this paper account's own positions/PnL (paper_positions /
+        paper_trades) — must NOT touch risk.risk_manager. That tracker holds
+        real broker positions/PnL for main.py's live trading loop; paper
+        trades registering into it meant simulated activity here counted
+        against (and could trip) the real max_open_positions /
+        max_daily_loss_pct limits, and vice versa — a cross-contamination
+        bug between simulated and real risk accounting.
+        """
+        if account_id is None:
+            return True, ""
         try:
-            from risk.risk_manager import risk_manager
             from config import config
 
-            if ticker in risk_manager.open_positions:
+            repo = self._get_repo()
+            open_positions = repo.list_positions(account_id)
+
+            if any((p.get("ticker") or "").upper() == ticker.upper() for p in open_positions):
                 return False, f"Позиция по {ticker} уже открыта"
 
-            if len(risk_manager.open_positions) >= config.risk.max_open_positions:
+            if len(open_positions) >= config.risk.max_open_positions:
                 return False, f"Лимит позиций ({config.risk.max_open_positions}) достигнут"
 
+            daily_pnl = float(repo.pnl_periods(account_id).get("pnl_day", 0) or 0)
             max_daily_loss = portfolio_value * config.risk.max_daily_loss_pct
-            if risk_manager.daily_pnl <= -max_daily_loss:
+            if daily_pnl <= -max_daily_loss:
                 return False, (
                     f"Дневной лимит убытков: "
-                    f"{risk_manager.daily_pnl:.2f} ₽ (лимит -{max_daily_loss:.2f} ₽)"
+                    f"{daily_pnl:.2f} ₽ (лимит -{max_daily_loss:.2f} ₽)"
                 )
         except Exception as exc:
             logger.debug("Risk check error: %s", exc)
@@ -500,8 +662,10 @@ class PaperEngine:
         self._push_sse("signals_updated", {"count": len(signals), "source": "paper_engine"})
 
         # Get portfolio value for risk checks
+        account_id = None
         try:
             account = self._get_repo().get_or_create_account()
+            account_id = int(account["id"])
             portfolio_value = float(account.get("available_balance", 100_000))
         except Exception:
             portfolio_value = 100_000.0
@@ -517,7 +681,7 @@ class PaperEngine:
             meta = sig.metadata if isinstance(sig.metadata, dict) else {}
 
             # Risk gate
-            allowed, reject_reason = self._check_risk_limits(sig.asset, portfolio_value)
+            allowed, reject_reason = self._check_risk_limits(sig.asset, account_id, portfolio_value)
             if not allowed:
                 logger.info("PaperEngine: REJECTED %s — %s", sig.asset, reject_reason)
                 self._push_sse("signal_rejected", {
@@ -535,6 +699,40 @@ class PaperEngine:
 
             try:
                 entry_reason = meta.get("entry_reason", "")
+                strategy_id = meta.get("strategy", "default_sandbox")
+                market_features = {
+                    k: meta.get(k)
+                    for k in ("rsi", "adx", "atr", "macd_hist", "volume_ratio", "regime")
+                    if meta.get(k) is not None
+                }
+
+                # Learning gate: ask orchestrator if we should trade this signal
+                learning_confidence: Optional[float] = None
+                if self._learning_loop and self._learning_loop.is_running():
+                    orch_signal = {
+                        "strategy_id": strategy_id,
+                        "ticker": sig.asset,
+                        "direction": "BUY" if direction == "long" else "SELL",
+                        "market_regime": meta.get("regime"),
+                        "market_features": market_features,
+                        "is_sandbox": True,
+                    }
+                    decision = self._learning_loop.check_signal(orch_signal)
+                    if not decision.get("approved", True):
+                        logger.info(
+                            "PaperEngine: learning BLOCKED %s — %s",
+                            sig.asset, decision.get("reason"),
+                        )
+                        self._push_sse("signal_rejected", {
+                            "ticker": sig.asset,
+                            "reason": decision.get("reason", "learning blocked"),
+                            "signal_type": sig.signal_type,
+                            "source": "learning",
+                            "confidence": float(decision.get("confidence", 0)),
+                        })
+                        continue
+                    learning_confidence = float(decision.get("confidence", 0.5))
+
                 # Resolve actual market price to validate signal SL/TP are on the correct side.
                 # Signals can be stale (generated at a different price), so SL/TP may be
                 # inverted relative to the actual fill price.
@@ -561,30 +759,17 @@ class PaperEngine:
                     signal_id=sig.id,
                     entry_reason=entry_reason,
                     probability_pct=sig.probability_pct,
+                    strategy_id=strategy_id,
+                    market_features=market_features,
+                    learning_confidence=learning_confidence,
                 )
-                result["strategy"] = meta.get("strategy", "")
-
-                # Register in risk manager for tracking
-                try:
-                    from risk.risk_manager import risk_manager, PositionSizing
-                    sl_price = float(sig.stop_loss) if sig.stop_loss else result["entry_price"] * 0.97
-                    ps = PositionSizing(
-                        ticker=sig.asset,
-                        entry_price=result["entry_price"],
-                        stop_price=sl_price,
-                        lot_size=1,
-                        shares=int(result["quantity"]),
-                        risk_amount=abs(result["entry_price"] - sl_price) * result["quantity"],
-                        position_value=result["entry_price"] * result["quantity"],
-                    )
-                    risk_manager.register_open(ps)
-                except Exception:
-                    pass
+                result["strategy"] = strategy_id
 
                 executed += 1
                 logger.info(
-                    "PaperEngine: executed signal %s/%s — %s %s prob=%.1f%%",
+                    "PaperEngine: executed signal %s/%s — %s %s prob=%.1f%% conf=%s",
                     i + 1, len(top3), sig.signal_type, sig.asset, sig.probability_pct,
+                    f"{learning_confidence:.2f}" if learning_confidence is not None else "n/a",
                 )
                 if i < len(top3) - 1:
                     for _ in range(60):
@@ -709,6 +894,15 @@ class PaperEngine:
                 return
             if db_engine is not None:
                 self._db_engine = db_engine
+
+            # Start learning loop first so it's ready before first signal cycle
+            if self._learning_loop and not self._learning_loop.is_running():
+                try:
+                    self._learning_loop.start()
+                    logger.info("PaperEngine: SandboxLearningLoop started")
+                except Exception as exc:
+                    logger.warning("PaperEngine: could not start learning loop: %s", exc)
+
             self._stop_flag.clear()
             self._signal_thread = threading.Thread(
                 target=self._signal_loop,
@@ -723,8 +917,16 @@ class PaperEngine:
             self._signal_thread.start()
             self._monitor_thread.start()
             self._running = True
-            self._push_sse("engine_started", {"engine": "paper", "ts": datetime.utcnow().isoformat()})
-            logger.info("PaperEngine started (signal=%ds, monitor=%ds)", SIGNAL_INTERVAL, MONITOR_INTERVAL)
+            self._push_sse("engine_started", {
+                "engine": "paper",
+                "ts": datetime.utcnow().isoformat(),
+                "learning": self._learning_loop is not None,
+            })
+            logger.info(
+                "PaperEngine started (signal=%ds, monitor=%ds, learning=%s)",
+                SIGNAL_INTERVAL, MONITOR_INTERVAL,
+                self._learning_loop is not None,
+            )
 
     def stop(self) -> None:
         with self._lock:
@@ -736,6 +938,13 @@ class PaperEngine:
                 if t and t.is_alive():
                     t.join(timeout=10)
             self._running = False
+
+            if self._learning_loop and self._learning_loop.is_running():
+                try:
+                    self._learning_loop.stop()
+                except Exception:
+                    pass
+
             self._push_sse("engine_stopped", {"engine": "paper", "ts": datetime.utcnow().isoformat()})
             logger.info("PaperEngine stopped")
 
@@ -744,12 +953,19 @@ class PaperEngine:
         if self._db_engine is None:
             self._db_engine = db_engine
 
+    def set_learning_loop(self, learning_loop: "SandboxLearningLoop") -> None:
+        """Attach an autonomous learning loop to this engine."""
+        self._learning_loop = learning_loop
+
     def is_running(self) -> bool:
         return self._running
 
     def status(self) -> dict:
         return {
             "running": self._running,
+            "learning_active": (
+                self._learning_loop is not None and self._learning_loop.is_running()
+            ),
             "commission_pct": COMMISSION_PCT,
             "slippage_pct": SLIPPAGE_PCT,
             "monitor_interval": MONITOR_INTERVAL,

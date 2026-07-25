@@ -331,14 +331,18 @@ class MemoryWriter:
         if not self._pool:
             await self.connect()
 
-        query = "SELECT * FROM trades"
-        params = []
+        params: list = []
 
         if market:
-            query += " WHERE market = $1"
             params.append(market.value)
+            where = " WHERE market = $1"
+        else:
+            where = ""
 
-        query += f" ORDER BY opened_at DESC LIMIT {limit}"
+        params.append(min(int(limit), 500))
+        limit_placeholder = f"${len(params)}"
+
+        query = f"SELECT * FROM trades{where} ORDER BY opened_at DESC LIMIT {limit_placeholder}"
 
         async with self._pool.acquire() as conn:
             rows = await conn.fetch(query, *params)

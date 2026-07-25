@@ -273,3 +273,113 @@ async def notify_system_error(component: str, error: str) -> None:
         f"<code>{error[:200]}</code>"
     )
     await notify("api_error", text)
+
+
+# ─── Learning notifications ───────────────────────────────────────────────────
+
+def notify_learning_cycle_sync(result: dict) -> None:
+    """
+    Send learning cycle summary after a paper trade close.
+
+    result keys (all optional):
+        ticker, pnl, strategy_id, quality, confidence_before, confidence_after,
+        hypotheses_discovered, hypotheses_evaluated
+    """
+    try:
+        ticker = result.get("ticker", "?")
+        pnl = result.get("pnl")
+        strategy_id = result.get("strategy_id", "?")
+        quality = result.get("quality")
+        conf_before = result.get("confidence_before")
+        conf_after = result.get("confidence_after")
+        hyp_found = result.get("hypotheses_discovered", 0)
+
+        pnl_line = ""
+        if pnl is not None:
+            icon = "+" if float(pnl) >= 0 else ""
+            pnl_line = f"  P&L: <code>{icon}{float(pnl):.2f} ₽</code>\n"
+
+        quality_line = ""
+        if quality is not None:
+            quality_line = f"  Качество решения: <code>{float(quality):.2f}</code>\n"
+
+        conf_line = ""
+        if conf_before is not None and conf_after is not None:
+            delta = float(conf_after) - float(conf_before)
+            arrow = "↑" if delta > 0.001 else "↓" if delta < -0.001 else "="
+            conf_line = (
+                f"  Confidence: <code>{float(conf_before):.3f}</code> "
+                f"{arrow} <code>{float(conf_after):.3f}</code>\n"
+            )
+
+        hyp_line = f"  Найдено паттернов: <b>{hyp_found}</b>\n" if hyp_found else ""
+
+        text = (
+            f"🧠 <b>Цикл обучения</b> — {ticker}\n"
+            f"  Стратегия: <code>{strategy_id}</code>\n"
+            f"{pnl_line}"
+            f"{quality_line}"
+            f"{conf_line}"
+            f"{hyp_line}"
+            f"<i>QuantFlow · Sandbox Learning</i>"
+        )
+        for chat_id in _get_sync_recipients():
+            _send_telegram_sync(chat_id, text)
+    except Exception as exc:
+        logger.debug("notify_learning_cycle_sync error: %s", exc)
+
+
+def notify_hypothesis_event_sync(
+    event: str,
+    hypothesis_id: str,
+    description: str,
+    win_rate: Optional[float] = None,
+) -> None:
+    """Send hypothesis promotion/rejection notification."""
+    try:
+        if event == "promoted":
+            icon = "🚀"
+            label = "Гипотеза активирована"
+        elif event == "rejected":
+            icon = "❌"
+            label = "Гипотеза отклонена"
+        else:
+            icon = "📋"
+            label = f"Гипотеза: {event}"
+
+        wr_line = f"  Win Rate: <code>{win_rate:.1%}</code>\n" if win_rate is not None else ""
+        text = (
+            f"{icon} <b>{label}</b>\n"
+            f"  ID: <code>{str(hypothesis_id)[:8]}…</code>\n"
+            f"  <i>{description[:120]}</i>\n"
+            f"{wr_line}"
+            f"<i>QuantFlow · Hypothesis Engine</i>"
+        )
+        for chat_id in _get_sync_recipients():
+            _send_telegram_sync(chat_id, text)
+    except Exception as exc:
+        logger.debug("notify_hypothesis_event_sync error: %s", exc)
+
+
+async def notify_daily_learning_summary(
+    strategies_updated: int,
+    trades_evaluated: int,
+    hypotheses_active: int,
+    top_confidence: Optional[dict] = None,
+) -> None:
+    """Send daily learning digest."""
+    top_line = ""
+    if top_confidence:
+        top_line = (
+            f"\n<b>Лучшая стратегия:</b> <code>{top_confidence.get('strategy_id', '?')}</code> "
+            f"conf={float(top_confidence.get('confidence', 0)):.3f}"
+        )
+    text = (
+        f"📊 <b>Итоги обучения</b>\n"
+        f"  Стратегий обновлено: <b>{strategies_updated}</b>\n"
+        f"  Сделок оценено: <b>{trades_evaluated}</b>\n"
+        f"  Активных гипотез: <b>{hypotheses_active}</b>"
+        f"{top_line}\n"
+        f"<i>QuantFlow · Daily Learning Report</i>"
+    )
+    await notify("bot_started", text)

@@ -1,0 +1,32 @@
+{
+  "daily_pnl": 0.0,
+  "open_positions": {
+    "NVTK": {
+      "ticker": "NVTK",
+      "entry_price": 963.4,
+      "stop_price": 1101.7289160683817,
+      "lot_size": 1037,
+      "shares": 1037,
+      "risk_amount": 23582.627602961613,
+      "position_value": 999045.7999999999
+    },
+    "SBER": {
+      "ticker": "SBER",
+      "entry_price": 260.38,
+      "stop_price": 288.89249090707625,
+      "lot_size": 1,
+      "shares": 1,
+      "risk_amount": 0.0,
+      "position_value": 260.38
+    },
+    "GAZP": {
+      "ticker": "GAZP",
+      "entry_price": 89.95,
+      "stop_price": 87.93451625166087,
+      "lot_size": 2,
+      "shares": 2,
+      "risk_amount": 4.948110353821136,
+      "position_value": 179.9
+    }
+  }
+}

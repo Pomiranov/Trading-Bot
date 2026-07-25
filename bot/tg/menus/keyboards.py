@@ -28,6 +28,9 @@ MAIN_MENU = InlineKeyboardMarkup([
         InlineKeyboardButton("📊 Paper Trading", callback_data="m_paper"),
         InlineKeyboardButton("🔄 Торговля",      callback_data="m_trading"),
     ],
+    [
+        InlineKeyboardButton("🧠 Learning",      callback_data="m_learning"),
+    ],
     # — Мониторинг —
     [
         InlineKeyboardButton("📊 Dashboard",     callback_data="m_dashboard"),

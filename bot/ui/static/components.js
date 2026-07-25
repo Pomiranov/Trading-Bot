@@ -2,10 +2,11 @@
 
 const QFUI = {
   empty(icon, title, desc, action = '') {
+    const _e = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
     return `<div class="qf-empty empty-state">
       <div class="qf-empty-icon empty-state-icon">${icon}</div>
-      <div class="qf-empty-title empty-state-title">${title}</div>
-      <div class="qf-empty-desc empty-state-desc">${desc}</div>
+      <div class="qf-empty-title empty-state-title">${_e(title)}</div>
+      <div class="qf-empty-desc empty-state-desc">${_e(desc)}</div>
       ${action ? `<div class="qf-empty-action">${action}</div>` : ''}
     </div>`;
   },
@@ -128,31 +129,34 @@ const QFUI = {
     </div>`;
   },
 
-  signalCard(s, showAction = true) {
+  signalCard(s, showAction = true, dupCount = 0) {
     const t = (s.signal_type || s.action || '').toUpperCase();
     const typeCls = ['BUY', 'LONG'].includes(t) ? 'type-long' : ['SELL', 'SHORT'].includes(t) ? 'type-short' : '';
     const prob = s.probability_pct || 50;
     const price = s.entry_price ?? s.price ?? 0;
+    const rr = s.risk_reward ? Number(s.risk_reward).toFixed(1) + 'R' : '—';
+    const fmtN = typeof fmt !== 'undefined' ? (v) => fmt.format(v) : (v) => String(v);
+    const dupBadge = dupCount > 1 ? `<span class="signal-dup-badge" title="${dupCount} сигналов для этого паттерна">×${dupCount}</span>` : '';
     return `<div class="signal-card ${typeCls}">
       <div class="signal-card-header">
         <div class="signal-card-left">
-          <span class="indicator-ticker">${s.asset || s.ticker}</span>
-          <span class="signal-exchange">${s.exchange || '—'}</span>
+          <span class="indicator-ticker">${s.asset || s.ticker}${dupBadge}</span>
+          <span class="signal-exchange">${s.exchange || '—'} · ${s.source || '—'}</span>
         </div>
         ${QFUI.badge(t)}
       </div>
-      <div class="signal-price">${typeof fmt !== 'undefined' ? fmt.format(price) : price}</div>
+      <div class="signal-price">${fmtN(price)}</div>
       <div class="signal-grid-mini">
-        <div class="signal-stat"><span>RR</span><strong>${s.risk_reward || '—'}</strong></div>
-        <div class="signal-stat"><span>SL</span><strong>${s.stop_loss ? fmt.format(s.stop_loss) : '—'}</strong></div>
-        <div class="signal-stat"><span>TP</span><strong>${s.take_profit_1 ? fmt.format(s.take_profit_1) : '—'}</strong></div>
-        <div class="signal-stat"><span>Src</span><strong>${s.source || '—'}</strong></div>
+        <div class="signal-stat"><span>RR</span><strong>${rr}</strong></div>
+        <div class="signal-stat"><span>SL</span><strong class="negative">${s.stop_loss ? fmtN(s.stop_loss) : '—'}</strong></div>
+        <div class="signal-stat"><span>TP1</span><strong class="positive">${s.take_profit_1 ? fmtN(s.take_profit_1) : '—'}</strong></div>
+        <div class="signal-stat"><span>TP2</span><strong class="positive">${s.take_profit_2 ? fmtN(s.take_profit_2) : '—'}</strong></div>
       </div>
       <div class="signal-prob-row">
-        <span>Вероятность ${prob}%</span>
+        <span>Уверенность <strong style="color:var(--qf-text)">${prob}%</strong></span>
         <div class="prob-bar"><div class="prob-bar-fill" style="width:${prob}%"></div></div>
       </div>
-      ${showAction && s.id ? `<button class="btn btn-sm btn-primary btn-action signal-open-btn" onclick="executeSignal(${s.id})">Открыть сделку</button>` : ''}
+      ${showAction && s.id ? `<button class="btn btn-sm btn-primary btn-action signal-open-btn" onclick="executeSignal(${s.id})">Открыть позицию</button>` : ''}
     </div>`;
   },
 

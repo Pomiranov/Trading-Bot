@@ -70,6 +70,27 @@ try:
     ensure_platform_schema(_engine)
     init_platform_routes(_engine)
     app.register_blueprint(platform_bp)
+
+    # ── Seed knowledge-base rules as initial hypotheses ───────────────────────
+    try:
+        from learning.knowledge_seeder import seed_knowledge_hypotheses
+        seed_knowledge_hypotheses(_engine)
+    except Exception as _seed_exc:
+        logger.warning("Dashboard: knowledge seeding failed: %s", _seed_exc)
+
+    # ── Autonomous sandbox: attach learning loop to paper engine ──────────────
+    try:
+        from engine.paper_engine import paper_engine
+        from learning.sandbox_learning_loop import SandboxLearningLoop
+        _learning_loop = SandboxLearningLoop(dsn=config.db.dsn)
+        paper_engine.set_db_engine(_engine)
+        paper_engine.set_learning_loop(_learning_loop)
+        # Auto-start the engine so the sandbox runs immediately on dashboard boot
+        paper_engine.start()
+        logger.info("Dashboard: PaperEngine + SandboxLearningLoop started automatically")
+    except Exception as _learn_exc:
+        logger.warning("Dashboard: could not auto-start paper engine: %s", _learn_exc)
+
 except Exception as exc:
     logger.warning("DB unavailable: %s", exc)
     DB_AVAILABLE = False
@@ -292,8 +313,10 @@ _ALLOWED_TOKEN_KEYS = {"TINKOFF_TOKEN", "TINKOFF_ACCOUNT_ID"}
 
 
 def _client_ip() -> str:
-    forwarded = (request.headers.get("X-Forwarded-For") or "").split(",")[0].strip()
-    return forwarded or (request.remote_addr or "")
+    # request.remote_addr only — X-Forwarded-For is client-supplied and
+    # would let an attacker spoof their audit-log identity or, worse, the
+    # loopback check in api_internal_push below.
+    return request.remote_addr or ""
 
 
 def _save_env_key(key: str, value: str) -> None:
@@ -353,9 +376,10 @@ def api_internal_push():
         if not _hmac.compare_digest(provided, _INTERNAL_TOKEN):
             return jsonify({"error": "Unauthorized"}), 401
     else:
-        # No token configured — restrict to loopback only
-        host = (request.headers.get("X-Forwarded-For") or "").split(",")[0].strip()
-        host = host or (request.remote_addr or "")
+        # No token configured — restrict to loopback only. Must use the
+        # real TCP peer, not X-Forwarded-For, which a remote client can
+        # set to "127.0.0.1" to spoof this check.
+        host = request.remote_addr or ""
         if host not in {"127.0.0.1", "::1", "localhost", ""}:
             return jsonify({"error": "Unauthorized"}), 401
 

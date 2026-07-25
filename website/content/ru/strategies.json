@@ -1,0 +1,41 @@
+[
+  {
+    "id": "osc_range_moex_d1_fwd",
+    "market": "MOEX",
+    "timeframe": "D1",
+    "status": "live",
+    "statusNote": "В форвард-тесте",
+    "lastUpdate": "2026-07-12",
+    "metrics": {
+      "winRate": 0.586,
+      "profitFactor": 1.16,
+      "sampleSize": 29,
+      "oos": true
+    },
+    "source": "real-forward-test"
+  },
+  {
+    "id": "trend_moex",
+    "market": "MOEX",
+    "timeframe": "D1",
+    "status": "stabilized",
+    "statusNote": "Стабилизирована, не вылечена",
+    "lastUpdate": "2026-07-12",
+    "source": "real-forward-test"
+  },
+  {
+    "id": "wrd_moex",
+    "market": "MOEX",
+    "timeframe": "D1",
+    "status": "frozen",
+    "statusNote": "Заморожена, не выведена в форвард",
+    "lastUpdate": "2026-07-12",
+    "metrics": {
+      "profitFactor": 0.65,
+      "sampleSize": 191,
+      "oos": true,
+      "drawdown": -936000
+    },
+    "source": "real-forward-test"
+  }
+]

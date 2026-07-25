@@ -3,11 +3,23 @@
 import math
 import sys
 import unittest
+from contextlib import contextmanager
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 _BOT = Path(__file__).resolve().parents[2] / "bot"
 sys.path.insert(0, str(_BOT))
+
+
+def _in_memory_transaction(initial_state=None):
+    """Return a mock for risk.state_store.transaction that uses an in-memory dict."""
+    state = initial_state or {"daily_pnl": 0.0, "open_positions": {}}
+
+    @contextmanager
+    def _txn():
+        yield state
+
+    return _txn
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -158,7 +170,13 @@ class TestRiskManager(unittest.TestCase):
     def setUp(self):
         from risk.risk_manager import RiskManager, PositionSizing
         self.PositionSizing = PositionSizing
+        self._state = {"daily_pnl": 0.0, "open_positions": {}}
+        self._patcher = patch("risk.risk_manager.transaction", _in_memory_transaction(self._state))
+        self._patcher.start()
         self.rm = RiskManager()
+
+    def tearDown(self):
+        self._patcher.stop()
 
     def _make_position(self, ticker="SBER", entry=100.0, stop=95.0, value=50000.0):
         return self.PositionSizing(
@@ -191,7 +209,7 @@ class TestRiskManager(unittest.TestCase):
         self.assertIn("SBER", result.reason)
 
     def test_check_blocked_daily_loss_limit(self):
-        self.rm._daily_pnl = -25000.0
+        self._state["daily_pnl"] = -25000.0
         result = self.rm.check_trade_allowed("GAZP", portfolio_value=1_000_000)
         self.assertFalse(result.allowed)
         self.assertIn("дневной лимит", result.reason)
@@ -211,7 +229,7 @@ class TestRiskManager(unittest.TestCase):
         self.assertLess(self.rm.daily_pnl, 0)
 
     def test_reset_daily(self):
-        self.rm._daily_pnl = -9999.0
+        self._state["daily_pnl"] = -9999.0
         self.rm.reset_daily()
         self.assertEqual(self.rm.daily_pnl, 0.0)
 
@@ -271,8 +289,7 @@ class TestAnalyticsService(unittest.TestCase):
         fake_trades = [_trade_row(1000), _trade_row(500), _trade_row(-300), _trade_row(200)]
         with patch.object(svc, "_get_account_id", return_value=1), \
              patch.object(svc, "_query", side_effect=_make_query_side_effect(fake_trades)), \
-             patch.object(svc, "_compute_sharpe", return_value=1.5), \
-             patch.object(svc, "_compute_sortino", return_value=2.0), \
+             patch.object(svc, "_daily_equity_returns", return_value=[]), \
              patch.object(svc, "_compute_max_drawdown", return_value=0.05):
             stats = svc.trade_stats()
         self.assertEqual(stats["total_trades"], 4)
@@ -287,8 +304,7 @@ class TestAnalyticsService(unittest.TestCase):
         fake_trades = [_trade_row(500), _trade_row(800)]
         with patch.object(svc, "_get_account_id", return_value=1), \
              patch.object(svc, "_query", side_effect=_make_query_side_effect(fake_trades)), \
-             patch.object(svc, "_compute_sharpe", return_value=0.0), \
-             patch.object(svc, "_compute_sortino", return_value=0.0), \
+             patch.object(svc, "_daily_equity_returns", return_value=[]), \
              patch.object(svc, "_compute_max_drawdown", return_value=0.0):
             stats = svc.trade_stats()
         self.assertAlmostEqual(stats["win_rate"], 100.0, places=1)
@@ -299,8 +315,7 @@ class TestAnalyticsService(unittest.TestCase):
         fake_trades = [_trade_row(-200), _trade_row(-400)]
         with patch.object(svc, "_get_account_id", return_value=1), \
              patch.object(svc, "_query", side_effect=_make_query_side_effect(fake_trades)), \
-             patch.object(svc, "_compute_sharpe", return_value=0.0), \
-             patch.object(svc, "_compute_sortino", return_value=0.0), \
+             patch.object(svc, "_daily_equity_returns", return_value=[]), \
              patch.object(svc, "_compute_max_drawdown", return_value=0.0):
             stats = svc.trade_stats()
         self.assertAlmostEqual(stats["win_rate"], 0.0, places=1)

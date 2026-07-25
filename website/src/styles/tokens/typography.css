@@ -1,0 +1,42 @@
+/**
+ * QuantFlow type system — Premium Institutional.
+ *
+ * Display: Geist (ultra-large hero, tight tracking).
+ * Body: Geist (16px, relaxed rhythm).
+ * Mono: Geist Mono (data, labels, status pills).
+ * Serif: Cormorant Garamond — one accent use: hero tagline italic word.
+ */
+
+@theme {
+  --font-sans: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-mono), ui-monospace, "SFMono-Regular", monospace;
+  --font-serif: var(--font-serif), ui-serif, Georgia, serif;
+
+  /* Eyebrow / mono labels */
+  --text-label: 11px;
+  --text-label--line-height: 1.4;
+  --text-label--letter-spacing: 0.16em;
+
+  --text-body: 16px;
+  --text-body--line-height: 1.65;
+  --text-body--letter-spacing: -0.011em;
+
+  --text-lead: 18px;
+  --text-lead--line-height: 1.6;
+  --text-lead--letter-spacing: -0.013em;
+
+  /* Hero: fluid from 36px → 60px — elegant restraint, not loud dominance */
+  --text-hero: clamp(2.25rem, 3.8vw, 3.75rem);
+  --text-hero--line-height: 1.08;
+  --text-hero--letter-spacing: -0.03em;
+
+  /* Section headings: 28px → 48px fluid */
+  --text-section-heading: clamp(1.75rem, 3.5vw, 3rem);
+  --text-section-heading--line-height: 1.06;
+  --text-section-heading--letter-spacing: -0.028em;
+
+  /* Display number (stat tiles) */
+  --text-display-number: clamp(1.75rem, 3vw, 2.5rem);
+  --text-display-number--line-height: 1;
+  --text-display-number--letter-spacing: -0.04em;
+}

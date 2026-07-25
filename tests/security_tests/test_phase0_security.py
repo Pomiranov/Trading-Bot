@@ -4,8 +4,19 @@ from __future__ import annotations
 import os
 import sys
 import unittest
+from contextlib import contextmanager
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
+
+
+def _in_memory_transaction(initial_state=None):
+    state = initial_state or {"daily_pnl": 0.0, "open_positions": {}}
+
+    @contextmanager
+    def _txn():
+        yield state
+
+    return _txn
 
 # bot/ on path
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "bot"))
@@ -52,16 +63,27 @@ class TelegramAuthTests(unittest.TestCase):
 
 
 class RiskManagerDirectionTests(unittest.TestCase):
+    def setUp(self):
+        from dataclasses import asdict
+        from risk.risk_manager import PositionSizing
+        sber_pos = asdict(PositionSizing(
+            ticker="SBER", entry_price=300.0, stop_price=290.0,
+            lot_size=1, shares=100, risk_amount=1000.0, position_value=30000.0,
+        ))
+        self._state = {"daily_pnl": 0.0, "open_positions": {"SBER": sber_pos}}
+        self._patcher = patch("risk.risk_manager.transaction", _in_memory_transaction(self._state))
+        self._patcher.start()
+
+    def tearDown(self):
+        self._patcher.stop()
+
     def test_sell_allowed_when_position_open(self):
         rm = RiskManager()
-        rm._open_positions["SBER"] = MagicMock()
-        rm._daily_pnl = 0.0
         result = rm.check_trade_allowed("SBER", 1_000_000, direction="sell")
         self.assertTrue(result.allowed)
 
     def test_buy_blocked_when_position_open(self):
         rm = RiskManager()
-        rm._open_positions["SBER"] = MagicMock()
         result = rm.check_trade_allowed("SBER", 1_000_000, direction="buy")
         self.assertFalse(result.allowed)
 

@@ -12,7 +12,8 @@ const QFFmt = (() => {
 
   function pct(v, signed = true) {
     if (v == null || isNaN(v)) return '—';
-    return (signed && v >= 0 ? '+' : '') + moneyFmt.format(v) + '%';
+    const n = Object.is(v, -0) ? 0 : v;
+    return (signed && n > 0 ? '+' : '') + moneyFmt.format(n) + '%';
   }
 
   function num(v, digits = 2) {

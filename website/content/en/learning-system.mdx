@@ -1,0 +1,8 @@
+---
+sliderCaption: Drag to see how confidence moves as trades resolve
+minTradesFloor: 20
+minConfidence: 0.05
+maxConfidence: 0.95
+---
+
+Every closed trade updates confidence in the strategy that made it: not the outcome alone, but a weighted read of win rate, profit factor, and expectancy. Below 20 trades, the number barely moves. Above it, it adjusts smoothly, and it is never allowed to reach certainty in either direction.

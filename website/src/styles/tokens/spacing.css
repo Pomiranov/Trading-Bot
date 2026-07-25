@@ -1,0 +1,16 @@
+/**
+ * Spacing rhythm. Tailwind v4's default scale (--spacing: 0.25rem) already
+ * gives a 4px baseline for all utility spacing — this file adds only the
+ * semantic, page-level tokens the brief calls for on top of that.
+ */
+
+@theme {
+  /* Section vertical rhythm — hairline borders as the primary separator,
+     never heavy dividers. Desktop 160-240px between sections. */
+  --space-section-y: clamp(96px, 14vw, 240px);
+
+  /* Desktop page padding / 12-col grid gutter per the brief. */
+  --space-page-x: clamp(24px, 8vw, 120px);
+  --space-grid-gutter: 24px;
+  --space-content-max: 1440px;
+}

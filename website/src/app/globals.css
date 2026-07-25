@@ -1,0 +1,266 @@
+@import "tailwindcss";
+
+@import "../styles/tokens/color.css";
+@import "../styles/tokens/typography.css";
+@import "../styles/tokens/spacing.css";
+@import "../styles/tokens/motion.css";
+@import "../styles/tokens/z-index.css";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@theme {
+  --breakpoint-md: 768px;
+  --breakpoint-lg: 1024px;
+  --breakpoint-xl: 1440px;
+}
+
+html {
+  color-scheme: dark;
+}
+
+body {
+  background: var(--color-bg);
+  color: var(--color-text-primary);
+  font-family: var(--font-sans);
+  font-size: var(--text-body);
+  line-height: var(--text-body--line-height);
+  letter-spacing: var(--text-body--letter-spacing);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+* {
+  border-color: var(--color-border);
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 3px;
+}
+
+/* ─── Premium text selection ─── */
+::selection {
+  background: rgba(255, 138, 30, 0.22);
+  color: #ffffff;
+}
+
+/* ─── Custom scrollbar ─── */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.18);
+}
+
+/* ─── Noise texture overlay ─── */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.025;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size: 256px 256px;
+}
+
+/* ─── Premium keyframes ─── */
+@keyframes qf-pulse-glow {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 1; }
+}
+
+@keyframes qf-border-flow {
+  0% { background-position: 0% 0%; }
+  100% { background-position: 300% 0%; }
+}
+
+@keyframes qf-shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(200%); }
+}
+
+@keyframes qf-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.25; }
+}
+
+@keyframes qf-fade-up {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes qf-hero-enter {
+  from { opacity: 0; transform: translateY(24px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes qf-float-c {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-6px); }
+}
+
+/* ─── Liquid Glass card effect ─── */
+.glass-premium {
+  position: relative;
+  background: var(--color-glass-surface);
+  backdrop-filter: blur(var(--blur-glass));
+  -webkit-backdrop-filter: blur(var(--blur-glass));
+  border: 1px solid var(--color-glass-border);
+  border-radius: var(--radius-lg);
+  box-shadow:
+    inset 0 1px 0 var(--color-glass-highlight),
+    0 4px 24px rgba(0, 0, 0, 0.35),
+    0 1px 4px rgba(0, 0, 0, 0.25);
+  transition: border-color 0.4s cubic-bezier(0.16, 1, 0.3, 1),
+              box-shadow 0.4s cubic-bezier(0.16, 1, 0.3, 1),
+              transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.glass-premium:hover {
+  border-color: rgba(255, 138, 30, 0.14);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.07),
+    0 12px 48px rgba(0, 0, 0, 0.5),
+    0 0 0 1px rgba(255, 138, 30, 0.06);
+  transform: translateY(-3px);
+}
+
+/* ─── Animated border gradient ─── */
+.glass-premium-featured {
+  position: relative;
+  background: var(--color-glass-surface-strong);
+  backdrop-filter: blur(var(--blur-glass));
+  -webkit-backdrop-filter: blur(var(--blur-glass));
+  border-radius: var(--radius-lg);
+  box-shadow:
+    0 8px 40px rgba(0, 0, 0, 0.5),
+    0 0 80px rgba(255, 138, 30, 0.06);
+}
+
+.glass-premium-featured::before {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(
+    135deg,
+    rgba(255, 138, 30, 0.5) 0%,
+    rgba(255, 180, 94, 0.15) 40%,
+    rgba(255, 255, 255, 0.04) 60%,
+    rgba(255, 138, 30, 0.3) 100%
+  );
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+}
+
+/* ─── Liquid Glass Button base ─── */
+.btn-liquid-glass {
+  position: relative;
+  overflow: hidden;
+}
+
+.btn-liquid-glass::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.12) 0%,
+    transparent 50%,
+    rgba(255, 255, 255, 0.04) 100%
+  );
+  pointer-events: none;
+}
+
+.btn-liquid-glass::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 60%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.08),
+    transparent
+  );
+  pointer-events: none;
+  transition: left 0.5s ease;
+}
+
+.btn-liquid-glass:hover::after {
+  left: 160%;
+}
+
+/* ─── Glow text ─── */
+.text-glow-orange {
+  text-shadow:
+    0 0 20px rgba(255, 138, 30, 0.5),
+    0 0 40px rgba(255, 138, 30, 0.2);
+}
+
+/* ─── Section separators: skip header (fixed) and hero ─── */
+main > *:not(:first-child):not(:nth-child(2)) {
+  border-top: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ─── shadcn semantic token bridge ─── */
+@theme inline {
+  --color-background: var(--color-bg);
+  --color-foreground: var(--color-text-primary);
+  --color-card: var(--color-panel);
+  --color-card-foreground: var(--color-text-primary);
+  --color-popover: var(--color-panel);
+  --color-popover-foreground: var(--color-text-primary);
+  --color-primary: var(--color-accent);
+  --color-primary-foreground: #050505;
+  --color-secondary: var(--color-surface);
+  --color-secondary-foreground: var(--color-text-primary);
+  --color-muted: var(--color-surface);
+  --color-muted-foreground: var(--color-text-secondary);
+  --color-destructive: var(--color-danger);
+  --color-input: var(--color-border);
+  --color-ring: var(--color-accent);
+
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.6);
+}
+
+:root {
+  --radius: 0.5rem;
+}
+
+@layer base {
+  body {
+    @apply bg-background text-foreground;
+  }
+}

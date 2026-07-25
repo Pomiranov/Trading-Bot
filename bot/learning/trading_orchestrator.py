@@ -184,11 +184,18 @@ class TradingOrchestrator:
         strategy_stats = await self._get_strategy_stats(strategy_id)
 
         if not strategy_stats:
+            # New strategy — bootstrap it with neutral confidence and approve
+            # This allows the system to accumulate trades before making judgements
+            logger.info(
+                "Стратегия %s не найдена в belief_system — "
+                "разрешаем с базовым confidence 0.5", strategy_id
+            )
+            await self._bootstrap_strategy(strategy_id)
             return {
-                "approved": False,
-                "confidence": Decimal("0"),
+                "approved": True,
+                "confidence": Decimal("0.5"),
                 "position_size_multiplier": Decimal("1"),
-                "reason": f"Стратегия {strategy_id} не найдена в belief_system",
+                "reason": f"Стратегия {strategy_id} создана с базовым confidence",
                 "matched_hypotheses": [],
             }
 
@@ -437,6 +444,20 @@ class TradingOrchestrator:
                 strategy_id
             )
             return dict(row) if row else None
+
+    async def _bootstrap_strategy(self, strategy_id: str) -> None:
+        """Create a new strategy entry in belief_system with neutral confidence."""
+        try:
+            async with self._pool.acquire() as conn:
+                await conn.execute("""
+                    INSERT INTO belief_system
+                        (strategy_id, strategy_name, market, confidence)
+                    VALUES ($1, $2, 'stocks', 0.5)
+                    ON CONFLICT (strategy_id) DO NOTHING
+                """, strategy_id, strategy_id.replace("_", " ").title())
+            logger.info("Bootstrapped belief_system entry for %s", strategy_id)
+        except Exception as exc:
+            logger.warning("Could not bootstrap strategy %s: %s", strategy_id, exc)
 
     async def _find_matching_hypotheses(self, signal: dict) -> list:
         """

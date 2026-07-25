@@ -125,6 +125,38 @@ async def _seed_belief() -> None:
         await conn.close()
 
 
+async def _reconcile_positions_with_broker() -> None:
+    """
+    Align risk_manager's tracked positions with what the broker actually
+    holds before each scan cycle.
+
+    Why this exists: tinkoff_client.place_market_order() swallows all
+    exceptions and returns None on failure — including a network timeout
+    that happens *after* the broker already filled the order. When that
+    happens, risk_manager never learns the position exists, so the next
+    cycle's signal for the same ticker looks like a fresh entry and can
+    open a second real position. There is no other place in the codebase
+    that reconciles internal state against the broker, so this runs once
+    per scan cycle rather than only on the failure path, to also catch
+    positions closed externally (e.g. a stop-loss order at the broker)
+    that register_close() was never called for.
+    """
+    try:
+        from services.tinkoff.portfolio import get_portfolio_summary
+        summary = get_portfolio_summary()
+    except Exception as exc:
+        logger.debug("Position reconciliation skipped (portfolio unavailable): %s", exc)
+        return
+
+    broker_positions = {
+        p.ticker: {"avg_price": p.average_price, "lots": p.quantity_lots}
+        for p in summary.positions
+    }
+    discrepancies = risk_manager.reconcile_with_broker(broker_positions)
+    for msg in discrepancies:
+        await notify_risk_limit(f"Реконсиляция позиций: {msg}")
+
+
 async def trading_loop():
     logger.info("Trading loop started. Tickers: %s", config.tickers)
     trading_engine.start()
@@ -151,6 +183,8 @@ async def trading_loop():
             logger.debug("Exchange closed (%s UTC), waiting…", now.strftime("%H:%M"))
             await asyncio.sleep(300)
             continue
+
+        await _reconcile_positions_with_broker()
 
         for ticker in config.tickers:
             if trading_engine.stop_event.is_set():

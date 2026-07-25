@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import math
 import os
 import signal
 import sys
@@ -11,21 +12,35 @@ from datetime import datetime, timezone
 from decimal import Decimal
 from pathlib import Path
 
+# Консоль Windows по умолчанию в cp1251 — символы ↑ → ═ из логов learning-слоя
+# роняют logging в UnicodeEncodeError. Делается до bootstrap_security(), пока
+# обработчики логирования ещё не созданы (как в run_forward_d1.py).
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8")
+if hasattr(sys.stderr, "reconfigure"):
+    sys.stderr.reconfigure(encoding="utf-8")
+
 # Ensure bot/ directory is on sys.path so all internal imports resolve
 sys.path.insert(0, str(Path(__file__).parent))
 
+import asyncpg
 from sqlalchemy import create_engine as _create_engine
 
 from config import config
 from security.bootstrap import bootstrap_security
 from data.loader import loader
 from signals.indicators import IndicatorEngine
-from signals.rules_engine import rules_engine, Action
+from signals.rules_engine import rules_engine, Action, classify_regime
 from risk.risk_manager import risk_manager
 from broker.tinkoff_client import tinkoff_client
-from learning.feedback import feedback_store, TradeRecord
 from learning.trading_orchestrator import TradingOrchestrator
-from learning.memory_writer import Trade, Market, Direction, ExitReasonType
+from learning.memory_writer import (
+    Trade,
+    Market,
+    Direction,
+    MarketRegime,
+    ExitReasonType,
+)
 from services.bot_engine import trading_engine, BotStatus
 from tg.bot import run_bot, send_notification
 from tg.notifications.dispatcher import (
@@ -39,6 +54,17 @@ from tg.notifications.dispatcher import (
 
 bootstrap_security(config, service_name="trading-bot")
 logger = logging.getLogger(__name__)
+
+# Живая торговля пишется в отдельную belief-строку, засеянную из бэктестной —
+# тот же приём, что у форварда osc_range (run_forward_d1.py). Статистика живого
+# контура не смешивается с бэктестной, откат безболезненный.
+STRATEGY_ID        = "trend_moex_live"
+SEED_FROM_STRATEGY = "trend_moex"
+
+# ticker → Trade, отданный в on_trade_opened. Нужен чтобы донести trade_id и
+# контекст входа (market_features, confidence, entry_reason) до закрытия:
+# PositionSizing риск-менеджера этих полей не несёт и не должен.
+_open_trades: dict[str, Trade] = {}
 
 _paper_sqlalchemy_engine = None
 
@@ -64,6 +90,41 @@ def _handle_signal(sig, frame):
     trading_engine.stop()
 
 
+async def _seed_belief() -> None:
+    """Создать belief-строку живой стратегии (однократно, идемпотентно).
+
+    Без неё check_signal отклоняет все сигналы: стратегии нет в belief_system.
+    Пул оркестратора приватный — берём отдельное короткоживущее соединение.
+    """
+    conn = await asyncpg.connect(config.db.dsn)
+    try:
+        if await conn.fetchval(
+            "SELECT 1 FROM belief_system WHERE strategy_id = $1", STRATEGY_ID
+        ):
+            return
+        await conn.execute("""
+            INSERT INTO belief_system (strategy_id, strategy_name, market, description,
+                                       confidence, best_regime, best_timeframe)
+            SELECT $1, strategy_name || ' (живая)', market, description,
+                   confidence, best_regime, best_timeframe
+            FROM belief_system WHERE strategy_id = $2
+            ON CONFLICT (strategy_id) DO NOTHING
+        """, STRATEGY_ID, SEED_FROM_STRATEGY)
+
+        if not await conn.fetchval(
+            "SELECT 1 FROM belief_system WHERE strategy_id = $1", STRATEGY_ID
+        ):   # источника нет — минимальная строка с дефолтами
+            await conn.execute("""
+                INSERT INTO belief_system (strategy_id, strategy_name, market, description)
+                VALUES ($1, 'Следование тренду (живая)', 'stocks',
+                        'Живой контур trend_moex, H1, исполнение через Tinkoff')
+                ON CONFLICT (strategy_id) DO NOTHING
+            """, STRATEGY_ID)
+        logger.info("Belief-строка %s создана", STRATEGY_ID)
+    finally:
+        await conn.close()
+
+
 async def trading_loop():
     logger.info("Trading loop started. Tickers: %s", config.tickers)
     trading_engine.start()
@@ -72,6 +133,7 @@ async def trading_loop():
 
     orchestrator = TradingOrchestrator(dsn=config.db.dsn)
     await orchestrator.connect()
+    await _seed_belief()
 
     await notify_bot_started()
 
@@ -114,16 +176,31 @@ async def _process_ticker(ticker: str, orchestrator: TradingOrchestrator):
         open_positions = risk_manager.open_positions
 
         if sig.action == Action.BUY and ticker not in open_positions:
-            # Проверяем confidence через orchestrator (learning system)
+            regime = classify_regime(indicators.adx)
+            # Незаполненные индикаторы приходят как NaN, а json.dumps сериализует
+            # их в невалидный для jsonb литерал NaN — отсеиваем, как в форварде.
+            features = {
+                key: value
+                for key, value in (
+                    ("rsi",       indicators.rsi),
+                    ("atr",       indicators.atr),
+                    ("adx",       indicators.adx),
+                    ("macd_hist", indicators.macd_hist),
+                )
+                if value is not None and math.isfinite(value)
+            }
+
+            # Проверяем confidence через orchestrator (learning system).
+            # ticker/direction обязательны: без них фильтр структурного
+            # даунтренда молчит, а отказы не пишутся в skipped_signals.
             orch_decision = await orchestrator.check_signal({
-                "strategy_id": getattr(sig, "strategy_id", "default_moex"),
-                "market_regime": getattr(indicators, "market_regime", None),
-                "market_features": {
-                    "rsi": indicators.rsi,
-                    "atr": indicators.atr,
-                    "adx": indicators.adx,
-                    "macd_hist": indicators.macd_hist,
-                },
+                "strategy_id":     STRATEGY_ID,
+                "ticker":          ticker,
+                "direction":       "BUY",
+                "timeframe":       "1h",
+                "market_regime":   regime,
+                "market_features": features,
+                "is_sandbox":      config.tinkoff.sandbox,
             })
             if not orch_decision["approved"]:
                 logger.info("[%s] Orchestrator blocked: %s", ticker, orch_decision["reason"])
@@ -160,47 +237,33 @@ async def _process_ticker(ticker: str, orchestrator: TradingOrchestrator):
                 risk_manager.register_open(pos)
                 trading_engine.record_trade()
 
-                # Legacy feedback (для dashboard и qf_platform)
-                db_id = feedback_store.record_open(TradeRecord(
-                    ticker=ticker,
-                    direction="BUY",
-                    entry_price=indicators.close,
-                    shares=pos.shares,
-                    stop_price=pos.stop_price,
-                    signal_rules=[r.name for r in sig.triggered_rules],
-                    buy_score=sig.buy_score,
-                    sell_score=sig.sell_score,
-                    rsi=indicators.rsi,
-                    macd_hist=indicators.macd_hist,
-                    adx=indicators.adx,
-                    atr=indicators.atr,
-                ))
-                if hasattr(pos, "db_id"):
-                    pos.db_id = db_id
-
                 # Learning system (orchestrator + memory_writer + belief)
                 trade_obj = Trade(
                     market=Market.STOCKS,
                     ticker=ticker,
                     direction=Direction.BUY,
-                    strategy_id=getattr(sig, "strategy_id", "default_moex"),
+                    strategy_id=STRATEGY_ID,
                     entry_price=Decimal(str(indicators.close)),
                     stop_loss=Decimal(str(pos.stop_price)),
                     position_size=Decimal(str(pos.shares)),
                     risk_amount=Decimal(str(pos.risk_amount)),
                     risk_percent=Decimal(str(round(pos.risk_amount / balance, 4))) if balance else Decimal("0"),
                     opened_at=datetime.now(timezone.utc),
+                    timeframe="1h",
+                    market_regime=MarketRegime(regime) if regime else None,
                     is_sandbox=config.tinkoff.sandbox,
                     confidence=Decimal(str(round(orch_decision["confidence"], 4))),
                     entry_reason=", ".join(r.name for r in sig.triggered_rules),
-                    market_features={
-                        "rsi": indicators.rsi,
-                        "atr": indicators.atr,
-                        "adx": indicators.adx,
-                        "macd_hist": indicators.macd_hist,
-                    },
+                    market_features=features or None,
                 )
-                trade_obj.trade_id = await orchestrator.on_trade_opened(trade_obj)
+                # Сбой learning-слоя не должен ломать торговый цикл: ордер уже стоит.
+                try:
+                    trade_obj.trade_id = await orchestrator.on_trade_opened(trade_obj)
+                    _open_trades[ticker] = trade_obj
+                except Exception as exc:
+                    logger.error(
+                        "[%s] Не записано открытие в learning: %s", ticker, exc, exc_info=True
+                    )
 
                 trading_engine.state.add_log(f"BUY {ticker} @ {indicators.close:.2f}")
                 await notify_trade_open(ticker, indicators.close, pos.lot_size, pos.stop_price)
@@ -245,30 +308,28 @@ async def _process_ticker(ticker: str, orchestrator: TradingOrchestrator):
                 pnl = risk_manager.register_close(ticker, indicators.close)
                 trading_engine.record_trade()
 
-                # Legacy feedback
-                if hasattr(pos, "db_id") and pos.db_id:
-                    feedback_store.record_close(pos.db_id, indicators.close)
-
-                # Learning system — закрытие сделки запускает цикл обучения
-                if hasattr(pos, "trade_id") and pos.trade_id:
-                    close_trade = Trade(
-                        trade_id=pos.trade_id,
-                        market=Market.STOCKS,
-                        ticker=ticker,
-                        direction=Direction.BUY,
-                        strategy_id=getattr(pos, "strategy_id", "default_moex"),
-                        entry_price=Decimal(str(pos.entry_price)),
-                        stop_loss=Decimal(str(pos.stop_price)),
-                        position_size=Decimal(str(pos.shares)),
-                        risk_amount=Decimal(str(pos.risk_amount)),
-                        opened_at=getattr(pos, "opened_at", datetime.now(timezone.utc)),
-                        exit_price=Decimal(str(indicators.close)),
-                        closed_at=datetime.now(timezone.utc),
-                        pnl=Decimal(str(round(pnl, 4))),
-                        exit_reason_type=ExitReasonType.SIGNAL,
-                        is_sandbox=config.tinkoff.sandbox,
+                # Learning system — закрытие сделки запускает цикл обучения.
+                # Дозаполняем ТОТ ЖЕ объект: orchestrator найдёт строку по trade_id
+                # и сделает UPDATE. Пересборка Trade потеряла бы market_features,
+                # confidence и entry_reason и вставила бы второй ряд.
+                close_trade = _open_trades.pop(ticker, None)
+                if close_trade is None:
+                    logger.warning(
+                        "[%s] Нет контекста открытия (позиция от предыдущего запуска) — "
+                        "цикл обучения пропущен", ticker,
                     )
-                    await orchestrator.on_trade_closed(close_trade)
+                else:
+                    close_trade.exit_price       = Decimal(str(indicators.close))
+                    close_trade.closed_at        = datetime.now(timezone.utc)
+                    close_trade.pnl              = Decimal(str(round(pnl, 4)))
+                    close_trade.exit_reason_type = ExitReasonType.SIGNAL
+                    close_trade.exit_reason      = sig.reason
+                    try:
+                        await orchestrator.on_trade_closed(close_trade)
+                    except Exception as exc:
+                        logger.error(
+                            "[%s] Не записано закрытие в learning: %s", ticker, exc, exc_info=True
+                        )
 
                 trading_engine.state.add_log(f"SELL {ticker} @ {indicators.close:.2f} PnL={pnl:+.2f}")
                 await notify_trade_close(ticker, indicators.close, pnl)

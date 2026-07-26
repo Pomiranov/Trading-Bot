@@ -21,6 +21,7 @@ tinkoff-investments>=0.2.0b55
 
 # Utilities
 PyYAML>=6.0
+portalocker>=2.8.0
 
 # Web dashboard
 flask>=3.1.0

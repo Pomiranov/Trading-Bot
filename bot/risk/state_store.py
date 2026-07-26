@@ -1,25 +1,31 @@
 """Cross-process shared state for RiskManager.
 
 The dashboard (bot/ui/dashboard.py) and the bot (bot/main.py) run as two
-separate OS processes (see start.sh — one via `nohup ... &`, the other via
-`exec`). A plain in-process singleton for open positions / daily PnL means
-each process enforces max_open_positions / max_daily_loss_pct against its
-own, incomplete view — a position opened from the dashboard is invisible to
-the bot process's risk checks and vice versa. This module gives both
-processes one shared, lock-guarded source of truth on disk instead.
+separate OS processes (on macOS via start.sh, on Windows via start.ps1 /
+Task Scheduler). A plain in-process singleton for open positions / daily
+PnL means each process enforces max_open_positions / max_daily_loss_pct
+against its own, incomplete view — a position opened from the dashboard is
+invisible to the bot process's risk checks and vice versa. This module gives
+both processes one shared, lock-guarded source of truth on disk instead.
 
-Not a general-purpose KV store: single JSON file + advisory OS lock
-(fcntl.flock), scoped to exactly the two counters RiskManager needs. Good
-enough for two local processes on one host; if this ever needs to work
-across hosts, move it to the database instead.
+Not a general-purpose KV store: single JSON file + an OS lock on a separate
+lock file, scoped to exactly the two counters RiskManager needs. Good enough
+for two local processes on one host; if this ever needs to work across hosts,
+move it to the database instead.
+
+Locking goes through portalocker rather than fcntl.flock directly: fcntl is
+POSIX-only and the bot also runs on Windows. portalocker maps to flock on
+POSIX and to msvcrt byte-range locks on Windows, keeping one code path with
+the same semantics on both.
 """
 from __future__ import annotations
 
-import fcntl
 import json
 from contextlib import contextmanager
 from pathlib import Path
 from typing import Iterator
+
+import portalocker
 
 STATE_PATH = Path(__file__).parent.parent / "data" / "risk_state.json"
 LOCK_PATH = Path(__file__).parent.parent / "data" / "risk_state.lock"
@@ -55,11 +61,14 @@ def transaction() -> Iterator[dict]:
     atomic with respect to the *other* process, not just other threads in
     this one."""
     LOCK_PATH.parent.mkdir(parents=True, exist_ok=True)
-    with open(LOCK_PATH, "w") as lock_file:
-        fcntl.flock(lock_file, fcntl.LOCK_EX)
+    # "a+", not "w": "w" truncates on every acquisition. Harmless under flock,
+    # but Windows byte-range locks are mandatory — truncating a file another
+    # process holds locked can raise PermissionError.
+    with open(LOCK_PATH, "a+") as lock_file:
+        portalocker.lock(lock_file, portalocker.LOCK_EX)   # blocking, no LOCK_NB
         try:
             state = _read_state_unlocked()
             yield state
             _write_state_unlocked(state)
         finally:
-            fcntl.flock(lock_file, fcntl.LOCK_UN)
+            portalocker.unlock(lock_file)

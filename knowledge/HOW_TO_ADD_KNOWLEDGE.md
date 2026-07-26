@@ -195,6 +195,41 @@ processed/market_theory/order_flow.md
 
 ---
 
+## Конвейер разбора книг по главам (chapter-reader)
+
+Для больших книг вместо ручного «обработай файл» есть конвейер: субагент
+`chapter-reader` читает по одной главе и пишет карточку, черновики правил и
+конспект. Он ничего не внедряет — выход идёт на ревью человеку.
+
+```bash
+python tools/build_chapter_queue.py --detect-offset 20   # замерить page_offset
+python tools/build_chapter_queue.py --page-offset -12    # черновик очереди
+# сверить knowledge/queue/chapters.draft.yaml глазами → перенести pages
+#           в knowledge/queue/chapters.yaml
+python tools/read_chapters.py --dry-run                  # что будет сделано
+python tools/read_chapters.py --only 4                   # одна глава
+python tools/read_chapters.py --limit 3                  # батч
+```
+
+Что получается на главу: `knowledge/cards/chNN.md` (правила-кандидаты, фичи,
+гипотезы, вопросы, чего в главе нет), `knowledge/rules/candidates/chNN_*.yaml`
+и конспект в `processed/<категория>/`. По окончании батча — сводка в Telegram.
+
+Правила агента (`.claude/agents/chapter-reader.md`): каждое правило со
+ссылкой на страницу; любой численный параметр либо цитата из книги, либо
+`REQUIRES_DECISION`; фичи выписываются всегда, даже для слабых правил;
+неоднозначности не разрешаются, а идут в «Вопросы»; статус главы всегда
+`read_pending_review`. Писать агент может только в `knowledge/cards/`,
+`knowledge/rules/candidates/`, `knowledge/processed/` — остальное режет хук
+`tools/guard_write_path.py`. Боевые `rules*.yaml` и статусы глав в
+`schwager_index.md` меняет только человек.
+
+Нужна рабочая авторизация `claude` в том же терминале: раннер делает
+preflight-проверку и прерывается, если CLI не отвечает, чтобы не пометить
+главы `failed` из-за среды.
+
+---
+
 ## Важные принципы
 
 **Не дублируй.** Одна стратегия — один файл. Если встретил её в двух книгах,

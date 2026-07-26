@@ -1,0 +1,94 @@
+# ============================================================
+# QuantFlow — очередь разбора глав для chapter-reader.
+#
+# Правится РУКАМИ. tools/read_chapters.py меняет только поля
+# status / attempts / last_error / card, остальное не трогает.
+#
+# pages — ПЕЧАТНЫЕ номера страниц книги (те же, что в
+# processed/market_theory/schwager_index.md: «стр. 655»).
+# Физическая страница PDF = печатная - page_offset.
+# Границы глав и offset даёт tools/build_chapter_queue.py:
+#   python tools\build_chapter_queue.py --detect-offset 20   # замерить offset
+#   python tools\build_chapter_queue.py --page-offset -12    # черновик очереди
+# Затем сверить chapters.draft.yaml глазами и перенести pages сюда.
+#
+# pages: [] означает «границы не заданы» — раннер такую главу не берёт,
+# а не извлекает случайный кусок книги.
+#
+# Комментарии YAML при перезаписи не сохраняются, поэтому человеческие
+# пометки живут в поле note (эта шапка — константа в раннере).
+#
+# category — куда пойдёт конспект: technical | risk | strategies |
+# market_theory. Выбирает человек, не агент.
+#
+# Порядок = приоритет из «Рекомендованный порядок обработки (проход 2)»
+# в schwager_index.md, пункты 6-10. Главы 9, 11, 15, 17, 18 уже разобраны
+# вручную и в очередь не входят.
+# ============================================================
+
+book:
+  id: schwager_ta_full
+  title: Швагер, Технический анализ. Полный курс
+  pdf: knowledge/raw/books/Технический_анализ_Полный_курс_pdf.pdf
+  page_offset: 0   # ЗАМЕРИТЬ: печатная = физическая + offset
+
+chapters:
+  - n: 4
+    title: Торговые диапазоны
+    pages: []
+    category: strategies
+    status: pending
+    card: ""
+    attempts: 0
+    last_error: ""
+    note: "приоритет 6: определение диапазона и правила пробоя с подтверждением — фильтр боковика, база для range_trap_moex"
+
+  - n: 5
+    title: Поддержка и сопротивление
+    pages: []
+    category: strategies
+    status: pending
+    card: ""
+    attempts: 0
+    last_error: ""
+    note: "приоритет 6: S/R на границах диапазона, смена ролей после пробоя, огибающие полосы MA±%"
+
+  - n: 20
+    title: Тестирование и оптимизация торговых систем
+    pages: []
+    category: market_theory
+    status: pending
+    card: ""
+    attempts: 0
+    last_error: ""
+    note: "приоритет 7: методология против подгонки — прямо в hypothesis_engine"
+
+  - n: 6
+    title: Графические модели
+    pages: []
+    category: technical
+    status: pending
+    card: ""
+    attempts: 0
+    last_error: ""
+    note: "приоритет 8: однодневные модели (разрывы, шипы, ШД-дни, дни ускорения) — фундамент систем гл. 18; часть уже разобрана в systems_ch18_schwager.md, проверить пересечение"
+
+  - n: 10
+    title: Постановка целей и критерии закрытия
+    pages: []
+    category: risk
+    status: pending
+    card: ""
+    attempts: 0
+    last_error: ""
+    note: "приоритет 9: измеренное движение, «правило семи», последовательность ДеМарка, следящие остановки"
+
+  - n: 23
+    title: 82 правила торговли
+    pages: []
+    category: risk
+    status: pending
+    card: ""
+    attempts: 0
+    last_error: ""
+    note: "приоритет 10: чек-лист для risk_manager; много философии — ждать мало формализуемого"

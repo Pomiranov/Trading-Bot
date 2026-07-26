@@ -19,6 +19,7 @@ max(candles.time) идёт в сообщение как диагностика, 
 Не импортирует run_forward_d1 / learning / ui.telegram_bot: сторож не должен
 зависеть от того, что он охраняет (ui.telegram_bot к тому же тянет легаси
 feedback_store, который ходит в БД на импорте — см. run_forward_d1.py:59).
+Отправка в Telegram — в bot/notify.py, с тем же узким импорт-бюджетом.
 """
 
 import sys
@@ -28,7 +29,6 @@ if hasattr(sys.stdout, "reconfigure"):
 if hasattr(sys.stderr, "reconfigure"):
     sys.stderr.reconfigure(encoding="utf-8")
 
-import html
 import logging
 import os
 import time
@@ -36,7 +36,6 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 import psycopg2
-import requests
 from dotenv import load_dotenv
 
 # Скрипт живёт в bot/, конфиг тоже. Путь и .env — от расположения файла,
@@ -47,6 +46,7 @@ sys.path.insert(0, str(ROOT / "bot"))
 load_dotenv(ROOT / ".env")
 
 from config import config  # noqa: E402  — только после sys.path/.env
+from notify import credentials_ready, escape, first_line, send  # noqa: E402
 
 # Дублируется с run_forward_d1.py:64-68 осознанно: импорт того модуля потянул
 # бы pandas и весь learning-стек в сторожа.
@@ -82,42 +82,6 @@ def _setup_logging() -> None:
     )
 
 
-# ── Telegram ─────────────────────────────────────────────────────────────
-
-def notify(text: str) -> bool:
-    """Отправить сообщение в Telegram. True — доставлено.
-
-    Токен и chat_id — из config.telegram (env TELEGRAM_TOKEN /
-    TELEGRAM_CHAT_ID), то есть тот же секрет, что у ui/telegram_bot.py.
-    Отправка своя, а не через ui.telegram_bot._send: тот модуль на импорте
-    тянет legacy feedback_store, risk, signals и ходит в БД.
-    """
-    token = config.telegram.token
-    chat_id = config.telegram.chat_id
-    if not token or not chat_id:
-        logger.error("TELEGRAM_TOKEN/TELEGRAM_CHAT_ID не заданы — сообщение не отправлено")
-        return False
-    try:
-        resp = requests.post(
-            f"https://api.telegram.org/bot{token}/sendMessage",
-            json={"chat_id": chat_id, "text": text, "parse_mode": "HTML"},
-            timeout=15,
-        )
-        resp.raise_for_status()
-        return True
-    except Exception as exc:
-        # Текст ошибки requests содержит полный URL, то есть и токен —
-        # в лог он попасть не должен.
-        logger.error("Telegram: %s", _first_line(exc).replace(token, "<token>"))
-        return False
-
-
-def _first_line(exc: Exception) -> str:
-    """Одна строка из исключения — без трейсбека, чтобы не пугать в Telegram."""
-    text = str(exc).strip() or exc.__class__.__name__
-    return text.splitlines()[0][:300]
-
-
 # ── Чтение БД ────────────────────────────────────────────────────────────
 
 def read_state() -> tuple[list[tuple[str, datetime]], datetime | None]:
@@ -133,7 +97,7 @@ def read_state() -> tuple[list[tuple[str, datetime]], datetime | None]:
         except Exception as exc:
             last_exc = exc
             logger.warning("Подключение к БД, попытка %d/%d: %s",
-                           attempt, DB_ATTEMPTS, _first_line(exc))
+                           attempt, DB_ATTEMPTS, first_line(exc))
             if attempt < DB_ATTEMPTS:
                 time.sleep(DB_RETRY_SEC)
     else:
@@ -178,7 +142,7 @@ def _forward_log_line() -> str:
     except FileNotFoundError:
         return "Ночной прогон: forward_d1.log отсутствует"
     except Exception as exc:
-        return f"Ночной прогон: лог не прочитать ({_first_line(exc)})"
+        return f"Ночной прогон: лог не прочитать ({first_line(exc)})"
 
 
 def build_message(rows: list[tuple[str, datetime]], candles_max: datetime | None) -> str:
@@ -246,35 +210,31 @@ def build_message(rows: list[tuple[str, datetime]], candles_max: datetime | None
 def main() -> int:
     _setup_logging()
 
-    # Заглушки из .env.example — тот же случай, что «не задано»: слать некуда.
-    if (not config.telegram.token or not config.telegram.chat_id
-            or config.telegram.token.startswith("your_")
-            or config.telegram.chat_id.startswith("your_")):
-        logger.error("TELEGRAM_TOKEN/TELEGRAM_CHAT_ID не заданы (или остались "
-                     "заглушками из .env.example) — некому уведомлять")
+    # Слать некуда — проверять нечего: код 3, как и раньше.
+    if not credentials_ready():
         return 3
 
     try:
         rows, candles_max = read_state()
     except Exception as exc:
         # Требование: отдельное сообщение, выход без трейсбека.
-        reason = _first_line(exc)
+        reason = first_line(exc)
         logger.error("БД недоступна: %s", reason)
         text = (
             "⚠️ <b>БД недоступна, форвард не проверить</b>\n"
             f"{STRATEGY_ID} — проверка пропущена\n"
-            f"Ошибка: {html.escape(reason)}"
+            f"Ошибка: {escape(reason)}"
         )
-        return 0 if notify(text) else 1
+        return 0 if send(text) else 1
 
     text = build_message(rows, candles_max)
     logger.info("Вердикт:\n%s", text)
-    return 0 if notify(text) else 1
+    return 0 if send(text) else 1
 
 
 if __name__ == "__main__":
     try:
         sys.exit(main())
     except Exception as exc:      # последний барьер: без трейсбека наружу
-        logger.error("Сторож упал: %s", _first_line(exc))
+        logger.error("Сторож упал: %s", first_line(exc))
         sys.exit(1)

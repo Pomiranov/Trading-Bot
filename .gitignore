@@ -43,6 +43,10 @@ models/
 # ─── Knowledge backups ────────────────────────────────────────────────────────
 knowledge/rules.yaml.backup
 
+# Черновик очереди глав от tools/build_chapter_queue.py — рабочая очередь
+# knowledge/queue/chapters.yaml версионируется, черновик нет.
+knowledge/queue/chapters.draft.yaml
+
 # ─── Node.js / Next.js ────────────────────────────────────────────────────────
 node_modules/
 .next/
@@ -59,7 +63,11 @@ dist/
 Thumbs.db
 
 # ─── Claude Code (local settings, worktrees) ──────────────────────────────────
-.claude/
+# Определения субагентов — код проекта: без них tools/read_chapters.py не
+# запустится ни у напарника на Mac, ни на Windows Server. Всё остальное
+# (settings.local.json, worktrees, кэши) остаётся локальным.
+.claude/*
+!.claude/agents/
 
 # ─── VS Code workspace ────────────────────────────────────────────────────────
 *.code-workspace

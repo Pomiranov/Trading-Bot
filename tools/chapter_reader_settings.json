@@ -1,0 +1,16 @@
+{
+  "_comment": "Настройки ТОЛЬКО для подпроцесса chapter-reader (claude -p --settings tools/chapter_reader_settings.json из tools/read_chapters.py). В общий .claude/settings.json это класть нельзя: хук запрещал бы запись вне knowledge/ во всех обычных сессиях. Команда указана относительно cwd — раннер запускает claude с cwd = корень репозитория.",
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Write|Edit|MultiEdit|NotebookEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python tools/guard_write_path.py"
+          }
+        ]
+      }
+    ]
+  }
+}

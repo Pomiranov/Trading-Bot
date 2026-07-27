@@ -38,7 +38,17 @@ export function DeviceFrame({
         aria-hidden="true"
         className="pointer-events-none absolute inset-x-8 top-px h-px bg-[color:var(--color-border-strong)]"
       />
-      <div className="overflow-hidden rounded-[var(--radius-xl)]">{children}</div>
+      {/*
+        `device-screen` flattens whatever card is placed inside: a Surface
+        brings its own 16px radius, border, resting shadow and hover lift, and
+        all four fight a bezel. The card's corners would sit inside the frame's
+        with a visible gap, and the lift would translate it under a clip.
+
+        The frame owns how its content sits, so the override lives here rather
+        than as a prop threaded into the card — the card should not have to know
+        it is ever inside a phone.
+      */}
+      <div className="device-screen overflow-hidden rounded-[var(--radius-xl)]">{children}</div>
     </div>
   );
 }

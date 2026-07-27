@@ -2,6 +2,7 @@ import { getTranslations } from "next-intl/server";
 import { contentSource } from "@/content-layer/source";
 import { StatusPill } from "@/components/ui/status-pill";
 import { Reveal } from "@/components/motion/reveal";
+import { ScrollAffordance } from "@/components/ui/scroll-affordance";
 import { STRATEGY_STAGE_TONE } from "@/lib/strategy-status";
 
 /**
@@ -54,10 +55,17 @@ export async function StrategyTable({ locale }: { locale: string }) {
 
   return (
     <Reveal index={2}>
-      <div
-        data-lenis-prevent-horizontal
-        className="overflow-x-auto rounded-[var(--radius-lg)] border border-[color:var(--color-border)] bg-[color:var(--color-surface)]"
-      >
+      {/*
+        ScrollAffordance adds the edge fade and the hint. Measured at 390px:
+        container 358, content 702 — 344px of this table was reachable only by
+        a horizontal gesture, with nothing on screen to suggest it existed. The
+        scroller itself was correct; it was simply undiscoverable.
+      */}
+      <ScrollAffordance hint={t("tableScrollHint")}>
+        <div
+          data-lenis-prevent-horizontal
+          className="overflow-x-auto rounded-[var(--radius-lg)] border border-[color:var(--color-border)] bg-[color:var(--color-surface)]"
+        >
         <table className="w-full min-w-[680px] border-collapse text-left">
           <thead>
             <tr className="border-b border-[color:var(--color-border)]">
@@ -106,8 +114,9 @@ export async function StrategyTable({ locale }: { locale: string }) {
               </tr>
             ))}
           </tbody>
-        </table>
-      </div>
+          </table>
+        </div>
+      </ScrollAffordance>
     </Reveal>
   );
 }

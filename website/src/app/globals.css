@@ -531,6 +531,24 @@ body::before {
   box-shadow: var(--shadow-card-hover-on-paper);
 }
 
+/* ─── Device screen ────────────────────────────────────────────────────────
+   Makes a card sit flush inside `ui/device-frame.tsx`. A Surface arrives with
+   its own radius, border, resting shadow and hover lift; inside a bezel all
+   four are wrong — the corners gap, and the lift translates the card under the
+   frame's clip. The frame flattens them so the card never has to know it is
+   inside a phone. */
+.device-screen > [data-slot="surface"] {
+  border-radius: 0;
+  border: 0;
+  box-shadow: none;
+}
+
+.device-screen > [data-slot="surface"]:hover,
+.device-screen > [data-slot="surface"]:focus-within {
+  transform: none;
+  box-shadow: none;
+}
+
 /* ─── Signal line ──────────────────────────────────────────────────────────
    The connective tissue: audience -> pipeline, the pipeline spine itself, the
    broker route diagram. Drawn by `ui/signal-line.tsx`.

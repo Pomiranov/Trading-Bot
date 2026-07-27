@@ -4,7 +4,8 @@ import { useId, useRef, useState, type ReactNode } from "react";
 import { motion, useReducedMotion } from "motion/react";
 import { useTranslations } from "next-intl";
 import { Surface } from "@/components/ui/surface";
-import { StatusPill } from "@/components/ui/status-pill";
+import { StatusChip } from "@/components/ui/status-chip";
+import { BrandMark } from "@/components/ui/brand-mark";
 import { MonoLabel } from "@/components/ui/mono-label";
 import { cn } from "@/lib/utils";
 
@@ -246,7 +247,7 @@ export function DashboardTerminal() {
                 <Td dim>{s.strategy}</Td>
                 <Td dim>{gateLabel[s.state]}</Td>
                 <td className="px-5 py-4">
-                  <StatusPill tone={STATE_TONE[s.state]} label={stateLabel[s.state]} />
+                  <StatusChip tone={STATE_TONE[s.state]} label={stateLabel[s.state]} />
                 </td>
               </Row>
             ))}
@@ -264,7 +265,7 @@ export function DashboardTerminal() {
                 <Td dim>{b.period}</Td>
                 <Td dim>{b.tf}</Td>
                 <td className="px-5 py-4">
-                  <StatusPill
+                  <StatusChip
                     tone={b.state === "done" ? "success" : "muted"}
                     label={b.state === "done" ? t("btDone") : t("btRunning")}
                   />
@@ -324,16 +325,55 @@ export function DashboardTerminal() {
   }
 
   return (
-    <div className="grid gap-8 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] lg:gap-12">
-      {/* ── Left: the sections, as real tabs ── */}
-      <div className="flex min-w-0 flex-col gap-4">
-        <MonoLabel id={`${baseId}-tabs-label`}>{t("tabsLabel")}</MonoLabel>
+    /*
+      One terminal frame, not a two-column layout.
 
+      The previous version put a six-item vertical tablist in its own column
+      beside the panel, which front-loaded a control surface before the reader
+      knew what they were looking at — and at 390px produced 6 x ~76px = 456px
+      of navigation before any content. The reference shows a narrative and a
+      CTA on the left of the *section* and one panel on the right, with no tab
+      chrome exposed outside it.
+
+      So the tabs move inside the frame as a horizontal segmented control, and
+      dashboard-section.tsx owns the narrative column.
+
+      The WAI-ARIA tablist moves across unchanged: role="tab", aria-selected,
+      aria-controls, one tab in the focus order, Arrow/Home/End roving focus,
+      panels in DOM order after the tablist. Only `aria-orientation` flips, and
+      the key handler already accepted both axes.
+    */
+    <Surface variant="raised" interactive={false} className="overflow-hidden">
+      {/* ── Chrome ──
+          The three grey dots that used to sit here were a monochrome macOS
+          traffic-light imitation: the single most generic "this is a fake app
+          screenshot" device available, and it undercut the claim that this is a
+          real instrument. Replaced with the mark, the panel name and the mode
+          the product actually runs in. */}
+      <div className="flex flex-wrap items-center gap-3 border-b border-[color:var(--color-border)] px-5 py-3.5">
+        <BrandMark size="xs" className="shrink-0 text-[color:var(--color-text-secondary)]" />
+        <span className="font-mono text-[length:var(--text-label)] tracking-[var(--text-label--letter-spacing)] text-[color:var(--color-text-tertiary)]">
+          {t("mockChrome")} · {tabs[active].label}
+        </span>
+        <span className="ml-auto flex items-center gap-2">
+          <MonoLabel as="span">{t("mockModeLabel")}</MonoLabel>
+          <StatusChip tone="muted" label={t("mockModeValue")} />
+        </span>
+      </div>
+
+      {/* ── Tabs, inside the chrome ──
+          Axis-scoped Lenis opt-out on the scroller: the bare data-lenis-prevent
+          would release vertical wheel too and reintroduce the backward lurch.
+          See strategy-table.tsx for the full account. */}
+      <div
+        data-lenis-prevent-horizontal
+        className="overflow-x-auto border-b border-[color:var(--color-border)]"
+      >
         <div
           role="tablist"
-          aria-orientation="vertical"
-          aria-labelledby={`${baseId}-tabs-label`}
-          className="flex flex-col gap-px overflow-hidden rounded-[var(--radius-lg)] border border-[color:var(--color-border)] bg-[color:var(--color-border)]"
+          aria-orientation="horizontal"
+          aria-label={t("tabsLabel")}
+          className="flex min-w-max"
         >
           {tabs.map((tab, i) => {
             const selected = i === active;
@@ -351,99 +391,66 @@ export function DashboardTerminal() {
                 tabIndex={selected ? 0 : -1}
                 onClick={() => setActive(i)}
                 onKeyDown={(e) => onTabKeyDown(e, i)}
+                title={tab.desc}
                 className={cn(
-                  "group relative flex cursor-pointer flex-col gap-1 px-5 py-4 text-left outline-none",
+                  "group relative shrink-0 cursor-pointer px-5 py-3.5 text-left font-mono text-[length:var(--text-label)] tracking-[var(--text-label--letter-spacing)] uppercase outline-none",
                   "transition-colors duration-[var(--duration-base)] ease-[var(--ease-out-expo)]",
                   "focus-visible:z-10 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[color:var(--color-accent)]",
                   selected
-                    ? "bg-[color:var(--color-panel-raised)]"
-                    : "bg-[color:var(--color-surface)] hover:bg-[color:var(--color-panel)]",
+                    ? "bg-[color:var(--color-panel-raised)] text-[color:var(--color-text-primary)]"
+                    : "text-[color:var(--color-text-tertiary)] hover:bg-[color:var(--color-panel)] hover:text-[color:var(--color-text-primary)]",
                 )}
               >
-                {/* The selected marker is a solid white rail, not a colour. */}
+                {tab.label}
+                {/* Selected marker: a solid white rail on the bottom edge, not a
+                    colour. Was a left rail when the list was vertical. */}
                 <span
                   aria-hidden="true"
                   className={cn(
-                    "absolute inset-y-0 left-0 w-[2px] transition-opacity duration-[var(--duration-base)]",
+                    "absolute inset-x-0 bottom-0 h-[2px] transition-opacity duration-[var(--duration-base)]",
                     selected
                       ? "bg-[color:var(--color-accent)] opacity-100"
                       : "bg-[color:var(--color-border-strong)] opacity-0 group-hover:opacity-100",
                   )}
                 />
-                <span
-                  className={cn(
-                    "text-[length:var(--text-body)] font-medium transition-colors",
-                    selected
-                      ? "text-[color:var(--color-text-primary)]"
-                      : "text-[color:var(--color-text-secondary)]",
-                  )}
-                >
-                  {tab.label}
-                </span>
-                <span className="text-[length:var(--text-caption)] leading-[var(--text-caption--line-height)] text-[color:var(--color-text-tertiary)]">
-                  {tab.desc}
-                </span>
               </button>
             );
           })}
         </div>
       </div>
 
-      {/* ── Right: the preview, swapped per selection ── */}
-      <div className="flex min-w-0 flex-col gap-4">
-        <Surface variant="raised" interactive={false} className="overflow-hidden">
-          <div className="flex flex-wrap items-center gap-3 border-b border-[color:var(--color-border)] px-5 py-3.5">
-            <span aria-hidden="true" className="flex gap-1.5">
-              <span className="size-2 rounded-full bg-[color:var(--color-border-strong)]" />
-              <span className="size-2 rounded-full bg-[color:var(--color-border-strong)]" />
-              <span className="size-2 rounded-full bg-[color:var(--color-border-strong)]" />
-            </span>
-            <span className="font-mono text-[length:var(--text-label)] tracking-[var(--text-label--letter-spacing)] text-[color:var(--color-text-tertiary)]">
-              {t("mockChrome")} · {tabs[active].label}
-            </span>
-            <span className="ml-auto flex items-center gap-2">
-              <MonoLabel as="span">{t("mockModeLabel")}</MonoLabel>
-              <StatusPill tone="muted" label={t("mockModeValue")} />
-            </span>
-          </div>
-
-          {tabs.map((tab, i) => (
-            <div
-              key={tab.label}
-              role="tabpanel"
-              id={panelId(i)}
-              aria-labelledby={tabId(i)}
-              hidden={i !== active}
-              // A tabpanel with no focusable child needs to be reachable, so the
-              // keyboard user can read it after Tab-ing off the tablist.
-              tabIndex={i === active ? 0 : -1}
-              className="outline-none focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[color:var(--color-accent)]"
+      {/* ── Panels ── */}
+      {tabs.map((tab, i) => (
+        <div
+          key={tab.label}
+          role="tabpanel"
+          id={panelId(i)}
+          aria-labelledby={tabId(i)}
+          hidden={i !== active}
+          // A tabpanel with no focusable child still needs to be reachable, so
+          // a keyboard user can read it after Tab-ing off the tablist.
+          tabIndex={i === active ? 0 : -1}
+          className="outline-none focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[color:var(--color-accent)]"
+        >
+          {i === active ? (
+            <motion.div
+              // Re-keyed per tab so the entrance replays on every switch.
+              key={i}
+              // `initial` must NOT branch on the reduced-motion preference: it
+              // is false on the server and the user's real value on the client,
+              // and `initial={false}` there would strand the server-rendered
+              // opacity: 0 forever. Collapse the duration instead. See
+              // motion/reveal.tsx for the full account.
+              data-reveal=""
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={reduce ? { duration: 0 } : { duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
             >
-              {i === active ? (
-                <motion.div
-                  // Re-keyed per tab so the entrance replays on every switch.
-                  key={i}
-                  // `initial` must NOT branch on the reduced-motion preference:
-                  // it is false on the server and the user's real value on the
-                  // client, and `initial={false}` there would strand the
-                  // server-rendered opacity: 0 forever. Collapse the duration
-                  // instead. See motion/reveal.tsx for the full account.
-                  data-reveal=""
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={reduce ? { duration: 0 } : { duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
-                >
-                  {panelBody(i)}
-                </motion.div>
-              ) : null}
-            </div>
-          ))}
-        </Surface>
-
-        <p className="text-[length:var(--text-caption)] leading-[var(--text-caption--line-height)] text-[color:var(--color-text-quaternary)]">
-          {t("demoNote")}
-        </p>
-      </div>
-    </div>
+              {panelBody(i)}
+            </motion.div>
+          ) : null}
+        </div>
+      ))}
+    </Surface>
   );
 }

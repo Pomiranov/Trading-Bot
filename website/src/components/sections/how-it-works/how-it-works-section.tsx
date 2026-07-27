@@ -1,128 +1,126 @@
 import { getTranslations } from "next-intl/server";
 import { contentSource } from "@/content-layer/source";
-import { SectionHeading } from "@/components/ui/section-heading";
+import { Section } from "@/components/ui/section";
+import { SectionHeader } from "@/components/ui/section-header";
+import { MonoLabel } from "@/components/ui/mono-label";
+import { AsideNote } from "@/components/ui/aside-note";
 import { Reveal } from "@/components/motion/reveal";
-import { EnginePipelineScroller } from "./engine-pipeline-scroller";
+import { PipelineSpine } from "./pipeline-spine";
 
-export async function EnginePipelineSection({ locale }: { locale: string }) {
-  const [stages, t] = await Promise.all([
+/**
+ * The decision path, told twice: a plain sentence first, then the module that
+ * performs it. Every `sourceRef` resolves to a real symbol in the Python
+ * codebase — the most verifiable claim on the site, kept intact.
+ *
+ * The layout mechanics, and the two failed versions that produced them, are
+ * documented in `pipeline-spine.tsx`. The short form: layout plus
+ * IntersectionObserver only, because the pinned-ScrollTrigger version of this
+ * section is where the backward-scroll bug lived.
+ *
+ * ── What left this section ──
+ *
+ * It used to carry three separate arguments in one 2 543px block — the
+ * pipeline, the confidence bounds and the manifesto — which made it 1 286px
+ * longer than anything else on the page and meant its own H2 was two screens
+ * gone by the time a reader reached the third topic.
+ *
+ *   • The manifesto is now `#foundation`, its own titled section.
+ *   • The confidence bounds now sit *inside the belief-gate node*, which is
+ *     where they belong: they are literally that gate's parameters, and a
+ *     reader now meets them at the moment the gate is being explained rather
+ *     than as three unlabelled figures several hundred pixels further down.
+ */
+export async function HowItWorksSection({ locale }: { locale: string }) {
+  const [stages, learning, t, common] = await Promise.all([
     contentSource.getPipelineStages(locale),
-    getTranslations({ locale, namespace: "sections" }),
+    contentSource.getLearningSystemCopy(locale),
+    getTranslations({ locale, namespace: "how" }),
+    getTranslations({ locale, namespace: "common" }),
   ]);
 
+  const techLabel = common("technical");
+
+  /**
+   * System constants from the code, never results:
+   * `MIN_TRADES_FOR_CONFIDENCE` and the MIN/MAX_CONFIDENCE clamps in
+   * bot/learning/belief_updater.py:37,46-47.
+   *
+   * These are values an operator configures before the first trade, not
+   * anything the system achieved. They stay under the section's own
+   * "confidence bounds" label so they can never be skimmed as performance.
+   */
+  const bounds = [
+    { value: String(learning.minTradesFloor), label: t("minTradesLabel") },
+    { value: learning.minConfidence.toFixed(2), label: t("minConfidenceLabel") },
+    { value: learning.maxConfidence.toFixed(2), label: t("maxConfidenceLabel") },
+  ];
+
+  // Keyed by id rather than by index, so reordering the MDX files cannot
+  // silently attach the belief gate's parameters to a different stage.
+  const beliefGate = stages.find((s) => s.id === "belief-gate");
+
+  const extras = beliefGate
+    ? {
+        [beliefGate.id]: (
+          <div className="flex flex-col gap-3 border-t border-[color:var(--color-border)] pt-4">
+            <MonoLabel as="span">{t("constantsHeading")}</MonoLabel>
+            <dl className="grid grid-cols-3 gap-3">
+              {bounds.map((b) => (
+                <div key={b.label} className="flex min-w-0 flex-col gap-1">
+                  <dt className="sr-only">{b.label}</dt>
+                  <dd className="font-mono text-[length:var(--text-h3)] leading-[var(--text-h3--line-height)] font-semibold tabular-nums tracking-[var(--text-h3--letter-spacing)] text-[color:var(--color-text-primary)]">
+                    {b.value}
+                  </dd>
+                  {/* aria-hidden: the <dt> above already carries this text for
+                      assistive tech, and repeating it would read the label
+                      twice per figure. */}
+                  <p
+                    aria-hidden="true"
+                    className="font-mono text-[length:var(--text-label)] leading-[1.3] tracking-[var(--text-label--letter-spacing)] text-[color:var(--color-text-quaternary)] uppercase"
+                  >
+                    {b.label}
+                  </p>
+                </div>
+              ))}
+            </dl>
+          </div>
+        ),
+      }
+    : undefined;
+
   return (
-    <section
-      aria-labelledby="engine-pipeline-heading"
-      className="relative flex flex-col gap-12 py-[var(--space-section-y)]"
+    <Section
+      id="how-it-works"
+      rhythm="major"
+      divider
+      glow={<div className="section-glow [--glow-x:50%] [--glow-y:0%]" />}
+      className="flex flex-col gap-[var(--space-header-to-body)]"
     >
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute right-0 top-0 w-[500px] h-[500px] rounded-full"
-        style={{
-          background: "radial-gradient(circle, rgba(255,138,30,0.04) 0%, transparent 60%)",
-          filter: "blur(80px)",
-        }}
+      <SectionHeader
+        id="how-it-works"
+        eyebrow={t("eyebrow")}
+        heading={t("heading")}
+        lead={t("lead")}
+        note={t("rulesNote")}
       />
 
-      <div className="px-[var(--space-page-x)]">
-        <Reveal>
-          <div className="flex flex-col gap-3">
-            <span
-              className="font-mono text-[10px] uppercase tracking-[0.18em]"
-              style={{ color: "var(--color-accent)", opacity: 0.7 }}
-            >
-              02
-            </span>
-            <SectionHeading id="engine-pipeline-heading" className="max-w-[22ch]">
-              {t("enginePipeline")}
-            </SectionHeading>
-          </div>
-        </Reveal>
-      </div>
+      <PipelineSpine stages={stages} techLabel={techLabel} extras={extras} />
 
-      {/* Mobile: vertical stack */}
-      <ol className="flex flex-col px-[var(--space-page-x)] md:hidden">
-        {stages.map((stage) => (
-          <li
-            key={stage.id}
-            className="flex flex-col gap-2.5 py-6"
-            style={{ borderBottom: "1px solid rgba(255,255,255,0.05)" }}
-          >
-            <span
-              className="font-mono tabular-nums text-[10px] uppercase tracking-[0.16em]"
-              style={{ color: "var(--color-accent)", opacity: 0.7 }}
-            >
-              {String(stage.order).padStart(2, "0")}
-            </span>
-            <p className="font-medium" style={{ color: "var(--color-text-primary)" }}>
-              {stage.title}
-            </p>
-            <div className="text-[14px]" style={{ color: "var(--color-text-secondary)" }}>
-              {stage.description}
-            </div>
-            {stage.sourceRef ? (
-              <p className="font-mono text-xs" style={{ color: "rgba(255,255,255,0.25)" }}>
-                {stage.sourceRef}
-              </p>
-            ) : null}
-          </li>
-        ))}
-      </ol>
+      {/* The loop closes below the last node, as a terminal element on the
+          spine rather than a full-width card. Previously stage 07 was spanned
+          across the whole grid to absorb this note, which made the loop-closer
+          the visually heaviest card in the section and inverted the reading
+          order of the seven stages. Indented to the spine's right-hand column
+          at lg so it reads as hanging off the end of the line. */}
+      <Reveal lift={false} className="lg:pl-[calc(50%+2.25rem)]">
+        <AsideNote className="max-w-[62ch]">{t("loopNote")}</AsideNote>
+      </Reveal>
 
-      {/* Desktop: pinned horizontal-pan track */}
-      <EnginePipelineScroller>
-        {stages.map((stage) => (
-          <li
-            key={stage.id}
-            className="group flex w-[340px] shrink-0 flex-col gap-5 rounded-2xl p-7 [scroll-snap-align:start] transition-all duration-300 hover:border-white/[0.11]"
-            style={{
-              background: "rgba(255,255,255,0.025)",
-              border: "1px solid rgba(255,255,255,0.08)",
-              backdropFilter: "blur(16px)",
-            }}
-          >
-            <div className="flex items-center gap-3">
-              <span
-                className="size-6 rounded-md flex items-center justify-center font-mono tabular-nums text-[9px] tracking-[0.08em] shrink-0"
-                style={{
-                  color: "var(--color-accent)",
-                  background: "rgba(255,138,30,0.08)",
-                  border: "1px solid rgba(255,138,30,0.12)",
-                }}
-              >
-                {String(stage.order).padStart(2, "0")}
-              </span>
-              <div
-                className="h-px flex-1"
-                style={{ background: "rgba(255,255,255,0.05)" }}
-              />
-            </div>
-            <p
-              className="text-[15px] font-medium leading-snug"
-              style={{ color: "rgba(255,255,255,0.92)", letterSpacing: "-0.01em" }}
-            >
-              {stage.title}
-            </p>
-            <div
-              className="flex-1 text-[14px] leading-relaxed"
-              style={{ color: "rgba(255,255,255,0.58)" }}
-            >
-              {stage.description}
-            </div>
-            {stage.sourceRef ? (
-              <p
-                className="mt-auto pt-4 font-mono text-[10px] uppercase tracking-[0.1em]"
-                style={{
-                  color: "rgba(255,255,255,0.18)",
-                  borderTop: "1px solid rgba(255,255,255,0.05)",
-                }}
-              >
-                {stage.sourceRef}
-              </p>
-            ) : null}
-          </li>
-        ))}
-      </EnginePipelineScroller>
-    </section>
+      <Reveal lift={false}>
+        <div className="max-w-[72ch] text-[length:var(--text-body)] leading-[var(--text-body--line-height)] text-[color:var(--color-text-secondary)]">
+          {learning.intro}
+        </div>
+      </Reveal>
+    </Section>
   );
 }

@@ -40,10 +40,10 @@ export function MobileNav({
         onClick={() => setOpen((o) => !o)}
         aria-expanded={open}
         aria-label={open ? closeLabel : openLabel}
-        className="relative flex lg:hidden size-9 flex-col items-center justify-center gap-[5.5px] rounded-lg transition-colors duration-200"
+        className="relative flex size-11 flex-col items-center justify-center gap-[5.5px] rounded-[var(--radius-md)] border transition-colors duration-[var(--duration-base)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--color-accent)] md:hidden"
         style={{
-          background: open ? "rgba(255,138,30,0.08)" : "rgba(255,255,255,0.04)",
-          border: `1px solid ${open ? "rgba(255,138,30,0.22)" : "rgba(255,255,255,0.07)"}`,
+          background: open ? "var(--color-highlight-bg)" : "var(--color-fill-subtle)",
+          borderColor: open ? "var(--color-highlight-border)" : "var(--color-border-strong)",
         }}
       >
         {[0, 1, 2].map((i) => (
@@ -51,7 +51,7 @@ export function MobileNav({
             key={i}
             className="block h-px w-[14px] rounded-full transition-all duration-300 origin-center"
             style={{
-              background: open ? "var(--color-accent)" : "rgba(255,255,255,0.6)",
+              background: open ? "var(--color-accent)" : "var(--color-text-secondary)",
               opacity: i === 1 && open ? 0 : 1,
               transform:
                 open
@@ -86,15 +86,14 @@ export function MobileNav({
             <motion.nav
               key="panel"
               aria-label="Navigation"
-              className="fixed left-4 right-4 top-[68px] lg:hidden overflow-hidden rounded-xl"
+              className="fixed left-4 right-4 top-[var(--nav-panel-top)] md:hidden overflow-hidden rounded-[var(--radius-xl)]"
               style={{
                 zIndex: "calc(var(--z-nav) - 1)",
-                background: "rgba(7,7,9,0.96)",
+                background: "var(--color-glass-surface-strong)",
                 backdropFilter: "blur(32px)",
                 WebkitBackdropFilter: "blur(32px)",
-                border: "1px solid rgba(255,255,255,0.09)",
-                boxShadow:
-                  "0 8px 48px rgba(0,0,0,0.6), 0 2px 8px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.05)",
+                border: "1px solid var(--color-glass-border)",
+                boxShadow: "var(--shadow-nav-panel)",
               }}
               initial={reduce ? false : { opacity: 0, y: -8, scale: 0.97 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -111,16 +110,7 @@ export function MobileNav({
                       track({ name: "journey_step", props: { section: key } });
                       close();
                     }}
-                    className="flex items-center rounded-lg px-3 py-3 font-mono text-[12px] uppercase tracking-[0.1em] transition-colors duration-150"
-                    style={{ color: "rgba(255,255,255,0.55)", textDecoration: "none" }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.background = "rgba(255,255,255,0.04)";
-                      e.currentTarget.style.color = "rgba(255,255,255,0.9)";
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.background = "";
-                      e.currentTarget.style.color = "rgba(255,255,255,0.55)";
-                    }}
+                    className="flex items-center rounded-[var(--radius-md)] px-3 py-3 font-mono text-[length:var(--text-caption)] tracking-[0.1em] text-[color:var(--color-text-secondary)] uppercase no-underline transition-colors duration-[var(--duration-micro)] hover:bg-[color:var(--color-highlight-bg)] hover:text-[color:var(--color-text-primary)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--color-accent)]"
                     initial={reduce ? false : { opacity: 0, x: -6 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{
@@ -137,7 +127,7 @@ export function MobileNav({
               {/* Divider */}
               <div
                 className="mx-3"
-                style={{ height: "1px", background: "rgba(255,255,255,0.06)" }}
+                style={{ height: "1px", background: "var(--color-border)" }}
               />
 
               {/* Bottom row: locale switch + CTA */}
@@ -145,30 +135,17 @@ export function MobileNav({
                 <a
                   href={localeSwitchHref}
                   onClick={close}
-                  className="font-mono text-[11px] uppercase tracking-[0.12em] rounded-lg px-3 py-2 transition-colors duration-150"
-                  style={{
-                    color: "rgba(255,255,255,0.3)",
-                    textDecoration: "none",
-                    background: "rgba(255,255,255,0.03)",
-                    border: "1px solid rgba(255,255,255,0.06)",
-                  }}
+                  className="rounded-[var(--radius-md)] border border-[color:var(--color-border-strong)] px-3 py-2.5 font-mono text-[length:var(--text-label)] tracking-[var(--text-label--letter-spacing)] text-[color:var(--color-text-secondary)] uppercase no-underline transition-colors duration-[var(--duration-micro)] hover:text-[color:var(--color-text-primary)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--color-accent)]"
                 >
                   {localeSwitchLabel}
                 </a>
                 <a
-                  href="#cta-heading"
+                  href="#access"
                   onClick={() => {
-                    track({ name: "cta_clicked", props: { target: "beta_form", location: "mobile_nav" } });
+                    track({ name: "cta_clicked", props: { target: "sandbox_access", location: "mobile_nav" } });
                     close();
                   }}
-                  className="font-mono text-[12px] uppercase tracking-[0.1em] rounded-lg px-5 py-2.5 transition-all duration-200"
-                  style={{
-                    background: "linear-gradient(135deg, #ff8a1e 0%, #d96a12 100%)",
-                    color: "#040404",
-                    fontWeight: 600,
-                    textDecoration: "none",
-                    boxShadow: "0 0 0 1px rgba(255,138,30,0.25), 0 4px 16px rgba(255,138,30,0.18)",
-                  }}
+                  className="rounded-[var(--radius-md)] bg-[color:var(--color-accent)] px-5 py-2.5 font-mono text-[length:var(--text-caption)] font-semibold tracking-[0.1em] text-[color:var(--color-bg)] uppercase no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--color-accent)]"
                 >
                   {ctaLabel}
                 </a>

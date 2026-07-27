@@ -1,8 +1,10 @@
 ---
 id: risk-manager
 order: 5
+stepLabel: Risk
 title: Risk manager
-sourceRef: RiskManager.calculate_position()
+plain: Sizes the position and checks the limits — before entry.
+sourceRef: RiskManager.check_trade_allowed()
 ---
 
-Sizes the position and checks it's allowed at all. Confidence earns capital, it doesn't remove the ceiling.
+Size comes from volatility (ATR) and a fixed risk budget. Then the limits are checked: share per position, daily loss, number of open positions. Fail any one and there is no trade.

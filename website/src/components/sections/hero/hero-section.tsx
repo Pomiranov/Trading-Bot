@@ -1,216 +1,126 @@
 import { getTranslations } from "next-intl/server";
-import { HeroSignalFlow } from "./hero-signal-flow";
-import { HeroCta } from "./hero-cta";
+import { ButtonLink } from "@/components/ui/button-link";
+import { ArrowLink } from "@/components/ui/arrow-link";
+import { MonoLabel } from "@/components/ui/mono-label";
+import { Stat } from "@/components/ui/stat";
+import { HeroVisual } from "./hero-visual";
+import { PointerTilt } from "./pointer-tilt";
 
+/**
+ * Strong text block left, composed system object right, flat black behind.
+ *
+ * The video hero this replaces is gone from the homepage entirely — see
+ * hero-visual.tsx for why, and docs/VIDEO_ASSET_GUIDE.md is retained as the
+ * record of that experiment rather than as a live dependency.
+ *
+ * Nothing in this section is a result. The three tiles are *configured limits*,
+ * verifiable in bot/config.py:66-71 and bot/learning/trading_orchestrator.py:63
+ * — a cap the operator sets before the first trade, not an outcome it produced.
+ * No win rate, profit factor, sample size, equity curve or return figure
+ * appears here or anywhere else on the site.
+ */
 export async function HeroSection({ locale }: { locale: string }) {
   const t = await getTranslations({ locale, namespace: "hero" });
 
-  const stats = [
-    { value: "58.6%", label: t("statWinRate") },
-    { value: "1.16×", label: t("statProfitFactor") },
-    { value: "29", label: t("statTrades") },
+  const proof = [t("proof1"), t("proof2"), t("proof3"), t("proof4"), t("proof5")];
+
+  const limits = [
+    { value: t("limit1Value"), label: t("limit1Label") },
+    { value: t("limit2Value"), label: t("limit2Label") },
+    { value: t("limit3Value"), label: t("limit3Label") },
   ];
+
+  const steps = [
+    t("visualStep1"),
+    t("visualStep2"),
+    t("visualStep3"),
+    t("visualStep4"),
+    t("visualStep5"),
+    t("visualStep6"),
+  ] as const;
 
   return (
     <section
+      id="hero"
       aria-labelledby="hero-heading"
-      className="relative flex min-h-dvh flex-col items-center justify-center overflow-hidden px-[var(--space-page-x)] pt-28 pb-20 md:flex-row md:justify-between md:gap-8"
+      className="relative isolate flex min-h-dvh items-center px-[var(--space-page-x)] pt-32 pb-20"
     >
-      {/* ── Ambient glow — single, purposeful ── */}
+      {/* Depth behind the instrument, weighted to the right so the panel sits
+          in the light and the headline stays on flat black. Clipped and
+          aria-hidden; see `.section-glow`. */}
       <div aria-hidden="true" className="pointer-events-none absolute inset-0 overflow-hidden">
-        <div
-          className="absolute rounded-full"
-          style={{
-            width: "800px",
-            height: "800px",
-            left: "-10%",
-            top: "0%",
-            background: "radial-gradient(circle, rgba(255,138,30,0.07) 0%, transparent 65%)",
-            filter: "blur(80px)",
-          }}
-        />
+        <div className="section-glow [--glow-x:72%] [--glow-y:38%]" />
       </div>
 
-      {/* ── Left column: headline + CTA ── */}
-      <div
-        className="relative z-10 flex flex-col items-start gap-6 md:max-w-[52%]"
-        style={{ animation: "qf-hero-enter 0.8s cubic-bezier(0.22,1,0.36,1) both" }}
-      >
-        {/* Live status pill */}
-        <div
-          className="inline-flex items-center gap-2 rounded-full border px-3 py-1.5 max-w-full overflow-hidden"
-          style={{
-            borderColor: "rgba(255,138,30,0.2)",
-            background: "rgba(255,138,30,0.06)",
-            backdropFilter: "blur(12px)",
-          }}
-        >
-          <span
-            aria-hidden="true"
-            className="size-1.5 shrink-0 rounded-full"
-            style={{
-              backgroundColor: "var(--color-accent)",
-              boxShadow: "0 0 6px var(--color-accent)",
-              animation: "qf-blink 2s ease-in-out infinite",
-            }}
-          />
-          <span
-            className="font-mono text-[10px] uppercase tracking-[0.18em] truncate"
-            style={{ color: "var(--color-accent)" }}
+      <div className="relative mx-auto grid w-full max-w-[var(--space-content-max)] items-center gap-14 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)] lg:gap-16">
+        {/* ── Left: the argument ── */}
+        <div className="flex min-w-0 flex-col items-start gap-7">
+          <MonoLabel>{t("eyebrow")}</MonoLabel>
+
+          <h1
+            id="hero-heading"
+            className="text-[length:var(--text-hero)] leading-[var(--text-hero--line-height)] font-medium tracking-[var(--text-hero--letter-spacing)] text-balance text-[color:var(--color-text-primary)]"
           >
-            {t("statusLive")} · {t("statusMarket")} · {t("statusStrategy")}
-          </span>
-        </div>
+            {t("headline1")}
+            <br />
+            {t("headline2")}
+          </h1>
 
-        {/* Main headline */}
-        <h1
-          id="hero-heading"
-          className="max-w-[18ch]"
-          style={{
-            fontSize: "var(--text-hero)",
-            lineHeight: "var(--text-hero--line-height)",
-            letterSpacing: "var(--text-hero--letter-spacing)",
-            fontWeight: 500,
-            color: "var(--color-text-primary)",
-          }}
-        >
-          {t("tagline1")}
-          <br />
-          <span
-            style={{
-              fontFamily: "var(--font-serif)",
-              fontStyle: "italic",
-              fontWeight: 400,
-              display: "block",
-              paddingBottom: "0.1em",
-              background: "linear-gradient(135deg, #ffffff 0%, rgba(255,180,94,0.85) 100%)",
-              WebkitBackgroundClip: "text",
-              WebkitTextFillColor: "transparent",
-              backgroundClip: "text",
-            }}
-          >
-            {t("tagline2")}
-          </span>
-        </h1>
+          <p className="max-w-[54ch] text-[length:var(--text-lead)] leading-[var(--text-lead--line-height)] tracking-[var(--text-lead--letter-spacing)] text-[color:var(--color-text-secondary)]">
+            {t("subline")}
+          </p>
 
-        {/* Subline */}
-        <p
-          className="max-w-[50ch]"
-          style={{
-            fontSize: "var(--text-lead)",
-            lineHeight: "var(--text-lead--line-height)",
-            color: "var(--color-text-secondary)",
-          }}
-        >
-          {t("subline")}
-        </p>
-
-        {/* Stats row */}
-        <div
-          className="flex flex-wrap items-center gap-6 py-2 border-y w-full"
-          style={{ borderColor: "rgba(255,255,255,0.06)" }}
-        >
-          {stats.map(({ value, label }) => (
-            <div key={label} className="flex flex-col gap-0.5">
-              <span
-                className="font-mono tabular-nums"
-                style={{
-                  fontSize: "clamp(1.25rem, 2vw, 1.75rem)",
-                  fontWeight: 600,
-                  letterSpacing: "-0.03em",
-                  color: "var(--color-accent)",
-                }}
-              >
-                {value}
-              </span>
-              <span
-                className="font-mono uppercase"
-                style={{
-                  fontSize: "10px",
-                  letterSpacing: "0.14em",
-                  color: "var(--color-text-tertiary)",
-                }}
-              >
-                {label}
-              </span>
-            </div>
-          ))}
-        </div>
-
-        {/* CTA buttons */}
-        <HeroCta label={t("cta")} secondaryLabel={t("ctaSecondary")} />
-      </div>
-
-      {/* ── Right column: signal flow visualization ── */}
-      <div
-        className="relative z-10 hidden md:flex flex-col items-end w-full max-w-[480px] shrink-0"
-        style={{ animation: "qf-hero-enter 0.9s 0.15s cubic-bezier(0.22,1,0.36,1) both" }}
-      >
-        <div
-          className="w-full rounded-2xl overflow-hidden"
-          style={{
-            background: "rgba(8,8,10,0.6)",
-            border: "1px solid rgba(255,255,255,0.07)",
-            backdropFilter: "blur(24px)",
-            boxShadow: "0 24px 80px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.04)",
-          }}
-        >
-          {/* Window chrome */}
-          <div
-            className="flex items-center gap-2 px-4 py-3"
-            style={{ borderBottom: "1px solid rgba(255,255,255,0.05)" }}
-          >
-            <div className="flex gap-1.5">
-              <span className="size-2 rounded-full" style={{ background: "rgba(255,95,87,0.5)" }} />
-              <span className="size-2 rounded-full" style={{ background: "rgba(254,188,46,0.5)" }} />
-              <span className="size-2 rounded-full" style={{ background: "rgba(40,200,64,0.5)" }} />
-            </div>
-            <span
-              className="font-mono text-[10px] uppercase tracking-[0.14em] ml-1"
-              style={{ color: "rgba(255,255,255,0.2)" }}
+          <div className="flex w-full flex-wrap items-center gap-x-7 gap-y-4">
+            {/* Primary: white fill, black text. Secondary: outline, white text. */}
+            <ButtonLink
+              href="#access"
+              size="lg"
+              magnetic
+              className="h-auto min-h-12 w-full justify-center py-3 text-center whitespace-normal sm:w-auto"
+              analytics={{ target: "sandbox_access", location: "hero" }}
             >
-              signal propagation · live
-            </span>
-            <span
-              className="ml-auto flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.1em]"
-              style={{ color: "var(--color-accent)" }}
-            >
-              <span
-                className="size-1.5 rounded-full"
-                style={{
-                  backgroundColor: "var(--color-accent)",
-                  boxShadow: "0 0 5px var(--color-accent)",
-                  animation: "qf-blink 2s ease-in-out infinite",
-                }}
-              />
-              running
-            </span>
+              {t("ctaPrimary")}
+            </ButtonLink>
+            <ArrowLink href="#how-it-works" analytics={{ target: "how_it_works", location: "hero" }}>
+              {t("ctaSecondary")}
+            </ArrowLink>
           </div>
-          <div className="p-4">
-            <HeroSignalFlow />
+
+          <ul className="flex flex-wrap items-center gap-x-3 gap-y-2 pt-1">
+            {proof.map((item, i) => (
+              <li
+                key={item}
+                className="flex items-center gap-3 font-mono text-[length:var(--text-label)] tracking-[var(--text-label--letter-spacing)] text-[color:var(--color-text-quaternary)] uppercase"
+              >
+                {i > 0 ? <span aria-hidden="true">·</span> : null}
+                {item}
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        {/* ── Right: the system object ──
+            PointerTilt is a thin client shell; HeroVisual is passed through as
+            children and stays server-rendered. */}
+        <div className="flex min-w-0 flex-col gap-8">
+          <PointerTilt>
+            <HeroVisual
+              title={t("visualTitle")}
+              mode={t("visualMode")}
+              steps={steps}
+              caption={t("visualCaption")}
+            />
+          </PointerTilt>
+
+          <div className="flex flex-col gap-5 border-t border-[color:var(--color-border)] pt-6">
+            <MonoLabel>{t("limitsLabel")}</MonoLabel>
+            <div className="grid grid-cols-3 gap-6">
+              {limits.map((l) => (
+                <Stat key={l.label} size="sm" value={l.value} label={l.label} />
+              ))}
+            </div>
           </div>
         </div>
-      </div>
-
-      {/* ── Bottom scroll indicator ── */}
-      <div
-        aria-hidden="true"
-        className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2"
-        style={{ opacity: 0.35 }}
-      >
-        <span
-          className="font-mono uppercase"
-          style={{ fontSize: "9px", letterSpacing: "0.2em", color: "var(--color-text-tertiary)" }}
-        >
-          Scroll
-        </span>
-        <div
-          className="h-8 w-px rounded-full"
-          style={{
-            background: "linear-gradient(to bottom, var(--color-accent), transparent)",
-            animation: "qf-pulse-glow 2s ease-in-out infinite",
-          }}
-        />
       </div>
     </section>
   );

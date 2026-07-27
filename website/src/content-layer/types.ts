@@ -1,8 +1,9 @@
 import type { ReactNode } from "react";
-import type { StrategyStatus } from "@/components/ui/status-pill";
+import type { StrategyStage } from "@/lib/strategy-status";
 
-/** How a numeric claim on the site is backed — drives the visual treatment
- * (e.g. an "illustrative" label). No fabricated precision ships unlabeled. */
+/** Internal provenance marker. Since no result figures are published any more,
+ * this drives no visible badge — it exists so the origin of a record stays
+ * traceable in the content files. */
 export type DataSource = "real-forward-test" | "illustrative";
 
 export interface PipelineStage {
@@ -19,16 +20,12 @@ export interface PipelineStage {
   order: number;
   title: string;
   description: ReactNode;
+  /** One-line plain-language explanation, shown above the technical body. */
+  plain: string;
+  /** Step name in the flow: Observe / Context / Strategy / Confidence / … */
+  stepLabel: string;
   /** e.g. "IndicatorEngine.latest()" — shown as a small mono caption. */
   sourceRef?: string;
-}
-
-export interface StrategyMetrics {
-  winRate?: number;
-  profitFactor?: number;
-  sampleSize?: number;
-  oos?: boolean;
-  drawdown?: number;
 }
 
 export interface StrategyRecord {
@@ -36,11 +33,15 @@ export interface StrategyRecord {
   id: string;
   market: "MOEX" | "Bybit";
   timeframe: string;
-  status: StrategyStatus;
-  /** Localized short status note, e.g. "Forward-deployed" / "Frozen — not forward-tested". */
+  /**
+   * Lifecycle stage. Maintained by hand in the research journal under
+   * `knowledge/` — there is no status column in the database and no
+   * auto-freeze. The UI must not imply this is live telemetry.
+   */
+  status: StrategyStage;
+  /** Localized short status note — the only field allowed to differ per locale. */
   statusNote: string;
   lastUpdate: string;
-  metrics?: StrategyMetrics;
   source: DataSource;
 }
 
@@ -48,6 +49,13 @@ export interface PhilosophyBlock {
   id: string;
   heading: string;
   body: ReactNode;
+  /**
+   * Small technical note pinned to the foot of the card — the symbol or
+   * constant in `bot/` that makes the principle checkable rather than a claim.
+   * Optional: a principle with nothing concrete to point at shows no note
+   * rather than an invented one.
+   */
+  sourceRef?: string;
 }
 
 export interface LearningSystemCopy {

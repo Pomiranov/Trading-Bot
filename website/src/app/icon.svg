@@ -1,6 +1,20 @@
 <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <rect width="100" height="100" rx="20" fill="#0A0A0B" />
-  <path d="M 80.9 41.7 A 32 32 0 1 1 58.3 19.1" stroke="#E8A33D" stroke-width="9" stroke-linecap="round" />
-  <path d="M 58.3 19.1 L 37.0 13.4" stroke="#E8A33D" stroke-width="9" stroke-linecap="round" />
-  <circle cx="80.9" cy="41.7" r="7" fill="#E8A33D" />
+  <!--
+    The browser-tab mark. Monochrome, matching the rest of the identity.
+
+    This was the last Signal Amber on the site: the aperture, its tail and the
+    exit node were all #E8A33D, and the plate was the retired #0A0A0B, so every
+    open tab still showed the old orange brand. It survived the monochrome pass
+    because scripts/check-design-tokens.mjs scans src/ for CSS colour patterns
+    and never looked inside an SVG asset.
+
+    Literal values rather than var() — an icon is rendered outside the document
+    and inherits no custom properties:
+      #030303 = --color-bg
+      #ffffff = --color-accent / --color-text-primary
+  -->
+  <rect width="100" height="100" rx="20" fill="#030303" />
+  <path d="M 80.9 41.7 A 32 32 0 1 1 58.3 19.1" stroke="#ffffff" stroke-width="9" stroke-linecap="round" />
+  <path d="M 58.3 19.1 L 37.0 13.4" stroke="#ffffff" stroke-width="9" stroke-linecap="round" />
+  <circle cx="80.9" cy="41.7" r="7" fill="#ffffff" />
 </svg>

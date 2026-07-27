@@ -2,6 +2,7 @@
 id: evidence-not-intuition
 order: 1
 heading: Evidence, not intuition
+sourceRef: belief_updater.py:37 · MIN_TRADES_FOR_CONFIDENCE = 20
 ---
 
-Every rule in QuantFlow comes from published research — not from fitting a model to historical prices. A strategy earns capital allocation only after 20 verified trades. No track record, no conviction.
+Quant's rules are written down in advance and can be read — not a model fitted to historical prices. Confidence in a strategy only starts moving after 20 closed trades; below that it sits at a neutral 0.5.

@@ -39,3 +39,12 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# ─── Hero media: heavy video sources stay local ───────────────────────────────
+# Posters (*.webp) and README.md in these dirs ARE committed — the site must
+# build and render correctly with every video below absent (poster-only).
+# See docs/VIDEO_ASSET_GUIDE.md.
+/public/media/**/*.mp4
+/public/media/**/*.webm
+/public/media/**/*.mov
+

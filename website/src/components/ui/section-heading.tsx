@@ -3,8 +3,7 @@ import { cn } from "@/lib/utils";
 
 /**
  * Section-level heading (h2 by default). Not for the hero — that owns its
- * own --text-hero scale. Accepts a serif italic accent word via the
- * <Accent> sub-component when the brief calls for one (used sparingly).
+ * own --text-hero scale.
  */
 export function SectionHeading<T extends ElementType = "h2">({
   as,
@@ -20,21 +19,4 @@ export function SectionHeading<T extends ElementType = "h2">({
     ),
     ...props,
   });
-}
-
-/** One-word/phrase serif italic accent inside a heading — see the italic
- * descender clearance rule; always paired with leading/pb reserve. */
-export function HeadingAccent({
-  className,
-  ...props
-}: ComponentPropsWithoutRef<"span">) {
-  return (
-    <span
-      className={cn(
-        "font-serif italic font-normal leading-[1.1] pb-1 inline-block",
-        className,
-      )}
-      {...props}
-    />
-  );
 }

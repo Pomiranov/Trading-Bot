@@ -225,6 +225,68 @@ body::before {
   );
 }
 
+/* ─── The inverted band ────────────────────────────────────────────────────
+   `tone="paper"` on ui/section.tsx adds this class, and everything it does is
+   *re-point variables the subtree already reads*. No component knows paper
+   exists; a card, a heading, a status chip and a hairline all invert because
+   the tokens under them changed.
+
+   Two consequences worth stating, because they are the reason it is done this
+   way rather than with a `tone` prop threaded through 30 components:
+
+     1. Reverting a band to dark is deleting one word. That matters — an
+        inverted band is the highest-risk change in this redesign and it must
+        stay cheap to undo.
+     2. Any component that hard-codes a colour instead of reading a token will
+        visibly break here. That is a feature: this band is the test that the
+        token system is real.
+
+   Contrast is re-measured against #f4f2ec, not inherited. The ratios recorded
+   in tokens/color.css are all against #030303 and none of them carry over. */
+.section-paper {
+  --color-text-primary: var(--color-on-paper);
+  --color-text-secondary: var(--color-on-paper-secondary);
+  --color-text-tertiary: var(--color-on-paper-muted);
+  --color-text-quaternary: var(--color-on-paper-muted);
+
+  --color-border: var(--color-border-on-paper);
+  --color-border-strong: var(--color-border-on-paper-strong);
+  --color-highlight-border: var(--color-border-on-paper-strong);
+  --color-highlight-bg: rgba(0, 0, 0, 0.04);
+  --color-fill-subtle: rgba(0, 0, 0, 0.03);
+
+  /* Cards on paper are white, and lift *off* the page with a soft dark drop —
+     the white glow used on black is invisible here. */
+  --color-surface: var(--color-paper-surface);
+  --color-panel: var(--color-paper-hover);
+  --color-panel-raised: var(--color-paper-surface);
+  --shadow-card-hover: var(--shadow-card-hover-on-paper);
+  --shadow-card-rest: 0 1px 2px rgba(0, 0, 0, 0.05);
+
+  /* The white CTA cannot survive on paper: white-on-white. Inside a paper band
+     the primary action inverts to black-on-paper, which is the same 17.4:1 and
+     the same visual weight.
+
+     --color-bg is re-pointed with it because `Button`'s default variant sets
+     its *foreground* from it (`text-[color:var(--color-bg)]`) — leaving it at
+     #030303 would paint black text on the now-black fill. Verified that
+     button.tsx is the only consumer of --color-bg inside a section subtree. */
+  --color-accent: var(--color-on-paper);
+  --color-accent-hover: rgba(10, 10, 10, 0.86);
+  --color-bg: var(--color-paper);
+  --shadow-cta-rest: 0 4px 20px rgba(0, 0, 0, 0.1);
+  --shadow-cta-hover: 0 8px 30px -6px rgba(0, 0, 0, 0.22);
+
+  color: var(--color-on-paper);
+}
+
+/* The CTA's own liquid-glass sheen is a white gradient. On a black CTA sitting
+   on paper it reads as a grey smear, so it is removed rather than re-tinted. */
+.section-paper .btn-liquid-glass::before,
+.section-paper .btn-liquid-glass::after {
+  display: none;
+}
+
 /* ─── Liquid Glass card effect ─── */
 .glass-premium {
   position: relative;
@@ -316,10 +378,30 @@ body::before {
   );
 }
 
-/* ─── Anchor clearance ───
-   The no-JS / keyboard-focus path to the same position the Lenis anchor
-   interceptor animates to. NAV_OFFSET in motion/scroll-driver.ts must match —
-   change both together. */
+/* ─── Header geometry ──────────────────────────────────────────────────────
+   Three numbers that must move together, so they live in one place.
+
+   --nav-height    the pill's own outer height (pt-4 + the pill box)
+   --nav-panel-top where the mobile dropdown hangs from
+   scroll-margin    the no-JS / keyboard-focus path to the same position the
+                    Lenis anchor interceptor animates to
+
+   NAV_OFFSET in motion/scroll-driver.ts must equal the scroll-margin below.
+   Measured at 390px the header is 86px tall; the mobile panel previously used
+   a hard-coded `top-[68px]` and hung 18px *inside* the pill. It now derives.
+
+   The header's compact state deliberately does not change its height — see
+   nav/header-shell.tsx — precisely so a single offset stays correct in both
+   states. If that ever changes, no one number can be right for both and deep
+   links will land wrong in whichever state was not measured. */
+:root {
+  --nav-height: 86px;
+  --nav-panel-top: calc(var(--nav-height) + 8px);
+  --shadow-nav-panel:
+    0 8px 48px rgba(0, 0, 0, 0.6), 0 2px 8px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
 :where(section[id], main [id]) {
   scroll-margin-top: 104px;
 }
@@ -410,6 +492,142 @@ body::before {
   .card-premium:focus-within {
     transform: translateY(-6px);
   }
+}
+
+/* ─── Route cards ──────────────────────────────────────────────────────────
+   The variant of `.card-premium` used by `ui/interactive-card.tsx`, for cards
+   that navigate rather than inform.
+
+   Two additions over the base card state, and nothing else:
+     • `cursor: pointer` across the whole surface — the defect this component
+       exists to fix is four cards that contain a link and still compute
+       `cursor: default`
+     • a 1px cold-blue edge plus a soft glow, so choosing a route feels
+       different from reading a fact. This is the only interactive use of the
+       signal colour on the page, and it is an edge and a shadow — decorative
+       geometry, never ink. */
+.card-route {
+  cursor: pointer;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .card-route:hover {
+    border-color: var(--color-signal-line);
+    box-shadow: var(--shadow-card-hover), var(--glow-signal-sm);
+  }
+}
+
+.card-route:focus-within {
+  border-color: var(--color-signal-line);
+  box-shadow: var(--shadow-card-hover), var(--glow-signal-sm);
+}
+
+/* On paper the cold edge would be invisible against white, and a blue glow on
+   a light surface reads as a print registration error. Route cards there use
+   the same dark-drop lift as every other card. */
+.section-paper .card-route:hover,
+.section-paper .card-route:focus-within {
+  border-color: var(--color-border-on-paper-strong);
+  box-shadow: var(--shadow-card-hover-on-paper);
+}
+
+/* ─── Signal line ──────────────────────────────────────────────────────────
+   The connective tissue: audience -> pipeline, the pipeline spine itself, the
+   broker route diagram. Drawn by `ui/signal-line.tsx`.
+
+   `stroke-dashoffset` only. It is compositor-safe, it is the same technique the
+   hero's exit vector already uses, and — the part that matters — it degrades
+   correctly: the base style is the *drawn* state, so when the reduced-motion
+   reset collapses the duration the line is simply already there. A line that
+   animated its `stroke-dasharray` or its width would vanish instead. */
+.signal-draw {
+  stroke-dasharray: var(--signal-len, 1000);
+  stroke-dashoffset: 0;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .signal-draw[data-drawn="false"] {
+    stroke-dashoffset: var(--signal-len, 1000);
+  }
+
+  .signal-draw {
+    transition: stroke-dashoffset 1.2s var(--ease-out-quint);
+  }
+}
+
+/* ─── Pipeline spine rail ──────────────────────────────────────────────────
+   The vertical line the seven stage nodes sit on, in how-it-works.
+
+   A named class rather than six gradient utilities, for two reasons. It reads
+   better at the call site — the grid there is already doing enough work — and
+   the `cyan-as-ink` gate in check-design-tokens.mjs deliberately refuses
+   `via-[color:var(--color-signal-*)]` in component source. That gate cannot
+   tell a 1px decorative hairline from a cyan wash across a panel, so it treats
+   every gradient stop in a component as ink and forces the legitimate cases
+   here, next to the rest of the decorative geometry. This is one of them: a
+   1px line, fading at both ends, carrying no text.
+
+   `left` is set per breakpoint by the component, since the rail sits under the
+   node column and that column moves from the left edge to the centre at lg. */
+.pipeline-rail {
+  position: absolute;
+  top: 0.5rem;
+  bottom: 0.5rem;
+  width: 1px;
+  transform: translateX(-50%);
+  background: linear-gradient(
+    to bottom,
+    transparent 0%,
+    var(--color-signal-line) 12%,
+    var(--color-signal-line) 88%,
+    transparent 100%
+  );
+}
+
+/* ─── Q-aperture ───────────────────────────────────────────────────────────
+   Orbit rotation for the hero instrument. Transform-only, so it composites and
+   cannot shift layout or cost LCP.
+
+   Each orbit is an ellipse tilted by a fixed rotation; the animation spins the
+   *group*, so the ellipse sweeps like an orbital path seen at an angle rather
+   than like a wheel. Periods are coprime (32/46/61s) so the three never line
+   up into a single visible beat. */
+@keyframes qf-orbit-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.orbit-a {
+  animation: qf-orbit-spin var(--duration-orbit-a) linear infinite;
+  transform-origin: center;
+}
+.orbit-b {
+  animation: qf-orbit-spin var(--duration-orbit-b) linear infinite reverse;
+  transform-origin: center;
+}
+.orbit-c {
+  animation: qf-orbit-spin var(--duration-orbit-c) linear infinite;
+  transform-origin: center;
+}
+
+/* The core bloom breathes. Opacity only — scaling a radial gradient re-rasters
+   it every frame for no visual gain. */
+@keyframes qf-core-breathe {
+  0%,
+  100% {
+    opacity: 0.7;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.aperture-core {
+  animation: qf-core-breathe 8s var(--ease-out-quart) infinite;
 }
 
 /* ─── Liquid Glass Button base ─── */

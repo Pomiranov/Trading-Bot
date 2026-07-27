@@ -1,220 +1,106 @@
 import { getTranslations } from "next-intl/server";
-import { SectionHeading } from "@/components/ui/section-heading";
+import { Section } from "@/components/ui/section";
+import { SectionHeader } from "@/components/ui/section-header";
+import { Surface } from "@/components/ui/surface";
+import { MonoLabel } from "@/components/ui/mono-label";
+import { ButtonLink } from "@/components/ui/button-link";
 import { Reveal } from "@/components/motion/reveal";
-import { buttonVariants } from "@/components/ui/button";
 
-interface PlanFeature {
-  text: string;
-  included: boolean;
-}
+const PLANS = [1, 2, 3] as const;
+const FEATS = [1, 2, 3, 4] as const;
+const GATES = [1, 2, 3, 4, 5] as const;
 
-interface Plan {
-  title: string;
-  price: string;
-  body: string;
-  features: PlanFeature[];
-  featured: boolean;
-  badge?: string;
-}
-
+/**
+ * No "Recommended" badge. There is no payment code anywhere in the repository
+ * (grep for stripe/billing/checkout returns only a Permissions-Policy header),
+ * so highlighting one unpriced, unavailable tier over another is a conversion
+ * pattern with nothing behind it.
+ *
+ * The Live column carries its gates inline rather than presenting itself as
+ * unrestricted — live access requires a broker key without withdrawal rights,
+ * configured risk limits, confirmed consent and a reachable stop.
+ */
 export async function PricingSection({ locale }: { locale: string }) {
   const t = await getTranslations({ locale, namespace: "pricing" });
 
-  const plans: Plan[] = [
-    {
-      title: t("planFreeTitle"),
-      price: t("planFreePrice"),
-      body: t("planFreeBody"),
-      featured: false,
-      features: [
-        { text: t("planFreeFeat1"), included: true },
-        { text: t("planFreeFeat2"), included: true },
-        { text: t("planFreeFeat3"), included: true },
-        { text: t("planFreeFeat4"), included: false },
-        { text: t("planFreeFeat5"), included: false },
-        { text: t("planFreeFeat6"), included: false },
-      ],
-    },
-    {
-      title: t("planCoreTitle"),
-      price: t("planCorePrice"),
-      body: t("planCoreBody"),
-      featured: true,
-      badge: t("badge"),
-      features: [
-        { text: t("planCoreFeat1"), included: true },
-        { text: t("planCoreFeat2"), included: true },
-        { text: t("planCoreFeat3"), included: true },
-        { text: t("planCoreFeat4"), included: true },
-        { text: t("planCoreFeat5"), included: true },
-        { text: t("planCoreFeat6"), included: false },
-      ],
-    },
-    {
-      title: t("planLiveTitle"),
-      price: t("planLivePrice"),
-      body: t("planLiveBody"),
-      featured: false,
-      features: [
-        { text: t("planLiveFeat1"), included: true },
-        { text: t("planLiveFeat2"), included: true },
-        { text: t("planLiveFeat3"), included: true },
-        { text: t("planLiveFeat4"), included: true },
-        { text: t("planLiveFeat5"), included: true },
-        { text: t("planLiveFeat6"), included: true },
-      ],
-    },
-  ];
-
   return (
-    <section
-      aria-labelledby="pricing-heading"
-      className="relative flex flex-col gap-12 px-[var(--space-page-x)] py-[var(--space-section-y)] overflow-hidden"
+    <Section
+      id="pricing"
+      rhythm="major"
+      divider
+      glow={<div className="section-glow [--glow-x:50%] [--glow-y:0%]" />}
     >
-      {/* Ambient glow */}
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-0"
-        style={{
-          background: "radial-gradient(ellipse 50% 40% at 50% 0%, rgba(255,138,30,0.06), transparent)",
-        }}
+      <SectionHeader
+        id="pricing"
+        eyebrow={t("eyebrow")}
+        heading={t("heading")}
+        lead={t("lead")}
       />
 
-      <div className="relative mx-auto flex max-w-[680px] flex-col items-center gap-3 text-center">
-        <Reveal>
-          <SectionHeading id="pricing-heading" className="mx-auto">
-            {t("heading")}
-          </SectionHeading>
-        </Reveal>
-        <Reveal index={1}>
-          <p
-            className="font-mono text-[11px] uppercase tracking-[0.1em] max-w-[50ch]"
-            style={{ color: "var(--color-text-tertiary)" }}
-          >
-            {t("note")}
-          </p>
-        </Reveal>
-      </div>
-
-      <div className="relative mx-auto grid w-full max-w-[1040px] grid-cols-1 gap-4 md:grid-cols-3 md:items-stretch">
-        {plans.map((plan, i) => (
-          <Reveal key={plan.title} index={i + 2}>
-            {plan.featured ? (
-              /* Featured plan — animated orange border */
-              <div
-                className="relative rounded-xl h-full"
-                style={{
-                  background: "rgba(10,10,12,0.85)",
-                  backdropFilter: "blur(24px)",
-                  boxShadow: "0 8px 40px rgba(0,0,0,0.5), 0 0 80px rgba(255,138,30,0.08)",
-                }}
-              >
-                {/* Animated border */}
-                <div
-                  className="absolute inset-0 rounded-xl pointer-events-none"
-                  style={{
-                    padding: "1px",
-                    background: "linear-gradient(135deg, rgba(255,138,30,0.6) 0%, rgba(255,180,94,0.2) 40%, rgba(255,255,255,0.05) 60%, rgba(255,138,30,0.4) 100%)",
-                    WebkitMask: "linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)",
-                    WebkitMaskComposite: "xor",
-                    maskComposite: "exclude",
-                  }}
-                />
-                <div className="relative flex h-full flex-col gap-6 p-7">
-                  {plan.badge && (
-                    <span
-                      className="self-start rounded-full px-3 py-1 font-mono text-[10px] uppercase tracking-[0.12em]"
-                      style={{
-                        background: "rgba(255,138,30,0.15)",
-                        color: "var(--color-accent)",
-                        border: "1px solid rgba(255,138,30,0.2)",
-                      }}
-                    >
-                      {plan.badge}
-                    </span>
-                  )}
-                  <div className="flex flex-col gap-1.5">
-                    <h3
-                      className="font-medium text-[17px]"
-                      style={{ color: "var(--color-text-primary)" }}
-                    >
-                      {plan.title}
-                    </h3>
-                    <p
-                      className="font-mono text-[13px] uppercase tracking-[0.06em]"
-                      style={{ color: "var(--color-accent)" }}
-                    >
-                      {plan.price}
-                    </p>
-                  </div>
-                  <p className="flex-1 text-[14px] leading-relaxed" style={{ color: "var(--color-text-secondary)" }}>
-                    {plan.body}
-                  </p>
-                  <ul className="flex flex-col gap-2">
-                    {plan.features.map((f) => (
-                      <li key={f.text} className="flex items-center gap-2.5 text-[13px]">
-                        <span
-                          className="shrink-0 font-mono text-[12px]"
-                          style={{ color: f.included ? "var(--color-accent)" : "rgba(255,255,255,0.2)" }}
-                        >
-                          {f.included ? "✓" : "○"}
-                        </span>
-                        <span style={{ color: f.included ? "var(--color-text-secondary)" : "rgba(255,255,255,0.25)" }}>
-                          {f.text}
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              </div>
-            ) : (
-              /* Standard plan */
-              <div
-                className="glass-premium flex h-full flex-col gap-6 p-7"
-              >
-                <div className="flex flex-col gap-1.5">
-                  <h3
-                    className="font-medium text-[17px]"
-                    style={{ color: "var(--color-text-primary)" }}
-                  >
-                    {plan.title}
+      <ul className="mt-14 grid gap-5 md:grid-cols-3">
+        {PLANS.map((p, i) => (
+          <li key={p} className="flex">
+            <Reveal index={i} className="flex w-full">
+              <Surface className="flex w-full flex-col gap-6 p-7">
+                <div className="flex flex-col gap-2">
+                  <h3 className="font-mono text-[length:var(--text-label)] tracking-[var(--text-label--letter-spacing)] text-[color:var(--color-text-tertiary)] uppercase">
+                    {t(`plan${p}Title`)}
                   </h3>
-                  <p
-                    className="font-mono text-[13px] uppercase tracking-[0.06em]"
-                    style={{ color: "var(--color-text-tertiary)" }}
-                  >
-                    {plan.price}
+                  <p className="text-[length:var(--text-display-number)] leading-[var(--text-display-number--line-height)] font-medium tracking-[var(--text-display-number--letter-spacing)] text-[color:var(--color-text-primary)]">
+                    {t(`plan${p}Price`)}
+                  </p>
+                  <p className="text-[length:var(--text-body)] leading-[var(--text-body--line-height)] text-[color:var(--color-text-secondary)]">
+                    {t(`plan${p}Body`)}
                   </p>
                 </div>
-                <p className="flex-1 text-[14px] leading-relaxed" style={{ color: "var(--color-text-secondary)" }}>
-                  {plan.body}
-                </p>
-                <ul className="flex flex-col gap-2">
-                  {plan.features.map((f) => (
-                    <li key={f.text} className="flex items-center gap-2.5 text-[13px]">
+
+                <ul className="flex flex-1 flex-col gap-2.5 border-t border-[color:var(--color-border)] pt-5">
+                  {FEATS.map((f) => (
+                    <li
+                      key={f}
+                      className="flex items-start gap-2.5 text-[length:var(--text-caption)] leading-[var(--text-caption--line-height)] text-[color:var(--color-text-secondary)]"
+                    >
                       <span
-                        className="shrink-0 font-mono text-[12px]"
-                        style={{ color: f.included ? "rgba(255,255,255,0.5)" : "rgba(255,255,255,0.15)" }}
-                      >
-                        {f.included ? "✓" : "○"}
-                      </span>
-                      <span style={{ color: f.included ? "var(--color-text-secondary)" : "rgba(255,255,255,0.2)" }}>
-                        {f.text}
-                      </span>
+                        aria-hidden="true"
+                        className="mt-[0.45em] size-1 shrink-0 rounded-full bg-[color:var(--color-text-quaternary)]"
+                      />
+                      {t(`plan${p}Feat${f}`)}
                     </li>
                   ))}
                 </ul>
-              </div>
-            )}
-          </Reveal>
+              </Surface>
+            </Reveal>
+          </li>
         ))}
-      </div>
+      </ul>
 
-      <Reveal index={6} className="relative flex justify-center">
-        <a href="#cta-heading" className={buttonVariants({ variant: "outline", size: "lg" })}>
-          {t("cta")}
-        </a>
+      {/* ── Live gates ── */}
+      <Reveal index={3} className="mt-10 flex flex-col gap-5">
+        <MonoLabel>{t("liveGatesHeading")}</MonoLabel>
+        <ul className="flex flex-wrap gap-x-3 gap-y-2">
+          {GATES.map((g) => (
+            <li
+              key={g}
+              className="rounded-full border border-[color:var(--color-border)] px-3.5 py-1.5 text-[length:var(--text-caption)] text-[color:var(--color-text-secondary)]"
+            >
+              {t(`liveGate${g}`)}
+            </li>
+          ))}
+        </ul>
       </Reveal>
-    </section>
+
+      <Reveal index={4} className="mt-10 flex flex-wrap items-center gap-x-6 gap-y-3">
+        <ButtonLink
+          href="#access"
+          size="lg"
+          analytics={{ target: "sandbox_access", location: "pricing" }}
+        >
+          {t("cta")}
+        </ButtonLink>
+        <p className="text-[length:var(--text-caption)] text-[color:var(--color-text-quaternary)]">
+          {t("ctaNote")}
+        </p>
+      </Reveal>
+    </Section>
   );
 }

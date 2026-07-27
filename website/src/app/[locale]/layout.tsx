@@ -18,6 +18,39 @@ export function generateStaticParams() {
   return routing.locales.map((locale) => ({ locale }));
 }
 
+/**
+ * Only `en` and `ru` may ever match this segment.
+ *
+ * ── The 500s this fixes ──
+ *
+ * `[locale]` is a root-level dynamic segment, so with the default
+ * `dynamicParams: true` it matched *every* single-segment path — including the
+ * root metadata routes. `/robots.txt`, `/sitemap.xml` and `/icon.svg` were all
+ * being rendered as the homepage with `locale = "robots.txt"`, which then blew
+ * up three levels down:
+ *
+ *   ENOENT: scandir '…/content/robots.txt/engine-pipeline'
+ *   ENOENT: open    '…/content/robots.txt/strategies.json'
+ *   RangeError: Incorrect locale information provided   (new Intl.DateTimeFormat)
+ *
+ * All three returned **500 in both dev and production**, verified against
+ * `next start`. For a marketing site that means robots.txt and sitemap.xml —
+ * the two files every crawler asks for first — were hard errors.
+ *
+ * The `hasLocale` guard below could not prevent this: a layout and its page
+ * render concurrently, so `page.tsx` had already begun fetching content with
+ * the bogus locale before `notFound()` was reached. The guard turns a bad
+ * locale into a 404 *after* the damage; `dynamicParams = false` stops the route
+ * from matching at all, which is what lets the real metadata routes resolve.
+ *
+ * Next's own `isStaticMetadataRoute` deliberately treats `robots.txt` and
+ * `sitemap.xml` as dynamic entrypoints, so they cannot win this contest on
+ * their own — the dynamic segment has to stop competing.
+ *
+ * The guard below stays as defence in depth for the typed-params contract.
+ */
+export const dynamicParams = false;
+
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://quantflow.app";
 
 export async function generateMetadata({

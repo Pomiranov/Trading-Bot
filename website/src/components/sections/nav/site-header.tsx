@@ -1,7 +1,9 @@
 import { getTranslations } from "next-intl/server";
-import { Monogram } from "@/components/ui/monogram";
+import { BrandMark } from "@/components/ui/brand-mark";
 import { Link } from "@/lib/i18n/navigation";
-import { HeaderCta } from "./header-cta";
+import { ButtonLink } from "@/components/ui/button-link";
+import { HeaderShell } from "./header-shell";
+import { NavLinks } from "./nav-links";
 import { MobileNav } from "./mobile-nav";
 
 const LOCALES = [
@@ -9,116 +11,86 @@ const LOCALES = [
   { code: "ru" as const, label: "RU" },
 ];
 
-const LINK_KEYS = ["product", "engine", "telegram", "pricing", "faq"] as const;
-const LINK_TARGETS: Record<(typeof LINK_KEYS)[number], string> = {
-  product: "#dashboard-preview-heading",
-  engine: "#engine-pipeline-heading",
-  telegram: "#telegram-bot-heading",
-  pricing: "#pricing-heading",
-  faq: "#faq-heading",
-};
+/**
+ * Anchors target the section slug (`#dashboard`), never the heading id.
+ * LenisProvider intercepts these and applies the shared NAV_OFFSET; a stale
+ * target fails silently, so these must stay in step with the section ids in
+ * `app/[locale]/page.tsx`.
+ *
+ * Five items, matching the reference. `#brokers`, `#strategies` and
+ * `#foundation` are reachable from the footer instead — a header that lists
+ * every section is a table of contents, not navigation.
+ */
+const LINKS = [
+  { key: "dashboard", href: "#dashboard" },
+  { key: "how", href: "#how-it-works" },
+  { key: "safety", href: "#safety" },
+  { key: "pricing", href: "#pricing" },
+  { key: "faq", href: "#faq" },
+] as const;
 
 export async function SiteHeader({ locale }: { locale: string }) {
   const t = await getTranslations({ locale, namespace: "nav" });
 
   const otherLocale = LOCALES.find((l) => l.code !== locale) ?? LOCALES[0];
-
-  const mobileLinks = LINK_KEYS.map((key) => ({
-    key,
-    label: t(key),
-    href: LINK_TARGETS[key],
-  }));
+  const links = LINKS.map(({ key, href }) => ({ key, href, label: t(key) }));
 
   return (
-    <header className="fixed inset-x-0 top-0 z-[var(--z-nav)] flex justify-center px-[var(--space-page-x)] pt-4">
-      <div
-        className="flex w-full max-w-[1280px] items-center justify-between gap-6 px-5 py-3"
-        style={{
-          borderRadius: "0.75rem",
-          border: "1px solid rgba(255,255,255,0.07)",
-          background: "rgba(5,5,5,0.82)",
-          backdropFilter: "blur(28px)",
-          WebkitBackdropFilter: "blur(28px)",
-          boxShadow: "inset 0 1px 0 rgba(255,255,255,0.04), 0 4px 24px rgba(0,0,0,0.3)",
-        }}
+    <HeaderShell>
+      <a
+        href="#hero"
+        aria-label={t("brand")}
+        className="flex shrink-0 items-center gap-2.5 rounded-[var(--radius-sm)] no-underline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[color:var(--color-accent)]"
       >
-        {/* Logo */}
-        <a
-          href="#hero-heading"
-          aria-label="QuantFlow"
-          className="flex items-center gap-2.5 no-underline shrink-0"
+        <BrandMark size="sm" className="text-[color:var(--color-text-primary)]" />
+        <span className="hidden font-mono text-[length:var(--text-caption)] tracking-[0.12em] text-[color:var(--color-text-primary)] uppercase sm:block">
+          {t("brand")}
+        </span>
+      </a>
+
+      {/* Visible from md (768px), not lg. Between 768 and 1023 there was ample
+          room for the full row, and the hamburger was carrying it anyway. */}
+      <NavLinks links={links} />
+
+      <div className="flex items-center gap-3">
+        {/*
+          A single toggle, not two always-visible links.
+
+          The previous version rendered both locales side by side plus a `w-px`
+          hairline divider plus a gap — three separators inside 90px, and the
+          hairline was an artefact rather than a designed element. One link that
+          switches to the other language is smaller, quieter, and says the same
+          thing. `aria-label` carries the meaning, since a bare "EN" is not a
+          self-describing control.
+        */}
+        <Link
+          href="/"
+          locale={otherLocale.code}
+          aria-label={`${t("brand")} — ${otherLocale.label}`}
+          className="hidden rounded-[var(--radius-sm)] px-2 py-1.5 font-mono text-[length:var(--text-label)] tracking-[var(--text-label--letter-spacing)] text-[color:var(--color-text-tertiary)] uppercase no-underline transition-colors duration-[var(--duration-micro)] hover:text-[color:var(--color-text-primary)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--color-accent)] sm:block"
         >
-          <Monogram
-            className="h-5 w-5"
-            style={{ color: "var(--color-accent)" }}
-          />
-          <span
-            className="hidden font-mono text-[13px] uppercase tracking-[0.12em] sm:block"
-            style={{ color: "rgba(255,255,255,0.65)" }}
+          {otherLocale.label}
+        </Link>
+
+        <div className="hidden md:block">
+          <ButtonLink
+            href="#access"
+            size="sm"
+            analytics={{ target: "sandbox_access", location: "header" }}
           >
-            QuantFlow
-          </span>
-        </a>
-
-        {/* Primary nav — desktop only */}
-        <nav aria-label="Primary" className="hidden items-center gap-7 lg:flex">
-          {LINK_KEYS.map((key) => (
-            <a
-              key={key}
-              href={LINK_TARGETS[key]}
-              className="font-mono text-[11px] uppercase tracking-[0.1em] transition-colors duration-150 hover:text-white"
-              style={{ color: "rgba(255,255,255,0.4)", textDecoration: "none" }}
-            >
-              {t(key)}
-            </a>
-          ))}
-        </nav>
-
-        {/* Right side */}
-        <div className="flex items-center gap-4">
-          {/* Language switcher — desktop */}
-          <nav
-            aria-label="Language"
-            className="hidden items-center gap-3 font-mono text-[11px] uppercase tracking-[0.1em] sm:flex"
-          >
-            {LOCALES.map(({ code, label }) => (
-              <Link
-                key={code}
-                href="/"
-                locale={code}
-                aria-current={locale === code ? "true" : undefined}
-                className="transition-colors duration-150"
-                style={{
-                  color: locale === code ? "rgba(255,255,255,0.85)" : "rgba(255,255,255,0.3)",
-                  textDecoration: "none",
-                }}
-              >
-                {label}
-              </Link>
-            ))}
-          </nav>
-
-          <div
-            className="hidden h-4 w-px sm:block lg:block"
-            style={{ background: "rgba(255,255,255,0.1)" }}
-          />
-
-          {/* Desktop CTA */}
-          <div className="hidden lg:block">
-            <HeaderCta label={t("requestAccess")} />
-          </div>
-
-          {/* Mobile nav (includes CTA inside dropdown) */}
-          <MobileNav
-            links={mobileLinks}
-            ctaLabel={t("requestAccess")}
-            localeSwitchLabel={otherLocale.label}
-            localeSwitchHref={`/${otherLocale.code}`}
-            openLabel={t("menuOpen")}
-            closeLabel={t("menuClose")}
-          />
+            {t("ctaShort")}
+          </ButtonLink>
         </div>
+
+        <MobileNav
+          links={links}
+          ctaLabel={t("ctaShort")}
+          localeSwitchLabel={otherLocale.label}
+          localeSwitchHref={`/${otherLocale.code}`}
+          openLabel={t("menuOpen")}
+          closeLabel={t("menuClose")}
+        />
       </div>
-    </header>
+    </HeaderShell>
   );
 }

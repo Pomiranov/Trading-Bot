@@ -4,25 +4,47 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { betaSignupSchema, type BetaSignupInput } from "@/lib/beta/schema";
-import { MagneticButton } from "@/components/ui/magnetic-button";
+import { Button } from "@/components/ui/button";
+import { Magnetic } from "@/components/ui/magnetic";
 import { track } from "@/lib/analytics/events";
 
-export function BetaForm({
-  emailLabel,
-  emailPlaceholder,
-  submitLabel,
-  successMessage,
-  errorMessage,
-  networkErrorMessage,
-}: {
+interface AccessFormProps {
   emailLabel: string;
   emailPlaceholder: string;
   submitLabel: string;
+  submittingLabel: string;
   successMessage: string;
+  successDetail: string;
+  successUndelivered: string;
   errorMessage: string;
   networkErrorMessage: string;
-}) {
-  const [status, setStatus] = useState<"idle" | "success" | "error">("idle");
+  consentNote: string;
+}
+
+/**
+ * Sandbox access request.
+ *
+ * The success state is driven by `delivered` from the API, not by HTTP 200.
+ * When no destination is configured the address is genuinely discarded, and
+ * the form says so and points the user elsewhere rather than promising a
+ * follow-up that will never come. Wire a real destination by setting
+ * BETA_ADAPTER=webhook and BETA_WEBHOOK_URL — see lib/beta/adapter.ts.
+ */
+export function AccessForm({
+  emailLabel,
+  emailPlaceholder,
+  submitLabel,
+  submittingLabel,
+  successMessage,
+  successDetail,
+  successUndelivered,
+  errorMessage,
+  networkErrorMessage,
+  consentNote,
+}: AccessFormProps) {
+  const [status, setStatus] = useState<"idle" | "sent" | "error">("idle");
+  const [delivered, setDelivered] = useState(false);
+
   const {
     register,
     handleSubmit,
@@ -35,7 +57,7 @@ export function BetaForm({
 
   async function onSubmit(data: BetaSignupInput) {
     setStatus("idle");
-    track({ name: "cta_clicked", props: { target: "beta_form", location: "cta" } });
+    track({ name: "cta_clicked", props: { target: "sandbox_access", location: "access_form" } });
     try {
       const res = await fetch("/api/beta", {
         method: "POST",
@@ -43,7 +65,9 @@ export function BetaForm({
         body: JSON.stringify(data),
       });
       if (!res.ok) throw new Error("request failed");
-      setStatus("success");
+      const json: { delivered?: boolean } = await res.json().catch(() => ({}));
+      setDelivered(json.delivered === true);
+      setStatus("sent");
       track({ name: "beta_submitted", props: { result: "success" } });
       reset();
     } catch {
@@ -52,89 +76,102 @@ export function BetaForm({
     }
   }
 
-  function onInvalid() {
-    track({ name: "beta_submitted", props: { result: "invalid" } });
-  }
-
-  if (status === "success") {
+  if (status === "sent") {
     return (
       <div
-        className="inline-flex items-center gap-2 rounded-xl px-4 py-3 font-mono text-[13px]"
         role="status"
+        className="flex max-w-[52ch] flex-col gap-2 rounded-[var(--radius-lg)] border p-5"
         style={{
-          background: "rgba(44,233,123,0.08)",
-          border: "1px solid rgba(44,233,123,0.2)",
-          color: "var(--color-success)",
+          borderColor: delivered ? "rgba(34,229,139,0.28)" : "var(--color-border-strong)",
+          background: delivered ? "var(--color-success-dim)" : "var(--color-surface)",
         }}
       >
-        <span className="size-1.5 rounded-full" style={{ backgroundColor: "var(--color-success)" }} />
-        {successMessage}
+        <p
+          className="font-mono text-[length:var(--text-caption)]"
+          style={{ color: delivered ? "var(--color-success)" : "var(--color-text-primary)" }}
+        >
+          {successMessage}
+        </p>
+        <p className="text-[length:var(--text-caption)] leading-[var(--text-caption--line-height)] text-[color:var(--color-text-secondary)]">
+          {delivered ? successDetail : successUndelivered}
+        </p>
       </div>
     );
   }
 
-  const emailRegistration = register("email");
-
   return (
     <form
-      onSubmit={handleSubmit(onSubmit, onInvalid)}
+      onSubmit={handleSubmit(onSubmit, () =>
+        track({ name: "beta_submitted", props: { result: "invalid" } }),
+      )}
       noValidate
-      className="flex flex-col gap-3 sm:flex-row sm:items-start"
+      className="flex w-full max-w-[52ch] min-w-0 flex-col gap-4"
     >
-      <div className="flex flex-col gap-1.5">
-        <label htmlFor="beta-email" className="sr-only">
+      <div className="flex flex-col gap-2">
+        {/* Visible label — the previous form's only label was sr-only. */}
+        <label
+          htmlFor="access-email"
+          className="font-mono text-[length:var(--text-label)] tracking-[var(--text-label--letter-spacing)] text-[color:var(--color-text-tertiary)] uppercase"
+        >
           {emailLabel}
         </label>
-        <input
-          id="beta-email"
-          type="email"
-          placeholder={emailPlaceholder}
-          autoComplete="email"
-          aria-invalid={!!errors.email}
-          className="h-12 w-64 rounded-[var(--radius-md)] px-4 font-mono text-[13px] outline-none transition-all duration-200"
-          style={{
-            background: "rgba(255,255,255,0.04)",
-            border: errors.email
-              ? "1px solid rgba(229,72,77,0.5)"
-              : "1px solid rgba(255,255,255,0.1)",
-            backdropFilter: "blur(12px)",
-            color: "var(--color-text-primary)",
-            boxShadow: "inset 0 1px 0 rgba(255,255,255,0.04)",
-          }}
-          {...emailRegistration}
-          onFocus={(e) => {
-            e.currentTarget.style.border = "1px solid rgba(255,138,30,0.4)";
-            e.currentTarget.style.boxShadow = "inset 0 1px 0 rgba(255,255,255,0.04), 0 0 0 3px rgba(255,138,30,0.08)";
-          }}
-          onBlur={(e) => {
-            emailRegistration.onBlur(e);
-            e.currentTarget.style.border = "1px solid rgba(255,255,255,0.1)";
-            e.currentTarget.style.boxShadow = "inset 0 1px 0 rgba(255,255,255,0.04)";
-          }}
-        />
-        {/* Honeypot */}
-        <input
-          type="text"
-          tabIndex={-1}
-          autoComplete="off"
-          aria-hidden="true"
-          className="sr-only"
-          {...register("company")}
-        />
+
+        <div className="flex w-full min-w-0 flex-col gap-3 sm:flex-row sm:items-start">
+          <input
+            id="access-email"
+            type="email"
+            placeholder={emailPlaceholder}
+            autoComplete="email"
+            aria-invalid={!!errors.email}
+            aria-describedby={errors.email ? "access-email-error" : undefined}
+            className="h-12 w-full rounded-[var(--radius-md)] border border-[color:var(--color-border-strong)] bg-[rgba(255,255,255,0.04)] px-4 font-mono text-[length:var(--text-caption)] text-[color:var(--color-text-primary)] outline-none placeholder:text-[color:var(--color-text-quaternary)] focus-visible:border-[color:var(--color-accent)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--color-accent)] sm:w-72"
+            {...register("email")}
+          />
+
+          {/* Honeypot — real users never see or reach this. */}
+          <input
+            type="text"
+            tabIndex={-1}
+            autoComplete="off"
+            aria-hidden="true"
+            className="sr-only"
+            {...register("company")}
+          />
+
+          <Magnetic className="w-full sm:w-auto">
+            <Button
+              type="submit"
+              size="lg"
+              disabled={isSubmitting}
+              className="h-auto min-h-12 w-full justify-center py-3 text-center whitespace-normal"
+            >
+              {isSubmitting ? submittingLabel : submitLabel}
+            </Button>
+          </Magnetic>
+        </div>
+
         {errors.email ? (
-          <p className="font-mono text-[11px]" style={{ color: "var(--color-danger)" }}>
+          <p
+            id="access-email-error"
+            className="font-mono text-[length:var(--text-label)] text-[color:var(--color-danger)]"
+          >
             {errorMessage}
           </p>
         ) : null}
+
         {status === "error" ? (
-          <p role="alert" className="font-mono text-[11px]" style={{ color: "var(--color-danger)" }}>
+          <p
+            role="alert"
+            className="font-mono text-[length:var(--text-label)] text-[color:var(--color-danger)]"
+          >
             {networkErrorMessage}
           </p>
         ) : null}
       </div>
-      <MagneticButton type="submit" size="lg" disabled={isSubmitting}>
-        {submitLabel}
-      </MagneticButton>
+
+      <p className="text-[length:var(--text-caption)] leading-[var(--text-caption--line-height)] text-[color:var(--color-text-quaternary)]">
+        {consentNote}
+      </p>
     </form>
   );
 }

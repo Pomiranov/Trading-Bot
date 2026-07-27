@@ -21,6 +21,20 @@ const nextConfig: NextConfig = {
     NEXT_PUBLIC_BUILD_SHA: resolveBuildSha(),
     NEXT_PUBLIC_BUILD_TIME: new Date().toISOString(),
   },
+  async headers() {
+    return [
+      {
+        // Hero media is large and never mutated in place — new assets ship
+        // under new, version-suffixed filenames (see docs/VIDEO_ASSET_GUIDE.md
+        // §7). Without this, Vercel serves /public as `max-age=0,
+        // must-revalidate`, which revalidates the video on every navigation.
+        source: "/media/:path*",
+        headers: [
+          { key: "Cache-Control", value: "public, max-age=31536000, immutable" },
+        ],
+      },
+    ];
+  },
 };
 
 export default withNextIntl(nextConfig);

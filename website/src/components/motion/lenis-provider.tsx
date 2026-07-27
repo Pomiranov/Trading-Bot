@@ -1,10 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { initScrollDriver, getLenis } from "./scroll-driver";
-
-// Matches the visual height of the fixed site header
-const NAV_OFFSET = 80;
+import { initScrollDriver, getLenis, NAV_OFFSET } from "./scroll-driver";
 
 function easeOutQuart(t: number) {
   return 1 - Math.pow(1 - t, 4);
@@ -15,15 +12,27 @@ export function LenisProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const cleanup = initScrollDriver();
 
-    // Intercept all anchor clicks and apply smooth scroll with nav offset
+    // Intercept all in-page anchor clicks and apply smooth scroll with the nav
+    // offset. Routed through Lenis rather than native smooth scrolling so the
+    // two never drive the scroll position at the same time — competing
+    // animations were one of the suspected causes of the backward-jump bug.
     function handleAnchorClick(e: MouseEvent) {
-      const anchor = (e.target as HTMLElement).closest<HTMLAnchorElement>(
-        "a[href^='#']"
-      );
+      // Let the browser handle modified clicks (new tab, download, etc.).
+      if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) {
+        return;
+      }
+
+      const anchor = (e.target as HTMLElement).closest<HTMLAnchorElement>("a[href^='#']");
       if (!anchor) return;
       const href = anchor.getAttribute("href");
       if (!href || href === "#") return;
-      const target = document.querySelector(href);
+
+      let target: Element | null = null;
+      try {
+        target = document.querySelector(href);
+      } catch {
+        return; // not a valid selector
+      }
       if (!target) return;
 
       e.preventDefault();
@@ -36,13 +45,15 @@ export function LenisProvider({ children }: { children: React.ReactNode }) {
           easing: easeOutQuart,
         });
       } else {
-        // Reduced-motion fallback
+        // Reduced-motion fallback — Lenis is never instantiated in that mode.
         const top =
-          (target as HTMLElement).getBoundingClientRect().top +
-          window.scrollY -
-          NAV_OFFSET;
+          (target as HTMLElement).getBoundingClientRect().top + window.scrollY - NAV_OFFSET;
         window.scrollTo({ top, behavior: "smooth" });
       }
+
+      // Keep the URL shareable without letting the browser also jump to the
+      // anchor, which would land at the wrong offset and fight the animation.
+      if (history.replaceState) history.replaceState(null, "", href);
     }
 
     document.addEventListener("click", handleAnchorClick);

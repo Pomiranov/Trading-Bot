@@ -1,125 +1,89 @@
 import { getTranslations } from "next-intl/server";
-import { SectionHeading } from "@/components/ui/section-heading";
+import { Section } from "@/components/ui/section";
+import { SectionHeader } from "@/components/ui/section-header";
+import { Surface } from "@/components/ui/surface";
+import { StatusPill } from "@/components/ui/status-pill";
 import { Reveal } from "@/components/motion/reveal";
+import { BROKER_STATUS_TONE, type BrokerStatus } from "@/lib/strategy-status";
 
-const BROKER_ICONS: Record<string, string> = {
-  "T-INVEST": "T",
-  "BYBIT": "B",
-  "FINAM": "F",
-};
+/**
+ * Status per broker is derived from the actual state of its adapter, not from
+ * intent. Previously all three rendered an identical green "Integrated" badge,
+ * which was true for exactly one of them.
+ *
+ *   T-Invest — registered in bot/broker/registry.py:48; real order path at
+ *              bot/broker/tinkoff_client.py:173,215; sandbox by default
+ *              (bot/config.py:32)
+ *   Bybit    — NOT in registry.py:46-52; order code exists but is unreachable;
+ *              used only for balances/positions in
+ *              bot/qf_platform/services/portfolio_service.py:80-107
+ *   Finam    — nine NotImplementedError at bot/broker/providers/finam.py:63-118,
+ *              is_connected=False hardcoded at :56
+ */
+const BROKERS = [
+  { key: "tinvest", status: "active", detailKey: "tinvestDetail", market: "MOEX" },
+  { key: "bybit", status: "beta", detailKey: "bybitDetail", market: "Crypto" },
+  { key: "finam", status: "planned", detailKey: null, market: "MOEX" },
+] as const satisfies readonly {
+  key: string;
+  status: BrokerStatus;
+  detailKey: string | null;
+  market: string;
+}[];
 
-const BROKER_COLORS: Record<string, string> = {
-  "T-INVEST": "#ffcc00",
-  "BYBIT": "#f7931a",
-  "FINAM": "#e05c29",
-};
-
-export async function BrokerIntegrationsSection({ locale }: { locale: string }) {
-  const t = await getTranslations({ locale, namespace: "brokerIntegrations" });
-
-  const brokers = [
-    { id: "T-INVEST", title: t("tinkoffTitle"), body: t("tinkoffBody"), market: "MOEX" },
-    { id: "BYBIT", title: t("bybitTitle"), body: t("bybitBody"), market: "Crypto" },
-    { id: "FINAM", title: t("finamTitle"), body: t("finamBody"), market: "MOEX" },
-  ];
+export async function BrokersSection({ locale }: { locale: string }) {
+  const t = await getTranslations({ locale, namespace: "brokers" });
+  const common = await getTranslations({ locale, namespace: "common" });
 
   return (
-    <section
-      aria-labelledby="broker-integrations-heading"
-      className="flex flex-col gap-12 px-[var(--space-page-x)] py-[var(--space-section-y)]"
+    // Promoted from `tight` to `major`: this opens a new movement — the page
+    // stops describing what Quant *is* and starts stating where it actually
+    // executes and what it refuses to claim. It was previously the second of two
+    // consecutive tight, divider-less sections, which is what collapsed the
+    // middle of the page.
+    <Section
+      id="brokers"
+      rhythm="major"
+      divider
+      glow={<div className="section-glow [--glow-x:50%] [--glow-y:0%]" />}
     >
-      <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-        <Reveal>
-          <SectionHeading id="broker-integrations-heading" className="max-w-[22ch]">
-            {t("heading")}
-          </SectionHeading>
-        </Reveal>
-        <Reveal index={1}>
-          <p
-            className="max-w-[52ch] text-[15px] leading-relaxed md:text-right"
-            style={{ color: "var(--color-text-secondary)" }}
-          >
-            {t("intro")}
-          </p>
-        </Reveal>
-      </div>
+      <SectionHeader
+        id="brokers"
+        eyebrow={t("eyebrow")}
+        heading={t("heading")}
+        lead={t("lead")}
+        note={t("disclosure")}
+      />
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-        {brokers.map((broker, i) => (
-          <Reveal key={broker.id} index={i + 2}>
-            <div
-              className="glass-premium flex h-full flex-col gap-5 p-6"
-              style={{ position: "relative" }}
-            >
-              {/* Broker logo mark */}
-              <div className="flex items-start justify-between">
-                <div
-                  className="flex size-10 items-center justify-center rounded-lg font-mono text-[15px] font-bold"
-                  style={{
-                    background: `rgba(${BROKER_COLORS[broker.id]
-                      .match(/[\da-f]{2}/gi)!
-                      .map((h) => parseInt(h, 16))
-                      .join(",")}, 0.12)`,
-                    color: BROKER_COLORS[broker.id],
-                    border: `1px solid ${BROKER_COLORS[broker.id]}22`,
-                  }}
-                >
-                  {BROKER_ICONS[broker.id]}
-                </div>
-                <span
-                  className="font-mono text-[10px] uppercase tracking-[0.14em] rounded-full px-2.5 py-1"
-                  style={{
-                    color: "rgba(255,255,255,0.4)",
-                    background: "rgba(255,255,255,0.05)",
-                    border: "1px solid rgba(255,255,255,0.06)",
-                  }}
-                >
-                  {broker.market}
-                </span>
-              </div>
-
-              <div className="flex flex-col gap-1.5">
-                <span
-                  className="font-mono text-[10px] uppercase tracking-[0.14em]"
-                  style={{ color: "rgba(255,255,255,0.3)" }}
-                >
-                  {broker.id}
-                </span>
-                <h3
-                  className="font-medium text-[16px]"
-                  style={{ color: "var(--color-text-primary)" }}
-                >
-                  {broker.title}
-                </h3>
-              </div>
-
-              <p
-                className="text-[14px] leading-relaxed"
-                style={{ color: "var(--color-text-secondary)" }}
-              >
-                {broker.body}
-              </p>
-
-              {/* Connected indicator */}
-              <div className="flex items-center gap-2 mt-auto pt-2">
-                <span
-                  className="size-1.5 rounded-full"
-                  style={{
-                    backgroundColor: "var(--color-success)",
-                    boxShadow: "0 0 5px var(--color-success)",
-                  }}
+      <ul className="mt-12 grid gap-5 md:grid-cols-3">
+        {BROKERS.map((broker, i) => (
+          <li key={broker.key} className="flex">
+            <Reveal index={i} className="flex w-full">
+              <Surface className="flex w-full flex-col gap-5 p-7">
+                <StatusPill
+                  className="self-start"
+                  tone={BROKER_STATUS_TONE[broker.status]}
+                  label={common(`brokerStatus.${broker.status}`)}
+                  detail={broker.detailKey ? t(broker.detailKey) : undefined}
                 />
-                <span
-                  className="font-mono text-[10px] uppercase tracking-[0.12em]"
-                  style={{ color: "rgba(255,255,255,0.3)" }}
-                >
-                  {t("integrated")}
-                </span>
-              </div>
-            </div>
-          </Reveal>
+
+                <div className="flex flex-col gap-1.5">
+                  <h3 className="text-[length:var(--text-h3)] leading-[var(--text-h3--line-height)] font-medium tracking-[var(--text-h3--letter-spacing)] text-[color:var(--color-text-primary)]">
+                    {t(`${broker.key}Name`)}
+                  </h3>
+                  <p className="font-mono text-[length:var(--text-label)] tracking-[var(--text-label--letter-spacing)] text-[color:var(--color-text-quaternary)] uppercase">
+                    {broker.market}
+                  </p>
+                </div>
+
+                <p className="text-[length:var(--text-body)] leading-[var(--text-body--line-height)] text-[color:var(--color-text-secondary)]">
+                  {t(`${broker.key}Body`)}
+                </p>
+              </Surface>
+            </Reveal>
+          </li>
         ))}
-      </div>
-    </section>
+      </ul>
+    </Section>
   );
 }

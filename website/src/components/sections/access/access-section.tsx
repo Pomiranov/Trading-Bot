@@ -1,116 +1,92 @@
 import { getTranslations } from "next-intl/server";
-import { SectionHeading } from "@/components/ui/section-heading";
+import { Section } from "@/components/ui/section";
+import { SectionHeader } from "@/components/ui/section-header";
+import { Surface } from "@/components/ui/surface";
+import { ArrowLink } from "@/components/ui/arrow-link";
 import { Reveal } from "@/components/motion/reveal";
-import { BetaForm } from "./beta-form";
-import { ExploreLink } from "./explore-link";
+import { AccessForm } from "./access-form";
 
-export async function CtaSection({ locale }: { locale: string }) {
-  const [t, tNav, tBeta] = await Promise.all([
-    getTranslations({ locale, namespace: "sections" }),
-    getTranslations({ locale, namespace: "nav" }),
-    getTranslations({ locale, namespace: "beta" }),
+/**
+ * The single conversion point.
+ *
+ * Two distinct asks, deliberately unequal: the sandbox request is the primary
+ * path and gets the form; live access is a secondary, gated conversation and
+ * gets a link. The old page pointed every CTA on the site at one generic
+ * "request access" form.
+ */
+export async function AccessSection({ locale }: { locale: string }) {
+  const [t, form] = await Promise.all([
+    getTranslations({ locale, namespace: "finalCta" }),
+    getTranslations({ locale, namespace: "accessForm" }),
   ]);
 
+  const trust = [t("trust1"), t("trust2"), t("trust3")];
+
   return (
-    <section
-      aria-labelledby="cta-heading"
-      className="relative overflow-hidden px-[var(--space-page-x)] py-[var(--space-section-y)]"
+    <Section
+      id="access"
+      rhythm="major"
+      divider
+      glow={
+        <div
+          className="absolute inset-x-0 bottom-0 h-[420px]"
+          style={{
+            background:
+              "radial-gradient(ellipse 55% 100% at 50% 100%, var(--color-accent-glow), transparent 70%)",
+          }}
+        />
+      }
     >
-      {/* Single, purposeful ambient glow */}
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-0"
-        style={{
-          background: "radial-gradient(ellipse 60% 50% at 50% 100%, rgba(255,138,30,0.08), transparent)",
-        }}
-      />
+      <SectionHeader id="access" eyebrow={t("eyebrow")} heading={t("heading")} lead={t("lead")} />
 
-      <div className="relative mx-auto flex max-w-[900px] flex-col gap-10 lg:flex-row lg:items-center lg:justify-between lg:gap-20">
-        <Reveal className="flex flex-col items-start gap-7">
-          {/* Badge */}
-          <span
-            className="inline-flex items-center gap-2 rounded-full px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.16em]"
-            style={{
-              background: "rgba(255,138,30,0.08)",
-              border: "1px solid rgba(255,138,30,0.18)",
-              color: "var(--color-accent)",
-            }}
-          >
-            <span
-              className="size-1.5 rounded-full"
-              style={{ backgroundColor: "var(--color-accent)", boxShadow: "0 0 6px var(--color-accent)" }}
-            />
-            {t("ctaBadge")}
-          </span>
-
-          <SectionHeading id="cta-heading" className="max-w-[20ch]">
-            {t("ctaHeading")}
-          </SectionHeading>
-
-          {/* Trust signals */}
-          <div className="flex flex-col gap-2">
-            {[t("ctaTrust1"), t("ctaTrust2"), t("ctaTrust3")].map((item) => (
-              <div key={item} className="flex items-center gap-2.5">
-                <span
-                  className="size-1.5 rounded-full shrink-0"
-                  style={{ backgroundColor: "var(--color-success)" }}
-                />
-                <span
-                  className="text-[14px]"
-                  style={{ color: "var(--color-text-secondary)" }}
-                >
-                  {item}
-                </span>
-              </div>
-            ))}
-          </div>
-
-          <BetaForm
-            emailLabel={tBeta("emailLabel")}
-            emailPlaceholder={tBeta("emailPlaceholder")}
-            submitLabel={tBeta("submit")}
-            successMessage={tBeta("success")}
-            errorMessage={tBeta("error")}
-            networkErrorMessage={tBeta("networkError")}
+      <div className="mt-12 grid gap-12 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)] lg:gap-16">
+        <Reveal className="flex min-w-0 flex-col gap-8">
+          <AccessForm
+            emailLabel={form("emailLabel")}
+            emailPlaceholder={form("emailPlaceholder")}
+            submitLabel={form("submit")}
+            submittingLabel={form("submitting")}
+            successMessage={form("success")}
+            successDetail={form("successDetail")}
+            successUndelivered={form("successUndelivered")}
+            errorMessage={form("error")}
+            networkErrorMessage={form("networkError")}
+            consentNote={form("consentNote")}
           />
-          <ExploreLink label={tNav("explore")} />
+
+          <ul className="flex flex-col gap-2.5">
+            {trust.map((item) => (
+              <li
+                key={item}
+                className="flex items-center gap-2.5 text-[length:var(--text-body)] text-[color:var(--color-text-secondary)]"
+              >
+                <span
+                  aria-hidden="true"
+                  className="size-1.5 shrink-0 rounded-full bg-[color:var(--color-success)]"
+                />
+                {item}
+              </li>
+            ))}
+          </ul>
         </Reveal>
 
-        {/* Right side: metrics block */}
-        <Reveal index={1} className="hidden lg:flex lg:flex-col lg:gap-4 lg:min-w-[220px]">
-          {[
-            { label: t("ctaStatWinRateLabel"), value: t("ctaStatWinRateValue"), highlight: true },
-            { label: t("ctaStatProfitLabel"), value: t("ctaStatProfitValue"), highlight: false },
-            { label: t("ctaStatStrategiesLabel"), value: t("ctaStatStrategiesValue"), highlight: false },
-            { label: t("ctaStatMarketsLabel"), value: t("ctaStatMarketsValue"), highlight: false },
-          ].map(({ label, value, highlight }) => (
-            <div
-              key={label}
-              className="flex flex-col gap-1 rounded-xl p-4"
-              style={{
-                background: "rgba(255,255,255,0.03)",
-                border: "1px solid rgba(255,255,255,0.06)",
-              }}
+        <Reveal index={1} className="min-w-0">
+          <Surface className="flex h-full flex-col gap-4 p-7">
+            <h3 className="text-[length:var(--text-h3)] leading-[var(--text-h3--line-height)] font-medium tracking-[var(--text-h3--letter-spacing)] text-[color:var(--color-text-primary)]">
+              {t("liveHeading")}
+            </h3>
+            <p className="flex-1 text-[length:var(--text-body)] leading-[var(--text-body--line-height)] text-[color:var(--color-text-secondary)]">
+              {t("liveBody")}
+            </p>
+            <ArrowLink
+              href="#pricing"
+              analytics={{ target: "live_access", location: "access" }}
             >
-              <span
-                className="font-mono text-[10px] uppercase tracking-[0.14em]"
-                style={{ color: "rgba(255,255,255,0.3)" }}
-              >
-                {label}
-              </span>
-              <span
-                className="font-mono text-[20px] tabular-nums font-semibold"
-                style={{
-                  letterSpacing: "-0.02em",
-                  color: highlight ? "var(--color-accent)" : "rgba(255,255,255,0.85)",
-                }}
-              >
-                {value}
-              </span>
-            </div>
-          ))}
+              {t("liveCta")}
+            </ArrowLink>
+          </Surface>
         </Reveal>
       </div>
-    </section>
+    </Section>
   );
 }

@@ -1,8 +1,10 @@
 ---
 id: broker
 order: 6
+stepLabel: Исполнение
 title: Брокер
-sourceRef: tinkoff_client.place_market_order()
+plain: Отправляет заявку через ваш брокерский аккаунт.
+sourceRef: TinkoffClient.place_market_order()
 ---
 
-Отправляет заявку. Система перестаёт рассуждать и начинает исполнять.
+Один и тот же клиент обслуживает песочницу и Live. По умолчанию включена песочница — переключение делается вручную.

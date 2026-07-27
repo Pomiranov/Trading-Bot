@@ -1,0 +1,54 @@
+# Черновик. Не подключать к движку до ревью и бэктеста.
+id: ch04_range_breakout
+status: candidate
+source:
+  book: schwager
+  chapter: 4
+  pages: [80, 81]
+
+params:
+  range_lookback:
+    value: REQUIRES_DECISION
+    options: [30, 100]
+    why: "в гл.4 длительность диапазона названа фактором значимости, но численно не задана; порог 'установившегося' диапазона (1–2 месяца) фигурирует в гл.5, не здесь"
+  range_width_max_pct:
+    value: REQUIRES_DECISION
+    options: [3, 5]
+    why: "'узость диапазона' повышает надёжность, но численного порога ширины книга не даёт"
+  confirm_days:
+    value: REQUIRES_DECISION
+    options: [3, 5, 7]
+    quote: "остаются вне диапазона спустя несколько дней (например, пять)"
+    page: 80
+    why: "книга приводит 5 как ПРИМЕР ('например'), а не как параметр; окно надо выбрать/оптимизировать"
+  min_breakout_pct:
+    value: REQUIRES_DECISION
+    options: [1, 3]
+    why: "'минимальное процентное изменение цены после пробоя' названо как альтернативное подтверждение, число не задано, стр.80–81"
+
+action: BUY
+weight: REQUIRES_DECISION
+description: "Пробой верхней границы установившегося узкого диапазона с подтверждением (удержание вне диапазона ≥ confirm_days ИЛИ ход ≥ min_breakout_pct)"
+conditions:
+  # диапазон установился и узок
+  - { indicator: range_duration_bars, operator: ">=", value: range_lookback }
+  - { indicator: range_width_pct, operator: "<=", value: range_width_max_pct }
+  # состоялся пробой вверх
+  - { indicator: close, operator: ">", value: range_high }
+  # подтверждение (в движке — как ИЛИ; здесь оба условия-кандидата, выбор в вопросе 2)
+  - { indicator: bars_outside_range, operator: ">=", value: confirm_days, note: "подтверждение по времени, стр.80" }
+  - { indicator: breakout_dist_pct, operator: ">=", value: min_breakout_pct, note: "альтернативное подтверждение по величине хода, стр.80–81" }
+
+exit:
+  # в гл.4 цель/стоп в R не заданы; книга лишь отмечает низкий денежный риск при узком диапазоне
+  - { indicator: close, operator: "<", value: range_high, note: "инвалидация: возврат внутрь диапазона = ложный пробой, стр.80" }
+
+# SELL-вариант зеркален: close < range_low, возврат close > range_low = инвалидация.
+
+missing_indicators:
+  - range_high          # верхняя граница диапазона (rolling max) — нужна реализация; см. RangeHigh в false_breakout_schwager.md
+  - range_low           # нижняя граница (rolling min) — нужна реализация
+  - range_width_pct     # (range_high - range_low)/close — нужна реализация
+  - range_duration_bars # число баров существования горизонтального коридора — нужна реализация
+  - bars_outside_range  # число баров подряд с close вне границы — нужна реализация
+  - breakout_dist_pct   # (close - range_high)/range_high — нужна реализация

@@ -1,0 +1,36 @@
+# Черновик. Не подключать к движку до ревью и бэктеста.
+id: ch04_range_participation_filter
+status: candidate
+source:
+  book: schwager
+  chapter: 4
+  pages: [77, 80]
+
+params:
+  range_lookback:
+    value: REQUIRES_DECISION
+    options: [30, 100]
+    why: "порог длительности 'установившегося' диапазона в гл.4 численно не задан"
+  range_width_max_pct:
+    value: REQUIRES_DECISION
+    options: [3, 5]
+    why: "порог ширины диапазона книга не даёт"
+  weight:
+    value: REQUIRES_DECISION
+    why: "фильтр только подавляет сигналы; вес/жёсткость подавления надо задать и проверить бэктестом"
+
+action: FILTER
+weight: REQUIRES_DECISION
+description: "Пока цена внутри установившегося узкого диапазона — подавлять трендследящие/пробойные графические сигналы (у Швагера: лучшая тактика в диапазоне — минимум участия; графические модели теряют значение внутри диапазона)"
+conditions:
+  - { indicator: in_range_flag, operator: "==", value: true, note: "цена внутри диапазона, стр.77/80" }
+
+# Прикладная цель: снизить убытки trend_moex в боковике. Это ФИЛЬТР, не вход.
+# [мнение автора] стр.77: 'наилучшая стратегия ... свести к минимуму своё участие'.
+
+missing_indicators:
+  - in_range_flag       # true, если close между range_low и range_high установившегося коридора — нужна реализация
+  - range_high          # нужна реализация
+  - range_low           # нужна реализация
+  - range_width_pct     # нужна реализация
+  - range_duration_bars # нужна реализация

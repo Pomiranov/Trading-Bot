@@ -286,12 +286,29 @@ def git_snapshot() -> set[str]:
         return set()
 
 
+def table_first_column(lines: list[str]) -> list[str]:
+    """Первая колонка markdown-таблицы: данные без шапки и разделителя."""
+    names: list[str] = []
+    for line in lines:
+        if not line.strip().startswith("|"):
+            continue
+        cells = [c.strip() for c in line.strip().strip("|").split("|")]
+        # Обратные апострофы убираем все, а не по краям: в ячейке бывает
+        # «`weight` (R1)» — уточнение правила стоит за закрывающим апострофом.
+        name = cells[0].replace("`", "").strip() if cells else ""
+        if not name or name == "параметр" or set(name) <= set("-: "):
+            continue
+        names.append(name)
+    return names
+
+
 def parse_card(card: Path) -> dict:
     """Статистика из карточки. Формат задан в .claude/agents/chapter-reader.md;
     если агент его нарушил — считаем то, что удалось, и сообщаем."""
     text = card.read_text(encoding="utf-8")
     stats: dict = {"rules": [], "features": None, "questions": None,
-                   "decisions": None, "status": None, "problems": []}
+                   "decisions": None, "decisions_listed": [],
+                   "status": None, "problems": []}
 
     front = re.match(r"^---\n(.*?)\n---\n", text, re.S)
     if front:
@@ -325,7 +342,10 @@ def parse_card(card: Path) -> dict:
         return max(len(rows) - 2, 0)      # минус заголовок и разделитель
 
     stats["features"] = table_rows(3)
-    stats["decisions"] = table_rows(7)
+    # §7 считаем по именам параметров, а не по числу строк: это же имена нужны
+    # для сверки с черновиками правил.
+    stats["decisions_listed"] = table_first_column(sections.get(7, []))
+    stats["decisions"] = len(stats["decisions_listed"]) if 7 in sections else None
     if 5 in sections:
         stats["questions"] = sum(1 for s in sections[5] if re.match(r"^\s*\d+\.", s))
 
@@ -369,17 +389,53 @@ def validate(ch: dict, changed: set[str], result_text: str) -> tuple[list[str], 
     if outside:
         problems.append("записи вне разрешённых каталогов: " + ", ".join(outside[:5]))
 
-    stats["decisions_in_yaml"] = decisions_in_yaml(n)
+    stats["decision_params"] = decision_params(n)
+
+    # Пункт 5 чек-листа агента: §7 обязан перечислить все REQUIRES_DECISION из
+    # черновиков. Сверяем по именам — в §7 один параметр может быть уточнён
+    # ссылкой на правило («weight (R1)»), это тот же параметр.
+    listed = {re.sub(r"\s*\(.*\)$", "", name) for name in stats["decisions_listed"]}
+    in_yaml = {p for names in stats["decision_params"].values()
+               for p in names if p != "?"}
+    forgotten = sorted(in_yaml - listed)
+    if forgotten:
+        problems.append("параметры с REQUIRES_DECISION не попали в сводку §7 "
+                        "карточки: " + ", ".join(forgotten))
     return problems, stats
 
 
-def decisions_in_yaml(n: int) -> dict[str, int]:
-    """{файл кандидата: сколько REQUIRES_DECISION} — ответ на «где решать»."""
-    found = {}
+def decision_params(n: int) -> dict[str, list[str]]:
+    """{файл кандидата: [имена параметров с REQUIRES_DECISION]}.
+
+    Считаем имена, а не вхождения строки: карточка сводит один параметр в одну
+    строку §7, а счётчик по вхождениям давал 9 против 6 у агента — цифра в
+    Telegram расходилась с цифрой в карточке на ровном месте.
+    """
+    found: dict[str, list[str]] = {}
     for path in sorted(CAND_DIR.glob(f"ch{n:02d}_*.yaml")):
-        count = path.read_text(encoding="utf-8").count("REQUIRES_DECISION")
-        if count:
-            found[path.name] = count
+        text = path.read_text(encoding="utf-8")
+        try:
+            data = yaml.safe_load(text) or {}
+        except yaml.YAMLError:
+            data = {}
+        hits: list[str] = []
+        if isinstance(data, dict):
+            hits += [k for k, v in data.items() if v == "REQUIRES_DECISION"]
+            params = data.get("params")
+            if isinstance(params, dict):
+                hits += [k for k, v in params.items()
+                         if isinstance(v, dict) and v.get("value") == "REQUIRES_DECISION"]
+        # Имя может встретиться дважды законно: params.weight и weight верхнего
+        # уровня — это один параметр. Поэтому сравниваем с числом найденных
+        # вхождений, а не уникальных имён.
+        names = sorted(set(hits))
+        # Вхождений больше, чем разобрано — часть спряталась в списке или
+        # черновик не читается как yaml. Молчать нельзя, врать числом тоже:
+        # "?" в сверке не участвует, но виден в отчёте.
+        if text.count("REQUIRES_DECISION") > len(hits):
+            names.append("?")
+        if names:
+            found[path.name] = sorted(names)
     return found
 
 
@@ -389,7 +445,8 @@ def build_summary(results: list[dict], dry_run: bool) -> str:
     done = [r for r in results if r["status"] == "done"]
     failed = [r for r in results if r["status"] == "failed"]
     questions = sum(r["stats"].get("questions") or 0 for r in done)
-    decisions = sum(sum(r["stats"].get("decisions_in_yaml", {}).values()) for r in done)
+    # То же число, что в §7 карточки: сводка и карточка обязаны совпадать.
+    decisions = sum(r["stats"].get("decisions") or 0 for r in done)
 
     head = "🧪 <b>Разбор глав (dry-run)</b>" if dry_run else "📚 <b>Разбор глав</b>"
     lines = [f"{head}: {len(done)} done, {len(failed)} failed",
@@ -402,8 +459,9 @@ def build_summary(results: list[dict], dry_run: bool) -> str:
                 f"гл. {r['n']} ✅ правил {len(s.get('rules') or [])}, "
                 f"фич {s.get('features') if s.get('features') is not None else '?'}, "
                 f"вопросов {s.get('questions') if s.get('questions') is not None else '?'}"
-                + (f", REQUIRES_DECISION {sum(s['decisions_in_yaml'].values())} "
-                   f"({', '.join(s['decisions_in_yaml'])})" if s.get("decisions_in_yaml") else "")
+                + (f", REQUIRES_DECISION "
+                   f"{s.get('decisions') if s.get('decisions') is not None else '?'} "
+                   f"({', '.join(s['decision_params'])})" if s.get("decision_params") else "")
             )
         elif r["status"] == "failed":
             lines.append(f"гл. {r['n']} ❌ {r['error'][:160]}")
@@ -431,11 +489,71 @@ def select(chapters: list[dict], args) -> list[dict]:
     return picked[: args.limit] if args.limit else picked
 
 
+def guard_is_alive() -> str | None:
+    """None — сторож путей ответил отказом, строка — что именно не так.
+
+    Хук — единственное, что физически не даёт агенту переписать боевые
+    rules*.yaml. Любой сбой его запуска (нет интерпретатора, опечатка в пути,
+    сломанный JSON) Claude Code считает non-blocking и запись пропускает —
+    молча. Поэтому проверяем до первой главы, а не разбираемся после.
+
+    Команду берём из того же settings-файла, что уедет в claude, и запускаем
+    через шелл — как это делает сам Claude Code.
+    """
+    try:
+        settings = json.loads((ROOT / AGENT_SETTINGS).read_text(encoding="utf-8"))
+    except Exception as exc:
+        return f"{AGENT_SETTINGS} не разбирается: {exc}"
+
+    commands = [hook.get("command", "")
+                for group in (settings.get("hooks") or {}).get("PreToolUse") or []
+                for hook in group.get("hooks") or []
+                if hook.get("type") == "command"]
+    commands = [c for c in commands if c]
+    if not commands:
+        return f"{AGENT_SETTINGS}: команда PreToolUse-хука не найдена"
+
+    payload = json.dumps({
+        "tool_name": "Write",
+        "tool_input": {"file_path": "knowledge/rules/rules.yaml"},
+        "cwd": str(ROOT),
+    })
+    for command in commands:
+        try:
+            proc = subprocess.run(command, input=payload, shell=True, cwd=str(ROOT),
+                                  capture_output=True, text=True, encoding="utf-8",
+                                  errors="replace", timeout=60)
+        except Exception as exc:
+            return f"хук «{command}» не запустился: {exc}"
+
+        decision = ""
+        for line in (proc.stdout or "").splitlines():
+            try:
+                payload_out = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            decision = ((payload_out.get("hookSpecificOutput") or {})
+                        .get("permissionDecision", "")) or decision
+        if decision != "deny":
+            return (f"хук «{command}» не запретил запись в боевые правила: "
+                    f"решение {decision or 'без JSON в stdout'}, "
+                    f"rc={proc.returncode}, stderr={(proc.stderr or '').strip()[:200]}")
+    return None
+
+
 def preflight(dry_run: bool) -> None:
     if not AGENT_DEF.exists():
         sys.exit(f"Нет определения агента: {rel(AGENT_DEF)}")
     if not (ROOT / AGENT_SETTINGS).exists():
         sys.exit(f"Нет настроек с хуком-сторожем: {AGENT_SETTINGS}")
+
+    logger.info("Preflight: проверяю сторожа путей записи…")
+    broken = guard_is_alive()
+    if broken:
+        sys.exit(f"Сторож путей записи не работает: {broken}\n"
+                 f"Без него агент может переписать боевые rules*.yaml — прогон отменён.")
+    logger.info("Preflight: сторож на месте, запись в боевые правила запрещает")
+
     if dry_run:
         return
     logger.info("Preflight: проверяю, что claude CLI отвечает…")

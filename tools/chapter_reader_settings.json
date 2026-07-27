@@ -1,5 +1,5 @@
 {
-  "_comment": "Настройки ТОЛЬКО для подпроцесса chapter-reader (claude -p --settings tools/chapter_reader_settings.json из tools/read_chapters.py). В общий .claude/settings.json это класть нельзя: хук запрещал бы запись вне knowledge/ во всех обычных сессиях. Команда указана относительно cwd — раннер запускает claude с cwd = корень репозитория.",
+  "_comment": "Настройки ТОЛЬКО для подпроцесса chapter-reader (claude -p --settings tools/chapter_reader_settings.json из tools/read_chapters.py). В общий .claude/settings.json это класть нельзя: хук запрещал бы запись вне knowledge/ во всех обычных сессиях. Команда указана относительно cwd — раннер запускает claude с cwd = корень репозитория. Интерпретатор вызывается через лончер py -3, а не через python: лончер лежит в C:\\Windows и находится независимо от PATH, а если интерпретатор не найдётся, Claude Code сочтёт сбой хука non-blocking и ПРОПУСТИТ запись. Хуку нужна только стандартная библиотека, поэтому venv ему не требуется. Живость сторожа проверяет preflight в read_chapters.py.",
   "hooks": {
     "PreToolUse": [
       {
@@ -7,7 +7,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python tools/guard_write_path.py"
+            "command": "py -3 tools/guard_write_path.py"
           }
         ]
       }

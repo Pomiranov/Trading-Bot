@@ -30,65 +30,73 @@ book:
   id: schwager_ta_full
   title: Швагер, Технический анализ. Полный курс
   pdf: knowledge/raw/books/Технический_анализ_Полный_курс_pdf.pdf
-  page_offset: 0   # ЗАМЕРИТЬ: печатная = физическая + offset
-
+  page_offset: 0
 chapters:
-  - n: 4
-    title: Торговые диапазоны
-    pages: []
-    category: strategies
-    status: pending
-    card: ""
-    attempts: 0
-    last_error: ""
-    note: "приоритет 6: определение диапазона и правила пробоя с подтверждением — фильтр боковика, база для range_trap_moex"
-
-  - n: 5
-    title: Поддержка и сопротивление
-    pages: []
-    category: strategies
-    status: pending
-    card: ""
-    attempts: 0
-    last_error: ""
-    note: "приоритет 6: S/R на границах диапазона, смена ролей после пробоя, огибающие полосы MA±%"
-
-  - n: 20
-    title: Тестирование и оптимизация торговых систем
-    pages: []
-    category: market_theory
-    status: pending
-    card: ""
-    attempts: 0
-    last_error: ""
-    note: "приоритет 7: методология против подгонки — прямо в hypothesis_engine"
-
-  - n: 6
-    title: Графические модели
-    pages: []
-    category: technical
-    status: pending
-    card: ""
-    attempts: 0
-    last_error: ""
-    note: "приоритет 8: однодневные модели (разрывы, шипы, ШД-дни, дни ускорения) — фундамент систем гл. 18; часть уже разобрана в systems_ch18_schwager.md, проверить пересечение"
-
-  - n: 10
-    title: Постановка целей и критерии закрытия
-    pages: []
-    category: risk
-    status: pending
-    card: ""
-    attempts: 0
-    last_error: ""
-    note: "приоритет 9: измеренное движение, «правило семи», последовательность ДеМарка, следящие остановки"
-
-  - n: 23
-    title: 82 правила торговли
-    pages: []
-    category: risk
-    status: pending
-    card: ""
-    attempts: 0
-    last_error: ""
-    note: "приоритет 10: чек-лист для risk_manager; много философии — ждать мало формализуемого"
+- n: 4
+  title: Торговые диапазоны
+  pages:
+  - 77
+  - 84
+  category: strategies
+  status: done
+  card: knowledge/cards/ch04.md
+  attempts: 1
+  last_error: ''
+  note: 'приоритет 6: определение диапазона и правила пробоя с подтверждением — фильтр боковика, база
+    для range_trap_moex'
+- n: 5
+  title: Поддержка и сопротивление
+  pages:
+  - 85
+  - 102
+  category: strategies
+  status: pending
+  card: ''
+  attempts: 0
+  last_error: ''
+  note: 'приоритет 6: S/R на границах диапазона, смена ролей после пробоя, огибающие полосы MA±%'
+- n: 20
+  title: Тестирование и оптимизация торговых систем
+  pages:
+  - 695
+  - 732
+  category: market_theory
+  status: pending
+  card: ''
+  attempts: 0
+  last_error: ''
+  note: 'приоритет 7: методология против подгонки — прямо в hypothesis_engine'
+- n: 6
+  title: Графические модели
+  pages:
+  - 103
+  - 150
+  category: technical
+  status: pending
+  card: ''
+  attempts: 0
+  last_error: ''
+  note: 'приоритет 8: однодневные модели (разрывы, шипы, ШД-дни, дни ускорения) — фундамент систем гл.
+    18; часть уже разобрана в systems_ch18_schwager.md, проверить пересечение'
+- n: 10
+  title: Постановка целей и критерии закрытия
+  pages:
+  - 173
+  - 196
+  category: risk
+  status: pending
+  card: ''
+  attempts: 0
+  last_error: ''
+  note: 'приоритет 9: измеренное движение, «правило семи», последовательность ДеМарка, следящие остановки'
+- n: 23
+  title: 82 правила торговли
+  pages:
+  - 777
+  - 788
+  category: risk
+  status: pending
+  card: ''
+  attempts: 0
+  last_error: ''
+  note: 'приоритет 10: чек-лист для risk_manager; много философии — ждать мало формализуемого'

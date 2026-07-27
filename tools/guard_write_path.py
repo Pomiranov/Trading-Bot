@@ -234,6 +234,10 @@ def self_test_cases() -> list[dict]:
         # normcase лечит регистр только на Windows; на posix это другой путь.
         _case("Write", (root / "knowledge/Cards/ch04.md").as_posix(),
               "allow" if os.name == "nt" else "deny", "регистр каталога"),
+        # Флаг самопроверки разбирается только из sys.argv. Если бы он мог
+        # прийти из пейлоада, подпроцесс напечатал бы отчёт вместо вердикта —
+        # и разбор stdout упал бы на «не JSON».
+        _case("Write", "--self-test", "deny", "--self-test из stdin — не флаг"),
         {"label": "битый JSON на stdin", "expect": "deny", "stdin": "{ не json"},
     ]
 
@@ -276,6 +280,10 @@ def verify_case(case: dict) -> str | None:
 
 def self_test() -> int:
     cases = self_test_cases()
+    # Под каким интерпретатором прогонялись кейсы: хук в
+    # chapter_reader_settings.json вызывается через «py -3», и полезно видеть,
+    # что это тот же Python, а не другой из PATH.
+    print(f"интерпретатор: {sys.executable}")
     failures = []
     for num, case in enumerate(cases, 1):
         problem = verify_case(case)

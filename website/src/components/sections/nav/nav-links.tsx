@@ -21,13 +21,25 @@ interface NavLinksProps {
  * The active section comes from `useActiveSection`, which is IntersectionObserver
  * based. Nothing here reads scroll position; see that hook for why that is a
  * hard rule on this page.
+ *
+ * ── Why `lg` and not `md` ──
+ *
+ * The audit proposed showing these from 768px, on the reasoning that there was
+ * "ample room for at least three links" in the 768–1023 band. Measurement says
+ * otherwise in Russian: at 768 the page padding is 61px a side, leaving 646px,
+ * and the wordmark + five Cyrillic labels + the locale toggle + the CTA need
+ * roughly 750. The CTA ended at x=813 in a 768 viewport — 45px off-screen,
+ * invisible only because `overflow-x: clip` on <html> was hiding it.
+ *
+ * English fits; Russian is the primary language and does not. Below lg the
+ * hamburger carries everything, which is what it is for.
  */
 export function NavLinks({ links }: NavLinksProps) {
   const ids = links.map((l) => l.href.slice(1));
   const active = useActiveSection(ids);
 
   return (
-    <nav aria-label="Primary" className="hidden items-center gap-6 md:flex lg:gap-7">
+    <nav aria-label="Primary" className="hidden items-center gap-7 lg:flex">
       {links.map(({ key, href, label }) => {
         const isActive = active === href.slice(1);
         return (

@@ -94,6 +94,12 @@ export function Section({
   return (
     <section
       id={id}
+      // Read by the anchor-landing rules in globals.css and by the offset
+      // calculation in motion/lenis-provider.tsx. A section's rhythm determines
+      // its top padding, and its top padding is exactly how much dead space an
+      // anchor would otherwise land the reader in — see the note beside
+      // `--anchor-clearance`.
+      data-rhythm={rhythm}
       aria-labelledby={labelledBy ?? `${id}-heading`}
       className={cn(
         "relative isolate px-[var(--space-page-x)]",

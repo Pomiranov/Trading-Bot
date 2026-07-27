@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { initScrollDriver, getLenis, NAV_OFFSET } from "./scroll-driver";
+import { initScrollDriver, getLenis, anchorOffsetFor } from "./scroll-driver";
 
 function easeOutQuart(t: number) {
   return 1 - Math.pow(1 - t, 4);
@@ -37,17 +37,19 @@ export function LenisProvider({ children }: { children: React.ReactNode }) {
 
       e.preventDefault();
 
+      const el = target as HTMLElement;
+      const offset = anchorOffsetFor(el);
+
       const lenis = getLenis();
       if (lenis) {
-        lenis.scrollTo(target as HTMLElement, {
-          offset: -NAV_OFFSET,
+        lenis.scrollTo(el, {
+          offset: -offset,
           duration: 1.1,
           easing: easeOutQuart,
         });
       } else {
         // Reduced-motion fallback — Lenis is never instantiated in that mode.
-        const top =
-          (target as HTMLElement).getBoundingClientRect().top + window.scrollY - NAV_OFFSET;
+        const top = el.getBoundingClientRect().top + window.scrollY - offset;
         window.scrollTo({ top, behavior: "smooth" });
       }
 

@@ -65,6 +65,40 @@ import Lenis from "lenis";
  */
 export const NAV_OFFSET = 104;
 
+/**
+ * How far below the viewport top an anchor target's *first line of content*
+ * should land. Mirrors `--anchor-clearance` in globals.css.
+ */
+export const ANCHOR_CLEARANCE = 128;
+
+/**
+ * The scroll offset for an anchor target.
+ *
+ * Scrolling a section's *box* to a fixed 104px below the header landed the
+ * reader on up to 377px of empty space, because a section's first content sits
+ * below its top padding — up to 232px of it on a `major` section. Measured
+ * across all nine nav targets, every one of them missed. Not an overlap bug;
+ * the opposite one.
+ *
+ * So the offset is derived from the target's own padding: put the *content* at
+ * ANCHOR_CLEARANCE, wherever the box has to go to achieve that.
+ *
+ * Three paths have to agree on this number, or a deep link, an in-page click
+ * and a keyboard focus all land somewhere slightly different on the same
+ * target:
+ *   • the `scroll-margin-top` rules in globals.css — no-JS and focus
+ *   • lenis-provider.tsx's click interceptor — in-page navigation
+ *   • applyInitialHash below — a cold load on a deep link
+ *
+ * Lives here because this module already owns NAV_OFFSET and is imported by
+ * both of the other two.
+ */
+export function anchorOffsetFor(el: HTMLElement) {
+  const padTop = parseFloat(getComputedStyle(el).paddingTop) || 0;
+  if (padTop <= NAV_OFFSET) return NAV_OFFSET;
+  return ANCHOR_CLEARANCE - padTop;
+}
+
 let lenisInstance: Lenis | null = null;
 
 export function initScrollDriver(): () => void {
@@ -98,8 +132,8 @@ export function initScrollDriver(): () => void {
       return; // not a valid selector, e.g. "#!"
     }
     if (!target) return;
-    const top =
-      (target as HTMLElement).getBoundingClientRect().top + window.scrollY - NAV_OFFSET;
+    const el = target as HTMLElement;
+    const top = el.getBoundingClientRect().top + window.scrollY - anchorOffsetFor(el);
     if (lenisInstance) lenisInstance.scrollTo(top, { immediate: true });
     else window.scrollTo({ top, behavior: "auto" });
   }

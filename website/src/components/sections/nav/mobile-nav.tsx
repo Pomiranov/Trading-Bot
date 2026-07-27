@@ -40,7 +40,7 @@ export function MobileNav({
         onClick={() => setOpen((o) => !o)}
         aria-expanded={open}
         aria-label={open ? closeLabel : openLabel}
-        className="relative flex size-11 flex-col items-center justify-center gap-[5.5px] rounded-[var(--radius-md)] border transition-colors duration-[var(--duration-base)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--color-accent)] md:hidden"
+        className="relative flex size-11 flex-col items-center justify-center gap-[5.5px] rounded-[var(--radius-md)] border transition-colors duration-[var(--duration-base)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--color-accent)] lg:hidden"
         style={{
           background: open ? "var(--color-highlight-bg)" : "var(--color-fill-subtle)",
           borderColor: open ? "var(--color-highlight-border)" : "var(--color-border-strong)",
@@ -86,7 +86,7 @@ export function MobileNav({
             <motion.nav
               key="panel"
               aria-label="Navigation"
-              className="fixed left-4 right-4 top-[var(--nav-panel-top)] md:hidden overflow-hidden rounded-[var(--radius-xl)]"
+              className="fixed left-4 right-4 top-[var(--nav-panel-top)] lg:hidden overflow-hidden rounded-[var(--radius-xl)]"
               style={{
                 zIndex: "calc(var(--z-nav) - 1)",
                 background: "var(--color-glass-surface-strong)",

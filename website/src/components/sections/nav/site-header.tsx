@@ -48,8 +48,6 @@ export async function SiteHeader({ locale }: { locale: string }) {
         </span>
       </a>
 
-      {/* Visible from md (768px), not lg. Between 768 and 1023 there was ample
-          room for the full row, and the hamburger was carrying it anyway. */}
       <NavLinks links={links} />
 
       <div className="flex items-center gap-3">
@@ -72,7 +70,7 @@ export async function SiteHeader({ locale }: { locale: string }) {
           {otherLocale.label}
         </Link>
 
-        <div className="hidden md:block">
+        <div className="hidden lg:block">
           <ButtonLink
             href="#access"
             size="sm"

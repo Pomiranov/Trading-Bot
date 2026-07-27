@@ -402,8 +402,44 @@ body::before {
     inset 0 1px 0 rgba(255, 255, 255, 0.05);
 }
 
+/* ─── Anchor landing ───────────────────────────────────────────────────────
+   The measured defect: clicking a nav link put the section *box* 104px below
+   the viewport top, but a section's first content sits below its top padding —
+   up to 232px of it. So the reader landed on 263–377px of empty space and had
+   to scroll to find the heading they had just asked for. Not an overlap bug;
+   the opposite one, and it affected every anchor on the page.
+
+   The fix targets the *content*, not the box. Desired clearance is
+   --anchor-clearance from the viewport top to the first line, so the section
+   box has to sit `clearance - paddingTop` down — which is negative for any
+   section with real padding, and negative scroll-margin is well-defined.
+
+   Two paths must agree, or a deep link lands in one place and an in-page click
+   lands in another:
+     • this rule — the no-JS and keyboard-focus path
+     • motion/lenis-provider.tsx — the smooth-scroll interceptor, which derives
+       the same number from the target's computed padding-top at click time
+
+   --anchor-clearance is slightly more than the 104px header offset so the
+   heading clears the pill rather than touching it. */
+:root {
+  --anchor-clearance: 128px;
+}
+
 :where(section[id], main [id]) {
   scroll-margin-top: 104px;
+}
+
+section[id][data-rhythm="major"] {
+  scroll-margin-top: calc(var(--anchor-clearance) - var(--space-section-y-major));
+}
+
+section[id][data-rhythm="default"] {
+  scroll-margin-top: calc(var(--anchor-clearance) - var(--space-section-y));
+}
+
+section[id][data-rhythm="tight"] {
+  scroll-margin-top: calc(var(--anchor-clearance) - var(--space-section-y-tight));
 }
 
 /* ─── Animated border gradient ─── */

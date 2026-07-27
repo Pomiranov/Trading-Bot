@@ -1,0 +1,38 @@
+# Черновик. Не подключать к движку до ревью и бэктеста.
+id: ch23_wide_range_reversal
+status: candidate
+source:
+  book: schwager
+  chapter: 23
+  pages: [786, 786]   # правило 65
+
+params:
+  range_multiple:
+    value: REQUIRES_DECISION
+    options: [1.5, 2]
+    why: "«диапазон значительно шире среднего диапазона предшествующих дней» —
+      кратность численно не задана; 1.5 / 2 — предложение агента, в книге числа нет"
+  avg_range_lookback:
+    value: REQUIRES_DECISION
+    options: [10, 20]
+    why: "окно усреднения «предшествующих дней» не задано;
+      10 / 20 — предложение агента, в книге числа нет"
+  trend_lookback:
+    value: REQUIRES_DECISION
+    options: [20, 50]
+    why: "«основной тренд» определён качественно; окно определения тренда не
+      задано; 20 / 50 — предложение агента, в книге числа нет"
+
+action: REVERSAL_SIGNAL
+weight: REQUIRES_DECISION
+description: "Правило 65: широкодиапазонный день (диапазон >> среднего) с закрытием
+  ПРОТИВ основного тренда — ранний сигнал разворота, особенно если сопровождается
+  разворотным событием (заполнение разрыва ускорения, пробой предшествующей
+  консолидации). Кандидат для разметки переходной зоны, не автономный вход."
+conditions:
+  - { indicator: day_range_vs_avg, operator: ">=", value: range_multiple }
+  - { indicator: close_vs_trend, operator: "==", value: "against", note: "закрытие против основного тренда" }
+
+missing_indicators:
+  - day_range_vs_avg    # нужна реализация: (high-low текущего бара) / средн. (high-low) за avg_range_lookback
+  - close_vs_trend      # нужна реализация: направление закрытия бара относительно тренда (напр. EMA за trend_lookback)

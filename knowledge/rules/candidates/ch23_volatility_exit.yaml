@@ -1,0 +1,36 @@
+# Черновик. Не подключать к движку до ревью и бэктеста.
+id: ch23_volatility_exit
+status: candidate
+source:
+  book: schwager
+  chapter: 23
+  pages: [781, 781]   # правило 18
+
+params:
+  adverse_range_multiple:
+    value: REQUIRES_DECISION
+    options: [2, 3]
+    why: "в книге пример «дневной диапазон ~50 п., открытие на 100-150 п. выше» →
+      отношение 2-3x; это ПРИМЕР, а не порог. 2 / 3 взяты из примера, но как
+      порог в книге не заданы"
+    quote: "если рынок... открывается на 100-150 пунктов выше, немедленно закрывайте"
+    page: 781
+  volatility_lookback:
+    value: REQUIRES_DECISION
+    options: [10, 20]
+    why: "«за рамки предыдущей волатильности» — окно усреднения дневного диапазона
+      численно не задано; 10 / 20 — предложение агента, в книге числа нет"
+
+action: EXIT
+weight: REQUIRES_DECISION
+description: "Правило 18: если движение ПРОТИВ позиции превышает недавнюю дневную
+  волатильность в adverse_range_multiple раз — немедленный выход. При пробое с
+  разрывом против позиции — ликвидация немедленно (правило 17)."
+conditions:
+  - { indicator: adverse_range_vs_avg, operator: ">=", value: adverse_range_multiple, note: "движение против позиции в кратах к средн. диапазону" }
+
+exit:
+  - { indicator: adverse_range_vs_avg, operator: ">=", value: adverse_range_multiple, note: "выброс волатильности против позиции, стр.781" }
+
+missing_indicators:
+  - adverse_range_vs_avg   # нужна реализация: (движение против позиции за бар) / средний дневной диапазон за volatility_lookback

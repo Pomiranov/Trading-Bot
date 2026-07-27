@@ -311,6 +311,59 @@ QUALITY_RE = re.compile(r"^\s*(?:[-*>]\s*)?Качество\s+текста\s*[:�
 # сознательно: chars_parsed — оценка агента, а не измерение.
 VOLUME_MIN_SHARE = 0.5
 
+# Выше этой доли chars_parsed недостоверен: разобрать больше, чем подано,
+# невозможно. 2% — запас на то, что агент считает знаки иначе, чем len().
+VOLUME_MAX_SHARE = 1.02
+
+# Параметры схемы правила, а не решения по книге: присутствуют в каждом
+# черновике (weight — в 16 из 16 на момент гл.23) и всегда определяются
+# бэктестом. Требовать для них строку в §7 бессмысленно: с тремя правилами в
+# главе это конфликтует с «одна строка на уникальный параметр» из чек-листа
+# инструкции — на этом упали гл.10 и гл.23. Сравнение по нормализованному имени
+# целиком, не по префиксу: weight_lookback (если появится) — обычный параметр и
+# сверяться обязан.
+STRUCTURAL_PARAMS = {"weight"}
+
+
+def norm_param(name: str) -> str:
+    """Имя параметра для сравнения.
+
+    `weight`, weight (R1), weight(R2), **weight** — один и тот же параметр:
+    агент помечает, к какому правилу относится строка §7, а сверке важно имя.
+    Нормализуются обе стороны — и §7, и yaml, иначе разметка в одной из них
+    ломает сверку на ровном месте.
+    """
+    # Апострофы и звёздочки — разметка, а подчёркивание НЕТ: снимать его нельзя,
+    # иначе target_tolerance_pct превратится в targettolerancepct и в отчёт
+    # уедет изувеченное имя.
+    text = re.sub(r"[`*]", "", name).strip()
+    while True:                       # «weight (R1) (?)» — скобок может быть много
+        stripped = re.sub(r"\s*\([^()]*\)\s*$", "", text).strip()
+        if stripped == text:
+            break
+        text = stripped
+    return re.sub(r"\s+", " ", text.strip(" .,;:—-")).casefold()
+
+
+def forgotten_params(listed: list[str], in_yaml: set[str]) -> list[str]:
+    """Параметры из черновиков, которых нет в сводке §7 карточки.
+
+    Структурные (STRUCTURAL_PARAMS) забытыми не считаются. Возвращаем исходные
+    имена, а не нормализованные: сообщение об ошибке должно совпадать с тем, что
+    человек увидит в yaml. Чистая функция — иначе этот случай не покрыть тестом
+    без файловых фикстур.
+    """
+    have = {norm_param(name) for name in listed}
+    structural = {norm_param(name) for name in STRUCTURAL_PARAMS}
+    missing = {}
+    for name in in_yaml:
+        if name == "?":               # нечитаемый yaml, в сверке не участвует
+            continue
+        key = norm_param(name)
+        if key and key not in have and key not in structural:
+            missing[key] = name
+    return sorted(missing.values())
+
 
 def classify_mismatch(result_text: str) -> tuple[str | None, list[str]]:
     """(проблема | None, примечания). Разбор отчёта агента, чистая функция."""
@@ -350,6 +403,13 @@ def volume_problem(chars_parsed: int | None, extracted: int) -> tuple[str | None
     if share < 0.8:
         return None, [f"разобрано {share:.0%} переданного текста "
                       f"({chars_parsed} из {extracted})"]
+    if share > VOLUME_MAX_SHARE:
+        # Разобрать больше, чем подано, нельзя: в переданном файле кроме прозы
+        # есть ещё маркеры [стр. N]. Значит цифру агент не считал, а оценил.
+        # Не отказ — карточка от этого хуже не становится, но верить объёму как
+        # признаку сбоя извлечения в этой главе уже нельзя.
+        return None, [f"chars_parsed {chars_parsed} больше поданных {extracted} "
+                      f"({share:.0%}) — цифра недостоверна"]
     return None, []
 
 
@@ -517,13 +577,10 @@ def validate(ch: dict, changed: set[str], result_text: str,
 
     stats["decision_params"] = decision_params(n)
 
-    # Пункт 5 чек-листа агента: §7 обязан перечислить все REQUIRES_DECISION из
-    # черновиков. Сверяем по именам — в §7 один параметр может быть уточнён
-    # ссылкой на правило («weight (R1)»), это тот же параметр.
-    listed = {re.sub(r"\s*\(.*\)$", "", name) for name in stats["decisions_listed"]}
-    in_yaml = {p for names in stats["decision_params"].values()
-               for p in names if p != "?"}
-    forgotten = sorted(in_yaml - listed)
+    # Пункт 5 чек-листа агента: §7 обязан перечислить REQUIRES_DECISION из
+    # черновиков, кроме структурных (см. STRUCTURAL_PARAMS).
+    in_yaml = {p for names in stats["decision_params"].values() for p in names}
+    forgotten = forgotten_params(stats["decisions_listed"], in_yaml)
     if forgotten:
         problems.append("параметры с REQUIRES_DECISION не попали в сводку §7 "
                         "карточки: " + ", ".join(forgotten))
@@ -743,6 +800,52 @@ def self_test() -> int:
     problem, notes = volume_problem(None, 11679)      # карточка без chars_parsed
     check("нет chars_parsed → принято с примечанием",
           problem is None and len(notes) == 1, str((problem, notes)))
+
+    problem, notes = volume_problem(27200, 26058)     # гл.23 как есть
+    check("104% объёма → принято с примечанием о недостоверности",
+          problem is None and any("недостоверна" in n for n in notes),
+          str((problem, notes)))
+
+    # Сверка §7 с черновиками. Кейсы 1–2 — ровно то, на чём упали гл.10 и гл.23:
+    # weight есть в каждом правиле, а строка §7 одна на уникальный параметр.
+    ch10_yaml = {"weight", "swing_lookback", "target_tolerance_pct", "target_index"}
+    ch10_listed = ["swing_lookback", "target_tolerance_pct",
+                   "mm_cluster_count (окно кластеризации)", "target_index",
+                   "RSI пороги (overbought/oversold)", "RSI период"]
+    check("гл.10: §7 без weight → принято",
+          forgotten_params(ch10_listed, ch10_yaml) == [],
+          str(forgotten_params(ch10_listed, ch10_yaml)))
+
+    ch23_yaml = {"weight", "drawdown_trigger_pct", "size_reduction_factor",
+                 "adverse_range_multiple", "volatility_lookback",
+                 "avg_range_lookback", "range_multiple", "trend_lookback"}
+    ch23_listed = ["adverse_range_multiple", "volatility_lookback",
+                   "drawdown_trigger_pct", "size_reduction_factor",
+                   "range_multiple", "avg_range_lookback", "trend_lookback"]
+    check("гл.23: §7 без weight → принято",
+          forgotten_params(ch23_listed, ch23_yaml) == [],
+          str(forgotten_params(ch23_listed, ch23_yaml)))
+
+    check("гл.6: §7 c «weight (R1–R6)» → принято",
+          forgotten_params(["run_n", "weight (R1–R6)"], {"weight", "run_n"}) == [])
+
+    check("«swing_lookback (R2)» в §7 → принято",
+          forgotten_params(["swing_lookback (R2)"], {"swing_lookback"}) == [])
+
+    check("«**target_index**» в §7 → принято",
+          forgotten_params(["**target_index**"], {"target_index"}) == [])
+
+    check("забытый небанальный параметр → отказ",
+          forgotten_params(["swing_lookback"], {"swing_lookback",
+                                                "target_tolerance_pct"})
+          == ["target_tolerance_pct"])
+
+    check("weight_lookback исключением не съеден",
+          forgotten_params(["weight (R1)"], {"weight", "weight_lookback"})
+          == ["weight_lookback"])
+
+    check("«?» из нечитаемого yaml в сверке не участвует",
+          forgotten_params(["run_n"], {"run_n", "?"}) == [])
 
     failed_stats = {"rules": ["a.yaml", "b.yaml"], "features": 10, "questions": 6,
                     "decisions": 8, "decision_params": ["x.yaml"],

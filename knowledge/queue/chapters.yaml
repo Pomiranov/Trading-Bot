@@ -72,9 +72,9 @@ chapters:
   - 103
   - 150
   category: technical
-  status: pending
-  card: ''
-  attempts: 0
+  status: done
+  card: knowledge/cards/ch06.md
+  attempts: 1
   last_error: ''
   note: 'приоритет 8: однодневные модели (разрывы, шипы, ШД-дни, дни ускорения) — фундамент систем гл.
     18; часть уже разобрана в systems_ch18_schwager.md, проверить пересечение'
@@ -84,9 +84,9 @@ chapters:
   - 173
   - 196
   category: risk
-  status: pending
-  card: ''
-  attempts: 0
+  status: done
+  card: knowledge/cards/ch10.md
+  attempts: 1
   last_error: ''
   note: 'приоритет 9: измеренное движение, «правило семи», последовательность ДеМарка, следящие остановки'
 - n: 23
@@ -95,8 +95,8 @@ chapters:
   - 777
   - 788
   category: risk
-  status: pending
-  card: ''
-  attempts: 0
+  status: done
+  card: knowledge/cards/ch23.md
+  attempts: 1
   last_error: ''
   note: 'приоритет 10: чек-лист для risk_manager; много философии — ждать мало формализуемого'

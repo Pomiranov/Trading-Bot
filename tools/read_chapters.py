@@ -274,6 +274,110 @@ def run_agent(prompt: str, timeout: int) -> dict:
 
 
 # ── Проверка результата ──────────────────────────────────────────────────
+#
+# Про MISMATCH. Контракт §7 инструкции агента: настоящее несоответствие
+# оформляется ОТДЕЛЬНОЙ строкой «MISMATCH: <что>». Раньше здесь стояла
+# проверка `"MISMATCH" in result_text` — подстрока, без привязки к началу
+# строки. Гл.5 написала «Расхождений с разведкой нет, MISMATCH отсутствует»,
+# и корректная глава была забракована фразой о том, что расхождений нет.
+# Отсюда три яруса: контрактная форма → отрицание в payload → смысл payload.
+# Плюс объективные проверки ниже, которые от формулировок не зависят вообще.
+
+MISMATCH_RE = re.compile(r"^\s*(?:[-*>]\s*)?MISMATCH\s*[:：]\s*(.*)", re.I | re.M)
+
+# «MISMATCH: нет» — агент отчитался в контрактной форме, что расхождений нет.
+MISMATCH_NO_RE = re.compile(r"^(нет|отсутству|не\s+обнаруж|не\s+найден|none|no\b)", re.I)
+
+# Единственное, что прощаем в контрактной строке: страницы-картинки и короткая
+# глава. В этой книге картинки есть в каждой главе (гл.6 — 41/48 страниц с
+# текстом, гл.10 — 13/24) — это описание качества, а не сбой. Всё прочее в
+# MISMATCH — отказ, даже незнакомая формулировка: контракт §7 говорит о сбое, и
+# толковать его расширительно опаснее, чем один раз перепроверить главу руками.
+BENIGN_MISMATCH_RE = re.compile(r"рисун|картин|график|иллюстрац|фото|"
+                                r"коротк\w*\s+глав|мало\s+текста", re.I)
+
+# Перебивает BENIGN: если рядом с рисунками сказано и про чужую главу — отказ.
+REAL_MISMATCH_RE = re.compile(r"не\s+та\s+глава|не\s+тот\s+(диапазон|номер)|"
+                              r"друг\w*\s+глав|чуж\w*\s+глав|перелив|обрыв|оборван|"
+                              r"пуст\w*\s+(извлечен|текст)|(извлечен\w*|текст)\s+пуст\w*|"
+                              r"не\s+соответств|гл\.?\s*\d+\s*,?\s*(а\s+)?не\s+гл", re.I)
+
+# Строка о качестве текста из финального ответа агента (контракт §7) — уезжает
+# в отчёт примечанием как есть.
+QUALITY_RE = re.compile(r"^\s*(?:[-*>]\s*)?Качество\s+текста\s*[:：]\s*(.*)", re.I | re.M)
+
+# Ниже этой доли от фактически извлечённого раннером текста считаем, что в
+# диапазон попала чужая глава или агент бросил разбор. Порог низкий
+# сознательно: chars_parsed — оценка агента, а не измерение.
+VOLUME_MIN_SHARE = 0.5
+
+
+def classify_mismatch(result_text: str) -> tuple[str | None, list[str]]:
+    """(проблема | None, примечания). Разбор отчёта агента, чистая функция."""
+    notes = [f"качество текста: {m.group(1).strip()}"
+             for m in QUALITY_RE.finditer(result_text) if m.group(1).strip()]
+
+    problem = None
+    for m in MISMATCH_RE.finditer(result_text):
+        payload = m.group(1).strip()
+        if not payload or MISMATCH_NO_RE.match(payload):
+            continue                          # ярус 2: агент сам сказал «нет»
+        # Ярус 3, fail-closed: прощаем только рисунки и короткую главу.
+        benign = (BENIGN_MISMATCH_RE.search(payload)
+                  and not REAL_MISMATCH_RE.search(payload))
+        if benign:
+            notes.append(f"агент отметил в MISMATCH: {payload[:200]}")
+        else:
+            problem = f"агент сообщил о несоответствии текста: {payload[:200]}"
+    return problem, notes
+
+
+def volume_problem(chars_parsed: int | None, extracted: int) -> tuple[str | None, list[str]]:
+    """(проблема | None, примечания) по объёму разобранного текста.
+
+    Сравниваем с фактом раннера, а не с chars_input карточки: агент это поле
+    оценивал на глаз (в гл.5 стояло 8700 при фактических 11 679), поэтому
+    теперь его подставляет раннер, а сверка идёт с извлечённым объёмом.
+    """
+    if not extracted:
+        return None, []
+    if chars_parsed is None:
+        return None, ["chars_parsed в карточке нет — объём разбора не проверен"]
+    share = chars_parsed / extracted
+    if share < VOLUME_MIN_SHARE:
+        return (f"разобрано {chars_parsed} из {extracted} знаков ({share:.0%}) — "
+                f"похоже, в диапазон попала чужая глава или разбор брошен"), []
+    if share < 0.8:
+        return None, [f"разобрано {share:.0%} переданного текста "
+                      f"({chars_parsed} из {extracted})"]
+    return None, []
+
+
+def stamp_chars_input(card: Path, chars: int) -> None:
+    """Проставить в frontmatter карточки фактический объём поданного текста.
+
+    Поле раннера, не агента: он знает точное число, потому что сам писал файл.
+    Правка хирургическая — yaml.safe_dump развалил бы `pages: [85, 102]` в
+    блочный список и переставил ключи.
+    """
+    try:
+        text = card.read_text(encoding="utf-8")
+        front = re.match(r"^(---\n)(.*?\n)(---\n)", text, re.S)
+        if not front:
+            return
+        body = front.group(2)
+        line = f"chars_input: {chars}\n"
+        if re.search(r"^chars_input\s*:.*$", body, re.M):
+            body = re.sub(r"^chars_input\s*:.*$", line.rstrip("\n"), body, count=1, flags=re.M)
+        elif re.search(r"^chars_parsed\s*:", body, re.M):
+            body = re.sub(r"^(chars_parsed\s*:.*\n)", line + r"\1", body, count=1, flags=re.M)
+        else:
+            body += line
+        card.write_text(front.group(1) + body + front.group(3) + text[front.end():],
+                        encoding="utf-8")
+    except Exception as exc:
+        logger.warning("chars_input в %s не проставлен (%s)", rel(card), exc)
+
 
 def git_snapshot() -> set[str]:
     try:
@@ -308,13 +412,18 @@ def parse_card(card: Path) -> dict:
     text = card.read_text(encoding="utf-8")
     stats: dict = {"rules": [], "features": None, "questions": None,
                    "decisions": None, "decisions_listed": [],
-                   "status": None, "problems": []}
+                   "status": None, "problems": [], "notes": [],
+                   "chars_parsed": None, "pages": None, "pages_requested": None}
 
     front = re.match(r"^---\n(.*?)\n---\n", text, re.S)
     if front:
         try:
             meta = yaml.safe_load(front.group(1)) or {}
             stats["status"] = meta.get("status")
+            parsed = meta.get("chars_parsed")
+            stats["chars_parsed"] = parsed if isinstance(parsed, int) else None
+            stats["pages"] = meta.get("pages")
+            stats["pages_requested"] = meta.get("pages_requested")
         except yaml.YAMLError:
             stats["problems"].append("frontmatter карточки не разбирается")
     else:
@@ -355,22 +464,39 @@ def parse_card(card: Path) -> dict:
     return stats
 
 
-def validate(ch: dict, changed: set[str], result_text: str) -> tuple[list[str], dict]:
-    """(проблемы, статистика). Пустой список проблем = глава принята."""
+def validate(ch: dict, changed: set[str], result_text: str,
+             extracted_chars: int = 0) -> tuple[list[str], dict]:
+    """(проблемы, статистика). Пустой список проблем = глава принята.
+
+    Отчёт агента может только ПРИЗНАТЬ несоответствие в контрактной форме;
+    объективные проверки (карточка, конспект, пути записи, объём разбора)
+    работают независимо от того, что и какими словами агент написал.
+    """
     n, category = ch["n"], ch["category"]
     problems: list[str] = []
 
-    if "MISMATCH" in result_text:
-        line = next((s for s in result_text.splitlines() if "MISMATCH" in s), "MISMATCH")
-        problems.append(f"агент сообщил о несоответствии текста: {line.strip()[:200]}")
+    mismatch, notes = classify_mismatch(result_text)
+    if mismatch:
+        problems.append(mismatch)
 
     card = CARDS_DIR / f"ch{n:02d}.md"
     if not card.exists():
         problems.append(f"нет карточки {rel(card)}")
-        return problems, {}
+        return problems, {"notes": notes}
 
     stats = parse_card(card)
     problems += stats.pop("problems")
+    notes += stats["notes"]
+
+    vol_problem, vol_notes = volume_problem(stats["chars_parsed"], extracted_chars)
+    if vol_problem:
+        problems.append(vol_problem)
+    notes += vol_notes
+
+    if stats["pages_requested"] and stats["pages_requested"] != stats["pages"]:
+        notes.append(f"разобран диапазон {stats['pages']} вместо заказанного "
+                     f"{stats['pages_requested']}")
+    stats["notes"] = notes
 
     if stats["status"] != "read_pending_review":
         problems.append(f"status карточки = {stats['status']!r}, "
@@ -441,34 +567,51 @@ def decision_params(n: int) -> dict[str, list[str]]:
 
 # ── Сводка ───────────────────────────────────────────────────────────────
 
+def card_counters(stats: dict) -> str:
+    """Счётчики карточки одной строкой. Не зависят от статуса главы: карточка
+    записана — значит цифры есть, и в сводке они обязаны совпадать с §7."""
+    def num(key: str) -> str:
+        value = stats.get(key)
+        return "?" if value is None else str(value)
+
+    line = (f"правил {len(stats.get('rules') or [])}, фич {num('features')}, "
+            f"вопросов {num('questions')}")
+    if stats.get("decision_params"):
+        line += (f", REQUIRES_DECISION {num('decisions')} "
+                 f"({', '.join(stats['decision_params'])})")
+    return line
+
+
 def build_summary(results: list[dict], dry_run: bool) -> str:
     done = [r for r in results if r["status"] == "done"]
     failed = [r for r in results if r["status"] == "failed"]
-    questions = sum(r["stats"].get("questions") or 0 for r in done)
+    # Считаем по всем главам с разобранной карточкой, а не только по принятым:
+    # при failed цифры раньше терялись, и в Telegram уходили нули при 6
+    # вопросах и 8 REQUIRES_DECISION в карточке.
+    counted = [r for r in results if r["stats"].get("features") is not None
+               or r["stats"].get("questions") is not None
+               or r["stats"].get("decisions") is not None]
+    questions = sum(r["stats"].get("questions") or 0 for r in counted)
     # То же число, что в §7 карточки: сводка и карточка обязаны совпадать.
-    decisions = sum(r["stats"].get("decisions") or 0 for r in done)
+    decisions = sum(r["stats"].get("decisions") or 0 for r in counted)
 
     head = "🧪 <b>Разбор глав (dry-run)</b>" if dry_run else "📚 <b>Разбор глав</b>"
     lines = [f"{head}: {len(done)} done, {len(failed)} failed",
              f"Вопросов к тебе: {questions} · REQUIRES_DECISION: {decisions}"]
 
     for r in results:
+        s = r["stats"]
         if r["status"] == "done":
-            s = r["stats"]
-            lines.append(
-                f"гл. {r['n']} ✅ правил {len(s.get('rules') or [])}, "
-                f"фич {s.get('features') if s.get('features') is not None else '?'}, "
-                f"вопросов {s.get('questions') if s.get('questions') is not None else '?'}"
-                + (f", REQUIRES_DECISION "
-                   f"{s.get('decisions') if s.get('decisions') is not None else '?'} "
-                   f"({', '.join(s['decision_params'])})" if s.get("decision_params") else "")
-            )
+            lines.append(f"гл. {r['n']} ✅ {card_counters(s)}")
         elif r["status"] == "failed":
-            lines.append(f"гл. {r['n']} ❌ {r['error'][:160]}")
+            counters = f"{card_counters(s)} — " if s.get("features") is not None else ""
+            lines.append(f"гл. {r['n']} ❌ {counters}{r['error'][:160]}")
         else:
             lines.append(f"гл. {r['n']} ⏭ {r['error'][:160]}")
+        for note in s.get("notes") or []:
+            lines.append(f"  ↳ {note[:160]}")
 
-    if done:
+    if counted:
         lines.append("Карточки в knowledge/cards/ — ждут ревью, статусы глав "
                      "в schwager_index.md не менялись.")
     return "\n".join(lines)
@@ -541,6 +684,90 @@ def guard_is_alive() -> str | None:
     return None
 
 
+# ── Самопроверка приёмки ─────────────────────────────────────────────────
+#
+# Проверяются чистые функции: ни PDF, ни агента, ни файловых фикстур. Кейс 1 —
+# отчёт гл.5 дословно из лога прогона 2026-07-27: именно он был забракован
+# наивной проверкой подстроки, и он же теперь обязан проходить.
+
+CH05_REPORT = (
+    "Готово. Все файлы записаны в три разрешённых каталога.\n"
+    "- Гл. 5 «Поддержка и сопротивление» разобрана: 2 правила-кандидата, 10 фич.\n"
+    "- Качество текста: чистая короткая глава, но ~10 из 18 печатных страниц — "
+    "рисунки (86–87, 90–91): содержимое графиков потеряно, весь смысл "
+    "восстановлен по прозе. Расхождений с разведкой нет, MISMATCH отсутствует."
+)
+
+
+def self_test() -> int:
+    checks: list[tuple[str, bool, str]] = []
+
+    def check(label: str, ok: bool, detail: str = "") -> None:
+        checks.append((label, ok, detail))
+
+    problem, notes = classify_mismatch(CH05_REPORT)
+    check("отчёт гл.5 из лога принят", problem is None, str(problem))
+    check("строка качества стала примечанием",
+          any("качество текста" in n.lower() for n in notes), str(notes))
+
+    problem, _ = classify_mismatch("MISMATCH: отсутствует")
+    check("«MISMATCH: отсутствует» принято", problem is None, str(problem))
+
+    problem, _ = classify_mismatch("MISMATCH: текст гл.6, не гл.5")
+    check("чужая глава → отказ", problem is not None)
+
+    problem, notes = classify_mismatch("MISMATCH: рисунки 86–87 потеряны")
+    check("рисунки в MISMATCH → примечание, не отказ",
+          problem is None and any("MISMATCH" in n for n in notes), str((problem, notes)))
+
+    problem, _ = classify_mismatch("MISMATCH: извлечение пустое")
+    check("пустое извлечение → отказ", problem is not None)
+
+    problem, notes = classify_mismatch("Качество текста: 10 из 18 страниц рисунки")
+    check("качество без токена → примечание",
+          problem is None and len(notes) == 1, str((problem, notes)))
+
+    problem, _ = classify_mismatch("MISMATCH: странное что-то")
+    check("незнакомая формулировка → отказ (fail-closed)", problem is not None)
+
+    problem, _ = classify_mismatch("MISMATCH: рисунки потеряны, и текст гл.6, не гл.5")
+    check("рисунки + чужая глава → отказ", problem is not None)
+
+    problem, _ = volume_problem(4743, 14059)          # гл.4 в прогоне с [77,100]
+    check("34% объёма → отказ", problem is not None)
+
+    problem, notes = volume_problem(8400, 11679)      # гл.5 как есть
+    check("72% объёма → принято с примечанием", problem is None and len(notes) == 1,
+          str((problem, notes)))
+
+    problem, notes = volume_problem(None, 11679)      # карточка без chars_parsed
+    check("нет chars_parsed → принято с примечанием",
+          problem is None and len(notes) == 1, str((problem, notes)))
+
+    failed_stats = {"rules": ["a.yaml", "b.yaml"], "features": 10, "questions": 6,
+                    "decisions": 8, "decision_params": ["x.yaml"],
+                    "notes": ["качество текста: рисунки"]}
+    summary = build_summary(
+        [{"n": 5, "status": "failed", "error": "причина", "stats": failed_stats}], False)
+    check("счётчики в шапке при failed",
+          "Вопросов к тебе: 6 · REQUIRES_DECISION: 8" in summary, summary)
+    check("счётчики в строке главы при failed",
+          "вопросов 6" in summary and "причина" in summary, summary)
+    check("примечание в сводке", "↳ качество текста: рисунки" in summary, summary)
+
+    for num, (label, ok, detail) in enumerate(checks, 1):
+        print(f"  {'ok  ' if ok else 'FAIL'} {num:>2}. {label}"
+              + ("" if ok else f" — {detail[:200]}"))
+    bad = [num for num, (_, ok, _) in enumerate(checks, 1) if not ok]
+    total = len(checks)
+    if bad:
+        print(f"self-test: {total - len(bad)}/{total} ok, упали: "
+              + ", ".join(map(str, bad)))
+        return 1
+    print(f"self-test: {total}/{total} ok")
+    return 0
+
+
 def preflight(dry_run: bool) -> None:
     if not AGENT_DEF.exists():
         sys.exit(f"Нет определения агента: {rel(AGENT_DEF)}")
@@ -602,7 +829,12 @@ def main() -> int:
     ap.add_argument("--no-notify", action="store_true", help="без Telegram")
     ap.add_argument("--timeout", type=int, default=AGENT_TIMEOUT_SEC,
                     help=f"таймаут на главу, с (по умолчанию {AGENT_TIMEOUT_SEC})")
+    ap.add_argument("--self-test", action="store_true",
+                    help="проверить приёмку на синтетике, без PDF и агента")
     args = ap.parse_args()
+
+    if args.self_test:
+        return self_test()
 
     setup_logging()
     preflight(args.dry_run)
@@ -686,8 +918,13 @@ def main() -> int:
                     n, elapsed, run.get("turns"), run.get("cost") or 0, run.get("denials"))
         logger.info("гл. %d: ответ агента:\n%s", n, run["result"][:1500])
 
+        # chars_input — поле раннера: он писал файл главы и знает точный объём.
+        card_path = CARDS_DIR / f"ch{n:02d}.md"
+        if card_path.exists():
+            stamp_chars_input(card_path, ex["chars"])
+
         changed = git_snapshot() - before
-        problems, stats = validate(ch, changed, run["result"])
+        problems, stats = validate(ch, changed, run["result"], ex["chars"])
         ch["attempts"] = int(ch.get("attempts", 0)) + 1
 
         if problems:

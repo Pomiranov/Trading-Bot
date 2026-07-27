@@ -50,9 +50,9 @@ chapters:
   - 85
   - 102
   category: strategies
-  status: pending
-  card: ''
-  attempts: 0
+  status: done
+  card: knowledge/cards/ch05.md
+  attempts: 1
   last_error: ''
   note: 'приоритет 6: S/R на границах диапазона, смена ролей после пробоя, огибающие полосы MA±%'
 - n: 20

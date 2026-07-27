@@ -3,11 +3,11 @@
 import { useEffect, useRef, type ReactNode } from "react";
 
 /**
- * A very slight pointer-follow for the hero instrument panel.
+ * A very slight pointer-follow for the hero instrument.
  *
- * ── Why this is a wrapper and not a prop on HeroVisual ──
+ * ── Why this is a wrapper and not a prop on QAperture ──
  *
- * `HeroVisual` is server-rendered and has no client JS, which is a property
+ * `QAperture` is server-rendered and has no client JS, which is a property
  * worth keeping: it is the hero, and it is an LCP candidate. Passing the panel
  * in as `children` keeps it a server component — only this ~40-line shell
  * hydrates, and the markup it wraps is still streamed as HTML.

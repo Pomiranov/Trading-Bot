@@ -1,5 +1,44 @@
 #!/usr/bin/env node
 /**
+ * ╔══════════════════════════════════════════════════════════════════════════╗
+ * ║  STALE — DO NOT RUN. This is NOT the source of truth any more.           ║
+ * ║  Running it DELETES 56 keys that the site is using and breaks the page.  ║
+ * ╚══════════════════════════════════════════════════════════════════════════╝
+ *
+ * `messages/{ru,en}.json` have been hand-edited since this generator was last
+ * used, and they are what ships. This file has drifted behind them.
+ *
+ * Measured, by generating into a scratch copy and diffing the key sets:
+ *
+ *   • 56 keys exist in the shipped catalogues and NOT here — the entire
+ *     `foundation` namespace, `nav.foundation`, `faq.eyebrow`,
+ *     `safety.{guaranteesHeading,limitsHeading}`, the whole dashboard tab/column
+ *     set (`tab1Label`…`rkApiNote`, 39 keys), `telegram.card{Accepted,Skipped,
+ *     Reset,DemoHint}` and the four `footer.col*`/`linkFoundation` entries.
+ *   • 1 key exists here and not there: `hero.videoDescription`.
+ *   • `dashboard.lead` differs in wording.
+ *
+ * Running `npm run build:messages` therefore removes 56 live keys, and every one
+ * of them throws `MISSING_MESSAGE` in the browser at render time — next-intl does
+ * not fail the build for a missing key. This was verified the hard way: the
+ * command was run during the reference-polish pass, wrote 193 keys over the
+ * shipped 248, and had to be restored from a backup.
+ *
+ * ── Why it is kept ──
+ *
+ * The bilingual-pair structure is genuinely the right design: it makes RU/EN
+ * parity impossible to break by construction, which a post-hoc check cannot do.
+ * It is worth reviving. Reviving it means reconciling the 57 differences above
+ * *first*, in this file, and only then running it — at which point delete this
+ * banner.
+ *
+ * Until then it is maintained as documentation: keys removed from the shipped
+ * catalogues are removed here too, with the reason, so that a future
+ * reconciliation cannot silently resurrect copy that was deliberately cut. See
+ * docs/LANDING_COPY_REMOVALS.md.
+ *
+ * ── Original intent, still accurate ──
+ *
  * Single bilingual source for messages/{ru,en}.json.
  *
  * Every leaf is a [ru, en] pair, so the two files cannot drift structurally —
@@ -93,18 +132,11 @@ const M = {
     ),
     ctaPrimary: t("Получить доступ к песочнице", "Get sandbox access"),
     ctaSecondary: t("Посмотреть как работает", "See how it works"),
-    proof1: t("Песочница", "Sandbox"),
-    proof2: t("Telegram", "Telegram"),
-    proof3: t("Dashboard", "Dashboard"),
-    proof4: t("MOEX + Bybit", "MOEX + Bybit"),
-    proof5: t("Пределы риска", "Risk limits"),
-    limitsLabel: t("Пределы, заданные до входа", "Limits set before entry"),
-    limit1Value: t("5%", "5%"),
-    limit1Label: t("на позицию", "per position"),
-    limit2Value: t("2%", "2%"),
-    limit2Label: t("дневной убыток", "daily loss"),
-    limit3Value: t("0.20", "0.20"),
-    limit3Label: t("порог сигнала", "signal floor"),
+    // The proof strip (proof1-5), the three configured limits and
+    // `visualCaption` were removed from the hero — see
+    // docs/LANDING_COPY_REMOVALS.md. The limits themselves are still published
+    // in `#safety` and in the belief-gate node of `#how-it-works`, with their
+    // labels attached; nothing removed here was a result.
     videoDescription: t(
       "Абстрактная анимация: частицы собираются в кольцевую диафрагму Quant с одной оранжевой сигнальной точкой.",
       "Abstract animation: particles forming the Quant ring aperture with a single orange signal point.",
@@ -123,7 +155,9 @@ const M = {
       "Начните с песочницы: те же сигналы и тот же путь решения, но без реальных денег. Каждую сделку можно подтверждать вручную, пока не появится доверие к системе.",
       "Start in the sandbox: the same signals and the same decision path, without real money. You can confirm every trade by hand until you trust the system.",
     ),
-    card1Link: t("Что такое песочница", "What the sandbox is"),
+    // card1 routes to #dashboard and card3 to #safety — #brokers is gone, so the
+    // link labels had to describe where they actually go.
+    card1Link: t("Терминал оператора", "The operator terminal"),
     card2Title: t("Трейдеру", "If you already trade"),
     card2Body: t(
       "Правила записаны и читаемы, режим рынка классифицируется, уверенность измеряется по закрытым сделкам, а риск проверяется до входа. Замороженные стратегии мы публикуем вместе с работающими.",
@@ -135,25 +169,40 @@ const M = {
       "Telegram и Dashboard читают одно и то же состояние из общего слоя данных. Ключи шифруются, действия пишутся в журнал, а права на вывод средств не запрашиваются — их просто нет в интерфейсе брокера.",
       "Telegram and the dashboard read the same state from one shared data layer. Keys are encrypted, actions are logged, and withdrawal permissions are never requested — there is no such method in the broker interface at all.",
     ),
-    card3Link: t("Исполнение и брокеры", "Execution and brokers"),
+    card3Link: t("Ключи и доступы", "Keys and access"),
+
+    /**
+     * The fourth audience is the sceptic, and it is the only one of the obvious
+     * candidates this product can address without inventing something.
+     *
+     * "Инвестору" / "Владельцу капитала" both imply a return, and there is no
+     * return figure anywhere in this repository to support one. "Команде" implies
+     * multi-user access, and there is no team or role model in the product. The
+     * sceptic is addressable entirely out of things that are already true, and it
+     * is the strongest remaining conversion angle for a product whose whole
+     * positioning is what it refuses to claim.
+     *
+     * Naming win rate / profit factor without a figure is deliberate and is
+     * already precedent on this site — see the adjacency-window note beside
+     * FORBIDDEN_CLAIMS in scripts/visual-qa.mjs. The gate requires a digit
+     * immediately after the term; there is none here and there never will be.
+     */
+    card4Title: t("Скептику", "If you are sceptical"),
+    card4Body: t(
+      "Ни win rate, ни profit factor, ни доходности — на этом сайте нет ни одной цифры результата. Замороженные стратегии стоят рядом с работающими, а автоматической остановки в системе нет, и об этом сказано прямо.",
+      "No win rate, no profit factor, no return — there is not a single result figure on this site. Frozen strategies sit alongside the working ones, and there is no automatic kill switch, which we say plainly.",
+    ),
+    card4Link: t("Чего мы не заявляем", "What we do not claim"),
   },
 
   how: {
     eyebrow: t("Как работает", "How it works"),
-    heading: t("Quant не угадывает. Он проверяет.", "Quant does not guess. It checks."),
-    lead: t(
-      "Шесть шагов между свечой и заявкой. Каждый можно назвать по имени модуля, который его выполняет.",
-      "Six steps between a candle and an order. Each one can be named after the module that performs it.",
-    ),
-    principlesHeading: t("На чём это стоит", "What this rests on"),
-    loopNote: t(
-      "После исполнения круг замыкается: решение записывается отдельно от результата и становится входом для следующего обновления уверенности.",
-      "After execution the loop closes: the decision is recorded separately from the outcome and becomes the input for the next confidence update.",
-    ),
-    rulesNote: t(
-      "Стратегии osc_range и WRD построчно восходят к книгам Швагера. Базовый набор индикаторных правил — стандартный технический анализ без книжной атрибуции.",
-      "The osc_range and WRD strategies trace rule by rule to Schwager. The baseline indicator rule set is standard technical analysis, without book attribution.",
-    ),
+    heading: t("Путь от свечи до заявки.", "From candle to order."),
+    // `lead`, `rulesNote`, `loopNote` and `principlesHeading` were removed: the
+    // section now carries its argument through the six numbered spine nodes
+    // rather than three blocks of prose. Every node still carries its own
+    // `sourceRef` into the Python codebase, and the belief gate still publishes
+    // the three constants below. See docs/LANDING_COPY_REMOVALS.md.
     constantsHeading: t("Границы уверенности", "Confidence bounds"),
     minTradesLabel: t("сделок до движения", "trades before it moves"),
     minConfidenceLabel: t("нижняя граница", "lower bound"),
@@ -171,10 +220,9 @@ const M = {
       "Схема интерфейса. Значения — демонстрационные и не являются результатами торговли.",
       "Interface schematic. Values are illustrative and are not trading results.",
     ),
-    apiOnlyNote: t(
-      "Состояние риска и история сделок доступны через API; отдельными страницами они пока не сделаны.",
-      "Risk state and trade history are available over the API; they are not separate pages yet.",
-    ),
+    // `apiOnlyNote` removed: three caveats about the composition of a mock, in
+    // the header of the section whose job is to make the product feel real. The
+    // terminal is still labelled a demo in its own chrome and by `demoNote`.
     view1Label: t("Обзор", "Dashboard"),
     view1Desc: t("Состояние движка и последние события", "Engine state and recent events"),
     view2Label: t("Портфель", "Portfolio"),
@@ -212,31 +260,22 @@ const M = {
 
   telegram: {
     eyebrow: t("Telegram", "Telegram"),
-    heading: t("Оператор в кармане.", "The operator in your pocket."),
+    heading: t("Тот же оператор — в Telegram.", "The same operator, in Telegram."),
     lead: t(
-      "Тот же движок, та же база. Telegram — не витрина уведомлений, а второй интерфейс к тому же состоянию.",
-      "The same engine, the same database. Telegram is not a notification feed — it is a second interface onto the same state.",
+      "Не витрина уведомлений и не упрощённая копия: второй интерфейс к тому же состоянию, тому же движку и той же базе.",
+      "Not a notification feed and not a simplified copy: a second interface onto the same state, the same engine and the same database.",
     ),
-    f1Title: t("Карточка сигнала", "Signal card"),
-    f1Body: t(
-      "Тикер, сторона, стратегия, режим рынка, уровни и шкала уверенности. Кнопка одна — исполнить в песочнице.",
-      "Ticker, side, strategy, market regime, levels and a confidence bar. One button — execute in the sandbox.",
-    ),
-    f2Title: t("Подтверждение сделки", "Trade confirmation"),
-    f2Body: t(
-      "Ручная заявка проходит через два шага: параметры показываются целиком, и только после подтверждения уходят брокеру.",
-      "A manual order goes through two steps: the parameters are shown in full, and only after confirmation do they reach the broker.",
-    ),
-    f3Title: t("Синхронизация", "Synchronised state"),
-    f3Body: t(
-      "Dashboard и бот читают одни и те же репозитории. В боте нет упрощённой или отложенной копии данных.",
-      "The dashboard and the bot read the same repositories. There is no simplified or delayed copy in the bot.",
-    ),
-    f4Title: t("Автоматический режим", "Automatic mode"),
-    f4Body: t(
-      "Движок можно запустить, поставить на паузу и остановить из чата. Остановка — ручная: автоматического kill switch в системе нет.",
-      "The engine can be started, paused and stopped from the chat. The stop is manual: there is no automatic kill switch in the system.",
-    ),
+    /**
+     * The four feature blocks (f1–f4) were removed when this became a compact
+     * touchpoint rather than a full section. All four restated the lead — f3,
+     * "Dashboard и бот читают одни и те же репозитории", is the lead with a
+     * heading on it.
+     *
+     * One fact in them was not elsewhere in this section: f4's "остановка —
+     * ручная: автоматического kill switch в системе нет". It is stated at more
+     * weight in `#safety`'s limits group (item4), so it did not need preserving
+     * here. See docs/LANDING_COPY_REMOVALS.md.
+     */
     cardTitle: t("Quant нашёл возможную сделку", "Quant found a possible trade"),
     cardConfidence: t("Уверенность", "Confidence"),
     cardRisk: t("Риск", "Risk"),
@@ -250,81 +289,20 @@ const M = {
     ),
   },
 
-  brokers: {
-    eyebrow: t("Исполнение", "Execution"),
-    heading: t("Честный статус каждого маршрута.", "An honest status for every route."),
-    lead: t(
-      "Мы не отмечаем интеграцию готовой, пока через неё нельзя отправить заявку. Ниже — фактическое состояние адаптеров.",
-      "We do not mark an integration as ready until an order can actually go through it. Below is the factual state of each adapter.",
-    ),
-    tinvestName: t("Т-Инвестиции", "T-Invest"),
-    tinvestDetail: t("песочница по умолчанию", "sandbox by default"),
-    tinvestBody: t(
-      "Рабочий маршрут для MOEX: акции и деривативы. Один клиент обслуживает и песочницу, и Live — по умолчанию включена песочница, переключение делается вручную.",
-      "The working MOEX route: equities and derivatives. One client serves both sandbox and live — sandbox is on by default and switching is a manual step.",
-    ),
-    bybitName: t("Bybit", "Bybit"),
-    bybitDetail: t("только чтение", "read-only"),
-    bybitBody: t(
-      "Подключён для чтения балансов и позиций. Отправка заявок через Bybit не включена, крипто-стратегий в системе пока нет.",
-      "Connected for reading balances and positions. Order placement through Bybit is not enabled, and there are no crypto strategies in the system yet.",
-    ),
-    finamName: t("Финам", "Finam"),
-    finamBody: t(
-      "Адаптер заведён, методы ещё не реализованы. Второй независимый маршрут для MOEX — после T-Invest.",
-      "The adapter exists, the methods are not implemented. A second, independent MOEX route — after T-Invest.",
-    ),
-    disclosure: t(
-      "«Активен» означает, что маршрут проверен от сигнала до заявки. Всё остальное названо своим состоянием.",
-      "“Active” means the route has been verified from signal to order. Everything else is named for the state it is actually in.",
-    ),
-  },
+  /**
+   * ── Removed namespaces: `brokers` and `strategyLab` ──
+   *
+   * Their sections ("Исполнение" and "Лаборатория стратегий") were removed from
+   * the landing page. Every disclosure they carried is accounted for in
+   * docs/LANDING_COPY_REMOVALS.md — including the two that are now stated
+   * nowhere (Bybit being read-only, Finam being unimplemented), which is a
+   * deliberate narrowing rather than a claim: the page no longer says either
+   * broker is supported.
+   *
+   * If a broker list ever returns to this page, the per-adapter status must
+   * return with it.
+   */
 
-  strategyLab: {
-    eyebrow: t("Лаборатория стратегий", "Strategy lab"),
-    heading: t(
-      "Стратегии продвигаются доказательствами, а не обещаниями.",
-      "Strategies advance on evidence, not promises.",
-    ),
-    lead: t(
-      "Стратегия проходит стадии в одну сторону и может остановиться на любой. Замороженные мы не прячем.",
-      "A strategy moves through the stages in one direction and can stop at any of them. We do not hide the frozen ones.",
-    ),
-    ladderHeading: t("Стадии", "Stages"),
-    activeDesc: t(
-      "Появляется только после форварда и допуска к Live. Выдаётся вручную.",
-      "Granted only after a forward run and admission to live. Assigned by hand.",
-    ),
-    forwardDesc: t(
-      "Работает на живых данных, исполнение остаётся в песочнице.",
-      "Runs on live data, with execution kept in the sandbox.",
-    ),
-    candidateDesc: t(
-      "Прошла бэктест, ожидает форварда.",
-      "Passed backtest, waiting for a forward run.",
-    ),
-    frozenDesc: t(
-      "Развитие остановлено. История остаётся опубликованной.",
-      "Development stopped. The history stays published.",
-    ),
-    currentStateNote: t(
-      "Active-стратегии появляются только после форварда и допуска к Live. Сейчас публично показаны реальные состояния: Forward и Frozen.",
-      "Active strategies appear only after a forward run and admission to live. What is shown publicly right now are the real states: Forward and Frozen.",
-    ),
-    disclosure: t(
-      "Статусы ведутся вручную в исследовательском журнале — это не поле в базе, и автоматической заморозки в системе нет.",
-      "Statuses are maintained by hand in the research journal — this is not a database field, and there is no automatic freeze in the system.",
-    ),
-    noMetricsNote: t(
-      "Мы не публикуем цифры доходности. Статус — и есть информация.",
-      "We do not publish performance figures. The status is the information.",
-    ),
-    tableStrategy: t("Стратегия", "Strategy"),
-    tableMarket: t("Рынок", "Market"),
-    tableTimeframe: t("Таймфрейм", "Timeframe"),
-    tableStatus: t("Статус", "Status"),
-    tableUpdated: t("Обновлено", "Updated"),
-  },
 
   safety: {
     eyebrow: t("Безопасность", "Safety"),
@@ -363,10 +341,21 @@ const M = {
       "Уверенность в стратегии держится в диапазоне 0.05–0.95 и никогда не становится определённостью. Сигнал ниже 0.20 фиксируется, но не исполняется.",
       "Confidence in a strategy stays within 0.05–0.95 and never becomes certainty. A signal below 0.20 is recorded but not executed.",
     ),
-    keysCaveat: t(
-      "Честная оговорка: шифрование хранилища включается мастер-ключом. Если он не задан при развёртывании, учётные данные останутся в обычном .env — это состояние по умолчанию для локальной установки, и его нужно менять перед боевым запуском.",
-      "An honest caveat: vault encryption is switched on by a master key. If it is not set at deployment, credentials stay in a plain .env — that is the default for a local install, and it must be changed before any live run.",
-    ),
+    /**
+     * `keysCaveat` was removed from the landing page — the vault is opt-in via
+     * SECRETS_MASTER_KEY and credentials otherwise stay in a plain `.env`
+     * (bot/security/credential_store.py:50-57).
+     *
+     * It is a *deployment* note: it describes the operator's own server
+     * configuration, not anything Quant does to a visitor, and it was the longest
+     * piece of small print on the page. It belongs in the deployment docs at the
+     * repository root; until it is added there, the fact lives in that Python
+     * module and in docs/LANDING_COPY_REMOVALS.md.
+     *
+     * What must NOT happen: this section may not gain an unqualified "keys are
+     * encrypted" claim to replace it. That is the one rewrite here that would be
+     * false. The two unconditional limits (item4, item6) are untouched.
+     */
   },
 
   pricing: {
@@ -380,7 +369,9 @@ const M = {
     plan1Price: t("Бесплатно", "Free"),
     plan1Body: t("Чтобы разобраться, как принимается решение.", "To understand how a decision gets made."),
     plan1Feat1: t("Путь решения целиком", "The full decision path"),
-    plan1Feat2: t("Лаборатория стратегий и статусы", "Strategy lab and statuses"),
+    // Was "Лаборатория стратегий и статусы" — reworded when that section was
+    // removed, so the tier no longer promises a page that does not exist.
+    plan1Feat2: t("Статусы стратегий", "Strategy statuses"),
     plan1Feat3: t("Документация движка", "Engine documentation"),
     plan1Feat4: t("Без торговли", "No trading"),
     plan2Title: t("Sandbox", "Sandbox"),
@@ -397,14 +388,12 @@ const M = {
     plan3Feat2: t("Обязательные пределы риска", "Mandatory risk limits"),
     plan3Feat3: t("Журнал аудита", "Audit log"),
     plan3Feat4: t("Ручная остановка движка", "Manual engine stop"),
-    liveGatesHeading: t("Live открывается только при этих условиях", "Live opens only under these conditions"),
-    liveGate1: t("Действующий ключ брокера", "A working broker key"),
-    liveGate2: t("Без прав на вывод средств", "No withdrawal permissions"),
-    liveGate3: t("Заданные пределы риска", "Risk limits configured"),
-    liveGate4: t("Подтверждённое согласие", "Confirmed consent"),
-    liveGate5: t("Доступная остановка", "A reachable stop"),
+    // The five Live gates and `ctaNote` were removed: a form-shaped block of empty
+    // checkboxes directly under the commercial ask, every item of which is stated
+    // where it is load-bearing instead — #safety for the withdrawal/risk/stop
+    // guarantees, the Live card in #access for the key and consent, and this
+    // section's own lead for "payment is not connected".
     cta: t("Запросить доступ", "Request access"),
-    ctaNote: t("Ничего из перечисленного сейчас не тарифицируется.", "Nothing listed here is billable today."),
   },
 
   faq: {
@@ -510,7 +499,10 @@ const M = {
     tagline2: t("с проверяемым путём решения.", "with a decision path you can audit."),
     linkHow: t("Как работает", "How it works"),
     linkSafety: t("Безопасность", "Safety"),
-    linkStrategies: t("Стратегии", "Strategies"),
+    // `linkStrategies` removed with the strategy-lab section; the product column
+    // links to #telegram in its place. Every footer href must resolve to a live
+    // section id in app/[locale]/page.tsx — a stale anchor fails silently.
+    linkTelegram: t("Telegram", "Telegram"),
     linkContact: t("Связаться", "Contact"),
     buildLabel: t("Сборка", "Build"),
     status: t("Закрытое тестирование", "Closed testing"),

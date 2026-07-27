@@ -98,8 +98,11 @@ function Td({ children, dim = false }: { children: ReactNode; dim?: boolean }) {
 
 function DataTable({ head, children }: { head: ReactNode[]; children: ReactNode }) {
   return (
-    // Axis-scoped so vertical wheel still goes through the smooth-scroll driver;
-    // see strategy-table.tsx for why the bare data-lenis-prevent is a bug.
+    // Axis-scoped so vertical wheel still goes through the smooth-scroll driver.
+    // A bare `data-lenis-prevent` opts the element out on *both* axes, so
+    // vertical wheel over the table bypasses Lenis entirely and the page lurches
+    // — the same coupling documented in motion/scroll-driver.ts. See the fuller
+    // note at the tab strip below.
     <div data-lenis-prevent-horizontal className="overflow-x-auto">
       <table className="w-full min-w-[520px] border-collapse text-left">
         <thead>
@@ -362,9 +365,12 @@ export function DashboardTerminal() {
       </div>
 
       {/* ── Tabs, inside the chrome ──
-          Axis-scoped Lenis opt-out on the scroller: the bare data-lenis-prevent
-          would release vertical wheel too and reintroduce the backward lurch.
-          See strategy-table.tsx for the full account. */}
+          Axis-scoped Lenis opt-out on the scroller: the bare `data-lenis-prevent`
+          would release vertical wheel too and reintroduce the backward lurch
+          documented in motion/scroll-driver.ts. The tab strip is wider than the
+          panel at narrow viewports by design — it is a declared horizontal
+          scroller, which is why the overflow gate in scripts/visual-qa.mjs
+          exempts `.overflow-x-auto`. */}
       <div
         data-lenis-prevent-horizontal
         className="overflow-x-auto border-b border-[color:var(--color-border)]"

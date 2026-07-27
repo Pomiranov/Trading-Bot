@@ -31,7 +31,38 @@
 @import "../styles/tokens/z-index.css";
 @import "shadcn/tailwind.css";
 
+/**
+ * ── All four breakpoints, in ascending order, in ONE block ──
+ *
+ * `--breakpoint-sm` is declared here even though 640px is already the default,
+ * and that is the entire point of this comment.
+ *
+ * Tailwind v4 emits breakpoint variants in the order their theme variables are
+ * *registered*, and a later `@theme` block re-registering a variable moves it to
+ * the end. This block previously declared md/lg/xl only, so those three were
+ * re-registered ahead of the untouched default `sm` — which left `sm` sorting
+ * last and therefore *winning* over `md:` and `lg:` at every width above 640px.
+ *
+ * Measured on the live build at 1440px, before this fix:
+ *
+ *   #audience    sm:grid-cols-2 lg:grid-cols-3  → rendered 2 columns
+ *   #safety      sm:grid-cols-2 lg:grid-cols-4  → rendered 2 columns
+ *   #brokers     sm:grid-cols-2 lg:grid-cols-3  → rendered 2 columns
+ *   #strategies  sm:grid-cols-2 md:grid-cols-4  → rendered 2 columns
+ *
+ * Every card grid on the page that used `sm:` alongside a larger breakpoint was
+ * silently pinned to its small-screen layout on desktop. That is what made the
+ * audience row read as "3 cards, asymmetric" (it was 2 + 1) and the safety grid
+ * read as heavy. The compiled CSS proves it: `.sm\:grid-cols-2` was emitted
+ * *after* `.lg\:grid-cols-3`, so it won on source order with both media queries
+ * matching.
+ *
+ * Declaring all four together restores ascending order. Any new breakpoint must
+ * be added to this block rather than a second `@theme`, or the bug returns for
+ * whichever variant ends up out of sequence.
+ */
 @theme {
+  --breakpoint-sm: 640px;
   --breakpoint-md: 768px;
   --breakpoint-lg: 1024px;
   --breakpoint-xl: 1440px;
@@ -153,18 +184,11 @@ body::before {
   50% { opacity: 1; }
 }
 
-/* The dashed exit vector, flowing outward: a decision leaving the instrument.
-   The value is a multiple of the 8px dash period so the loop is seamless. */
-@keyframes qf-vector-flow {
-  from { stroke-dashoffset: 0; }
-  to { stroke-dashoffset: -32; }
-}
-
-/* A sonar ping at the exit node. Decorative — safe to end invisible. */
-@keyframes qf-node-ping {
-  0% { transform: scale(1); opacity: 0.5; }
-  70%, 100% { transform: scale(2.4); opacity: 0; }
-}
+/* `qf-vector-flow` and `qf-node-ping` used to live here, driving a dashed exit
+   vector and a sonar ping on the hero aperture. Both were removed with the
+   vector itself — see the note in sections/hero/q-aperture.tsx. `.hero-node-ping`
+   was already dead before that: nothing had referenced it since the aperture was
+   rebuilt. */
 
 /* A single faint horizontal trace crossing the aperture. The one element that
    genuinely moves across the panel, and it is nearly invisible by design. */
@@ -182,15 +206,6 @@ body::before {
 /* Desynced so the three rings never line up into one throb. */
 .hero-ring:nth-of-type(2) { animation-duration: 11s; animation-delay: -3s; }
 .hero-ring:nth-of-type(3) { animation-duration: 13s; animation-delay: -6s; }
-
-.hero-vector {
-  animation: qf-vector-flow 6s linear infinite;
-}
-
-.hero-node-ping {
-  animation: qf-node-ping 4.5s var(--ease-out-expo, ease-out) infinite;
-  transform-origin: 268px 190px;
-}
 
 .hero-scan {
   animation: qf-scan 14s var(--ease-out-quart, ease-in-out) infinite;
@@ -313,27 +328,115 @@ body::before {
   transform: translateY(-3px);
 }
 
-/* ─── The fixed header, and the scrim that stops content sliding under it ───
-   `.glass-premium` alone is not enough for the nav. At
-   `rgba(12,12,14,0.62)` over pure black, white body copy passing underneath
-   still transmits at roughly a third of its luminance — legible, and visually
-   colliding with the nav labels painted on top. That was reproducible at every
-   desktop width (worst case: the Brokers lead at ~6300px).
+/* ─── The fixed header's own material ───────────────────────────────────────
+   `.glass-premium` alone is not enough for the nav. At `rgba(12,12,14,0.62)`
+   over pure black, white body copy passing underneath still transmits at
+   roughly a third of its luminance — legible, and visually colliding with the
+   nav labels painted on top.
 
-   Two changes, deliberately kept off `.glass-premium` itself so the `glass`
-   Surface variant is unaffected:
+   Kept off `.glass-premium` itself so the `glass` Surface variant is unaffected:
+   this raises the pill's own opacity and saturation until nothing behind it is
+   readable as text. Paired with the real 24px blur restored by the `@supports`
+   block above — which is the part that was silently missing when this pill was
+   first tuned.
 
-     1. `.nav-glass` raises the pill's own opacity and saturation until nothing
-        behind it is readable as text.
-     2. `.nav-scrim` is a gradient that fades the page to black *above* the
-        pill, so content dissolves on approach instead of disappearing under a
-        hard edge. This is the part that reads as premium — the same device
-        Apple and OpenAI use — and it costs one paint-only layer with no blur.
-
-   The scrim is taller than the header (128px vs 78px) so the fade completes
-   below the pill rather than at its edge. */
+   A companion `.nav-scrim` used to fade the page to black above the pill so
+   content dissolved on approach. It was removed: the gradient was black, and on
+   the two paper bands that painted a dark smear across the top of a white
+   section. See the note where it was rendered, in nav/header-shell.tsx. */
 .nav-glass {
   background: rgba(6, 6, 7, 0.86);
+}
+
+/* ─── The retracting header ─────────────────────────────────────────────────
+   Motion for the three header states. See nav/header-shell.tsx for which state
+   means what and what brings a retracted header back.
+
+   Transform and opacity only — both compositor-only, neither in layout — so
+   this cannot shift the page or contribute CLS, and the pill's box stays
+   identical in all three states. That last part is load-bearing: NAV_OFFSET and
+   the anchor `scroll-margin-top` rules are a single shared number, and a header
+   whose height changed between states would make every deep link land wrong in
+   whichever state was not measured.
+
+   `scaleY(0.94)` with the transform origin at the top edge is the "compression"
+   — the pill tucks toward the edge it is leaving through rather than sliding out
+   rigidly, which is what stops the retraction reading as `display: none` with
+   extra steps. It is subtle on purpose: at 6% it registers as ease rather than
+   as an element being squashed.
+
+   Slightly slower on the way out than on the way in (`--duration-reveal` vs
+   `--duration-base`): leaving should be unobtrusive, arriving should feel
+   immediate, because arriving is always a response to something the reader just
+   did. */
+.nav-shell {
+  transform: translateY(0) scaleY(1);
+  transform-origin: top center;
+  opacity: 1;
+  transition:
+    transform var(--duration-reveal) var(--ease-out-expo),
+    opacity var(--duration-reveal) var(--ease-out-expo);
+}
+
+.nav-shell[data-retracted="true"] {
+  /* -110% clears the pill and its 16px top padding completely, so no sliver
+     hangs at the top edge on a fractional device pixel ratio. */
+  transform: translateY(-110%) scaleY(0.94);
+  opacity: 0;
+}
+
+/* ── Recovery ──
+   Three selectors, and they must beat the retracted state above, so they come
+   after it and re-declare both properties.
+
+   ── Why `.nav-shell:hover` is in this list, and why there is no
+      `pointer-events` juggling ──
+
+   The first version set `pointer-events: none` on the retracted header (to stop
+   an invisible full-width bar swallowing clicks) and `auto` on the recovery
+   rules. That oscillates, and it was reproducible: the pointer reaches the top
+   edge → the sensor is hovered → recovery grants the header `pointer-events:
+   auto` → the header, which paints above the sensor, now captures the pointer →
+   the sensor is no longer hovered → the header retracts → `pointer-events: none`
+   → the sensor is hovered again. Measured mid-flip at opacity 0.45.
+
+   Both halves of that are now unnecessary. `translateY(-110%)` moves the header
+   entirely above the viewport, so a retracted header cannot receive a pointer
+   event in the first place — the problem `pointer-events: none` was solving does
+   not exist once the element is off-screen. And adding `.nav-shell:hover` hands
+   the hover over from the sensor to the header itself as the pointer crosses onto
+   the pill, so the open state is continuous instead of fighting over which
+   element owns the cursor.
+
+   ── `:focus-within` is the accessibility-critical one ──
+
+   Note what makes it work: the retracted header is translated and transparent,
+   NOT `visibility: hidden` and not `display: none`. A visibility-hidden subtree
+   is not focusable at all, so `:focus-within` could never fire and Tab would skip
+   the navigation entirely — a keyboard user would lose the nav for the whole page
+   with no way to get it back. Off-screen-but-visible keeps every control in the
+   tab order, and the first Tab into it brings the whole pill back. Do not
+   "optimise" this to visibility or display.
+
+   Faster on the way in than on the way out: arriving is always a response to
+   something the reader just did, so it should feel immediate. */
+.nav-shell:focus-within,
+.nav-shell:hover,
+.nav-sensor:hover ~ .nav-shell {
+  transform: translateY(0) scaleY(1);
+  opacity: 1;
+  transition-duration: var(--duration-base);
+}
+
+/* Reduced motion removes the *travel*, not the state. The header still leaves
+   while the reader reads — that is a layout affordance, not decoration — it just
+   cuts instead of sliding, and it still leaves by translating rather than by
+   `visibility`, so it stays off-screen (hence unclickable) and still focusable.
+   Both properties are what they are without a transition to carry them. */
+@media (prefers-reduced-motion: reduce) {
+  .nav-shell {
+    transition: none;
+  }
 }
 
 /* ─── Restoring the blur that never shipped ───
@@ -362,20 +465,6 @@ body::before {
   .nav-glass {
     backdrop-filter: blur(var(--blur-glass)) saturate(140%);
   }
-}
-
-.nav-scrim {
-  position: absolute;
-  inset-inline: 0;
-  top: 0;
-  height: 128px;
-  pointer-events: none;
-  background: linear-gradient(
-    to bottom,
-    var(--color-bg) 0%,
-    color-mix(in srgb, var(--color-bg) 82%, transparent) 46%,
-    transparent 100%
-  );
 }
 
 /* ─── Header geometry ──────────────────────────────────────────────────────
@@ -471,6 +560,60 @@ section[id][data-rhythm="tight"] {
   -webkit-mask-composite: xor;
   mask-composite: exclude;
   pointer-events: none;
+}
+
+/* ─── The featured card on paper ────────────────────────────────────────────
+   `.glass-premium-featured` is the one surface in the system that hard-codes its
+   own colours instead of reading tokens — a dark translucent fill and a white
+   gradient border, both written for a card floating on black. On the paper band
+   that produced the worst single defect in the redesign: the Explore pricing
+   card rendered as a near-black panel on #f4f2ec, with `.section-paper`'s dark
+   body text painted on top of it. Measured, the feature list and the tier body
+   were dark grey on rgba(8,8,10,0.86) — well under any usable contrast ratio, on
+   the one card in the section a visitor can actually act on.
+
+   This is precisely the failure the paper band was designed to expose. From the
+   note on `.section-paper`: "any component that hard-codes a colour instead of
+   reading a token will visibly break here. That is a feature." So the fix is the
+   one that note prescribes — repair it at the surface, not by giving PricingCard
+   a `tone` prop.
+
+   What the focal card keeps on paper: more height (from `md:-my-2 md:py-9` at the
+   call site), a hairline gradient border, and a soft dark lift off the page. What
+   it loses: the dark fill, the white border gradient, and the backdrop blur —
+   which was simulating depth against a flat opaque background and cost a
+   compositing layer to do it. Emphasis now comes from geometry and shadow, which
+   is how every other card on paper is emphasised. */
+.section-paper .glass-premium-featured {
+  background: var(--color-paper-surface);
+  box-shadow:
+    0 12px 40px -12px rgba(0, 0, 0, 0.18),
+    0 2px 6px rgba(0, 0, 0, 0.05);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+/* The gradient border, inverted. Same 135° sweep and the same four stops as the
+   dark version, in black — so the focal card reads as the same *object* in both
+   bands rather than as two different components. */
+.section-paper .glass-premium-featured::before {
+  background: linear-gradient(
+    135deg,
+    rgba(0, 0, 0, 0.32) 0%,
+    rgba(0, 0, 0, 0.1) 40%,
+    rgba(0, 0, 0, 0.04) 60%,
+    rgba(0, 0, 0, 0.2) 100%
+  );
+}
+
+/* `@supports` above re-adds `backdrop-filter` to every `.glass-premium-featured`
+   to defeat Lightning CSS's prefix collapsing. That rule is more specific in
+   cascade order than the reset above, so the blur has to be cancelled again from
+   inside a matching context. */
+@supports (backdrop-filter: blur(1px)) {
+  .section-paper .glass-premium-featured {
+    backdrop-filter: none;
+  }
 }
 
 /* ─── The card primitive ───────────────────────────────────────────────────
@@ -606,6 +749,170 @@ section[id][data-rhythm="tight"] {
 
   .signal-draw {
     transition: stroke-dashoffset 1.2s var(--ease-out-quint);
+  }
+}
+
+/* ─── Pointer signal field ─────────────────────────────────────────────────
+   The cold light that follows the cursor across the hero and the closing CTA
+   panels, lighting the grid lines nearest it. Position comes from
+   `ui/signal-field.tsx`; the geometry is the second grid layer in
+   `ui/grid-backplate.tsx`.
+
+   Everything here is defensive by default. `--signal-on` falls back to 0 and
+   `--signal-x/y` to the panel centre, so with no pointer, no JS, a coarse
+   pointer or reduced motion the layer is fully transparent and the panel is
+   exactly what it was without it. There is no state in which this lays out —
+   only `background-image`, `mask-image` and `opacity`, all of which paint.
+
+   ── Why a mask rather than a glow on top ──
+
+   An additive cyan blob over the panel is the obvious version and it looks
+   cheap: it lights the *background* as much as the lines, so it reads as a
+   torch shining on a wall. Masking a cyan copy of the grid means only the 1px
+   lines pick up the colour and the black between them stays black — the
+   geometry lights up, not the space around it. That is the difference between a
+   signal pulse and a neon smear, and it is the whole reason this is done in two
+   layers.
+
+   240px is roughly 3.75 grid cells at the 64px pitch, so a handful of lines
+   respond at once rather than one cell blinking. */
+.signal-field__grid {
+  color: var(--color-signal);
+  opacity: calc(var(--signal-on, 0) * 0.55);
+
+  /* Two masks, intersected: the pointer's circle AND the panel's edge fade.
+     The edge fade is the same ellipse `grid-backplate.tsx` puts on the base
+     layer, and it has to be repeated here — without it the lit copy stays at
+     full strength all the way to the panel's clipped edge while the grid
+     underneath it has already dissolved, so dragging the pointer into a corner
+     lights up lines that are not visibly there. */
+  mask-image: radial-gradient(
+      240px circle at var(--signal-x, 50%) var(--signal-y, 50%),
+      #000 0%,
+      rgba(0, 0, 0, 0.35) 45%,
+      transparent 72%
+    ),
+    radial-gradient(ellipse 80% 70% at 50% 45%, #000 0%, transparent 78%);
+  mask-composite: intersect;
+  -webkit-mask-image: radial-gradient(
+      240px circle at var(--signal-x, 50%) var(--signal-y, 50%),
+      #000 0%,
+      rgba(0, 0, 0, 0.35) 45%,
+      transparent 72%
+    ),
+    radial-gradient(ellipse 80% 70% at 50% 45%, #000 0%, transparent 78%);
+  -webkit-mask-composite: source-in;
+  /* Only the fade in/out is eased. The mask position itself is not transitioned:
+     at any duration above ~0 the light lags the cursor and reads as a bug rather
+     than as smoothing, and `signal-field.tsx` already coalesces writes to one
+     per frame, which is all the smoothing it needs. */
+  transition: opacity var(--duration-panel) var(--ease-out-quart);
+}
+
+/* Belt and braces. `signal-field.tsx` never installs its listener under reduced
+   motion, so `--signal-on` stays unset and this is already invisible — but if
+   the preference changes after the listener is attached, the variable would keep
+   its last value. A cursor-tracking light is decorative motion under any
+   reading, so it is pinned off here rather than left to the JS guard. */
+@media (prefers-reduced-motion: reduce) {
+  .signal-field__grid {
+    opacity: 0;
+  }
+}
+
+/* ─── The route spine ──────────────────────────────────────────────────────
+   The continuous decision route between sections, drawn by `ui/route-spine.tsx`.
+   Read that file first — it documents why this is a CSS scroll-driven animation
+   rather than anything JavaScript touches.
+
+   The short version: nothing on this page may read scroll position except
+   motion/scroll-driver.ts, because a second reader on the value Lenis animates
+   is what caused the backward-scroll bug. A native view() timeline is resolved
+   by the compositor from the element's own position, so it observes nothing and
+   there is nothing for Lenis to fight.
+
+   ── The stroke colour ──
+
+   Two variables so the spine inverts with the band it sits in. On black the
+   cold hairline is at its documented ceiling (--color-signal-line, 28% alpha);
+   on paper that is invisible, and raising the alpha to compensate reads as a
+   print registration error, so paper gets graphite instead. Because
+   `.section-paper` re-points these, a spine inside a paper band inverts without
+   knowing paper exists.
+
+   This is a decorative SVG stroke, which is the permitted use of the cold blue
+   — see the doctrine at the top of tokens/color.css and the `cyan-as-ink` gate
+   in check-design-tokens.mjs. It carries no text and no information. */
+:root {
+  --color-route-stroke: var(--color-signal-line);
+  --color-route-stroke-strong: var(--color-signal);
+}
+
+.section-paper {
+  --color-route-stroke: var(--color-border-on-paper-strong);
+  --color-route-stroke-strong: var(--color-on-paper-muted);
+}
+
+/* ── The draw is a clip wipe, NOT stroke-dashoffset ──
+   Two failed attempts, and the second one is instructive enough to record.
+
+   `stroke-dasharray`/`dashoffset` is the conventional way to draw an SVG line and
+   it cannot work here, because these paths combine `vectorEffect: non-scaling-stroke`
+   with `preserveAspectRatio="none"`. Dash arithmetic for a non-scaling stroke is
+   resolved in *screen pixels*, while the geometry is authored in viewBox units on
+   a box that stretches horizontally — so a crossbar 66 units wide renders ~800px
+   long. Handing CSS a dash length computed in user units produced a dash
+   *pattern* instead of one stroke: the Foundation and Pricing crossbars rendered
+   as two ~257px segments with a hole between them.
+
+   `pathLength="100"` was the second attempt. It does normalise the length used
+   for dash arithmetic, but it normalises it to the path's *user-unit* length,
+   which non-scaling-stroke then reinterprets as pixels — so the mismatch
+   survives, and the gaps came back at exactly the same 257px pitch.
+
+   A clip wipe has no lengths in it at all. `inset()` percentages resolve against
+   the element's own box, so one rule is correct for every variant at every
+   viewport, and it composites. Removing the dash properties entirely is part of
+   the fix — leaving them would reintroduce the pattern.
+
+   The base style is the FINISHED, unclipped line. Every failure mode — no JS,
+   reduced motion, a browser without scroll-driven animations, a timeline that
+   never resolves — lands here, fully drawn. Never invert this. */
+.route-spine {
+  clip-path: inset(0 0 0 0);
+}
+
+@keyframes qf-route-draw {
+  from {
+    clip-path: inset(0 0 100% 0);
+  }
+  to {
+    clip-path: inset(0 0 0 0);
+  }
+}
+
+/* Progressive enhancement, gated twice. `prefers-reduced-motion: no-preference`
+   is the outer gate because a reduced-motion reader must get the static line
+   with no animation attached at all — not a fast one. `@supports` is the inner
+   gate: without it, a browser lacking view() timelines would attach a
+   *document*-timeline animation instead and the line would draw itself once on
+   load regardless of scroll, which is worse than static.
+
+   `animation-range` starts the draw as the connector enters the viewport and
+   completes it around the middle of its pass, so the line is finished by the
+   time the reader's eye arrives at what it points to rather than still crawling
+   behind them. `both` holds `from` before the range and `to` after it. */
+@media (prefers-reduced-motion: no-preference) {
+  @supports (animation-timeline: view()) {
+    /* The element both declares the timeline and animates against it, which is
+       allowed — timeline lookup starts at the element itself. */
+    .route-spine {
+      view-timeline-name: --route-spine;
+      view-timeline-axis: block;
+      animation: qf-route-draw linear both;
+      animation-timeline: --route-spine;
+      animation-range: entry 5% cover 50%;
+    }
   }
 }
 

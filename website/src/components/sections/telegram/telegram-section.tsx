@@ -1,35 +1,50 @@
 import { getTranslations } from "next-intl/server";
 import { Section } from "@/components/ui/section";
-import { SectionHeader } from "@/components/ui/section-header";
-import { DeviceFrame } from "@/components/ui/device-frame";
+import { SectionHeading } from "@/components/ui/section-heading";
+import { MonoLabel } from "@/components/ui/mono-label";
+import { Surface } from "@/components/ui/surface";
 import { Reveal } from "@/components/motion/reveal";
 import { SignalCard } from "./signal-card";
 
-const FEATURES = ["f1", "f2", "f3", "f4"] as const;
-
 /**
- * Telegram as the second interface onto the same state.
+ * Telegram as a touchpoint, not a chapter.
  *
- * ── The emphasis is inverted from the previous version ──
+ * ── What this used to be, and why it is now a fraction of the size ──
  *
- * It used to give four static text cards more area than the one thing on this
- * page a visitor can actually press: `lg:grid-cols-[1fr_0.8fr]`, features left
- * and larger, the interactive card right and smaller. And by this point in the
- * page a reader has met roughly twenty identically-treated bordered boxes, so
- * four more added nothing except length.
+ * A full section: eyebrow, H2, lead, four feature cards in a hairline-separated
+ * list, and the signal card inside a phone frame. Measured at 950px tall on
+ * desktop, arriving immediately after the 822px dashboard section that makes the
+ * *same* argument about the *same* shared state.
  *
- * Now the features are a hairline-separated list — they are four facts, and a
- * fact does not need a card — and the signal card sits in a phone frame at
- * equal weight. The device is what makes "оператор в кармане" read instantly
- * rather than having to be explained.
+ * By this point a reader has been told twice that Telegram and the dashboard read
+ * one state. The four features restated it a third time in four more paragraphs —
+ * "Синхронизация: Dashboard и бот читают одни и те же репозитории" is the section
+ * lead with a heading on it. That is the essay text this pass was asked to
+ * remove.
+ *
+ * So it keeps exactly one idea, which was always the only one that mattered:
+ * **Telegram is a second interface onto the same state, not a simplified copy.**
+ * Everything else was elaboration.
+ *
+ * ── Composition ──
+ *
+ * One card, two halves: the claim on the left, the genuinely pressable signal
+ * card on the right.
+ *
+ *   • The `DeviceFrame` bezel is gone. It spent ~90px of chrome saying "this is a
+ *     phone" about a card whose content already says so, and its clip was
+ *     truncating the demo hint underneath — visible in the before-shot as text
+ *     running under the frame's edge.
+ *   • The H2 is rendered directly rather than through `SectionHeader`, because a
+ *     touchpoint carrying an eyebrow, a heading, a lead *and* a note is not a
+ *     touchpoint. It keeps its `{id}-heading` id, so `Section`'s
+ *     `aria-labelledby` still resolves — that contract is not optional.
  *
  * ── Do not regress the card to a mock ──
  *
- * `SignalCard` is a client component so its two buttons can genuinely be
+ * `SignalCard` stays a client component so its two buttons can genuinely be
  * pressed. A previous version drew `aria-hidden` <span>s styled to look like
- * controls, which is exactly the "raw" impression this section was corrected
- * for. The frame around it is `aria-hidden` scaffolding only; nothing about the
- * card's behaviour changes.
+ * controls, which is exactly the "raw" impression this section was corrected for.
  */
 export async function TelegramSection({ locale }: { locale: string }) {
   const t = await getTranslations({ locale, namespace: "telegram" });
@@ -39,37 +54,31 @@ export async function TelegramSection({ locale }: { locale: string }) {
     // state* as the dashboard above, so the two belong to one movement. The
     // divider is what keeps them distinct without adding a full section gap.
     <Section id="telegram" rhythm="tight" divider>
-      <SectionHeader id="telegram" eyebrow={t("eyebrow")} heading={t("heading")} lead={t("lead")} />
+      <Reveal lift={false}>
+        <Surface
+          variant="raised"
+          padding="lg"
+          className="grid items-center gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,0.85fr)] lg:gap-14"
+        >
+          <div className="flex min-w-0 flex-col gap-4">
+            <MonoLabel>{t("eyebrow")}</MonoLabel>
+            <SectionHeading id="telegram-heading" className="max-w-[24ch]">
+              {t("heading")}
+            </SectionHeading>
+            <p className="max-w-[52ch] text-[length:var(--text-lead)] leading-[var(--text-lead--line-height)] tracking-[var(--text-lead--letter-spacing)] text-[color:var(--color-text-secondary)]">
+              {t("lead")}
+            </p>
+          </div>
 
-      <div className="mt-[var(--space-header-to-body)] grid items-start gap-10 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1fr)] lg:gap-16">
-        {/* ── Features, as a list ──
-            No hover state on the rows: a hover on something that does not
-            navigate is a false affordance, and these do not. */}
-        <Reveal lift={false}>
-          <ul className="flex flex-col">
-            {FEATURES.map((f) => (
-              <li
-                key={f}
-                className="flex flex-col gap-2 border-t border-[color:var(--color-border)] py-5 first:border-t-0 first:pt-0"
-              >
-                <h3 className="text-[length:var(--text-h3)] leading-[var(--text-h3--line-height)] font-medium tracking-[var(--text-h3--letter-spacing)] text-[color:var(--color-text-primary)]">
-                  {t(`${f}Title`)}
-                </h3>
-                <p className="text-[length:var(--text-body)] leading-[var(--text-body--line-height)] text-[color:var(--color-text-secondary)]">
-                  {t(`${f}Body`)}
-                </p>
-              </li>
-            ))}
-          </ul>
-        </Reveal>
-
-        {/* ── The artefact ── */}
-        <Reveal index={1} lift={false} className="min-w-0">
-          <DeviceFrame>
+          {/* The artefact, at its own size. `min-w-0` so the card's mono labels
+              shrink rather than pushing the grid wider than its column — this is
+              the one place on the page where a fixed-width child could produce
+              horizontal overflow at 320px. */}
+          <div className="min-w-0">
             <SignalCard />
-          </DeviceFrame>
-        </Reveal>
-      </div>
+          </div>
+        </Surface>
+      </Reveal>
     </Section>
   );
 }

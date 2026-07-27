@@ -2,12 +2,12 @@ import { getTranslations } from "next-intl/server";
 import { Section } from "@/components/ui/section";
 import { SectionHeader } from "@/components/ui/section-header";
 import { InteractiveCard } from "@/components/ui/interactive-card";
-import { SignalLine } from "@/components/ui/signal-line";
+import { RouteSpine } from "@/components/ui/route-spine";
 import { Reveal } from "@/components/motion/reveal";
 import type { CtaTarget } from "@/lib/analytics/events";
 
 /**
- * Route selection: three audiences, three destinations.
+ * Route selection: four audiences, four destinations.
  *
  * ── What changed, and why it mattered ──
  *
@@ -15,6 +15,12 @@ import type { CtaTarget } from "@/lib/analytics/events";
  * invests most in. Three flat boxes with identical treatment — h3, paragraph,
  * arrow link — no numbering, no differentiation, nothing to say these are a
  * *choice* rather than a list.
+ *
+ * It also rendered as 2 + 1 on every desktop width, which is what made it read
+ * as lopsided. That was not the card count: `lg:grid-cols-3` was being beaten by
+ * `sm:grid-cols-2` because of the breakpoint registration-order bug documented
+ * in globals.css. Both are fixed — the grid is honest now, and a fourth card
+ * makes it a 2×2 rather than a 3-up with a hole in it.
  *
  * Worse, measured on the live build: all three computed `cursor: default`. The
  * card is the route selector, and only the 12-word arrow link inside it
@@ -30,14 +36,23 @@ import type { CtaTarget } from "@/lib/analytics/events";
 export async function AudienceSection({ locale }: { locale: string }) {
   const t = await getTranslations({ locale, namespace: "audience" });
 
+  /**
+   * Four audiences, four distinct destinations — no two cards route to the same
+   * place, which is what makes the row a selector rather than a list.
+   *
+   * card1 and card3 were re-pointed: card1 went to `#safety`, which card3 now
+   * owns, and card3 went to `#brokers`, which no longer exists. Every `href`
+   * here must resolve to a live section id in `app/[locale]/page.tsx` — a stale
+   * anchor fails silently, because the Lenis interceptor simply finds nothing.
+   */
   const cards = [
     {
       title: t("card1Title"),
       body: t("card1Body"),
       link: t("card1Link"),
-      href: "#safety",
+      href: "#dashboard",
       target: "explore",
-      where: "audience_safety",
+      where: "audience_product",
     },
     {
       title: t("card2Title"),
@@ -51,9 +66,17 @@ export async function AudienceSection({ locale }: { locale: string }) {
       title: t("card3Title"),
       body: t("card3Body"),
       link: t("card3Link"),
-      href: "#brokers",
+      href: "#safety",
       target: "explore",
-      where: "audience_brokers",
+      where: "audience_safety",
+    },
+    {
+      title: t("card4Title"),
+      body: t("card4Body"),
+      link: t("card4Link"),
+      href: "#faq",
+      target: "explore",
+      where: "audience_faq",
     },
   ] as const satisfies readonly {
     title: string;
@@ -78,10 +101,18 @@ export async function AudienceSection({ locale }: { locale: string }) {
         lead={t("lead")}
       />
 
-      {/* sm:grid-cols-2 added. The old 1 -> 3 jump at md put three Cyrillic
-          cards into ~230px columns at 768px, which is where the RU copy breaks
-          worst. */}
-      <ul className="mt-[var(--space-header-to-body)] grid gap-[var(--space-card-gap)] sm:grid-cols-2 lg:grid-cols-3">
+      {/*
+        A 2×2 at `sm` and above, which is what the fourth card is for.
+
+        Three cards could only ever be 2 + 1 or a 3-up that squeezed Cyrillic
+        into ~230px columns at 768px. Four cards give the row a shape: two equal
+        columns, two equal rows, and the same 20px gutter in both axes, so the
+        block reads as one object rather than as a list that ran out.
+
+        It deliberately stops at two columns — a 4-up at `lg` would put each card
+        back into a ~300px column, and these bodies are 3–4 lines of Russian.
+      */}
+      <ul className="mt-[var(--space-header-to-body)] grid gap-[var(--space-card-gap)] sm:grid-cols-2">
         {cards.map((card, i) => (
           <li key={card.title} className="flex">
             <Reveal index={i} className="flex w-full">
@@ -104,16 +135,20 @@ export async function AudienceSection({ locale }: { locale: string }) {
       </ul>
 
       {/*
-        The bracket down into the pipeline.
+        The route out of the audience row and into the pipeline.
 
-        In flow, and owned by *this* section's bottom edge — not absolutely
-        positioned across the section boundary. A cross-section connector has to
-        be re-derived at every breakpoint and misaligns the moment a card grows
-        a line; this one cannot, and removing the section below leaves no
-        floating line behind. Hidden under md, where the layout is one column
-        and there is nothing to gather.
+        Still in flow and still owned by *this* section's bottom edge, for the
+        reason the old bracket documented: a connector positioned across a
+        section boundary has to be re-derived at every breakpoint and misaligns
+        the moment a card grows a line. Removing the section below leaves nothing
+        floating.
+
+        What changed is that it now draws itself against scroll position rather
+        than snapping in once on an IntersectionObserver — see ui/route-spine.tsx.
+        `gather` at two lanes matches the 2×2 above: the two columns converge into
+        one stem that continues into `#how-it-works`.
       */}
-      <SignalLine orientation="bracket" className="mt-8" />
+      <RouteSpine variant="gather" lanes={2} size="lg" className="mt-10" />
     </Section>
   );
 }

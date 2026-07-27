@@ -2,6 +2,7 @@ import { getTranslations } from "next-intl/server";
 import { Section } from "@/components/ui/section";
 import { SectionHeader } from "@/components/ui/section-header";
 import { ButtonLink } from "@/components/ui/button-link";
+import { RouteSpine } from "@/components/ui/route-spine";
 import { Reveal } from "@/components/motion/reveal";
 import { DashboardTerminal } from "./dashboard-terminal";
 
@@ -27,24 +28,34 @@ export async function DashboardSection({ locale }: { locale: string }) {
   const t = await getTranslations({ locale, namespace: "dashboard" });
 
   return (
-    <Section
-      id="dashboard"
-      rhythm="major"
-      divider
-      glow={<div className="section-glow [--glow-x:50%] [--glow-y:0%]" />}
-    >
+    /*
+      No `glow`, for the same reason `#how-it-works` lost its: a radial pool
+      centred on the section's own top edge, directly under a hairline divider,
+      reads as a seam rather than as depth. The route line is the entrance now.
+    */
+    <Section id="dashboard" rhythm="major" divider>
       <div className="grid items-start gap-10 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)] lg:gap-14">
         {/* ── Left: the claim ──
             Deliberately not `lg:sticky`. A sticky column is a scroll-position
             read in disguise, and this page keeps exactly one of those — in the
             scroll driver. */}
         <div className="flex min-w-0 flex-col gap-8">
+          {/*
+            No `note`.
+
+            `apiOnlyNote` explained that Risk is API-only and that two product
+            areas are absent from the demo — three caveats about the *composition
+            of a mock*, in the header of the section whose job is to make the
+            product feel real. Removed on owner direction. What replaces it is
+            nothing: the terminal is labelled a demo in its own chrome and by the
+            caption under it, which is the honest part, and the rest was
+            changelog.
+          */}
           <SectionHeader
             id="dashboard"
             eyebrow={t("eyebrow")}
             heading={t("heading")}
             lead={t("lead")}
-            note={t("apiOnlyNote")}
           />
 
           <Reveal lift={false}>
@@ -55,6 +66,21 @@ export async function DashboardSection({ locale }: { locale: string }) {
               {t("cta")}
             </ButtonLink>
           </Reveal>
+
+          {/*
+            The route, in the left column, aimed down the page past the terminal.
+
+            It sits here rather than above the grid deliberately: the terminal is
+            the thing this section is about, and a connector running down the
+            column *beside* it points at it without crossing it. A spine drawn
+            over or under the panel would either overlap the tab row or push the
+            panel out of alignment with the claim it belongs to.
+
+            Hidden below `lg`, where the grid is one column and the panel sits
+            under the text rather than beside it — there the line would point at
+            the terminal's top edge from 20px away, which reads as an artefact.
+          */}
+          <RouteSpine size="lg" node={false} className="mt-auto hidden lg:block" />
         </div>
 
         {/* ── Right: the artefact ──
@@ -62,6 +88,10 @@ export async function DashboardSection({ locale }: { locale: string }) {
             resamples every glyph on the way in. */}
         <Reveal lift={false} className="flex min-w-0 flex-col gap-4">
           <DashboardTerminal />
+          {/* Trimmed to the disclaimer alone. Its first sentence repeated the
+              section lead verbatim; what has to survive is the statement that
+              the figures in the panel are illustrative, because that is the
+              guarantee that stops them reading as results. */}
           <p className="text-[length:var(--text-caption)] leading-[var(--text-caption--line-height)] text-[color:var(--color-text-quaternary)]">
             {t("demoNote")}
           </p>

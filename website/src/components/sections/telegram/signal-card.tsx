@@ -64,8 +64,8 @@ export function SignalCard() {
         </p>
 
         <dl className="flex flex-col gap-3">
-          <div className="flex items-center gap-3">
-            <dt className="min-w-[9ch] font-mono text-[length:var(--text-label)] tracking-[var(--text-label--letter-spacing)] text-[color:var(--color-text-tertiary)] uppercase">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+            <dt className="min-w-[9ch] shrink-0 font-mono text-[length:var(--text-label)] tracking-[var(--text-label--letter-spacing)] text-[color:var(--color-text-tertiary)] uppercase">
               {t("cardConfidence")}
             </dt>
             <dd className="flex items-center gap-2">
@@ -111,8 +111,8 @@ export function SignalCard() {
             </dd>
           </div>
 
-          <div className="flex items-center gap-3">
-            <dt className="min-w-[9ch] font-mono text-[length:var(--text-label)] tracking-[var(--text-label--letter-spacing)] text-[color:var(--color-text-tertiary)] uppercase">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+            <dt className="min-w-[9ch] shrink-0 font-mono text-[length:var(--text-label)] tracking-[var(--text-label--letter-spacing)] text-[color:var(--color-text-tertiary)] uppercase">
               {t("cardRisk")}
             </dt>
             <dd className="text-[length:var(--text-caption)] text-[color:var(--color-success)]">
@@ -120,11 +120,28 @@ export function SignalCard() {
             </dd>
           </div>
 
-          <div className="flex items-center gap-3">
-            <dt className="min-w-[9ch] font-mono text-[length:var(--text-label)] tracking-[var(--text-label--letter-spacing)] text-[color:var(--color-text-tertiary)] uppercase">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+            <dt className="min-w-[9ch] shrink-0 font-mono text-[length:var(--text-label)] tracking-[var(--text-label--letter-spacing)] text-[color:var(--color-text-tertiary)] uppercase">
               {t("cardStrategy")}
             </dt>
-            <dd className="font-mono text-[length:var(--text-caption)] text-[color:var(--color-text-tertiary)]">
+            {/*
+              `min-w-0` + `break-all`, because this is the one value on the card
+              that has no spaces in it.
+
+              At 390px the RU label "СТРАТЕГИЯ" plus `osc_range_moex_d1_fwd`
+              exceeds the card's inner width. The row was `flex items-center`
+              with a shrinkable <dt>, so the label was squeezed to its 9ch
+              minimum, its letter-spaced uppercase text overflowed its own box
+              and collided with the value — rendering as
+              "СТРАТЕГИЯosc_range_moex_d1_fwd" — while the value itself ran past
+              the card's right edge. Underscores are not break opportunities, so
+              nothing wrapped on its own.
+
+              `shrink-0` on the <dt> and `flex-wrap` on the row fix the collision;
+              this fixes the overflow. `break-all` rather than `break-words`
+              because a strategy id has no word boundaries to prefer.
+            */}
+            <dd className="min-w-0 font-mono text-[length:var(--text-caption)] break-all text-[color:var(--color-text-tertiary)]">
               {EXAMPLE.strategy}
             </dd>
           </div>
@@ -160,15 +177,37 @@ export function SignalCard() {
               </Button>
             </motion.div>
           ) : (
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-start">
+              {/*
+                Two fixes here, both for 390px.
+
+                `h-auto min-h-9 py-2` alongside `whitespace-normal`: `size="sm"` is
+                a fixed `h-9` and the base button style is `whitespace-nowrap`.
+                Overriding only the wrapping — which this did — lets the label
+                break to two lines inside a box still locked to 36px, so the RU
+                "Исполнить в песочнице" rendered spilling out through the top and
+                bottom edges of its own button. Either the height follows the
+                content or the text must not wrap; for a CTA whose Russian label is
+                21 characters, growing is the right one.
+
+                `w-full` below `sm`, `flex-1` above it: sharing a ~265px row with
+                the Skip button still forced the label onto three lines, which
+                made a 96px-tall button beside a 36px one. Stacked, each takes a
+                line or two at full width.
+              */}
               <Button
-                className="flex-1 whitespace-normal"
+                className="h-auto min-h-9 w-full py-2 whitespace-normal sm:w-auto sm:flex-1"
                 size="sm"
                 onClick={() => setState("accepted")}
               >
                 {t("cardExecute")}
               </Button>
-              <Button variant="outline" size="sm" onClick={() => setState("skipped")}>
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-full sm:w-auto"
+                onClick={() => setState("skipped")}
+              >
                 {t("cardDismiss")}
               </Button>
             </div>

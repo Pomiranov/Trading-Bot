@@ -17,9 +17,13 @@ const LOCALES = [
  * target fails silently, so these must stay in step with the section ids in
  * `app/[locale]/page.tsx`.
  *
- * Five items, matching the reference. `#brokers`, `#strategies` and
- * `#foundation` are reachable from the footer instead — a header that lists
- * every section is a table of contents, not navigation.
+ * Five items, matching the reference. `#foundation` and `#telegram` are reachable
+ * from the footer instead — a header that lists every section is a table of
+ * contents, not navigation.
+ *
+ * `#brokers` and `#strategies` used to be in that footer list too; both sections
+ * were removed from the page, and the links went with them. See the note in
+ * `app/[locale]/page.tsx` for where their disclosures now live.
  */
 const LINKS = [
   { key: "dashboard", href: "#dashboard" },

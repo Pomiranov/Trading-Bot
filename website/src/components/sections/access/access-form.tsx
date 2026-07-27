@@ -105,7 +105,12 @@ export function AccessForm({
         track({ name: "beta_submitted", props: { result: "invalid" } }),
       )}
       noValidate
-      className="flex w-full max-w-[52ch] min-w-0 flex-col gap-4"
+      // Was `max-w-[52ch]`, which was the cause of the misaligned button rather
+      // than anything in the button itself. 52ch is a *reading* measure; this row
+      // is a 288px input plus a button whose Russian label is 27 characters, and
+      // the two could not fit, so the button wrapped to two lines and grew past
+      // the input's height. The measure now applies only to the prose below.
+      className="flex w-full min-w-0 flex-col gap-4"
     >
       <div className="flex flex-col gap-2">
         {/* Visible label — the previous form's only label was sr-only. */}
@@ -116,7 +121,20 @@ export function AccessForm({
           {emailLabel}
         </label>
 
-        <div className="flex w-full min-w-0 flex-col gap-3 sm:flex-row sm:items-start">
+        {/*
+          A grid, not a flex row, and `items-stretch` rather than `items-start`.
+
+          Flex with `items-start` let the two controls take different heights and
+          then aligned their *tops*, so a two-line button hung 18px below the
+          input. Stretching in a grid makes both exactly one row tall by
+          construction, which is the only arrangement that cannot come apart when
+          the label is translated.
+
+          `minmax(0,1fr) auto` gives the input the slack and sizes the button to
+          its text, so the label sets the button's width instead of being forced
+          to wrap into a fixed one.
+        */}
+        <div className="grid w-full min-w-0 grid-cols-1 items-stretch gap-3 sm:grid-cols-[minmax(0,1fr)_auto]">
           <input
             id="access-email"
             type="email"
@@ -124,7 +142,7 @@ export function AccessForm({
             autoComplete="email"
             aria-invalid={!!errors.email}
             aria-describedby={errors.email ? "access-email-error" : undefined}
-            className="h-12 w-full rounded-[var(--radius-md)] border border-[color:var(--color-border-strong)] bg-[rgba(255,255,255,0.04)] px-4 font-mono text-[length:var(--text-caption)] text-[color:var(--color-text-primary)] outline-none placeholder:text-[color:var(--color-text-quaternary)] focus-visible:border-[color:var(--color-accent)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--color-accent)] sm:w-72"
+            className="h-12 w-full min-w-0 rounded-[var(--radius-md)] border border-[color:var(--color-border-strong)] bg-[rgba(255,255,255,0.04)] px-4 font-mono text-[length:var(--text-caption)] text-[color:var(--color-text-primary)] outline-none placeholder:text-[color:var(--color-text-quaternary)] focus-visible:border-[color:var(--color-accent)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--color-accent)]"
             {...register("email")}
           />
 
@@ -139,11 +157,14 @@ export function AccessForm({
           />
 
           <Magnetic className="w-full sm:w-auto">
+            {/* `h-12` to match the input exactly, and `whitespace-nowrap` so the
+                label sets the width rather than wrapping inside a box it cannot
+                fit. The 44px minimum touch target is comfortably met at 48px. */}
             <Button
               type="submit"
               size="lg"
               disabled={isSubmitting}
-              className="h-auto min-h-12 w-full justify-center py-3 text-center whitespace-normal"
+              className="h-12 w-full justify-center px-6 whitespace-nowrap"
             >
               {isSubmitting ? submittingLabel : submitLabel}
             </Button>
@@ -169,7 +190,8 @@ export function AccessForm({
         ) : null}
       </div>
 
-      <p className="text-[length:var(--text-caption)] leading-[var(--text-caption--line-height)] text-[color:var(--color-text-quaternary)]">
+      {/* The reading measure lives here now, on the one element that is prose. */}
+      <p className="max-w-[62ch] text-[length:var(--text-caption)] leading-[var(--text-caption--line-height)] text-[color:var(--color-text-quaternary)]">
         {consentNote}
       </p>
     </form>

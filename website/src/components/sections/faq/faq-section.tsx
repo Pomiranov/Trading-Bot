@@ -2,6 +2,7 @@ import { getTranslations } from "next-intl/server";
 import { Section } from "@/components/ui/section";
 import { SectionHeader } from "@/components/ui/section-header";
 import { Surface } from "@/components/ui/surface";
+import { RouteSpine } from "@/components/ui/route-spine";
 import { Reveal } from "@/components/motion/reveal";
 
 const QUESTIONS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10] as const;
@@ -38,7 +39,18 @@ export async function FaqSection({ locale }: { locale: string }) {
   const t = await getTranslations({ locale, namespace: "faq" });
 
   return (
-    <Section id="faq" rhythm="default" width="prose" divider>
+    /*
+      No `divider`. The route line coming out of `#pricing`'s transition band now
+      arrives here, and a hairline across the top of the section on top of that
+      gave the join two competing horizontal edges — the line pointing in and a
+      rule saying "new block". The connector is the better separator: it says the
+      same thing and says it as continuity rather than as a cut.
+    */
+    <Section id="faq" rhythm="default" width="prose">
+      {/* Arrives from pricing. `prose` width, so this is a 68ch column — the
+          spine sits centred in it, directly above the heading it introduces. */}
+      <RouteSpine size="sm" className="mb-10" />
+
       <SectionHeader id="faq" eyebrow={t("eyebrow")} heading={t("heading")} />
 
       <Reveal lift={false} className="mt-[var(--space-header-to-body)]">

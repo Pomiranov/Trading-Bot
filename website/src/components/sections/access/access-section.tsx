@@ -3,6 +3,8 @@ import { Section } from "@/components/ui/section";
 import { SectionHeader } from "@/components/ui/section-header";
 import { InteractiveCard } from "@/components/ui/interactive-card";
 import { GridBackplate } from "@/components/ui/grid-backplate";
+import { SignalField } from "@/components/ui/signal-field";
+import { RouteSpine } from "@/components/ui/route-spine";
 import { Reveal } from "@/components/motion/reveal";
 import { AccessForm } from "./access-form";
 
@@ -38,8 +40,19 @@ export async function AccessSection({ locale }: { locale: string }) {
 
   return (
     <Section id="access" rhythm="major">
-      <div className="relative isolate overflow-hidden rounded-[var(--radius-2xl)] border border-[color:var(--color-border)] bg-[color:var(--color-bg-elevated)] px-6 py-12 shadow-[var(--shadow-panel)] sm:px-10 sm:py-14 lg:px-14 lg:py-16">
-        <GridBackplate />
+      {/* The route arrives from the FAQ and terminates *on* the panel below —
+          flush, with no margin, so the line meets the panel's top edge instead of
+          stopping 40px short of it. A connector that ends in mid-air is the
+          "lines end abruptly" note this pass was correcting.
+
+          No node on the leading edge: this is the end of the route, and a
+          junction dot at the top of the last connector implies another follows. */}
+      <RouteSpine size="md" node={false} />
+
+      {/* Same pointer-lit field as the hero, on the panel that rhymes with it —
+          the page is bookended by the two objects that respond to the cursor. */}
+      <SignalField className="relative isolate overflow-hidden rounded-[var(--radius-2xl)] border border-[color:var(--color-border)] bg-[color:var(--color-bg-elevated)] px-6 py-12 shadow-[var(--shadow-panel)] sm:px-10 sm:py-14 lg:px-14 lg:py-16">
+        <GridBackplate signal />
 
         {/* A soft white pool rising from the panel's foot. Well under a "glow"
             at this alpha — the point is only that the black is not flat. */}
@@ -56,6 +69,17 @@ export async function AccessSection({ locale }: { locale: string }) {
             lead={t("lead")}
           />
 
+          {/*
+            `items-stretch` (the grid default, restated by not overriding it) plus
+            `h-full` on the card's own wrapper below. Without both, the Live card
+            sized to its content and stopped ~140px short of the form column,
+            which is what made the panel look bottom-heavy on the left.
+
+            The 1.25 / 0.75 split stays. The two asks are deliberately unequal —
+            the sandbox request is the primary path and gets the form; live access
+            is a gated conversation and gets a card — and evening them to 1fr each
+            would say they are the same size of decision.
+          */}
           <div className="mt-[var(--space-header-to-body)] grid gap-10 lg:grid-cols-[minmax(0,1.25fr)_minmax(0,0.75fr)] lg:gap-16">
             <Reveal lift={false} className="flex min-w-0 flex-col gap-8">
               <AccessForm
@@ -99,8 +123,9 @@ export async function AccessSection({ locale }: { locale: string }) {
 
             {/* The secondary ask. A route card, so the whole surface navigates —
                 this was the last of the four cards on the page that contained a
-                link and still computed `cursor: default`. */}
-            <Reveal index={1} lift={false} className="flex min-w-0">
+                link and still computed `cursor: default`. `h-full` is what makes
+                it reach the foot of the form column beside it. */}
+            <Reveal index={1} lift={false} className="flex h-full min-w-0">
               <InteractiveCard
                 href="#pricing"
                 label={t("liveCta")}
@@ -116,7 +141,7 @@ export async function AccessSection({ locale }: { locale: string }) {
             </Reveal>
           </div>
         </div>
-      </div>
+      </SignalField>
     </Section>
   );
 }

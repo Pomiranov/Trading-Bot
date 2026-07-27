@@ -3,7 +3,7 @@ import { Section } from "@/components/ui/section";
 import { SectionHeader } from "@/components/ui/section-header";
 import { Surface } from "@/components/ui/surface";
 import { MonoLabel } from "@/components/ui/mono-label";
-import { AsideNote } from "@/components/ui/aside-note";
+import { RouteSpine } from "@/components/ui/route-spine";
 import { Reveal } from "@/components/motion/reveal";
 
 /**
@@ -17,9 +17,12 @@ import { Reveal } from "@/components/motion/reveal";
  *            (bot/ui/telegram_bot.py:860); the stop is manual
  *            (bot/services/bot_engine.py:91-102).
  *   item6  — confidence is clamped to 0.05–0.95 and never becomes certainty.
- *   caveat — the credential vault is opt-in via SECRETS_MASTER_KEY; without it
- *            credentials fall back to a plain .env
- *            (bot/security/credential_store.py:50-57).
+ *
+ * A third disclosure — that the credential vault is opt-in via
+ * SECRETS_MASTER_KEY and falls back to a plain `.env` without it — used to sit
+ * below the limits group and now lives in the deployment documentation. See the
+ * note where it was, at the foot of this file, for why, and for the one rewrite
+ * of this section that would be dishonest.
  *
  * The strongest claim is item1, and it is verified by absence: BrokerAdapter
  * (bot/broker/base.py:141-219) declares no withdraw or transfer method at all.
@@ -93,13 +96,63 @@ export async function SafetySection({ locale }: { locale: string }) {
             </li>
           ))}
         </ul>
-
-        <Reveal lift={false}>
-          <AsideNote tone="caveat" className="max-w-[80ch]">
-            {t("keysCaveat")}
-          </AsideNote>
-        </Reveal>
       </div>
+
+      {/*
+        ── Removed: the credential-vault caveat ──
+
+        `keysCaveat` read, in full: storage encryption is switched on by a master
+        key; if it is not set at deploy time credentials stay in a plain `.env`,
+        which is the default for a local install and must be changed before going
+        live.
+
+        That is true (bot/security/credential_store.py:50-57) and it is a
+        deployment note. It was the longest piece of small print on the page, it
+        described the operator's own server configuration rather than anything
+        Quant does to a visitor, and it sat in the section a prospect reads to
+        decide whether this is safe at all. Owner direction: it belongs in the
+        deployment documentation.
+
+        ── The condition moved into item5, it was not dropped ──
+
+        This is the part that nearly went wrong, and it is why the caveat cannot
+        simply be deleted.
+
+        `item5` already claimed "Ключи брокера хранятся зашифрованными
+        (AES-256-GCM)…", and the caveat below was what *qualified* it. Removing
+        the caveat on its own would therefore have turned a conditional statement
+        into an unconditional one — a stronger claim than the code supports, from
+        a deletion. Caught on review of the rendered section, not in the diff.
+
+        So the condition is now a clause inside item5 itself: encryption is
+        switched on by a master key at deployment. One clause instead of a
+        four-line block, which is what "honest but concise" has to mean here.
+
+        `item5` may not be reverted to an unqualified encryption claim. If the
+        vault ever becomes non-optional, `bot/security/credential_store.py` is the
+        file that decides, and this copy changes with it.
+
+        ── What was NOT weakened ──
+
+        The two guarantees that are unconditional stay exactly as they were, in
+        the `limits` group above, at more weight than the reassurances:
+
+          • item4 — there is no automatic kill switch; drawdown is alert-only and
+            the stop is manual (bot/ui/telegram_bot.py:860,
+            bot/services/bot_engine.py:91-102)
+          • item6 — confidence is clamped to 0.05–0.95 and never becomes certainty
+
+        And the strongest claim on the site is unaffected, because it is verified
+        by absence: `BrokerAdapter` (bot/broker/base.py:141-219) declares no
+        withdraw or transfer method at all.
+
+        If a reviewer wants the vault caveat visible on the landing page again,
+        that is a copy decision — but it may not be replaced with "keys are
+        encrypted" full stop, which is the one rewrite that would be false.
+      */}
+
+      {/* Out of safety and on into pricing. */}
+      <RouteSpine variant="gather" lanes={2} size="md" className="mt-[var(--space-block)]" />
     </Section>
   );
 }

@@ -34,12 +34,24 @@ export async function Footer({ locale }: { locale: string }) {
     getTranslations({ locale, namespace: "nav" }),
   ]);
 
+  /**
+   * Every `href` here must resolve to a live section id in
+   * `app/[locale]/page.tsx`. A stale anchor fails silently — the Lenis
+   * interceptor simply finds no target and nothing happens — so this list and
+   * the page's section order have to be changed together.
+   *
+   * `#strategies` was dropped with the strategy-lab section; `#telegram` takes
+   * its place in the product column, and the trust column is two links rather
+   * than three. Padding it back to three for symmetry would mean inventing a
+   * destination.
+   */
   const columns = [
     {
       heading: t("colProduct"),
       links: [
         { label: nav("dashboard"), href: "#dashboard" },
         { label: t("linkHow"), href: "#how-it-works" },
+        { label: t("linkTelegram"), href: "#telegram" },
         { label: nav("pricing"), href: "#pricing" },
       ],
     },
@@ -48,7 +60,6 @@ export async function Footer({ locale }: { locale: string }) {
       links: [
         { label: t("linkSafety"), href: "#safety" },
         { label: t("linkFoundation"), href: "#foundation" },
-        { label: t("linkStrategies"), href: "#strategies" },
       ],
     },
     {

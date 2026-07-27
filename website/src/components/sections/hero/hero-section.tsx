@@ -3,6 +3,7 @@ import { ButtonLink } from "@/components/ui/button-link";
 import { ArrowLink } from "@/components/ui/arrow-link";
 import { MonoLabel } from "@/components/ui/mono-label";
 import { GridBackplate } from "@/components/ui/grid-backplate";
+import { SignalField } from "@/components/ui/signal-field";
 import { QAperture } from "./q-aperture";
 import { PointerTilt } from "./pointer-tilt";
 
@@ -16,18 +17,18 @@ import { PointerTilt } from "./pointer-tilt";
  * what makes the rest of the page read as a document rather than a poster, and
  * it rhymes with the closing CTA panel so the page is bookended.
  *
- * Inside: headline left, the Q-aperture right, and the proof strip as a
- * contained darker bar across the panel's full width at the foot. That strip
- * was previously five items separated by "·" floating in the left column at the
- * readability floor.
+ * Inside, and now that is all of it: eyebrow, headline, subline and two calls
+ * to action on the left; the Q-aperture on the right. The recessed proof strip
+ * that used to run across the panel's foot, and the caption under it, were
+ * removed — see the note at the foot of the panel for what went and why the
+ * honesty guarantee is unaffected.
  *
  * ── Honesty ──
  *
- * Nothing here is a result. The three figures in the proof strip are
- * *configured limits*, verifiable in bot/config.py:66-71 — a cap the operator
- * sets before the first trade, not an outcome the system produced. No win rate,
- * profit factor, sample size, Sharpe, equity curve or return figure appears
- * here or anywhere else on the site, under any caption.
+ * Nothing here is a result, and nothing here is a figure at all any more. The
+ * aperture is orbital geometry: no chart, no plotted series, no counter, no
+ * percentage. No win rate, profit factor, sample size, Sharpe, equity curve or
+ * return figure appears here or anywhere else on the site, under any caption.
  *
  * ── LCP ──
  *
@@ -40,14 +41,6 @@ import { PointerTilt } from "./pointer-tilt";
 export async function HeroSection({ locale }: { locale: string }) {
   const t = await getTranslations({ locale, namespace: "hero" });
 
-  const proof = [t("proof1"), t("proof2"), t("proof3"), t("proof4"), t("proof5")];
-
-  const limits = [
-    { value: t("limit1Value"), label: t("limit1Label") },
-    { value: t("limit2Value"), label: t("limit2Label") },
-    { value: t("limit3Value"), label: t("limit3Label") },
-  ];
-
   return (
     <section
       id="hero"
@@ -59,9 +52,15 @@ export async function HeroSection({ locale }: { locale: string }) {
       className="relative isolate px-[var(--space-page-x)] pt-24 pb-12 md:min-h-dvh md:items-center md:pt-32 md:pb-20 lg:flex"
     >
       <div className="relative mx-auto w-full max-w-[var(--space-content-max)]">
-        {/* ── The panel ── */}
-        <div className="relative isolate overflow-hidden rounded-[var(--radius-2xl)] border border-[color:var(--color-border)] bg-[color:var(--color-bg-elevated)] shadow-[var(--shadow-panel)]">
-          <GridBackplate />
+        {/* ── The panel ──
+            `SignalField` is a ~60-line client shell that writes the pointer's
+            position to three custom properties; everything inside it, including
+            the headline and the aperture, stays server-rendered. It wraps the
+            panel rather than the section so the light is bounded by the object it
+            belongs to — a field the width of the whole section would light grid
+            lines the reader is nowhere near. */}
+        <SignalField className="relative isolate overflow-hidden rounded-[var(--radius-2xl)] border border-[color:var(--color-border)] bg-[color:var(--color-bg-elevated)] shadow-[var(--shadow-panel)]">
+          <GridBackplate signal />
 
           {/* Depth, weighted right so the aperture sits in the light and the
               headline stays on flat black. Clipped by the panel. */}
@@ -125,64 +124,39 @@ export async function HeroSection({ locale }: { locale: string }) {
           </div>
 
           {/*
-            ── Proof strip ──
+            ── Removed: the proof strip and the schematic caption ──
 
-            A contained, recessed bar across the panel's foot, per the
-            reference. It carries the five proof items and the three configured
-            limits as one row. Previously those were two unrelated stacks: the
-            panel, a hairline, then a 3-up stat grid that read as a footnote to
-            the visual rather than as part of the composition.
+            The panel's foot used to carry a recessed bar holding five proof
+            items ("Песочница · Telegram · Dashboard · MOEX + Bybit · Пределы
+            риска") and the three configured limits as a <dl>, with a caption
+            below the panel restating that the visual contains no results.
 
-            `--color-bg` rather than a new token — it is the page's own black,
-            one step below the panel's ground, so the strip reads as recessed
-            into the panel rather than as a second panel stacked under it.
+            All three are gone on owner direction: the hero should make one
+            argument, and a five-item meta row plus three numeric readouts plus
+            a disclaimer is four. The eyebrow above the headline still carries
+            the closed-testing / MOEX / sandbox framing, which is the part that
+            actually qualified the claim.
+
+            ── This does not weaken the honesty guarantee ──
+
+            Nothing removed here was a *result*; they were configured limits and
+            a disclaimer about a visual that has no data in it. The load-bearing
+            statements survive elsewhere in full:
+
+              • the risk limits are stated in `#safety` and in the belief-gate
+                node of `#how-it-works`, both with their labels attached
+              • "sandbox by default" is in the hero eyebrow and in `#safety`
+              • the aperture is orbits — no chart, no series, no counter — so
+                there is nothing left for a "this is not performance" caption to
+                disclaim
+
+            The rule stands unchanged: no win rate, profit factor, sample size,
+            Sharpe, equity curve or return figure appears anywhere on this site
+            under any caption. Removing a caption is not permission to add a
+            figure. `hero.proof1-5`, `hero.limit*` and `hero.visualCaption` were
+            deleted from both message catalogues.
           */}
-          <div className="relative border-t border-[color:var(--color-border)] bg-[color:var(--color-bg)]">
-            <div className="flex flex-col gap-4 px-6 py-4 sm:px-10 lg:flex-row lg:items-center lg:justify-between lg:gap-10 lg:px-14">
-              <ul className="flex flex-wrap items-center gap-x-3 gap-y-2">
-                {proof.map((item, i) => (
-                  <li
-                    key={item}
-                    className="flex items-center gap-3 font-mono text-[length:var(--text-label)] tracking-[var(--text-label--letter-spacing)] text-[color:var(--color-text-quaternary)] uppercase"
-                  >
-                    {i > 0 ? <span aria-hidden="true">·</span> : null}
-                    {item}
-                  </li>
-                ))}
-              </ul>
-
-              {/*
-                The configured limits as a compact inline row rather than three
-                display-size figures. At --text-display-number they competed
-                with the headline; at this size they read as instrument
-                readouts, which is what they are.
-
-                A <dl> so every value keeps its label programmatically attached
-                — the label is the thing that makes these unambiguously limits
-                rather than results, and it must never become decoration that a
-                later layout change can drop.
-              */}
-              <dl className="flex shrink-0 items-center gap-6">
-                {limits.map((l) => (
-                  <div key={l.label} className="flex flex-col gap-1">
-                    <dt className="font-mono text-[length:var(--text-label)] tracking-[var(--text-label--letter-spacing)] text-[color:var(--color-text-quaternary)] uppercase">
-                      {l.label}
-                    </dt>
-                    <dd className="font-mono text-[length:var(--text-h3)] leading-[var(--text-h3--line-height)] font-semibold tabular-nums text-[color:var(--color-text-primary)]">
-                      {l.value}
-                    </dd>
-                  </div>
-                ))}
-              </dl>
-            </div>
-          </div>
-        </div>
-
-        {/* The schematic disclaimer. Outside the panel deliberately: it is a
-            statement *about* the object, not part of it. */}
-        <p className="mt-4 text-[length:var(--text-caption)] leading-[var(--text-caption--line-height)] text-[color:var(--color-text-quaternary)]">
-          {t("visualCaption")}
-        </p>
+        </SignalField>
       </div>
     </section>
   );

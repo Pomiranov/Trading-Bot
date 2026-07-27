@@ -3,6 +3,7 @@ import { contentSource } from "@/content-layer/source";
 import { Section } from "@/components/ui/section";
 import { SectionHeader } from "@/components/ui/section-header";
 import { Surface } from "@/components/ui/surface";
+import { RouteSpine } from "@/components/ui/route-spine";
 import { Reveal } from "@/components/motion/reveal";
 
 /**
@@ -50,7 +51,13 @@ export async function FoundationSection({ locale }: { locale: string }) {
         lead={t("lead")}
       />
 
-      <ol className="mt-[var(--space-header-to-body)] grid gap-[var(--space-card-gap)] md:grid-cols-3">
+      {/* The route arrives from the transition band above, then fans out to the
+          three principles — so the cards read as *what the line leads to* rather
+          than as a grid that happens to sit here. Graphite rather than cold blue,
+          automatically: `.section-paper` re-points `--color-route-stroke`. */}
+      <RouteSpine variant="fan" lanes={3} size="md" node={false} className="mt-8" />
+
+      <ol className="mt-6 grid gap-[var(--space-card-gap)] md:grid-cols-3">
         {principles.map((block, i) => (
           <li key={block.id} className="flex">
             <Reveal index={i} className="flex w-full">
@@ -93,6 +100,10 @@ export async function FoundationSection({ locale }: { locale: string }) {
           </li>
         ))}
       </ol>
+
+      {/* Gathers the three principles back into one line, which then continues
+          out through the transition band below and into `#dashboard`. */}
+      <RouteSpine variant="gather" lanes={3} size="md" className="mt-8" />
     </Section>
   );
 }

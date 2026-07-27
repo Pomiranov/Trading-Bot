@@ -3,8 +3,7 @@ import { contentSource } from "@/content-layer/source";
 import { Section } from "@/components/ui/section";
 import { SectionHeader } from "@/components/ui/section-header";
 import { MonoLabel } from "@/components/ui/mono-label";
-import { AsideNote } from "@/components/ui/aside-note";
-import { Reveal } from "@/components/motion/reveal";
+import { RouteSpine } from "@/components/ui/route-spine";
 import { PipelineSpine } from "./pipeline-spine";
 
 /**
@@ -89,38 +88,52 @@ export async function HowItWorksSection({ locale }: { locale: string }) {
     : undefined;
 
   return (
+    /*
+      No `glow` prop.
+
+      This section opened with a white radial pool at `[--glow-y:0%]`, which put
+      its brightest point on the section's own top edge — directly under the
+      hairline divider. Two adjacent horizontal features in the same 40px band
+      read as a seam artefact rather than as depth, and it was the first thing
+      visible when arriving from the audience row. The spine's own drawn line is
+      the entrance to this section now, which is a better one: it arrives *from*
+      the block above instead of drawing a boundary against it.
+    */
     <Section
       id="how-it-works"
       rhythm="major"
       divider
-      glow={<div className="section-glow [--glow-x:50%] [--glow-y:0%]" />}
       className="flex flex-col gap-[var(--space-header-to-body)]"
     >
-      <SectionHeader
-        id="how-it-works"
-        eyebrow={t("eyebrow")}
-        heading={t("heading")}
-        lead={t("lead")}
-        note={t("rulesNote")}
-      />
+      {/*
+        Heading only — no lead, no note.
+
+        Three blocks of prose were removed from this section on owner direction,
+        and the argument for each is that the section already makes the point
+        visually:
+
+          • the lead said "six steps between a candle and an order", which is
+            what six numbered nodes on a spine say by existing
+          • the `rulesNote` carried the Schwager attribution for `osc_range` and
+            `WRD`. Provenance, but bibliographic provenance in a marketing
+            section header — and every node still carries its own `sourceRef`
+            into the Python codebase, which is the verifiable claim that matters
+          • the `loopNote` and the learning-system intro sat below the spine and
+            re-explained the belief update in two paragraphs. The belief gate's
+            own node already shows the three constants that govern it, at the
+            moment the gate is being explained
+
+        The heading was rewritten to carry the section alone. If any of this copy
+        has to come back, it belongs in the docs, not above the diagram.
+      */}
+      <SectionHeader id="how-it-works" eyebrow={t("eyebrow")} heading={t("heading")} />
 
       <PipelineSpine stages={stages} techLabel={techLabel} extras={extras} />
 
-      {/* The loop closes below the last node, as a terminal element on the
-          spine rather than a full-width card. Previously stage 07 was spanned
-          across the whole grid to absorb this note, which made the loop-closer
-          the visually heaviest card in the section and inverted the reading
-          order of the seven stages. Indented to the spine's right-hand column
-          at lg so it reads as hanging off the end of the line. */}
-      <Reveal lift={false} className="lg:pl-[calc(50%+2.25rem)]">
-        <AsideNote className="max-w-[62ch]">{t("loopNote")}</AsideNote>
-      </Reveal>
-
-      <Reveal lift={false}>
-        <div className="max-w-[72ch] text-[length:var(--text-body)] leading-[var(--text-body--line-height)] text-[color:var(--color-text-secondary)]">
-          {learning.intro}
-        </div>
-      </Reveal>
+      {/* Out of the pipeline and on toward `#foundation` — the principles the
+          mechanism above was built under. A plain stem: there are no columns to
+          gather here, the spine is already one line. */}
+      <RouteSpine size="md" className="mt-2" />
     </Section>
   );
 }

@@ -27,12 +27,12 @@ import { BrandMark } from "@/components/ui/brand-mark";
  *
  * ── Motion ──
  *
- * Four loops, all compositor-only (`transform` / `opacity`), so this cannot
+ * Three loops, all compositor-only (`transform` / `opacity`), so this cannot
  * shift layout or cost LCP:
  *   • three orbit groups rotating at 32 / 46 / 61s — coprime, so they never
  *     resync into one visible beat
  *   • the core bloom breathing over 8s
- *   • the existing ring breathe and exit-vector dash flow, kept
+ *   • the ring breathe on desynced 9 / 11 / 13s cycles
  *
  * No keyframe uses `animation-fill-mode`, so the base style *is* the resting
  * state. Under `prefers-reduced-motion` the global reset collapses duration to
@@ -151,17 +151,27 @@ export function QAperture() {
             <path d="M58 200 h14" />
             <path d="M328 200 h14" />
           </g>
-
-          {/* The exit vector the aperture's tail implies: a decision leaving the
-              instrument. The one piece of directional motion that carries
-              meaning, and the dashes flow outward along it. */}
-          <path
-            className="hero-vector"
-            d="M200 200 L 330 300"
-            strokeOpacity="0.16"
-            strokeDasharray="2 6"
-          />
         </g>
+
+        {/*
+          ── Removed: the exit vector and its node ──
+
+          A dashed path ran from the centre out to (330, 300) and terminated in
+          a filled white dot with a ring around it, outside the outermost
+          measurement circle. The intent was "a decision leaving the
+          instrument".
+
+          It did not read that way. Every other element here is concentric or
+          orbital, so a single diagonal breaking out to a lone dot in the
+          lower-right read as a stray artefact — a leftover from a diagram
+          rather than part of the object — which is exactly the note it was
+          removed on. Owner direction, and the aperture is cleaner without it.
+
+          Do not reinstate it as decoration. If a directional "exit" is ever
+          wanted here it has to be composed with the orbits, not laid across
+          them. `.hero-vector` / `@keyframes qf-vector-flow` were deleted from
+          globals.css with it.
+        */}
 
         {/* A single faint trace crossing the aperture every 14s, clipped to the
             rings so it reads as internal instrumentation rather than a line
@@ -177,11 +187,6 @@ export function QAperture() {
             strokeOpacity="0.07"
           />
         </g>
-
-        {/* Exit node, where the tail crosses out. White, matching the fixed
-            reference rather than the orbits. */}
-        <circle cx="330" cy="300" r="3.5" fill="#ffffff" />
-        <circle cx="330" cy="300" r="9" fill="none" stroke="#ffffff" strokeOpacity="0.28" />
       </svg>
 
       {/*

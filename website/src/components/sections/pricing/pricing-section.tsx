@@ -2,15 +2,14 @@ import { getTranslations } from "next-intl/server";
 import { Section } from "@/components/ui/section";
 import { SectionHeader } from "@/components/ui/section-header";
 import { PricingCard } from "@/components/ui/pricing-card";
-import { MonoLabel } from "@/components/ui/mono-label";
+import { RouteSpine } from "@/components/ui/route-spine";
 import { Reveal } from "@/components/motion/reveal";
 
 const PLANS = [1, 2, 3] as const;
 const FEATS = [1, 2, 3, 4] as const;
-const GATES = [1, 2, 3, 4, 5] as const;
 
 /**
- * Three tiers, five Live gates, one CTA.
+ * Three tiers, one CTA.
  *
  * ── Prices ──
  *
@@ -34,12 +33,15 @@ const GATES = [1, 2, 3, 4, 5] as const;
  * rather than taking it as a flag, so the arrangement self-corrects when
  * billing ships instead of relying on someone to remember.
  *
- * ── The Live gates ──
+ * ── The dark-card defect ──
  *
- * They were pill-shaped <li>s — they looked like filter chips and were not
- * interactive. A false affordance in the middle of the most consequential
- * section on the page. They are a checklist now, which is what they always
- * were: requirements for Live access, not options.
+ * The focal card used the `featured` Surface variant, whose `.glass-premium-*`
+ * classes hard-code a dark translucent fill and a white gradient border. On this
+ * paper band that rendered the one actionable tier as a near-black panel with
+ * `.section-paper`'s dark body text on top of it — unreadable, and the single
+ * worst thing on the page. Fixed at the surface, in globals.css, rather than by
+ * threading a `tone` prop through the card: see the note there for why that is
+ * the prescribed repair.
  */
 export async function PricingSection({ locale }: { locale: string }) {
   const t = await getTranslations({ locale, namespace: "pricing" });
@@ -77,11 +79,16 @@ export async function PricingSection({ locale }: { locale: string }) {
         lead={t("lead")}
       />
 
+      {/* The route arrives from the transition band and fans out to the three
+          tiers, then gathers below and continues into `#faq`. Graphite here, not
+          cold blue — `.section-paper` re-points the stroke. */}
+      <RouteSpine variant="fan" lanes={3} size="md" node={false} className="mt-8" />
+
       {/* The focal card is first in DOM order, so on mobile — where the grid
           collapses to one column — the actionable tier is the one a visitor
           reaches first rather than the one they scroll past two placeholders
           to find. */}
-      <ul className="mt-[var(--space-header-to-body)] grid items-stretch gap-[var(--space-card-gap)] md:grid-cols-3">
+      <ul className="mt-6 grid items-stretch gap-[var(--space-card-gap)] md:grid-cols-3">
         {plans.map((plan, i) => (
           <li key={plan.id} className="flex">
             <Reveal index={i} className="flex w-full">
@@ -98,30 +105,35 @@ export async function PricingSection({ locale }: { locale: string }) {
         ))}
       </ul>
 
-      {/* ── Live gates, as requirements ── */}
-      <Reveal index={3} className="mt-[var(--space-block)] flex flex-col gap-5">
-        <MonoLabel>{t("liveGatesHeading")}</MonoLabel>
-        <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {GATES.map((g) => (
-            <li
-              key={g}
-              className="flex items-start gap-3 text-[length:var(--text-caption)] leading-[var(--text-caption--line-height)] text-[color:var(--color-text-secondary)]"
-            >
-              {/* An empty checkbox glyph, not a tick: these are requirements a
-                  visitor has yet to meet, and a tick would imply they already
-                  have. */}
-              <span
-                aria-hidden="true"
-                className="mt-[0.15em] size-3.5 shrink-0 rounded-[var(--radius-xs)] border border-[color:var(--color-border-strong)]"
-              />
-              {t(`liveGate${g}`)}
-            </li>
-          ))}
-        </ul>
-        <p className="max-w-[72ch] text-[length:var(--text-caption)] text-[color:var(--color-text-quaternary)]">
-          {t("ctaNote")}
-        </p>
-      </Reveal>
+      {/*
+        ── Removed: the Live-gate checklist and its footnote ──
+
+        Five requirements ("действующий ключ брокера", "без прав на вывод
+        средств", "заданные пределы риска", "подтверждённое согласие", "доступная
+        остановка") rendered as a 5-up checkbox list, plus a line stating that
+        none of it is currently billed.
+
+        Removed on owner direction. Two reasons it was the right thing to cut
+        rather than restyle: it put a *form-shaped* block with five empty
+        checkboxes directly under the commercial ask, which reads as something to
+        fill in; and every item on it was already stated where it is load-bearing
+        rather than decorative —
+
+          • no withdrawal rights, risk limits, manual stop → `#safety`, as
+            guarantees and limits, at more weight than they had here
+          • a live broker key and explicit consent → the Live card in `#access`,
+            which is where a visitor actually asks for live access
+          • "nothing here is currently billed" → the section lead already says
+            payment is not connected and that this is a planned structure
+
+        The honesty position is unchanged: Explore is the only tier with a price
+        and the only one with a CTA, and the two planned tiers say "Планируется"
+        rather than a number. `PricingCard` derives that from `available`, so it
+        self-corrects when billing ships instead of relying on someone to
+        remember.
+      */}
+
+      <RouteSpine variant="gather" lanes={3} size="md" className="mt-[var(--space-block)]" />
     </Section>
   );
 }

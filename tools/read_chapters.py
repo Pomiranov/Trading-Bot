@@ -450,8 +450,17 @@ def git_snapshot() -> set[str]:
         return set()
 
 
+# Ячейка-заглушка: прочерк любого вида, пусто, отбивка markdown-таблицы. Тире
+# перечислены явно, включая U+2014 и U+2013: у методологической гл.20 §7 стоит
+# «| — | — | — | нет yaml-правил |», и старая проверка `set(name) <= set("-: ")`
+# знала только ASCII-дефис — длинное тире проходило как имя параметра, отсюда
+# REQUIRES_DECISION 1 в сводке против 0 у агента.
+PLACEHOLDER_CHARS = set("-–—−:. \t")
+PLACEHOLDER_WORDS = {"параметр", "нет", "none", "n/a", "-"}
+
+
 def table_first_column(lines: list[str]) -> list[str]:
-    """Первая колонка markdown-таблицы: данные без шапки и разделителя."""
+    """Первая колонка markdown-таблицы: данные без шапки, разделителя и заглушек."""
     names: list[str] = []
     for line in lines:
         if not line.strip().startswith("|"):
@@ -460,7 +469,9 @@ def table_first_column(lines: list[str]) -> list[str]:
         # Обратные апострофы убираем все, а не по краям: в ячейке бывает
         # «`weight` (R1)» — уточнение правила стоит за закрывающим апострофом.
         name = cells[0].replace("`", "").strip() if cells else ""
-        if not name or name == "параметр" or set(name) <= set("-: "):
+        if not name or set(name) <= PLACEHOLDER_CHARS:
+            continue
+        if name.casefold() in PLACEHOLDER_WORDS:
             continue
         names.append(name)
     return names
@@ -846,6 +857,23 @@ def self_test() -> int:
 
     check("«?» из нечитаемого yaml в сверке не участвует",
           forgotten_params(["run_n"], {"run_n", "?"}) == [])
+
+    # §7 методологической главы (гл.20) — таблица-заглушка. Строка взята
+    # дословно из карточки: прочерк здесь U+2014, а не ASCII-дефис.
+    ch20_rows = ["| параметр | файл | варианты | почему не решено |",
+                 "|---|---|---|---|",
+                 "| — | — | — | нет yaml-правил: глава методологическая |"]
+    check("таблица-заглушка §7 → ноль параметров",
+          table_first_column(ch20_rows) == [], str(table_first_column(ch20_rows)))
+
+    check("прочерки любого вида не параметры",
+          table_first_column(["| - |", "| – |", "| −  |", "| n/a |", "|  |"]) == [],
+          str(table_first_column(["| - |", "| – |", "| −  |", "| n/a |", "|  |"])))
+
+    check("настоящее имя рядом с заглушками не теряется",
+          table_first_column(["| — |", "| `swing_lookback` (R2) |"])
+          == ["swing_lookback (R2)"],
+          str(table_first_column(["| — |", "| `swing_lookback` (R2) |"])))
 
     failed_stats = {"rules": ["a.yaml", "b.yaml"], "features": 10, "questions": 6,
                     "decisions": 8, "decision_params": ["x.yaml"],

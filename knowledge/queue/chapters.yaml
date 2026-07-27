@@ -61,9 +61,9 @@ chapters:
   - 695
   - 732
   category: market_theory
-  status: pending
-  card: ''
-  attempts: 0
+  status: done
+  card: knowledge/cards/ch20.md
+  attempts: 1
   last_error: ''
   note: 'приоритет 7: методология против подгонки — прямо в hypothesis_engine'
 - n: 6

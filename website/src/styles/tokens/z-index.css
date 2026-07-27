@@ -1,13 +1,14 @@
 /**
- * Explicit z-index scale (impeccable's z-index-scale rule). Never use
- * arbitrary values like z-50/z-9999 outside this list.
+ * Explicit z-index scale. Never use arbitrary values like z-50 / z-9999
+ * outside this list.
+ *
+ * --z-scene and --z-scene-overlay are gone with the Three.js scene they were
+ * added for. The hero video sits at --z-base inside its own stacking context.
  */
 
 @theme {
   --z-base: 0;
-  --z-scene: 10;
   --z-nav: 40;
-  --z-scene-overlay: 50;
   --z-modal-backdrop: 80;
   --z-modal: 90;
   --z-toast: 100;

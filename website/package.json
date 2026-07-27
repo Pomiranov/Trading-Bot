@@ -6,21 +6,24 @@
     "dev": "next dev --turbopack",
     "build": "next build --turbopack",
     "start": "next start",
+    "typecheck": "tsc --noEmit",
     "lint": "eslint",
-    "check:content": "node scripts/check-content-parity.mjs"
+    "check:content": "node scripts/check-content-parity.mjs",
+    "check:i18n": "node scripts/check-messages-parity.mjs",
+    "check:design": "node scripts/check-design-tokens.mjs",
+    "check:media": "node scripts/check-media.mjs",
+    "check": "npm run check:content && npm run check:i18n && npm run check:design && npm run check:media",
+    "media:poster": "node scripts/media/build-poster.mjs",
+    "build:messages": "node scripts/build-messages.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.6.0",
     "@hookform/resolvers": "^5.4.0",
-    "@react-three/drei": "^10.7.7",
-    "@react-three/fiber": "^9.6.1",
     "@vercel/analytics": "^2.0.1",
     "@vercel/speed-insights": "^2.0.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
-    "gsap": "^3.15.0",
     "lenis": "^1.3.25",
-    "lucide-react": "^1.25.0",
     "motion": "^12.42.2",
     "next": "15.5.20",
     "next-intl": "^4.13.2",
@@ -31,8 +34,6 @@
     "react-hook-form": "^7.82.0",
     "shadcn": "^4.13.1",
     "tailwind-merge": "^3.6.0",
-    "three": "^0.185.1",
-    "tw-animate-css": "^1.4.0",
     "zod": "^4.4.3"
   },
   "devDependencies": {

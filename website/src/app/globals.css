@@ -1,11 +1,34 @@
-@import "tailwindcss";
+/**
+ * `source(none)` disables Tailwind's automatic source detection, so the only
+ * scanned paths are the `@source` directives below. Adding `@source` alone is
+ * not enough — it *extends* auto-detection rather than replacing it.
+ */
+@import "tailwindcss" source(none);
+
+/**
+ * Scan only the application source for class candidates.
+ *
+ * Tailwind v4 auto-detects sources from the project root, which means it also
+ * reads `docs/` and `scripts/` — and it will happily extract a *documentation
+ * example* as a real utility. That is not hypothetical: a placeholder written as
+ * `text-[length:var(--text-a|b|c)]` inside a lint script's hint string was
+ * compiled into `font-size: var(--text-a|b|c)`, which is a CSS parse error that
+ * took `next dev` to a 500 and left `next build` emitting a CSS warning. Writing
+ * that same literal into the QA report reproduced it a second time, from the
+ * report.
+ *
+ * Restricting the scan to `src/` closes the class of bug: prose about utilities
+ * can no longer become utilities. Any new directory containing real markup must
+ * be added here.
+ */
+@source "../../src";
 
 @import "../styles/tokens/color.css";
 @import "../styles/tokens/typography.css";
 @import "../styles/tokens/spacing.css";
+@import "../styles/tokens/radius.css";
 @import "../styles/tokens/motion.css";
 @import "../styles/tokens/z-index.css";
-@import "tw-animate-css";
 @import "shadcn/tailwind.css";
 
 @theme {
@@ -16,9 +39,18 @@
 
 html {
   color-scheme: dark;
+  /* The fixed header is sized to the initial containing block, so it stays
+     320px wide while <main> narrows to 314px once the 6px scrollbar appears.
+     A fixed element escapes body's clip, so the clip must be here too. */
+  overflow-x: clip;
 }
 
 body {
+  /* `clip`, never `hidden`: overflow-hidden on an ancestor silently disables
+     GSAP ScrollTrigger pinning, whereas clip does not create a scroll
+     container. Guards against sub-pixel bleed at very narrow viewports, where
+     the 6px custom scrollbar narrows <main> while the fixed header does not. */
+  overflow-x: clip;
   background: var(--color-bg);
   color: var(--color-text-primary);
   font-family: var(--font-sans);
@@ -40,7 +72,7 @@ body {
 
 /* ─── Premium text selection ─── */
 ::selection {
-  background: rgba(255, 138, 30, 0.22);
+  background: rgba(255, 255, 255, 0.22);
   color: #ffffff;
 }
 
@@ -81,34 +113,116 @@ body::before {
   50% { opacity: 1; }
 }
 
-@keyframes qf-border-flow {
-  0% { background-position: 0% 0%; }
-  100% { background-position: 300% 0%; }
-}
-
-@keyframes qf-shimmer {
-  0% { transform: translateX(-100%); }
-  100% { transform: translateX(200%); }
-}
-
 @keyframes qf-blink {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.25; }
 }
 
-@keyframes qf-fade-up {
-  from { opacity: 0; transform: translateY(16px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
+/* Transform-only, deliberately. An entrance that starts at opacity: 0 with
+   fill-mode `both` makes its subtree ineligible as an LCP candidate for the
+   whole delay — which previously cost the hero visual ~150ms of LCP for no
+   visual gain. Never add an opacity ramp here. */
 @keyframes qf-hero-enter {
-  from { opacity: 0; transform: translateY(24px); }
-  to { opacity: 1; transform: translateY(0); }
+  from { transform: translateY(24px); }
+  to { transform: translateY(0); }
 }
 
-@keyframes qf-float-c {
-  0%, 100% { transform: translateY(0px); }
-  50% { transform: translateY(-6px); }
+/* ─── Hero instrument motion ───────────────────────────────────────────────
+   The hero aperture's motion vocabulary. Four loops, all deliberately slow
+   enough (6–14s) that no single one is ever the thing you are looking at — the
+   panel should read as an instrument that is *powered on*, not as an animation
+   playing.
+
+   Rules every keyframe here obeys:
+
+     • Compositor-only. `opacity`, `transform` and `stroke-dashoffset` exclusively
+       — nothing that triggers layout, so this cannot shift the hero or cost LCP.
+     • The *base* style is the resting state, and no keyframe uses
+       `animation-fill-mode`. Under `prefers-reduced-motion` the global reset
+       collapses duration to 0.01ms and iteration count to 1; with fill-mode
+       `none` the element then simply reverts to its base style. That is the
+       whole reduced-motion story for the hero — a still, correct instrument —
+       and it is why base styles must never be mid-animation values.
+     • No keyframe ends on `opacity: 0` for anything load-bearing. The ping is
+       decorative and may vanish; the rings and the vector may not. */
+
+/* Rings inhale. Opacity only — scaling a stroked circle also scales its stroke
+   width, which reads as a pulse rather than a breath. */
+@keyframes qf-ring-breathe {
+  0%, 100% { opacity: 0.55; }
+  50% { opacity: 1; }
+}
+
+/* The dashed exit vector, flowing outward: a decision leaving the instrument.
+   The value is a multiple of the 8px dash period so the loop is seamless. */
+@keyframes qf-vector-flow {
+  from { stroke-dashoffset: 0; }
+  to { stroke-dashoffset: -32; }
+}
+
+/* A sonar ping at the exit node. Decorative — safe to end invisible. */
+@keyframes qf-node-ping {
+  0% { transform: scale(1); opacity: 0.5; }
+  70%, 100% { transform: scale(2.4); opacity: 0; }
+}
+
+/* A single faint horizontal trace crossing the aperture. The one element that
+   genuinely moves across the panel, and it is nearly invisible by design. */
+@keyframes qf-scan {
+  0%, 12% { transform: translateY(-46px); opacity: 0; }
+  30% { opacity: 1; }
+  70% { opacity: 1; }
+  88%, 100% { transform: translateY(46px); opacity: 0; }
+}
+
+.hero-ring {
+  animation: qf-ring-breathe 9s var(--ease-out-quart, ease-in-out) infinite;
+  transform-origin: center;
+}
+/* Desynced so the three rings never line up into one throb. */
+.hero-ring:nth-of-type(2) { animation-duration: 11s; animation-delay: -3s; }
+.hero-ring:nth-of-type(3) { animation-duration: 13s; animation-delay: -6s; }
+
+.hero-vector {
+  animation: qf-vector-flow 6s linear infinite;
+}
+
+.hero-node-ping {
+  animation: qf-node-ping 4.5s var(--ease-out-expo, ease-out) infinite;
+  transform-origin: 268px 190px;
+}
+
+.hero-scan {
+  animation: qf-scan 14s var(--ease-out-quart, ease-in-out) infinite;
+}
+
+/* ─── Pointer parallax ───
+   Driven by two custom properties set on the wrapper by `pointer-tilt.tsx`.
+   Both default to 0, so with no pointer, no JS, or a coarse pointer the panel
+   sits exactly where it is laid out. The transition smooths the trailing
+   motion; the wrapper stops updating entirely under reduced motion. */
+.hero-tilt {
+  --tilt-x: 0;
+  --tilt-y: 0;
+  transform: translate3d(calc(var(--tilt-x) * 7px), calc(var(--tilt-y) * 7px), 0);
+  transition: transform 500ms var(--ease-out-quart, cubic-bezier(0.25, 1, 0.5, 1));
+  will-change: transform;
+}
+
+/* ─── Section depth ───────────────────────────────────────────────────────
+   A very soft, very large white pool behind a section, fed into the clipped
+   `glow` slot on `ui/section.tsx`. At 3.5% peak alpha over #030303 this is
+   below the threshold of "a glow" and squarely at "the black is not flat" —
+   which is the entire brief. Never raise the alpha to make it visible; if you
+   can see where it ends, it is too strong. */
+.section-glow {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    ellipse 70% 50% at var(--glow-x, 50%) var(--glow-y, 0%),
+    rgba(255, 255, 255, 0.035),
+    transparent 70%
+  );
 }
 
 /* ─── Liquid Glass card effect ─── */
@@ -129,12 +243,85 @@ body::before {
 }
 
 .glass-premium:hover {
-  border-color: rgba(255, 138, 30, 0.14);
+  border-color: var(--color-highlight-border);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.07),
+    inset 0 1px 0 rgba(255, 255, 255, 0.09),
     0 12px 48px rgba(0, 0, 0, 0.5),
-    0 0 0 1px rgba(255, 138, 30, 0.06);
+    0 0 0 1px rgba(255, 255, 255, 0.08);
   transform: translateY(-3px);
+}
+
+/* ─── The fixed header, and the scrim that stops content sliding under it ───
+   `.glass-premium` alone is not enough for the nav. At
+   `rgba(12,12,14,0.62)` over pure black, white body copy passing underneath
+   still transmits at roughly a third of its luminance — legible, and visually
+   colliding with the nav labels painted on top. That was reproducible at every
+   desktop width (worst case: the Brokers lead at ~6300px).
+
+   Two changes, deliberately kept off `.glass-premium` itself so the `glass`
+   Surface variant is unaffected:
+
+     1. `.nav-glass` raises the pill's own opacity and saturation until nothing
+        behind it is readable as text.
+     2. `.nav-scrim` is a gradient that fades the page to black *above* the
+        pill, so content dissolves on approach instead of disappearing under a
+        hard edge. This is the part that reads as premium — the same device
+        Apple and OpenAI use — and it costs one paint-only layer with no blur.
+
+   The scrim is taller than the header (128px vs 78px) so the fade completes
+   below the pill rather than at its edge. */
+.nav-glass {
+  background: rgba(6, 6, 7, 0.86);
+}
+
+/* ─── Restoring the blur that never shipped ───
+   Lightning CSS (Tailwind v4's bundler) collapses `backdrop-filter` +
+   `-webkit-backdrop-filter` down to the *prefixed* property alone, and this
+   engine does not honour the alias. Verified in the compiled output:
+   `.glass-premium` emits only `-webkit-backdrop-filter`, and
+   `getComputedStyle(...).backdropFilter` resolves to `none` on the live page.
+
+   So every "Liquid Glass" surface on the site — the header and the `glass` /
+   `featured` Surface variants — has been rendering as a plain translucent
+   panel with no blur at all since the class was written. That is also why the
+   header overlap looked as bad as it did: with a real blur, content passing
+   underneath would have been smeared illegible on its own.
+
+   Declaring it inside `@supports` keeps Lightning CSS from collapsing it,
+   because the feature query makes the standard property load-bearing rather
+   than a redundant fallback. The scrim above does not depend on this working —
+   legibility must not rest on a filter that a bundler can optimise away. */
+@supports (backdrop-filter: blur(1px)) {
+  .glass-premium,
+  .glass-premium-featured {
+    backdrop-filter: blur(var(--blur-glass));
+  }
+
+  .nav-glass {
+    backdrop-filter: blur(var(--blur-glass)) saturate(140%);
+  }
+}
+
+.nav-scrim {
+  position: absolute;
+  inset-inline: 0;
+  top: 0;
+  height: 128px;
+  pointer-events: none;
+  background: linear-gradient(
+    to bottom,
+    var(--color-bg) 0%,
+    color-mix(in srgb, var(--color-bg) 82%, transparent) 46%,
+    transparent 100%
+  );
+}
+
+/* ─── Anchor clearance ───
+   The no-JS / keyboard-focus path to the same position the Lenis anchor
+   interceptor animates to. NAV_OFFSET in motion/scroll-driver.ts must match —
+   change both together. */
+:where(section[id], main [id]) {
+  scroll-margin-top: 104px;
 }
 
 /* ─── Animated border gradient ─── */
@@ -146,7 +333,7 @@ body::before {
   border-radius: var(--radius-lg);
   box-shadow:
     0 8px 40px rgba(0, 0, 0, 0.5),
-    0 0 80px rgba(255, 138, 30, 0.06);
+    0 0 80px rgba(255, 255, 255, 0.05);
 }
 
 .glass-premium-featured::before {
@@ -157,15 +344,72 @@ body::before {
   padding: 1px;
   background: linear-gradient(
     135deg,
-    rgba(255, 138, 30, 0.5) 0%,
-    rgba(255, 180, 94, 0.15) 40%,
+    rgba(255, 255, 255, 0.42) 0%,
+    rgba(255, 255, 255, 0.14) 40%,
     rgba(255, 255, 255, 0.04) 60%,
-    rgba(255, 138, 30, 0.3) 100%
+    rgba(255, 255, 255, 0.28) 100%
   );
   -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
   -webkit-mask-composite: xor;
   mask-composite: exclude;
   pointer-events: none;
+}
+
+/* ─── The card primitive ───────────────────────────────────────────────────
+   One hover/focus language for every card on the page, so a block never has to
+   hand-roll its own. `ui/surface.tsx` owns the border and the resting
+   background; this class owns only the *state change*, which is why it works
+   unchanged on both the flat and the raised variant.
+
+   --card-bg / --card-bg-hover are supplied by Surface per variant. Changing
+   background-color (rather than overlaying a translucent ::after) keeps the
+   card's own text at full contrast — a white veil over the content would wash
+   the body copy.
+
+   Hover is gated behind `hover: hover` + `pointer: fine`: on a touch screen a
+   :hover rule sticks after a tap, which reads as a stuck selected state. Focus
+   uses :focus-within so a card containing a link still shows the highlight when
+   that link is keyboard-focused, and :focus-visible for a card that is itself
+   focusable. No information is hover-only anywhere. */
+.card-premium {
+  --card-bg: var(--color-surface);
+  --card-bg-hover: var(--color-panel);
+  background-color: var(--card-bg);
+  box-shadow: var(--shadow-card-rest);
+  transition:
+    border-color var(--duration-base, 0.4s) var(--ease-out-expo, cubic-bezier(0.16, 1, 0.3, 1)),
+    background-color var(--duration-base, 0.4s) var(--ease-out-expo, cubic-bezier(0.16, 1, 0.3, 1)),
+    box-shadow var(--duration-base, 0.4s) var(--ease-out-expo, cubic-bezier(0.16, 1, 0.3, 1)),
+    transform var(--duration-base, 0.4s) var(--ease-out-expo, cubic-bezier(0.16, 1, 0.3, 1));
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .card-premium:hover {
+    border-color: var(--color-highlight-border);
+    background-color: var(--card-bg-hover);
+    box-shadow: var(--shadow-card-hover);
+  }
+}
+
+.card-premium:focus-visible,
+.card-premium:focus-within {
+  border-color: var(--color-highlight-border);
+  background-color: var(--card-bg-hover);
+  box-shadow: var(--shadow-card-hover);
+}
+
+/* The lift is the one part that must yield to prefers-reduced-motion; the
+   border/background/shadow highlight is not motion and stays. */
+@media (prefers-reduced-motion: no-preference) {
+  @media (hover: hover) and (pointer: fine) {
+    .card-premium:hover {
+      transform: translateY(-6px);
+    }
+  }
+
+  .card-premium:focus-within {
+    transform: translateY(-6px);
+  }
 }
 
 /* ─── Liquid Glass Button base ─── */
@@ -208,18 +452,6 @@ body::before {
   left: 160%;
 }
 
-/* ─── Glow text ─── */
-.text-glow-orange {
-  text-shadow:
-    0 0 20px rgba(255, 138, 30, 0.5),
-    0 0 40px rgba(255, 138, 30, 0.2);
-}
-
-/* ─── Section separators: skip header (fixed) and hero ─── */
-main > *:not(:first-child):not(:nth-child(2)) {
-  border-top: 1px solid rgba(255, 255, 255, 0.04);
-}
-
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -228,6 +460,24 @@ main > *:not(:first-child):not(:nth-child(2)) {
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
+  }
+
+  /**
+   * Scroll-reveal safety net.
+   *
+   * Every reveal wrapper is server-rendered with an inline `opacity: 0` and a
+   * translate, because the preference is not knowable on the server (see
+   * motion/reveal.tsx). Motion clears that on the client, but if the
+   * IntersectionObserver never fires — or JS fails, or an error boundary trips —
+   * the content would stay invisible. For a reduced-motion user there is no
+   * entrance to preserve, so pin these to their final state unconditionally and
+   * let the page render as plain static content.
+   *
+   * `!important` is required: it has to beat Motion's own inline style.
+   */
+  [data-reveal] {
+    opacity: 1 !important;
+    transform: none !important;
   }
 }
 
@@ -240,23 +490,30 @@ main > *:not(:first-child):not(:nth-child(2)) {
   --color-popover: var(--color-panel);
   --color-popover-foreground: var(--color-text-primary);
   --color-primary: var(--color-accent);
-  --color-primary-foreground: #050505;
+  --color-primary-foreground: var(--color-bg);
   --color-secondary: var(--color-surface);
   --color-secondary-foreground: var(--color-text-primary);
+  /* shadcn's `muted` is a SURFACE. Our muted status colour is
+     --color-neutral (see tokens/color.css) precisely to avoid this
+     collision — do not rename it back. */
   --color-muted: var(--color-surface);
   --color-muted-foreground: var(--color-text-secondary);
   --color-destructive: var(--color-danger);
   --color-input: var(--color-border);
   --color-ring: var(--color-accent);
-
-  --radius-sm: calc(var(--radius) * 0.6);
-  --radius-md: calc(var(--radius) * 0.8);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) * 1.6);
 }
 
+/**
+ * shadcn derives its radii from a single `--radius`. That derivation used to
+ * live in the `@theme inline` block above as
+ * `--radius-lg: var(--radius)` etc., which meant shadcn silently owned the
+ * whole page's corner scale — and pinned it to 8px. The scale now lives in
+ * `styles/tokens/radius.css`; `--radius` is kept only because shadcn's own
+ * stylesheet reads it directly, and is set to the card value so anything still
+ * reaching for it lands on the same 16px.
+ */
 :root {
-  --radius: 0.5rem;
+  --radius: 1rem;
 }
 
 @layer base {

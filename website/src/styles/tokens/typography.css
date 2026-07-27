@@ -1,42 +1,88 @@
 /**
- * QuantFlow type system — Premium Institutional.
+ * Quant type system.
  *
- * Display: Geist (ultra-large hero, tight tracking).
- * Body: Geist (16px, relaxed rhythm).
- * Mono: Geist Mono (data, labels, status pills).
- * Serif: Cormorant Garamond — one accent use: hero tagline italic word.
+ * Display / body: Geist. Mono: Geist Mono — technical labels, module names and
+ * status pills only, never body copy. No serif: the previous
+ * Cormorant accent was used on one internal page only and cost four extra
+ * font files on every request.
+ *
+ * Six roles, and only six. The previous system declared three fixed and three
+ * fluid steps but shipped 13 distinct rendered sizes, because components
+ * reached for arbitrary `text-[Npx]` instead. `scripts/check-design-tokens.mjs`
+ * now fails the build when that happens — add a role here rather than an
+ * arbitrary value there.
+ *
+ * Both families load latin + cyrillic. Russian is the primary language;
+ * every size below is chosen to read well in Cyrillic, which sets slightly
+ * wider and benefits from marginally looser tracking than Latin at small sizes.
  */
 
 @theme {
   --font-sans: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-mono), ui-monospace, "SFMono-Regular", monospace;
-  --font-serif: var(--font-serif), ui-serif, Georgia, serif;
 
-  /* Eyebrow / mono labels */
+  /* 1. Eyebrow / mono label — status pills, step numbers, module names */
   --text-label: 11px;
   --text-label--line-height: 1.4;
-  --text-label--letter-spacing: 0.16em;
+  --text-label--letter-spacing: 0.14em;
 
+  /* 2. Caption — table cells, metadata, footnotes, disclosure lines */
+  --text-caption: 13px;
+  --text-caption--line-height: 1.5;
+  --text-caption--letter-spacing: -0.006em;
+
+  /* 3. Body */
   --text-body: 16px;
   --text-body--line-height: 1.65;
   --text-body--letter-spacing: -0.011em;
 
+  /* 4. Lead — section intros, card bodies */
   --text-lead: 18px;
   --text-lead--line-height: 1.6;
   --text-lead--letter-spacing: -0.013em;
 
-  /* Hero: fluid from 36px → 60px — elegant restraint, not loud dominance */
-  --text-hero: clamp(2.25rem, 3.8vw, 3.75rem);
-  --text-hero--line-height: 1.08;
-  --text-hero--letter-spacing: -0.03em;
+  /* 5. Card / sub-heading */
+  --text-h3: 20px;
+  --text-h3--line-height: 1.35;
+  --text-h3--letter-spacing: -0.018em;
 
-  /* Section headings: 28px → 48px fluid */
+  /* 6a. Section heading — 28px → 48px fluid */
   --text-section-heading: clamp(1.75rem, 3.5vw, 3rem);
   --text-section-heading--line-height: 1.06;
   --text-section-heading--letter-spacing: -0.028em;
 
-  /* Display number (stat tiles) */
+  /* 6b. Hero — 40px → 72px fluid.
+     Raised from clamp(2.25rem, 3.8vw, 3.75rem), which rendered 54.72px at 1440
+     against a 640px-wide visual: the instrument won the composition and the
+     headline read as a caption to it. At 66px the headline dominates again,
+     which is what the reference shows. Re-checked in RU, where the longer
+     words set the 3-line break. */
+  --text-hero: clamp(2.5rem, 4.6vw, 4.5rem);
+  --text-hero--line-height: 1.08;
+  --text-hero--letter-spacing: -0.03em;
+
+  /* Display number — stat tiles. Consumed by ui/stat.tsx. */
   --text-display-number: clamp(1.75rem, 3vw, 2.5rem);
   --text-display-number--line-height: 1;
   --text-display-number--letter-spacing: -0.04em;
+}
+
+/**
+ * Two additional roles. Plain `:root` — see tokens/color.css for why an
+ * unconsumed `@theme` variable resolves to the empty string, and why anything
+ * read only through `text-[length:var(--…)]` belongs here instead.
+ */
+:root {
+  /* Node title on the pipeline spine — between h3 and a section heading. The
+     spine's plain sentence is the thing actually being read; at --text-h3 it
+     sat level with the card's own metadata and the hierarchy collapsed. */
+  --text-h2-sub: clamp(1.25rem, 2vw, 1.5rem);
+  --text-h2-sub--line-height: 1.3;
+  --text-h2-sub--letter-spacing: -0.02em;
+
+  /* The 01 / 02 / 03 in Foundation. Promoted from an 11px aria-hidden label:
+     three principles that build on each other need their order to read. */
+  --text-numeral: clamp(2rem, 4vw, 3.25rem);
+  --text-numeral--line-height: 1;
+  --text-numeral--letter-spacing: -0.04em;
 }

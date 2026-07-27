@@ -6,12 +6,35 @@
  */
 
 @theme {
-  --duration-micro: 150ms;
-  --duration-base: 300ms;
-  --duration-reveal: 600ms;
+  --duration-micro: 150ms; /* colour / opacity on hover */
+  --duration-base: 300ms; /* card state change */
+  --duration-reveal: 800ms; /* scroll entrance — the reference's 0.8s */
   --duration-count-up: 700ms;
 
   --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
   --ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);
   --ease-lenis: cubic-bezier(0.32, 0, 0.15, 1);
+}
+
+/**
+ * Plain `:root` — these are read from CSS `animation` shorthands in
+ * globals.css, which Tailwind does not scan for theme-variable usage. See
+ * tokens/color.css for the full explanation of the tree-shaking trap.
+ */
+:root {
+  --duration-panel: 500ms; /* tab / panel swap */
+
+  /**
+   * Q-aperture orbit periods. Three coprime values, so the rings never resync
+   * into a single visible beat — the panel should read as powered on, never as
+   * an animation playing. If these ever share a common factor the aperture
+   * develops a pulse, which is the exact thing that would make it look cheap.
+   */
+  --duration-orbit-a: 32s;
+  --duration-orbit-b: 46s;
+  --duration-orbit-c: 61s;
+
+  /* The reference's "quint". Already the literal inside motion/reveal.tsx —
+     named here so the CSS and the Framer transitions read as one system. */
+  --ease-out-quint: cubic-bezier(0.22, 1, 0.36, 1);
 }

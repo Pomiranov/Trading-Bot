@@ -1,16 +1,46 @@
 /**
  * Spacing rhythm. Tailwind v4's default scale (--spacing: 0.25rem) already
- * gives a 4px baseline for all utility spacing — this file adds only the
- * semantic, page-level tokens the brief calls for on top of that.
+ * gives a 4px baseline for utility spacing — this file adds only the semantic,
+ * page-level tokens.
+ *
+ * Three vertical steps, not one. Every section previously used the same
+ * 201.6px padding, which reads as a metronome rather than a rhythm: nothing
+ * groups, nothing breathes, and the eye gets no signal about where one part of
+ * the argument ends and the next begins. `major` opens a new movement,
+ * `default` is the norm, `tight` binds sections that belong together.
  */
 
 @theme {
-  /* Section vertical rhythm — hairline borders as the primary separator,
-     never heavy dividers. Desktop 160-240px between sections. */
-  --space-section-y: clamp(96px, 14vw, 240px);
+  --space-section-y: clamp(96px, 11vw, 176px);
+  --space-section-y-major: clamp(128px, 15vw, 232px);
+  --space-section-y-tight: clamp(72px, 8vw, 112px);
 
-  /* Desktop page padding / 12-col grid gutter per the brief. */
   --space-page-x: clamp(24px, 8vw, 120px);
   --space-grid-gutter: 24px;
-  --space-content-max: 1440px;
+
+  /* One content width for the whole page. 1280px matches the header's own max
+     width, so the header and every section share a single left edge at every
+     viewport — previously there were 7 different edges across 7 widths. */
+  --space-content-max: 1280px;
+
+  /* The one legitimately narrow column: long-form reading (FAQ answers). */
+  --space-prose-max: 68ch;
+}
+
+/**
+ * The section-*internal* scale. Plain `:root` rather than `@theme` for the
+ * reason documented at length in tokens/color.css — these are read through
+ * arbitrary values and inline styles, and an unconsumed `@theme` variable
+ * resolves to the empty string.
+ *
+ * Previously ad-hoc: `mt-14` in five sections, `mt-12` in three, `mt-10` in
+ * two, each chosen per component with no shared meaning. Three roles is enough.
+ * The distance from a section header to its first content is a different
+ * distance from the one between two blocks inside that content, and both are
+ * different again from the gutter between sibling cards.
+ */
+:root {
+  --space-header-to-body: clamp(48px, 5vw, 72px);
+  --space-block: clamp(32px, 3.5vw, 48px);
+  --space-card-gap: 20px;
 }

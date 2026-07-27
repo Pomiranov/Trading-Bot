@@ -1,47 +1,178 @@
 /**
- * QuantFlow color system — Premium Institutional Dark.
+ * Quant color system — monochrome for meaning, cold blue for light.
  *
- * Ultra-deep blacks, single orange accent family, liquid glass layer.
- * Orange sits at ~3% of pixels max (institutional restraint).
+ * ── The rule, as amended for the approved reference ──
+ *
+ * The palette is monochrome for *everything that carries meaning*. The identity
+ * is black, white and the greys between them; emphasis is carried by luminance
+ * and weight, never by a tint.
+ *
+ * Cold blue exists as **light, not as ink**. It may appear in `box-shadow`, in
+ * a `radial-gradient`, and as an SVG `stroke` on decorative geometry — the
+ * hero aperture's orbits, the pipeline spine, connector lines. It may never be
+ * a text colour, a background fill, a status colour, or a CTA fill. That
+ * boundary is enforced by the `cyan-as-ink` rule in
+ * `scripts/check-design-tokens.mjs`, so it cannot drift back into the palette
+ * one component at a time.
+ *
+ * Peak alpha for anything cyan is 0.28, and only on a stroke or a shadow. The
+ * test is simple: if a reviewer can name the colour of the page, it is too
+ * strong. That ceiling is what separates "cold signal light" from crypto-neon.
+ *
+ * Trade semantics are unchanged and remain the only other colour: green means a
+ * confirmed/healthy state, red means risk. Both are deliberately desaturated so
+ * they read as data, and every status also carries a text label so the page
+ * survives greyscale and colour-blindness.
+ *
+ * Every text token below is contrast-checked against its own background and the
+ * ratio is recorded beside it. Nothing carrying text may go below 4.5:1 — that
+ * floor is --color-text-quaternary on black, and --color-on-paper-muted on
+ * paper. Anything dimmer is decorative only.
  */
 
 @theme {
-  --color-bg: #050505;
+  /* ─── Surfaces ─── */
+  --color-bg: #030303;
   --color-surface: #0a0a0a;
   --color-panel: #111111;
-  --color-border: rgba(255, 255, 255, 0.06);
-  --color-border-subtle: rgba(255, 255, 255, 0.04);
+  /* Hover/selected step above --color-panel. Used by the card primitive. */
+  --color-panel-raised: #171717;
 
-  --color-text-primary: #ffffff;
-  --color-text-secondary: rgba(255, 255, 255, 0.7);
-  --color-text-tertiary: rgba(255, 255, 255, 0.38);
+  /* Warm paper — the inverted band. Text on paper uses the --color-on-paper-*
+     family declared in the :root block at the foot of this file. */
+  --color-paper: #f4f2ec;
 
-  /* Signal Orange — the signature color family */
-  --color-accent: #ff8a1e;
-  --color-accent-highlight: #ffb45e;
-  --color-accent-dim: rgba(255, 138, 30, 0.45);
-  --color-accent-glow: rgba(255, 138, 30, 0.15);
-  --color-accent-glow-strong: rgba(255, 138, 30, 0.28);
+  /* ─── Lines ─── */
+  --color-border: rgba(255, 255, 255, 0.1); /* hairline, decorative */
+  --color-border-strong: rgba(255, 255, 255, 0.35); /* 3.0:1 — interactive edges */
+  --color-line-light: rgba(0, 0, 0, 0.1); /* for use on --color-paper */
 
-  /* Success */
-  --color-success: #2ce97b;
-  --color-success-dim: rgba(44, 233, 123, 0.18);
+  /* ─── Text ─── */
+  --color-text-primary: #ffffff; /* 20.4:1 */
+  --color-text-secondary: rgba(255, 255, 255, 0.72); /* 10.4:1 */
+  --color-text-tertiary: rgba(255, 255, 255, 0.56); /*  6.5:1 */
+  --color-text-quaternary: rgba(255, 255, 255, 0.48); /*  4.9:1 — hard floor */
 
-  /* Strategy status */
-  --color-live: var(--color-accent);
-  --color-frozen: var(--color-text-tertiary);
-  --color-stabilized: var(--color-text-secondary);
+  /* ─── Accent — white. Action, emphasis, focus ───
+     Kept under the name `accent` because ~25 call sites reference it; the value
+     is now pure white so a filled CTA is white-on-black and an emphasised label
+     simply resolves to the primary text colour. Never reintroduce a hue here. */
+  --color-accent: #ffffff; /* 20.4:1 — and bg-on-accent is also 20.4:1 */
+  /* A white fill cannot be brightened on hover, so it darkens instead. */
+  --color-accent-hover: rgba(255, 255, 255, 0.88);
+  --color-accent-glow: rgba(255, 255, 255, 0.1);
 
-  /* Danger */
-  --color-danger: #e5484d;
-  --color-danger-dim: rgba(229, 72, 77, 0.18);
+  /* ─── Highlight — the hover/lift language for cards and panels ─── */
+  --color-highlight-border: rgba(255, 255, 255, 0.28);
+  --color-highlight-bg: rgba(255, 255, 255, 0.045);
+  /* Barely-there fill for outline controls and inputs at rest. */
+  --color-fill-subtle: rgba(255, 255, 255, 0.03);
+  --shadow-cta-rest: 0 4px 20px rgba(255, 255, 255, 0.1);
+  --shadow-cta-hover: 0 8px 30px -6px rgba(255, 255, 255, 0.18);
+  --shadow-card-hover:
+    0 18px 48px -12px rgba(0, 0, 0, 0.75), 0 0 0 1px rgba(255, 255, 255, 0.08),
+    0 0 32px -8px rgba(255, 255, 255, 0.09);
+  --shadow-card-rest: 0 1px 2px rgba(0, 0, 0, 0.4);
 
-  /* Liquid Glass layer — glass reads as elevation / material */
-  --color-glass-surface: rgba(12, 12, 14, 0.6);
-  --color-glass-surface-strong: rgba(10, 10, 12, 0.82);
-  --color-glass-border: rgba(255, 255, 255, 0.08);
+  /* ─── Success — healthy / confirmed trade state only ─── */
+  /* Desaturated from #22e58b so it reads as data next to pure white. */
+  --color-success: #7fd8a8; /* 11.6:1 */
+  --color-success-dim: rgba(127, 216, 168, 0.14);
+
+  /* ─── Danger — risk / negative trade state only ─── */
+  --color-danger: #f08a9c; /*  8.9:1 */
+  --color-danger-dim: rgba(240, 138, 156, 0.14);
+
+  /* ─── Neutral status — planned, frozen, inactive ─── */
+  /* NOT --color-muted: shadcn's bridge in globals.css claims that name for a
+     surface colour, which would silently make every muted pill invisible. */
+  --color-neutral: #8a8a8a; /*  5.6:1 */
+
+  /* ─── Glass — HUD overlays only, never ordinary cards ─── */
+  --color-glass-surface: rgba(12, 12, 14, 0.62);
+  --color-glass-surface-strong: rgba(8, 8, 10, 0.86);
+  --color-glass-border: rgba(255, 255, 255, 0.1);
   --color-glass-highlight: rgba(255, 255, 255, 0.05);
-  --color-glass-glow: rgba(255, 138, 30, 0.06);
   --blur-glass: 24px;
-  --blur-glass-sm: 12px;
+}
+
+/**
+ * ── Everything below is in a plain `:root`, not in `@theme`, and that is
+ *    load-bearing ──
+ *
+ * Tailwind v4 emits a `@theme` variable only when it can see a utility that
+ * consumes it. Measured on this build: `--radius-xl` was declared in `@theme`
+ * and `getPropertyValue('--radius-xl')` returned the empty string, so any
+ * component writing `borderRadius: "var(--radius-xl)"` inline got nothing —
+ * silently, with no error and no failing test.
+ *
+ * Every token here is consumed either through an arbitrary value
+ * (`bg-[color:var(--color-paper-surface)]`), through an inline `style`, or
+ * through an SVG `stroke` attribute. None of those three need the variable
+ * registered in the theme — arbitrary values compile straight to
+ * `background-color: var(--color-paper-surface)` — but all three break if the
+ * declaration gets tree-shaken. A plain `:root` cannot be tree-shaken, so this
+ * is the safe home for them.
+ *
+ * Rule of thumb: if a token is only ever read via `var()`, declare it here. Put
+ * it in `@theme` only when you genuinely need a bare utility class for it.
+ */
+:root {
+  /* ─── Elevated ground ───
+     For the two contained panels — the hero and the closing CTA. One step
+     above --color-bg, so a panel inset from the page edge reads as an object
+     sitting *on* the page rather than as a border drawn on it. */
+  --color-bg-elevated: #060607;
+
+  /* ─── Inverted band ───────────────────────────────────────────────────────
+     Two light bands maximum on the page (Foundation, Execution/Pricing). The
+     deep black base is the identity; paper is punctuation, not a second theme.
+
+     Every ratio here is measured against --color-paper (#f4f2ec), not against
+     --color-bg. None of the contrast figures elsewhere in this file carry over
+     to a light surface — that is the whole reason these are separate tokens
+     rather than an `invert` filter. */
+  --color-paper-surface: #ffffff; /* cards sitting on paper */
+  --color-on-paper: #0a0a0a; /* 17.4:1 on paper */
+  --color-on-paper-secondary: rgba(10, 10, 10, 0.74); /*  9.9:1 */
+  --color-on-paper-muted: rgba(10, 10, 10, 0.6); /*  6.0:1 — floor on paper */
+  --color-border-on-paper: rgba(0, 0, 0, 0.12);
+  --color-border-on-paper-strong: rgba(0, 0, 0, 0.3);
+  --color-paper-hover: #faf9f6; /* card hover on paper */
+
+  /* ─── Cold blue — LIGHT ONLY ───────────────────────────────────────────────
+     Read the doctrine at the top of this file before using any of these.
+
+     Permitted: `box-shadow`, `radial-gradient`, SVG `stroke` on decorative
+     geometry (aperture orbits, pipeline spine, connectors).
+     Forbidden: `color`, `background-color`, any status colour, any CTA fill.
+
+     Enforced by the `cyan-as-ink` rule in scripts/check-design-tokens.mjs.
+     Peak alpha anywhere is 0.28 and only on a stroke or a shadow. */
+  --color-signal: #7cc8ff; /* decorative stroke */
+  --color-signal-core: #b8e3ff; /* aperture core, node centres */
+  --color-signal-dim: rgba(124, 200, 255, 0.16);
+  --color-signal-line: rgba(124, 200, 255, 0.28); /* the ceiling */
+
+  /* Glow sizes, not colours: `sm` is an edge, `md` is a node, `lg` is the
+     ambient pool behind the hero aperture. */
+  --glow-signal-sm: 0 0 16px rgba(124, 200, 255, 0.18);
+  --glow-signal-md: 0 0 40px rgba(124, 200, 255, 0.16);
+  --glow-signal-lg: 0 0 120px rgba(124, 200, 255, 0.12);
+  --glow-aperture: radial-gradient(
+    circle at 50% 45%,
+    rgba(124, 200, 255, 0.2) 0%,
+    rgba(124, 200, 255, 0.06) 35%,
+    transparent 68%
+  );
+
+  /* ─── Panel shadows ───
+     The two contained panels sit on the page rather than in it: one large,
+     very soft drop, no spread, no second ring. */
+  --shadow-panel: 0 24px 80px -32px rgba(0, 0, 0, 0.9);
+
+  /* Card hover on paper. A white glow is invisible on #f4f2ec, so the inverted
+     equivalent is a soft dark drop — the card lifts *off* the paper. */
+  --shadow-card-hover-on-paper:
+    0 18px 40px -14px rgba(0, 0, 0, 0.18), 0 0 0 1px rgba(0, 0, 0, 0.06);
 }

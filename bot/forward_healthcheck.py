@@ -29,11 +29,15 @@ if hasattr(sys.stdout, "reconfigure"):
 if hasattr(sys.stderr, "reconfigure"):
     sys.stderr.reconfigure(encoding="utf-8")
 
+import json
 import logging
 import os
+import re
 import time
-from datetime import datetime, timezone
+from datetime import date, datetime, timedelta, timezone
+from datetime import time as dtime
 from pathlib import Path
+from typing import NamedTuple
 
 import psycopg2
 from dotenv import load_dotenv
@@ -54,11 +58,16 @@ STRATEGY_ID = "osc_range_moex_d1_fwd"
 TICKERS = ["SBER", "GAZP", "LKOH", "NVTK", "ROSN", "TATN",
            "MGNT", "MOEX", "PLZL", "CHMF", "ALRS", "SNGS"]
 
-# Допуск в календарных днях. В норме возраст последнего бара = 1 день:
-# прогон в 00:15 обрабатывает бар за прошлый день. MOEX торгует и в выходные,
-# так что бары есть почти каждый календарный день; допуск 2 переживает один
-# пропущенный прогон и короткие праздники (длинные новогодние — дадут тревогу).
-MAX_AGE_DAYS = int(os.getenv("FWD_MAX_AGE_DAYS", "2"))
+# Допуск в календарных днях для проверки «свечи не поступают» (A2). В норме
+# возраст последней свечи = 1 день: прогон в 00:15 грузит бар за прошлый день.
+MAX_AGE_DEFAULT = 2
+
+# Выше этого порог не поднять ничем. Сторож — защита, а защита не должна тихо
+# ослабляться из файла с настройками: 26.07 ровно это и произошло — процесс с
+# поднятым FWD_MAX_AGE_DAYS сказал «форвард жив» при возрасте бара 14 дней.
+# .env может только УЖЕСТОЧИТЬ (1..3); значение выше игнорируется, и об этом
+# пишется в само сообщение, а не только в лог.
+MAX_AGE_HARD_LIMIT = 3
 
 DB_ATTEMPTS = 3      # Docker Desktop может дотягиваться после логона
 DB_RETRY_SEC = 10
@@ -66,7 +75,40 @@ DB_CONNECT_TIMEOUT = 10
 
 FORWARD_LOG = ROOT / "logs" / "forward_d1.log"
 
+# Память между запусками: чем было last_candle_time в прошлый раз. Нужна для
+# проверки разрыва (A3) — прыжок состояния через даты свечей иначе не увидеть,
+# forward_state истории не хранит. Своя таблица не заводится намеренно: сторож
+# остаётся read-only по БД и не зависит от миграций того, что он охраняет.
+STATE_FILE = ROOT / "bot" / "data" / "forward_healthcheck_state.json"
+
 logger = logging.getLogger("quantflow.healthcheck")
+
+
+def _max_age_days() -> tuple[int, str | None]:
+    """(действующий порог, пометка для сообщения или None).
+
+    Пометка возвращается наружу, а не только логируется: попытка ослабить
+    сторожа должна быть видна в Telegram, иначе она снова потеряется.
+    """
+    raw = os.getenv("FWD_MAX_AGE_DAYS")
+    if raw is None or raw.strip() == "":
+        return MAX_AGE_DEFAULT, None
+    try:
+        value = int(raw)
+    except ValueError:
+        return (MAX_AGE_DEFAULT,
+                f"⚠ FWD_MAX_AGE_DAYS={raw!r} — не число, взят дефолт {MAX_AGE_DEFAULT}")
+    if value > MAX_AGE_HARD_LIMIT:
+        return (MAX_AGE_HARD_LIMIT,
+                f"⚠ порог из .env ({value}) проигнорирован, "
+                f"взят жёсткий предел {MAX_AGE_HARD_LIMIT}")
+    if value < 1:
+        # 0 или отрицательное — тревога каждый день, то есть сторож в шуме.
+        return 1, f"⚠ FWD_MAX_AGE_DAYS={value} поднято до 1"
+    return value, None
+
+
+MAX_AGE_DAYS, MAX_AGE_NOTE = _max_age_days()
 
 
 def _setup_logging() -> None:
@@ -84,8 +126,19 @@ def _setup_logging() -> None:
 
 # ── Чтение БД ────────────────────────────────────────────────────────────
 
-def read_state() -> tuple[list[tuple[str, datetime]], datetime | None]:
-    """(строки forward_state, max(candles.time)). Только SELECT.
+class Snapshot(NamedTuple):
+    """Всё, что сторож прочитал из БД за один заход."""
+    rows: list[tuple[str, datetime]]        # forward_state
+    candles_max: datetime | None            # max(candles.time) по нашим тикерам
+    candle_dates: dict[str, list[date]]     # тикер → даты баров D1 (окно проверок)
+
+
+def read_state(prev: dict[str, date] | None = None) -> Snapshot:
+    """Снимок состояния. Только SELECT, ничего не пишем.
+
+    prev — прошлые last_candle_time по тикерам: от них зависит, с какой даты
+    выгружать даты свечей (окно должно накрыть и разрыв A3, и необработанные
+    бары A1).
 
     Исключение наружу — его ловит main() и шлёт «БД недоступна».
     """
@@ -120,9 +173,32 @@ def read_state() -> tuple[list[tuple[str, datetime]], datetime | None]:
                 (TICKERS,),
             )
             candles_max = cur.fetchone()[0]
+
+            # Даты баров начиная с самого раннего интересного момента: минимум
+            # из прошлых и текущих last_candle_time. Раньше грузить незачем,
+            # позже — потеряем разрыв.
+            anchors = [ts for _, ts in rows]
+            since = min(anchors).astimezone(timezone.utc) if anchors else None
+            if prev:
+                earliest_prev = min(prev.values())
+                since_prev = datetime.combine(earliest_prev, dtime.min, tzinfo=timezone.utc)
+                since = min(since, since_prev) if since else since_prev
+
+            candle_dates: dict[str, list[date]] = {}
+            if since is not None:
+                cur.execute(
+                    """
+                    SELECT ticker, time FROM candles
+                    WHERE timeframe = '1d' AND ticker = ANY(%s) AND time >= %s
+                    ORDER BY ticker, time
+                    """,
+                    (TICKERS, since - timedelta(days=1)),
+                )
+                for ticker, ts in cur.fetchall():
+                    candle_dates.setdefault(ticker, []).append(_utc_date(ts))
     finally:
         conn.close()
-    return rows, candles_max
+    return Snapshot(rows, candles_max, candle_dates)
 
 
 # ── Вердикт ──────────────────────────────────────────────────────────────
@@ -133,67 +209,207 @@ def _utc_date(value: datetime):
     return value.astimezone(timezone.utc).date()
 
 
+# ── Память между запусками ───────────────────────────────────────────────
+
+def read_saved_state() -> tuple[dict[str, date] | None, str | None]:
+    """(прошлые даты по тикерам, пометка). None — базы сравнения нет.
+
+    Любая проблема с файлом = «базы нет»: сторож не должен падать из-за
+    своей же памяти, а ложная тревога о разрыве хуже пропущенной.
+    """
+    if not STATE_FILE.exists():
+        return None, "база сравнения создана — разрыв проверяется со следующего запуска"
+    try:
+        data = json.loads(STATE_FILE.read_text(encoding="utf-8"))
+        if data.get("strategy_id") != STRATEGY_ID:
+            return None, (f"база сравнения была по {data.get('strategy_id')!r} — "
+                          f"перезаписана под {STRATEGY_ID}")
+        saved = {t: date.fromisoformat(v) for t, v in (data.get("tickers") or {}).items()}
+        return (saved or None), (None if saved else "база сравнения пуста — перезаписана")
+    except Exception as exc:
+        return None, f"база сравнения повреждена ({first_line(exc)}) — перезаписана"
+
+
+def save_state(dates: dict[str, date]) -> None:
+    """Атомарная запись: tmp + replace, как в bot/risk/state_store.py:48-52.
+
+    Без portalocker: писатель один (сторож, раз в сутки), а лишняя зависимость
+    расширила бы импорт-бюджет сторожа.
+    """
+    STATE_FILE.parent.mkdir(parents=True, exist_ok=True)
+    payload = {
+        "strategy_id": STRATEGY_ID,
+        "tickers": {t: d.isoformat() for t, d in sorted(dates.items())},
+        "saved_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+    }
+    tmp = STATE_FILE.with_suffix(".tmp")
+    tmp.write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
+    tmp.replace(STATE_FILE)
+
+
+# ── Диагностика ночного прогона ──────────────────────────────────────────
+
+_LOG_TS = re.compile(r"^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})")
+LOG_TAIL_BYTES = 64 * 1024
+
+
+def _last_log_entry() -> datetime | None:
+    """Время последней датированной строки forward_d1.log.
+
+    Читается хвост, а не весь файл: лог растёт, а нужна одна строка.
+    """
+    with FORWARD_LOG.open("rb") as fh:
+        fh.seek(0, 2)
+        fh.seek(max(0, fh.tell() - LOG_TAIL_BYTES))
+        tail = fh.read().decode("utf-8", errors="replace")
+    for line in reversed(tail.splitlines()):
+        match = _LOG_TS.match(line)
+        if match:
+            return datetime.strptime(match.group(1), "%Y-%m-%d %H:%M:%S")
+    return None
+
+
 def _forward_log_line() -> str:
-    """mtime лога ночного прогона — сигнал «стартовал ли он вообще»,
-    независимый от БД. Чистое чтение, docker не трогаем."""
+    """Когда ночной прогон писал в лог — сигнал «стартовал ли он вообще»,
+    независимый от БД. Чистое чтение, docker не трогаем.
+
+    По содержимому, а не по mtime: 26.07 mtime показал «обновлён 25.07 00:15»,
+    хотя последняя запись в логе была от 20.07 (ротация или touch). Врала
+    диагностика ровно там, где она важнее всего — когда прогон мёртв.
+    Расхождение больше суток печатается явно, чтобы такие случаи было видно.
+    """
     try:
         mtime = datetime.fromtimestamp(FORWARD_LOG.stat().st_mtime)
-        return f"Ночной прогон: forward_d1.log обновлён {mtime:%d.%m %H:%M}"
+        entry = _last_log_entry()
+        if entry is None:
+            return (f"Ночной прогон: в forward_d1.log нет датированных строк "
+                    f"(mtime {mtime:%d.%m %H:%M})")
+        line = f"Ночной прогон: последняя запись {entry:%d.%m %H:%M}"
+        if abs((mtime - entry).total_seconds()) > 86400:
+            line += f" (mtime файла {mtime:%d.%m %H:%M} — расходится)"
+        return line
     except FileNotFoundError:
         return "Ночной прогон: forward_d1.log отсутствует"
     except Exception as exc:
         return f"Ночной прогон: лог не прочитать ({first_line(exc)})"
 
 
-def build_message(rows: list[tuple[str, datetime]], candles_max: datetime | None) -> str:
-    """Текст сообщения по состоянию форварда."""
+def _compact(per_ticker: dict[str, int]) -> str:
+    """«13 по всем 12 тикерам» вместо двенадцати одинаковых строк.
+
+    Тикеры почти всегда идут в ногу, и полный список в такой ситуации — шум,
+    в котором теряется единственное важное число.
+    """
+    counts = set(per_ticker.values())
+    if len(counts) == 1 and len(per_ticker) == len(TICKERS):
+        return f"{counts.pop()} по всем {len(TICKERS)} тикерам"
+    items = sorted(per_ticker.items(), key=lambda kv: (-kv[1], kv[0]))
+    shown = ", ".join(f"{t} {n}" for t, n in items[:6])
+    return shown + (f" и ещё {len(items) - 6}" if len(items) > 6 else "")
+
+
+def build_message(snap: Snapshot, prev: dict[str, date] | None,
+                  prev_note: str | None = None) -> str:
+    """Текст сообщения по состоянию форварда.
+
+    Четыре независимые проверки вместо одного смешанного условия:
+      A1 🚨 есть бары новее обработанного — форвард не обрабатывает свечи;
+      A2 ⚠  свечи не поступают N дн. — рынок закрыт ИЛИ сломалась загрузка;
+      A3 🚨 состояние перескочило даты свечей — бары пропущены безвозвратно;
+      A4 🚨 тикер исчез из forward_state.
+
+    A1 не зависит от календаря (закрыт рынок → новых дат нет → тихо), поэтому
+    ложных тревог на праздниках не даёт. A2 зависит и потому только ⚠ и с
+    честно неоднозначной формулировкой: различить «рынок закрыт» от «загрузка
+    умерла» без торгового календаря нельзя, а человек различает за секунду.
+    Вместе они закрывают оба режима отказа: при полной смерти прогона candles
+    и forward_state замерзают вместе, A1 слепнет — ловит A2.
+    """
     today = datetime.now(timezone.utc).date()
     log_line = _forward_log_line()
+    tail = ([MAX_AGE_NOTE] if MAX_AGE_NOTE else []) \
+        + ([prev_note] if prev_note else []) + [log_line]
 
-    if not rows:
-        return (
-            f"🚨 <b>Форвард не запускался</b> — {STRATEGY_ID}\n"
-            f"В forward_state нет ни одной строки по стратегии.\n"
-            f"{log_line}"
-        )
+    if not snap.rows:
+        return "\n".join([
+            f"🚨 <b>Форвард не запускался</b> — {STRATEGY_ID}",
+            "В forward_state нет ни одной строки по стратегии.",
+            *tail,
+        ])
 
-    dates = {ticker: _utc_date(ts) for ticker, ts in rows}
+    dates = {ticker: _utc_date(ts) for ticker, ts in snap.rows}
     fwd_max = max(dates.values())
     age = (today - fwd_max).days
 
+    # A4 — тикеры, которых вообще нет в состоянии.
     missing = [t for t in TICKERS if t not in dates]
     behind = sorted(t for t, d in dates.items() if d < fwd_max)
 
-    alarm = age > MAX_AGE_DAYS or bool(missing)
+    # A1 — даты баров новее обработанного, по каждому тикеру.
+    unprocessed = {}
+    for ticker, processed in dates.items():
+        newer = [d for d in snap.candle_dates.get(ticker, []) if d > processed]
+        if newer:
+            unprocessed[ticker] = len(newer)
+
+    # A2 — свечи не поступают (по календарю, с жёстко ограниченным порогом).
+    candles_date = _utc_date(snap.candles_max) if snap.candles_max else None
+    candles_age = (today - candles_date).days if candles_date else None
+    stale_feed = candles_date is None or candles_age > MAX_AGE_DAYS
+
+    # A3 — разрыв: даты баров, перескоченные между прошлым и текущим состоянием.
+    gaps: dict[str, list[date]] = {}
+    if prev:
+        for ticker, current in dates.items():
+            was = prev.get(ticker)
+            if was is None or current <= was:
+                continue
+            skipped = [d for d in snap.candle_dates.get(ticker, []) if was < d < current]
+            if skipped:
+                gaps[ticker] = skipped
+
+    alarm = bool(unprocessed or gaps or missing)
 
     lines: list[str] = []
-    if alarm:
-        lines.append(f"🚨 <b>Форвард завис</b> — {STRATEGY_ID}")
-        lines.append(f"Последний обработанный бар: <b>{fwd_max}</b> "
-                     f"({age} дн. назад, порог {MAX_AGE_DAYS})")
+    if gaps:
+        lines.append(f"🚨 <b>Форвард пропустил бары</b> — {STRATEGY_ID}")
+    elif unprocessed:
+        lines.append(f"🚨 <b>Форвард не обрабатывает свечи</b> — {STRATEGY_ID}")
+    elif missing:
+        lines.append(f"🚨 <b>Форвард потерял тикеры</b> — {STRATEGY_ID}")
+    elif stale_feed:
+        lines.append(f"⚠ <b>Свечи не поступают</b> — {STRATEGY_ID}")
     else:
         lines.append(f"✅ <b>Форвард жив</b> — {STRATEGY_ID}")
-        lines.append(f"Последний бар: <b>{fwd_max}</b> ({age} дн. назад)")
 
+    # Порог печатается ВСЕГДА, в любой ветке: 26.07 неоднозначность «жив при
+    # 14 днях» существовала только потому, что ветка ✅ его не показывала.
+    lines.append(f"Обработано до: <b>{fwd_max}</b> ({age} дн. назад, порог {MAX_AGE_DAYS})")
     lines.append(f"Тикеров в состоянии: {len(dates)}/{len(TICKERS)}")
 
-    # Диагностика: есть ли в БД свечи, которые прогон не обработал.
-    if candles_max is None:
-        lines.append("Свечи D1 в БД: нет ни одной по этим тикерам")
+    if gaps:
+        all_skipped = sorted({d for days in gaps.values() for d in days})
+        span = (f"{all_skipped[0]}" if len(all_skipped) == 1
+                else f"{all_skipped[0]}–{all_skipped[-1]}")
+        lines.append(f"🚨 Пропущено баров: {_compact({t: len(v) for t, v in gaps.items()})}"
+                     f" ({span})")
+        lines.append("  ⇒ эти бары не догоняются: форвард берёт только последний "
+                     "(техдолг №10)")
+
+    if unprocessed:
+        lines.append(f"🚨 Не обработано баров: {_compact(unprocessed)}")
+        lines.append("  ⇒ прогон стартует, но не обрабатывает тикеры")
+
+    if candles_date is None:
+        lines.append("⚠ Свечи D1 в БД: нет ни одной по этим тикерам")
     else:
-        candles_date = _utc_date(candles_max)
-        lag = (candles_date - fwd_max).days
         lines.append(f"Свечи D1 в БД: до {candles_date}"
-                     + (f" — {lag} необработанных дн." if lag > 0 else ""))
-        if alarm:
-            if lag > 0:
-                lines.append("  ⇒ прогон стартует, но не обрабатывает тикеры")
-            else:
-                lines.append("  ⇒ свечи тоже не обновляются: прогон не стартует "
-                             "(либо праздники на MOEX)")
+                     + (f" ({candles_age} дн. назад)" if stale_feed else ""))
+        if stale_feed:
+            lines.append("  ⇒ либо рынок закрыт, либо сломалась загрузка свечей")
 
     if missing:
-        lines.append("Нет в forward_state: " + ", ".join(missing))
+        lines.append("🚨 Нет в forward_state: " + ", ".join(missing))
     if behind:
         lines.append("Отстают: " + ", ".join(f"{t} {dates[t]}" for t in behind))
 
@@ -201,7 +417,7 @@ def build_message(rows: list[tuple[str, datetime]], candles_max: datetime | None
         lines.append("Последний бар по тикерам:")
         lines += [f"  {t} {dates[t]}" for t in sorted(dates)]
 
-    lines.append(log_line)
+    lines += tail
     return "\n".join(lines)
 
 
@@ -214,10 +430,16 @@ def main() -> int:
     if not credentials_ready():
         return 3
 
+    prev, prev_note = read_saved_state()
+    if prev_note:
+        logger.info("Память сторожа: %s", prev_note)
+
     try:
-        rows, candles_max = read_state()
+        snap = read_state(prev)
     except Exception as exc:
         # Требование: отдельное сообщение, выход без трейсбека.
+        # Состояние НЕ трогаем: сравнивать будет не с чем, а разрыв,
+        # случившийся за это время, должен обнаружиться в следующий раз.
         reason = first_line(exc)
         logger.error("БД недоступна: %s", reason)
         text = (
@@ -227,9 +449,20 @@ def main() -> int:
         )
         return 0 if send(text) else 1
 
-    text = build_message(rows, candles_max)
+    text = build_message(snap, prev, prev_note)
     logger.info("Вердикт:\n%s", text)
-    return 0 if send(text) else 1
+    delivered = send(text)
+
+    # Запись только после успешной доставки: иначе тревога о разрыве была бы
+    # «прочитана» сторожем и забыта, хотя человек её не видел. Пока Telegram
+    # недоступен, разрыв будет повторяться в каждом сообщении — так и надо.
+    if delivered and snap.rows:
+        try:
+            save_state({t: _utc_date(ts) for t, ts in snap.rows})
+        except Exception as exc:
+            logger.error("Состояние сторожа не сохранено: %s", first_line(exc))
+
+    return 0 if delivered else 1
 
 
 if __name__ == "__main__":

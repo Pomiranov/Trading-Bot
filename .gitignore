@@ -18,6 +18,8 @@ venv/
 
 # ─── Runtime data (not for git) ───────────────────────────────────────────────
 bot/data/user_prefs.json
+bot/data/forward_healthcheck_state.json
+bot/data/forward_healthcheck_state.tmp
 bot/data/credential_vault.json
 bot/data/credential_vault.json.tmp
 data/credential_vault.json

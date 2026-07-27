@@ -1,4 +1,4 @@
-import { Monogram } from "@/components/ui/monogram";
+import { BrandMark } from "@/components/ui/brand-mark";
 import { Button } from "@/components/ui/button";
 import { ButtonLink } from "@/components/ui/button-link";
 import { ArrowLink } from "@/components/ui/arrow-link";
@@ -6,7 +6,7 @@ import { MonoLabel } from "@/components/ui/mono-label";
 import { SectionHeading } from "@/components/ui/section-heading";
 import { Surface } from "@/components/ui/surface";
 import { Stat } from "@/components/ui/stat";
-import { StatusPill } from "@/components/ui/status-pill";
+import { StatusChip } from "@/components/ui/status-chip";
 import { STRATEGY_STAGES, STRATEGY_STAGE_TONE } from "@/lib/strategy-status";
 
 /**
@@ -70,7 +70,7 @@ export default function StyleTilePage() {
   return (
     <main className="mx-auto flex max-w-[var(--space-content-max)] flex-col gap-14 px-[var(--space-page-x)] py-16 text-[color:var(--color-text-primary)]">
       <header className="flex items-center gap-4">
-        <Monogram className="size-10 text-[color:var(--color-accent)]" />
+        <BrandMark size="lg" className="text-[color:var(--color-accent)]" />
         <div className="flex flex-col gap-1">
           <h1 className="font-mono text-[length:var(--text-caption)] tracking-[0.18em] uppercase">
             Quant · Style Tile
@@ -170,10 +170,10 @@ export default function StyleTilePage() {
       <Block title="Status">
         <div className="flex flex-wrap items-center gap-3">
           {STRATEGY_STAGES.map((stage) => (
-            <StatusPill key={stage} tone={STRATEGY_STAGE_TONE[stage]} label={stage} />
+            <StatusChip key={stage} tone={STRATEGY_STAGE_TONE[stage]} label={stage} />
           ))}
-          <StatusPill tone="danger" label="blocked" />
-          <StatusPill tone="success" label="active" detail="sandbox by default" />
+          <StatusChip tone="danger" label="blocked" />
+          <StatusChip tone="success" label="active" detail="sandbox by default" />
         </div>
       </Block>
 

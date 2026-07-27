@@ -6,7 +6,7 @@ import { useTranslations } from "next-intl";
 import { Surface } from "@/components/ui/surface";
 import { MonoLabel } from "@/components/ui/mono-label";
 import { Button } from "@/components/ui/button";
-import { StatusPill } from "@/components/ui/status-pill";
+import { StatusChip } from "@/components/ui/status-chip";
 
 /**
  * The Telegram signal card, with its two buttons wired as a local demo.
@@ -144,7 +144,7 @@ export function SignalCard() {
               {/* aria-live so a screen reader hears the outcome of the press
                   without the focus having to move anywhere. */}
               <div role="status" aria-live="polite" className="flex flex-col gap-2">
-                <StatusPill tone={resolved.tone} label={resolved.label} />
+                <StatusChip tone={resolved.tone} label={resolved.label} />
                 <p className="text-[length:var(--text-caption)] leading-[var(--text-caption--line-height)] text-[color:var(--color-text-quaternary)]">
                   {resolved.detail}
                 </p>

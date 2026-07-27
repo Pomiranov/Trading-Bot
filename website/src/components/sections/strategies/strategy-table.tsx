@@ -1,6 +1,6 @@
 import { getTranslations } from "next-intl/server";
 import { contentSource } from "@/content-layer/source";
-import { StatusPill } from "@/components/ui/status-pill";
+import { StatusChip } from "@/components/ui/status-chip";
 import { Reveal } from "@/components/motion/reveal";
 import { ScrollAffordance } from "@/components/ui/scroll-affordance";
 import { STRATEGY_STAGE_TONE } from "@/lib/strategy-status";
@@ -99,7 +99,7 @@ export async function StrategyTable({ locale }: { locale: string }) {
                 </td>
                 <td className="px-5 py-5">
                   <div className="flex flex-col items-start gap-2">
-                    <StatusPill
+                    <StatusChip
                       tone={STRATEGY_STAGE_TONE[strategy.status]}
                       label={common(`strategyStatus.${strategy.status}`)}
                     />

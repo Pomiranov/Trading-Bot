@@ -10,10 +10,36 @@ tools/read_chapters.py — то есть действует только на с
 knowledge/rules/rules*.yaml или карту книги schwager_index.md. Инструкция в
 .claude/agents/chapter-reader.md это запрещает, но инструкция — не гарантия.
 
-Протокол хука: на stdin JSON с tool_name/tool_input/cwd, exit 0 = разрешить,
-exit 2 = запретить (stderr уходит модели как объяснение). При любой
-внутренней ошибке запрещаем: сломанный сторож не должен превращаться в
-открытую дверь.
+Протокол ответа (проверено на Claude Code 2.1.207)
+─────────────────────────────────────────────────
+На stdin приходит JSON с tool_name/tool_input/cwd. Решение уходит ОДНОЙ
+строкой JSON в stdout:
+
+    {"hookSpecificOutput": {"hookEventName": "PreToolUse",
+                            "permissionDecision": "deny",
+                            "permissionDecisionReason": "<причина>"}}
+
+Код выхода всегда 0 — и на allow, и на deny. Документированный exit 2
+(«blocking error») здесь НЕ РАБОТАЕТ: в транскриптах прогона 2026-07-27
+(сессии 24a44e55, c876d102) видно, что sys.exit(2) доехал до харнесса как
+exitCode 1, был помечен hook_non_blocking_error — и запись прошла. Тот же
+хук с deny-JSON запись заблокировал. Не возвращать сюда ненулевой код: отказа
+он не даёт, а на каждый deny вешает лишний attachment в транскрипте агента.
+
+allow печатается явно, а не подразумевается молчанием: в транскрипте должно
+быть видно, что сторож отработал, а не отвалился. Оговорка: явный allow
+обходит остальные проверки прав — но подпроцесс и так идёт с
+`--permission-mode acceptEdits`, а на обычные сессии этот settings-файл не
+подключается, так что разницы нет.
+
+При любой внутренней ошибке (не разобрался вход, упала проверка) — deny:
+сломанный сторож не должен превращаться в открытую дверь.
+
+Причина уезжает в stdout как \\uXXXX (ensure_ascii): харнесс читает вывод
+хука системной кодировкой, и UTF-8 в нём превращается в мохабры — именно это
+происходило со stderr до перехода на JSON.
+
+Самопроверка протокола: python tools/guard_write_path.py --self-test
 """
 
 import json
@@ -21,10 +47,9 @@ import os
 import sys
 from pathlib import Path
 
-# Причину отказа читает модель, а Python на Windows отдал бы stderr в cp1251 —
-# русский текст пришёл бы агенту кракозябрами.
-if hasattr(sys.stderr, "reconfigure"):
-    sys.stderr.reconfigure(encoding="utf-8")
+# Код выхода на отказ. Ноль — не опечатка, см. «Протокол ответа» выше:
+# решение принимает JSON в stdout, а ненулевой код на 2.1.207 только шумит.
+DENY_EXIT = 0
 
 # Куда chapter-reader'у писать можно. Пути относительно корня репозитория.
 ALLOWED_DIRS = (
@@ -45,6 +70,35 @@ DENIED_FILES = (
 WRITE_TOOLS = {"Write", "Edit", "MultiEdit", "NotebookEdit"}
 
 PATH_KEYS = ("file_path", "notebook_path", "path")
+
+
+def emit(decision: str, reason: str) -> None:
+    """Единственный канал ответа: одна строка JSON в stdout.
+
+    Один print на весь скрипт — чтобы физически не получилось двух решений,
+    если исключение вылетит уже после печати. ensure_ascii (дефолт
+    json.dumps) не украшение: чистый ASCII не зависит от кодовой страницы,
+    которой харнесс читает поток, и русская причина доезжает целой.
+    """
+    print(json.dumps({"hookSpecificOutput": {
+        "hookEventName": "PreToolUse",
+        "permissionDecision": decision,      # "allow" | "deny"
+        "permissionDecisionReason": reason,
+    }}))
+    sys.stdout.flush()
+
+
+def mirror_stderr(text: str) -> None:
+    """Дубль причины в лог хуков — информационно, решение принимает stdout.
+
+    Без reconfigure на utf-8: харнесс декодирует stderr системной кодировкой,
+    и принудительный UTF-8 давал мохабры. Любое исключение глотаем — сторож
+    не имеет права ломать уже напечатанный ответ из-за строчки в логе.
+    """
+    try:
+        print(text, file=sys.stderr)
+    except Exception:
+        pass
 
 
 def repo_root() -> Path:
@@ -115,27 +169,142 @@ def check(tool_name: str, tool_input: dict, cwd: str) -> str | None:
 def main() -> int:
     try:
         payload = json.load(sys.stdin)
-    except Exception as exc:
-        print(f"guard_write_path: не разобрать вход хука ({exc}) — запись запрещена",
-              file=sys.stderr)
-        return 2
-
-    try:
         reason = check(
             payload.get("tool_name", ""),
             payload.get("tool_input") or {},
             payload.get("cwd", ""),
         )
     except Exception as exc:      # сломанный сторож = закрытая дверь
-        print(f"guard_write_path: внутренняя ошибка ({exc}) — запись запрещена",
-              file=sys.stderr)
-        return 2
+        text = f"guard_write_path: внутренняя ошибка ({exc}) — запись запрещена"
+        emit("deny", text)
+        mirror_stderr(text)
+        return DENY_EXIT
 
     if reason is None:
+        emit("allow", "guard_write_path: путь в разрешённой зоне chapter-reader")
         return 0
-    print(reason, file=sys.stderr)
-    return 2
+
+    emit("deny", reason)
+    mirror_stderr(reason)
+    return DENY_EXIT
+
+
+# ── Самопроверка протокола ───────────────────────────────────────────────
+#
+# Каждый кейс прогоняется ОТДЕЛЬНЫМ подпроцессом и сверяется по разобранному
+# stdout, а не по коду выхода: код на 2.1.207 всё равно ничего не решает, а
+# подпроцесс проверяет настоящий протокол вместе с печатью и кодировкой.
+
+def _case(tool: str, path: str | None, expect: str, label: str) -> dict:
+    tool_input: dict = {} if path is None else {"file_path": path}
+    return {
+        "label": label,
+        "expect": expect,
+        "stdin": json.dumps({"tool_name": tool, "tool_input": tool_input,
+                             "cwd": str(repo_root())}),
+    }
+
+
+def self_test_cases() -> list[dict]:
+    root = repo_root()
+    outside = (root.parent / "guard_outside.py").as_posix()
+    return [
+        _case("Write", (root / "knowledge/cards/ch04.md").as_posix(),
+              "allow", "карточка главы"),
+        _case("Write", (root / "knowledge/rules/candidates/ch04_trend.yaml").as_posix(),
+              "allow", "черновик правила"),
+        _case("Write", (root / "knowledge/processed/market_theory/ch04.md").as_posix(),
+              "allow", "конспект"),
+        _case("Write", "knowledge/cards/ch05.md",
+              "allow", "относительный путь от cwd"),
+        _case("Write", (root / "knowledge/rules/rules.yaml").as_posix(),
+              "deny", "боевые rules.yaml"),
+        _case("Write", (root / "knowledge/processed/market_theory/schwager_index.md").as_posix(),
+              "deny", "карта книги (DENIED_FILES)"),
+        _case("Write", "knowledge/cards/../../bot/main.py",
+              "deny", "traversal через .."),
+        _case("Write", outside,
+              "deny", "абсолютный путь вне репозитория"),
+        _case("Write", None,
+              "deny", "нет пути в tool_input"),
+        _case("Edit", (root / "knowledge/rules/rules.yaml").as_posix(),
+              "deny", "Edit по боевым правилам"),
+        _case("Read", (root / "bot/main.py").as_posix(),
+              "allow", "не write-инструмент"),
+        # normcase лечит регистр только на Windows; на posix это другой путь.
+        _case("Write", (root / "knowledge/Cards/ch04.md").as_posix(),
+              "allow" if os.name == "nt" else "deny", "регистр каталога"),
+        {"label": "битый JSON на stdin", "expect": "deny", "stdin": "{ не json"},
+    ]
+
+
+def verify_case(case: dict) -> str | None:
+    """None — кейс прошёл, строка — что именно не так."""
+    import subprocess      # нужен только самопроверке, не горячему пути хука
+
+    proc = subprocess.run(
+        [sys.executable, str(Path(__file__).resolve())],
+        input=case["stdin"], capture_output=True, text=True,
+        encoding="utf-8", errors="replace", timeout=60,
+    )
+
+    if proc.returncode != 0:
+        return f"код выхода {proc.returncode}, ожидался 0"
+
+    lines = [ln for ln in (proc.stdout or "").splitlines() if ln.strip()]
+    if len(lines) != 1:
+        return f"в stdout {len(lines)} непустых строк, ожидалась ровно одна"
+
+    try:
+        payload = json.loads(lines[0])
+    except json.JSONDecodeError as exc:
+        return f"stdout не разбирается как JSON ({exc})"
+
+    out = payload.get("hookSpecificOutput")
+    if not isinstance(out, dict):
+        return "нет объекта hookSpecificOutput"
+    if out.get("hookEventName") != "PreToolUse":
+        return f"hookEventName = {out.get('hookEventName')!r}"
+
+    decision = out.get("permissionDecision")
+    if decision != case["expect"]:
+        return f"решение {decision!r}, ожидалось {case['expect']!r}"
+    if decision == "deny" and not (out.get("permissionDecisionReason") or "").strip():
+        return "deny без причины — модели нечего показать"
+    return None
+
+
+def self_test() -> int:
+    cases = self_test_cases()
+    failures = []
+    for num, case in enumerate(cases, 1):
+        problem = verify_case(case)
+        mark = "ok  " if problem is None else "FAIL"
+        print(f"  {mark} {num:>2}. {case['label']}"
+              + ("" if problem is None else f" — {problem}"))
+        if problem is not None:
+            failures.append(num)
+
+    total = len(cases)
+    if failures:
+        print(f"self-test: {total - len(failures)}/{total} ok, "
+              f"упали: {', '.join(map(str, failures))}")
+        return 1
+    print(f"self-test: {total}/{total} ok")
+    return 0
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    try:
+        if "--self-test" in sys.argv[1:]:
+            sys.exit(self_test())
+        sys.exit(main())
+    except SystemExit:
+        raise
+    except BaseException:
+        # Сюда попадаем, если упал уже сам emit (закрытый stdout, BrokenPipe).
+        # Литерал, а не json.dumps: на этом уровне полагаться уже не на что.
+        print('{"hookSpecificOutput":{"hookEventName":"PreToolUse",'
+              '"permissionDecision":"deny","permissionDecisionReason":'
+              '"guard_write_path crashed"}}')
+        sys.exit(DENY_EXIT)

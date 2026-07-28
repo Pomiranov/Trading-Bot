@@ -99,6 +99,7 @@ def collect_trades(rules_file: Path, pm: bool = False) -> tuple[pd.DataFrame, di
         data = asyncio.run(load_candles_db(tf))
         rules = RulesEngine(rules_file=rules_file)
         engine = BacktestEngine(
+            universe_version=MEASUREMENT_UNIVERSE_2026_07_VERSION,
             rules_engine=rules, timeframe=TF_LABEL[tf],
             breakeven_r=1.0 if pm else None,
             target_r=2.0 if pm else None,

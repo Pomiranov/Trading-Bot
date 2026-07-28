@@ -168,7 +168,8 @@ def main() -> None:
         all_trades: dict[str, list[BacktestTrade]] = {}
         for vid, label, _window in VARIANTS:
             rules  = RulesEngine(rules_file=variant_files[vid])
-            engine = BacktestEngine(rules_engine=rules, strategy_id=f"swing_ab_{vid}",
+            engine = BacktestEngine(rules_engine=rules,
+                                    universe_version=MEASUREMENT_UNIVERSE_2026_07_VERSION, strategy_id=f"swing_ab_{vid}",
                                     timeframe="D1")
             t0 = time.time()
             trades: list[BacktestTrade] = []

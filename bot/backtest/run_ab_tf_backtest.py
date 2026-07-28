@@ -109,6 +109,7 @@ def main() -> None:
             strategy_id = f"{base}_{TF_LABEL[tf].lower()}"
             rules = RulesEngine(rules_file=rules_file) if rules_file else RulesEngine()
             engine = BacktestEngine(
+                universe_version=MEASUREMENT_UNIVERSE_2026_07_VERSION,
                 rules_engine=rules,
                 orchestrator=orchestrator,
                 strategy_id=strategy_id,

@@ -127,6 +127,11 @@ CREATE TABLE trades (
     signal_rules        TEXT[],         -- ИМЕНА сработавших правил
     rules_version       TEXT,           -- отпечаток разобранного yaml; 'unknown' =
                                         -- строка записана до введения отпечатка
+    universe_version    TEXT,           -- отпечаток НАБОРА ТИКЕРОВ (bot/universe.py).
+                                        -- Набор — часть определения измерения
+                                        -- наравне с набором правил: без него
+                                        -- confidence у одной strategy_id смешивает
+                                        -- эру 12 бумаг и эру 20 (долг №33)
     origin              TEXT,           -- 'forward' | 'backtest' | 'live'.
                                         -- is_sandbox различителем НЕ является:
                                         -- он про бумагу против реальных денег,

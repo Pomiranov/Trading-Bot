@@ -151,6 +151,7 @@ def main() -> None:
 
     # ── Бэктест ───────────────────────────────────────────────────────
     engine = BacktestEngine(
+        universe_version=MEASUREMENT_UNIVERSE_2026_07_VERSION,
         rules_engine=rules,
         orchestrator=orchestrator,
         strategy_id="wrd_moex",

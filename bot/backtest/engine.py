@@ -104,6 +104,9 @@ class BacktestEngine:
         rules_engine: Optional[RulesEngine] = None,
         orchestrator: Optional[TradingOrchestrator] = None,
         strategy_id: str = BACKTEST_STRATEGY_ID,
+        # Отпечаток НАБОРА ТИКЕРОВ прогона (bot/universe.py). Движок его сам знать
+        # не может — набор держит вызывающий скрипт, поэтому передаётся сюда.
+        universe_version: Optional[str] = None,
         timeframe: str = "H1",
         breakeven_r: Optional[float] = None,   # прибыль ≥ N·R → стоп в безубыток (Швагер, гл. 15)
         target_r: Optional[float] = None,      # прибыль ≥ N·R → фиксация по цели
@@ -125,6 +128,7 @@ class BacktestEngine:
         })
         self._risk           = RiskManager()
         self._strategy_id    = strategy_id
+        self._universe_version = universe_version
         self._timeframe      = timeframe
         self._breakeven_r    = breakeven_r
         self._target_r       = target_r
@@ -539,6 +543,7 @@ class BacktestEngine:
                                      if r.action == Action.BUY),
             rules_version   = self._rules.rules_version,
             origin          = "backtest",
+            universe_version = self._universe_version,
         )
 
     # ── Статические метрики ──────────────────────────────────────────

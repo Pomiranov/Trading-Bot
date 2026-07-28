@@ -128,5 +128,54 @@ class TestConsumersUseTheRightUniverse(unittest.TestCase):
             self.assertNotIn('TICKERS = ["SBER"', p.read_text(encoding="utf-8"), str(p))
 
 
+
+class TestUniverseStampedOnTrades(unittest.TestCase):
+    """Отпечаток НАБОРА доезжает до строки trades (долг №33).
+
+    Без него confidence у одной strategy_id смешивает эру 12 бумаг и эру 20:
+    belief_system агрегирует по strategy_id, и скаляр перестаёт описывать один
+    набор. Восстановимость по ticker+дате — это запрос, который надо догадаться
+    написать.
+    """
+
+    def test_forward_trade_carries_forward_universe(self):
+        from tests.forward_tests.test_forward_catchup import (
+            FakeDB, StubRules, _bars, _make_runner, _run_sync, _smooth,
+        )
+        closes = _smooth(260)
+        rows = _bars(closes)
+        times = [r["time"] for r in rows]
+        db = FakeDB(rows, state={"SBER": times[258]})
+        runner, opened, _ = _make_runner(db, StubRules(buy_at=(closes[259],)))
+        _run_sync(runner, db)
+        self.assertEqual(len(opened), 1, "предусловие: один вход")
+        self.assertEqual(opened[0].universe_version, FORWARD_TICKERS_VERSION)
+        self.assertEqual(opened[0].origin, "forward")
+
+    def test_backtest_engine_stamps_the_set_it_was_given(self):
+        """Движок набора сам знать не может — его передаёт скрипт."""
+        from backtest.engine import BacktestEngine
+        eng = BacktestEngine(universe_version=MEASUREMENT_UNIVERSE_2026_07_VERSION)
+        self.assertEqual(eng._universe_version, MEASUREMENT_UNIVERSE_2026_07_VERSION)
+        self.assertNotEqual(eng._universe_version, FORWARD_TICKERS_VERSION,
+                            "12-набор и 20-набор обязаны различаться")
+
+    def test_measurement_scripts_pass_their_universe(self):
+        for name in ("run_osc_oos_debug.py", "run_ab_tf_backtest.py",
+                     "run_ab_swing_stop.py", "run_ab_trend_fix.py",
+                     "run_wrd_backtest.py"):
+            text = (_ROOT / "bot" / "backtest" / name).read_text(encoding="utf-8")
+            self.assertIn("universe_version=MEASUREMENT_UNIVERSE_2026_07_VERSION", text, name)
+
+    def test_trade_dataclass_has_the_field(self):
+        from learning.memory_writer import Trade
+        self.assertIn("universe_version", Trade.__dataclass_fields__)
+
+    def test_insert_writes_the_column(self):
+        text = (_ROOT / "bot" / "learning" / "memory_writer.py").read_text(encoding="utf-8")
+        self.assertIn("universe_version", text.split("INSERT INTO trades")[1].split(") VALUES")[0],
+                      "колонка обязана быть в списке INSERT, иначе поле никуда не доедет")
+        self.assertIn("trade.universe_version", text)
+
 if __name__ == "__main__":
     unittest.main()

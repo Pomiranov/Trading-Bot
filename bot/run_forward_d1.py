@@ -728,6 +728,7 @@ class ForwardRunner:
                                      if r.action == Action.BUY),
             rules_version   = self.rules.rules_version,
             origin          = "forward",
+            universe_version = FORWARD_TICKERS_VERSION,
         )
         await self.orch.on_trade_opened(trade)
 

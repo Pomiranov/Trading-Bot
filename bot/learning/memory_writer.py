@@ -151,6 +151,11 @@ class Trade:
     signal_rules:       Optional[list] = None
     rules_version:      Optional[str] = None
     origin:             Optional[str] = None
+    # universe_version — отпечаток НАБОРА ТИКЕРОВ (bot/universe.py). Набор есть
+    # часть определения измерения наравне с набором правил: без него confidence
+    # у одной strategy_id смешивает эру 12 бумаг и эру 20, и скаляр перестаёт
+    # описывать один набор (долг №33).
+    universe_version:   Optional[str] = None
 
     # Генерируется автоматически
     trade_id: str = field(default_factory=lambda: str(uuid.uuid4()))
@@ -300,7 +305,8 @@ class MemoryWriter:
                     -- он про бумагу против реальных денег.
                     signal_rules,
                     rules_version,
-                    origin
+                    origin,
+                    universe_version
                 ) VALUES (
                     $1,  $2,  $3,  $4,  $5,
                     $6,  $7,  $8,  $9,  $10,
@@ -309,7 +315,7 @@ class MemoryWriter:
                     $21, $22, $23, $24, $25,
                     $26, $27, $28, $29, $30,
                     $31, $32, $33, $34, $35,
-                    $36
+                    $36, $37
                 )
             """,
                 trade.trade_id,
@@ -348,6 +354,7 @@ class MemoryWriter:
                 trade.signal_rules,
                 trade.rules_version,
                 trade.origin,
+                trade.universe_version,
             )
 
         logger.info(

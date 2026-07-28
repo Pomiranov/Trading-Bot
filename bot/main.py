@@ -31,6 +31,7 @@ from security.bootstrap import bootstrap_security
 from data.loader import loader
 from signals.indicators import IndicatorEngine
 from signals.rules_engine import rules_engine, Action, classify_regime
+from universe import universe_version
 from risk.risk_manager import risk_manager
 from broker.tinkoff_client import tinkoff_client
 from learning.belief_seed import seed_belief
@@ -287,6 +288,9 @@ async def _process_ticker(ticker: str, orchestrator: TradingOrchestrator):
                                         if r.action == Action.BUY),
                     rules_version=rules_engine.rules_version,
                     origin="live",
+                    # Живой контур ходит по config.tickers — ЧЕТВЁРТЫЙ набор,
+                    # отдельный от измерительных и от форвардного.
+                    universe_version=universe_version(tuple(config.tickers)),
                 )
                 # Сбой learning-слоя не должен ломать торговый цикл: ордер уже стоит.
                 try:

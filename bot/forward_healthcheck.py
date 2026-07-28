@@ -18,7 +18,7 @@ max(candles.time) идёт в сообщение как диагностика, 
 
 Не импортирует run_forward_d1 / learning / ui.telegram_bot: сторож не должен
 зависеть от того, что он охраняет (ui.telegram_bot к тому же тянет легаси
-feedback_store, который ходит в БД на импорте — см. run_forward_d1.py:59).
+feedback_store, который ходит в БД на импорте — см. run_forward_d1.py:102).
 Отправка в Telegram — в bot/notify.py, с тем же узким импорт-бюджетом.
 """
 
@@ -50,9 +50,14 @@ sys.path.insert(0, str(ROOT / "bot"))
 load_dotenv(ROOT / ".env")
 
 from config import config  # noqa: E402  — только после sys.path/.env
+# market_time импортируется, а не дублируется: модуль сознательно без импортов
+# (только datetime), поэтому импорт-бюджет сторожа он не задевает — в отличие от
+# run_forward_d1, который потянул бы pandas и весь learning-стек. Конвенция
+# «закрытый бар» обязана быть у сторожа и у прогона ОДНА.
+from market_time import MSK  # noqa: E402
 from notify import credentials_ready, escape, first_line, send  # noqa: E402
 
-# Дублируется с run_forward_d1.py:64-68 осознанно: импорт того модуля потянул
+# Дублируется с run_forward_d1.py:107-111 осознанно: импорт того модуля потянул
 # бы pandas и весь learning-стек в сторожа.
 STRATEGY_ID = "osc_range_moex_d1_fwd"
 TICKERS = ["SBER", "GAZP", "LKOH", "NVTK", "ROSN", "TATN",
@@ -75,11 +80,6 @@ MAX_AGE_HARD_LIMIT = 3
 # разрыв за 3 года = 2 бара. Разрыв 1-2 бара форвард догоняет молча, и это ℹ,
 # а не тревога.
 CATCHUP_FLAG_BARS = 3
-
-# В РФ нет перехода на летнее время с 2014. Нужен для того же определения
-# «закрытый бар», что у run_forward_d1._last_closed_index: бар сегодняшней
-# московской сессии ещё формируется, и прогон его сознательно не берёт.
-MSK = timezone(timedelta(hours=3))
 
 DB_ATTEMPTS = 3      # Docker Desktop может дотягиваться после логона
 DB_RETRY_SEC = 10
@@ -210,7 +210,7 @@ def read_state(prev: dict[str, date] | None = None,
                 )
                 # Только ЗАКРЫТЫЕ бары. Догрузка свечей на внеурочном прогоне
                 # тянет с ISS частичный бар за сегодня, а прогон его не
-                # обрабатывает (run_forward_d1._last_closed_index). Без этого
+                # обрабатывает (market_time.last_closed_index). Без этого
                 # фильтра A1 объявляет его «необработанным» и сторож 🚨-ит
                 # каждый раз, когда днём кто-то запустил форвард руками.
                 # candles_max для A2 считается отдельно и остаётся сырым:

@@ -30,20 +30,26 @@ orchestrator.check_signal() (внутри фильтр структурного 
     пишется в forward_catchup_log.
 
 Порядок фаз в run(): все исторические бары всех тикеров (только выходы),
-затем свежий бар всех тикеров (выходы и входы). Иначе результат зависел бы
-от порядка тикеров в TICKERS: вход по первому тикеру оценивался бы против
-свободного капитала ДО того, как догон последнего освободил его несколько
-баров назад. Фаза 1 порядко-независима по построению — входы там запрещены,
-а единственный эффект на капитал (self.available += при закрытии) монотонно
-возрастает, поэтому перерасход невозможен.
+затем свежий бар всех тикеров (выходы и входы). Разделение сохраняется ради
+ПОРТФЕЛЬНОГО режима: на общем счёте вход по первому тикеру оценивался бы
+против капитала ДО того, как догон последнего освободил его несколько баров
+назад, и результат зависел бы от порядка TICKERS. Фаза 1 порядко-независима по
+построению — входы там запрещены, а единственный эффект на капитал
+(book.credit при закрытии) монотонно возрастает, поэтому перерасход невозможен.
+В потикерном режиме порядок TICKERS не влияет вообще: бюджеты тикеров
+независимы, а внутри тикера исторические бары и так идут раньше свежего.
 
 Паритет с бэктестом: окно индикаторов 61 бар, сделки по ценам закрытия,
-комиссия 0.03% за сторону, ATR-трейлинг (config.risk.atr_stop_multiplier).
+комиссия costs.COMMISSION_PCT за сторону (вычитается из pnl с ОБЕИХ сторон, как
+в бэктесте), ATR-трейлинг (config.risk.atr_stop_multiplier), незакрытая
+сегодняшняя сессия не судится в обоих контурах (market_time.last_closed_index),
+и — с 28.07 — потикерный бюджет: каждый тикер получает независимые
+FORWARD_CAPITAL, как в потикерном бэктесте. Решение: форвард измеряет ПРАВИЛА,
+а не счёт; сравнение форвард↔бэктест не должно мерить конкуренцию за капитал.
+Портфельное поведение сохранено под будущий портфельный контур и включается
+FORWARD_PER_TICKER_CAPITAL=false (долг №17).
 
 Сознательные отличия от бэктеста:
-  - портфельный режим: общий бумажный капитал FORWARD_CAPITAL (по умолчанию
-    1 000 000 руб.) на все тикеры и лимит config.risk.max_open_positions —
-    в бэктесте у каждого тикера был независимый капитал 1 млн;
   - position_size_multiplier из check_signal логируется, но НЕ применяется
     (сначала валидируем бэктест-конфигурацию как есть);
   - во время догона последовательность сделок расходится с бэктестом: после
@@ -70,7 +76,7 @@ import math
 import os
 from bisect import bisect_right
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from decimal import Decimal
 from pathlib import Path
 from typing import Optional
@@ -79,7 +85,9 @@ import asyncpg
 import pandas as pd
 
 from config import config
+from costs import COMMISSION_PCT
 from data.loader import save_candles_to_db
+from market_time import MSK, last_closed_index
 from signals.indicators import IndicatorEngine, SIGNAL_WINDOW_BARS, signal_window
 from signals.rules_engine import RulesEngine, Action, classify_regime
 from risk.risk_manager import RiskManager
@@ -104,7 +112,6 @@ TICKERS = ["SBER", "GAZP", "LKOH", "NVTK", "ROSN", "TATN",
 
 RULES_FILE = Path(__file__).resolve().parent.parent / "knowledge" / "rules" / "rules_osc_range.yaml"
 
-COMMISSION_PCT   = 0.0003    # 0.03% за сторону — как в бэктесте
 WINDOW_BARS      = SIGNAL_WINDOW_BARS   # окно latest_precomputed = iloc[i-60:i+1]
 MIN_HISTORY_BARS = 250       # SMA200 фильтра + запас
 WARMUP_BARS      = 50        # паритет с range(50, len(df_ind)) бэктеста
@@ -137,10 +144,8 @@ CATCHUP_MAX_BARS_CEILING = 7    # .env может только УЖЕСТОЧИ�
 # Разрыв 4 бара: выходы догоняем И флагаем.
 CATCHUP_FLAG_BARS = 3
 
-# В РФ нет перехода на летнее время с 2014 — фиксированный сдвиг вместо
-# ZoneInfo, чтобы не зависеть от наличия tzdata на сервере.
-MSK = timezone(timedelta(hours=3))
-
+# База бумажного капитала. В потикерном режиме (по умолчанию) — на КАЖДЫЙ
+# тикер независимо, как в потикерном бэктесте.
 FORWARD_CAPITAL = float(os.getenv("FORWARD_CAPITAL", "1000000"))
 
 
@@ -154,7 +159,7 @@ def _catchup_max_bars() -> tuple[int, Optional[str]]:
 
     Пометка возвращается наружу, а не только логируется: попытка ослабить
     ограничение должна быть видна в Telegram, иначе она потеряется ровно
-    тогда, когда важна — см. forward_healthcheck.py:65-70.
+    тогда, когда важна — см. forward_healthcheck.py:70-75.
     """
     raw = os.getenv("FWD_CATCHUP_MAX_BARS")
     if raw is None or raw.strip() == "":
@@ -174,21 +179,78 @@ def _catchup_max_bars() -> tuple[int, Optional[str]]:
     return value, None
 
 
-def _last_closed_index(raw_times: list) -> int:
-    """Индекс последнего ЗАКРЫТОГО бара: сегодняшняя сессия ещё формируется.
+def _per_ticker_capital() -> tuple[bool, Optional[str]]:
+    """(потикерный режим?, пометка для сообщения или None).
 
-    В 00:15 МСК (штатное расписание) поведение не меняется. Но прогон бывает
-    внеурочным — реальный случай 11:41 после пропущенного триггера при
-    StartWhenAvailable=True — и тогда ISS отдаёт ЧАСТИЧНЫЙ бар за сегодня.
-    С побарным продвижением состояния он стал бы last_candle_time, а когда
-    следующий прогон заменит строку завершённым OHLC (DELETE+INSERT в
-    data/loader.py), завершённый бар был бы перешагнут навсегда.
+    Разбор НЕ по шаблону `== "true"`: тогда опечатка в .env молча вернула бы
+    портфельный режим, то есть молча вернула бы дефект, который этот флаг
+    закрывает. Портфельный включается только явным false/0/no/off, всё
+    остальное — потикерный, а нераспознанное значение вдобавок возвращает
+    пометку, которая уходит в сводку и Telegram наравне с catchup_note.
     """
-    today = datetime.now(MSK).date()
-    for i in range(len(raw_times) - 1, -1, -1):
-        if raw_times[i].astimezone(MSK).date() < today:
-            return i
-    return -1
+    raw = os.getenv("FORWARD_PER_TICKER_CAPITAL")
+    if raw is None or raw.strip() == "":
+        return True, None
+    value = raw.strip().lower()
+    if value in ("false", "0", "no", "off"):
+        return False, ("⚠ FORWARD_PER_TICKER_CAPITAL=%s — ПОРТФЕЛЬНЫЙ режим: "
+                       "общий капитал на все тикеры, паритета с бэктестом нет" % raw)
+    if value in ("true", "1", "yes", "on"):
+        return True, None
+    return True, (f"⚠ FORWARD_PER_TICKER_CAPITAL={raw!r} не распознано — "
+                  f"оставлен потикерный режим")
+
+
+class CapitalBook:
+    """Бюджеты бумажного капитала.
+
+    Потикерный режим (по умолчанию): независимый счёт на тикер — паритет с
+    бэктестом, где `capital` это локальная переменная run() и каждый тикер
+    получает свой FORWARD_CAPITAL (`backtest/engine.py:186`).
+    Портфельный: один общий счёт на все тикеры (см. долг №17).
+
+    Класс, а не россыпь `if self.per_ticker`, по той же причине, по которой
+    `allow_entry` сделан параметром фазы: инвариант становится свойством типа,
+    а не проверкой, которую легко потерять при следующей правке.
+    """
+
+    def __init__(self, per_ticker: bool, budgets: dict, portfolio: float):
+        self.per_ticker = per_ticker
+        self._budgets = budgets        # тикер → свободно (потикерный режим)
+        self._portfolio = portfolio    # общий счёт (портфельный режим)
+
+    def available(self, ticker: str) -> float:
+        if self.per_ticker:
+            return self._budgets.get(ticker, FORWARD_CAPITAL)
+        return self._portfolio
+
+    def debit(self, ticker: str, amount: float) -> None:
+        if self.per_ticker:
+            self._budgets[ticker] = self.available(ticker) - amount
+        else:
+            self._portfolio -= amount
+
+    def credit(self, ticker: str, amount: float) -> None:
+        if self.per_ticker:
+            self._budgets[ticker] = self.available(ticker) + amount
+        else:
+            self._portfolio += amount
+
+    def describe(self, open_count: int) -> str:
+        """Строка для сводки.
+
+        В потикерном режиме единого числа «свободно» здесь НЕТ намеренно:
+        именно его прочитали бы как остаток счёта, а решение 28.07 состоит в
+        обратном — форвард измеряет правила, а не счёт. Потикерные остатки
+        уходят в logger.info.
+        """
+        if self.per_ticker:
+            return (f"бюджеты потикерно (база {FORWARD_CAPITAL:,.0f} руб. × "
+                    f"{len(TICKERS)}), занято {open_count}")
+        return f"свободно {self._portfolio:,.0f} руб."
+
+    def detail(self) -> str:
+        return ", ".join(f"{t}={v:,.0f}" for t, v in sorted(self._budgets.items()))
 
 
 def _duplicate_sessions(raw_times: list) -> list:
@@ -289,8 +351,9 @@ class ForwardRunner:
         self.orch       = TradingOrchestrator()
         self._db: Optional[asyncpg.Connection] = None
         self.events: list[str] = []     # сводка дня для консоли и Telegram
-        self.available: float = 0.0     # свободный бумажный капитал
+        self.book: Optional[CapitalBook] = None   # бюджеты, см. _paper_capital
         self.catchup_max, self.catchup_note = _catchup_max_bars()
+        self.per_ticker, self.per_ticker_note = _per_ticker_capital()
 
     # ── Инфраструктура ────────────────────────────────────────────────
 
@@ -355,17 +418,42 @@ class ForwardRunner:
             open_trades[r["ticker"]] = dict(r)
         return open_trades
 
-    async def _paper_capital(self, open_trades: dict) -> float:
-        """Свободный капитал = базовый + реализованный PnL − стоимость открытых."""
-        realized = await self._db.fetchval("""
-            SELECT COALESCE(SUM(pnl), 0) FROM trades
+    async def _paper_capital(self, open_trades: dict) -> CapitalBook:
+        """Бюджеты: база + реализованный PnL − стоимость открытых.
+
+        Это буквально формула капитала бэктеста. Там сайзинг считается от
+        ЭВОЛЮЦИОНИРУЮЩЕЙ переменной `capital` (`engine.py:248`), а не от
+        initial_capital, поэтому реализованный PnL в бюджет входить обязан:
+        когда по тикеру нет позиции, `capital` бэктеста равен
+        `initial + Σ[(exit−entry)·shares − обе комиссии]`, то есть
+        `FORWARD_CAPITAL + Σpnl` — но только с той конвенцией pnl, где
+        вычтены ОБЕ комиссии. Поэтому правка комиссии предшествовала этой.
+
+        Остаточная неточность, зафиксированная сознательно: пока позиция
+        открыта, вычитается entry·shares, а бэктест вычитал ещё и комиссию
+        входа. На сайзинг это повлиять не может — тикер считает размер позиции
+        только когда позиции по нему нет, то есть когда этот член равен нулю.
+        В портфельном режиме общий бюджет завышен на 0.03% номинала открытых
+        (≈180 руб. на позицию 600k) — известный остаток портфельной ветки.
+        """
+        rows = await self._db.fetch("""
+            SELECT ticker, COALESCE(SUM(pnl), 0) AS realized FROM trades
             WHERE strategy_id = $1 AND closed_at IS NOT NULL
+            GROUP BY ticker
         """, STRATEGY_ID)
-        open_value = sum(
-            float(r["entry_price"]) * float(r["position_size"])
-            for r in open_trades.values()
-        )
-        return FORWARD_CAPITAL + float(realized) - open_value
+        realized = {r["ticker"]: float(r["realized"]) for r in rows}
+        open_value: dict = {}
+        for r in open_trades.values():
+            open_value[r["ticker"]] = open_value.get(r["ticker"], 0.0) + (
+                float(r["entry_price"]) * float(r["position_size"]))
+
+        budgets = {
+            t: FORWARD_CAPITAL + realized.get(t, 0.0) - open_value.get(t, 0.0)
+            for t in set(TICKERS) | set(realized) | set(open_value)
+        }
+        portfolio = (FORWARD_CAPITAL + sum(realized.values())
+                     - sum(open_value.values()))
+        return CapitalBook(self.per_ticker, budgets, portfolio)
 
     async def _advance_state(self, ticker: str, dt) -> None:
         """Зафиксировать обработанный бар. Вызывается на КАЖДОМ баре догона."""
@@ -392,7 +480,7 @@ class ForwardRunner:
 
         raw_times = [r["time"] for r in rows]        # tz-aware, как в БД
 
-        last_closed = _last_closed_index(raw_times)
+        last_closed = last_closed_index(raw_times)
         if last_closed < 0:
             self._event(f"⚠ {ticker}: нет ни одного закрытого бара D1 — пропуск")
             return None
@@ -494,7 +582,7 @@ class ForwardRunner:
             # цене, которой она ещё не существовала.
             manage = pos is not None and dt > pos["opened_at"]
 
-            # ── 1. Стоп-лосс ───────────────────────────────── engine.py:194
+            # ── 1. Стоп-лосс ───────────────────────────────── engine.py:197
             if manage and price <= float(pos["stop_loss"]):
                 await self._close_position(
                     pos, price, dt, ExitReasonType.STOP_LOSS,
@@ -502,12 +590,12 @@ class ForwardRunner:
                     open_trades, plan, i)
                 pos, manage = None, False
 
-            # ── 1б. Ведение позиции по R (Швагер, гл. 15) ─── engine.py:202
+            # ── 1б. Ведение позиции по R (Швагер, гл. 15) ─── engine.py:205
             # Для osc_range НЕ включено: target_r/breakeven_r на IS ухудшают H4
             # и не меняют D1 (rules_osc_range.yaml:30-31). Шаг оставлен пустым
             # намеренно, чтобы нумерация совпадала с бэктестом.
 
-            # ── 2. Правила выхода (exit_rules) ─────────────── engine.py:215
+            # ── 2. Правила выхода (exit_rules) ─────────────── engine.py:218
             if manage:
                 exit_sig = self.rules.evaluate_exit(iv, plan.ticker)
                 if exit_sig.action == Action.EXIT:
@@ -516,7 +604,7 @@ class ForwardRunner:
                         open_trades, plan, i)
                     pos, manage = None, False
 
-            # ── 3. Основной сигнал ─────────────────────────── engine.py:229
+            # ── 3. Основной сигнал ─────────────────────────── engine.py:232
             if manage and signal.action == Action.SELL:
                 await self._close_position(
                     pos, price, dt, ExitReasonType.SIGNAL, signal.reason,
@@ -527,7 +615,7 @@ class ForwardRunner:
                                      price, atr, dt, open_trades)
                 pos = open_trades.get(plan.ticker)
 
-            # ── 4. Трейлинг + продвижение состояния ────────── engine.py:298
+            # ── 4. Трейлинг + продвижение состояния ────────── engine.py:301
             new_stop = None
             if pos is not None and atr > 0 and dt > pos["opened_at"]:
                 cand = price - atr * self.risk.cfg.atr_stop_multiplier
@@ -588,18 +676,24 @@ class ForwardRunner:
             self._event(f"⛔ {ticker}: BUY-сигнал отклонён — {decision['reason']}")
             return
 
-        if len(open_trades) >= config.risk.max_open_positions:
+        # Лимит числа позиций — величина ПОРТФЕЛЬНАЯ, поэтому проверяется только
+        # в портфельном режиме. В потикерном «одна позиция на тикер» держится
+        # структурно: _load_open_trades кладёт dict по тикеру, вход возможен
+        # только при `pos is None` (шаг 3 _run_bars), а бэктест держит тот же
+        # инвариант единственным слотом `open_trade` (engine.py:187, 239, 243).
+        if not self.book.per_ticker and len(open_trades) >= config.risk.max_open_positions:
             self._event(f"⛔ {ticker}: BUY-сигнал, но лимит позиций "
                         f"({config.risk.max_open_positions}) исчерпан")
             return
 
+        available = self.book.available(ticker)
         pos = self.risk.calculate_position(
             ticker=ticker, entry_price=price, atr=atr,
-            portfolio_value=self.available, lot_size=1,
+            portfolio_value=available, lot_size=1,
         )
-        if pos is None or pos.position_value > self.available:
+        if pos is None or pos.position_value > available:
             self._event(f"⛔ {ticker}: BUY-сигнал, но не хватает капитала "
-                        f"(свободно {self.available:,.0f})")
+                        f"(доступно {available:,.0f})")
             return
 
         entry = _dec(price)
@@ -619,8 +713,8 @@ class ForwardRunner:
             stop_loss       = stop,
             position_size   = n,
             risk_amount     = risk,
-            risk_percent    = (risk / _dec(self.available)).quantize(Decimal("0.0001"))
-                              if self.available > 0 else None,
+            risk_percent    = (risk / _dec(available)).quantize(Decimal("0.0001"))
+                              if available > 0 else None,
             opened_at       = dt,
             timeframe       = "D1",
             market_regime   = MarketRegime(regime) if regime else None,
@@ -634,7 +728,7 @@ class ForwardRunner:
         await self.orch.on_trade_opened(trade)
 
         commission = pos.position_value * COMMISSION_PCT
-        self.available -= pos.position_value + commission
+        self.book.debit(ticker, pos.position_value + commission)
         open_trades[ticker] = {
             "trade_id": trade.trade_id, "ticker": ticker,
             "entry_price": entry, "stop_loss": stop,
@@ -669,7 +763,13 @@ class ForwardRunner:
 
         shares     = float(rec["position_size"])
         entry      = float(rec["entry_price"])
-        commission = shares * price * COMMISSION_PCT
+        # Обе стороны, как в бэктесте (engine.py:_close). Двойного учёта правка
+        # не создаёт: до неё комиссия входа существовала только в оперативном
+        # счёте одного прогона и в БД не сохранялась. Теперь формула капитала
+        # форварда буквально бэктестовая — см. _paper_capital.
+        entry_comm = entry * shares * COMMISSION_PCT
+        exit_comm  = shares * price * COMMISSION_PCT
+        commission = entry_comm + exit_comm
         pnl        = (price - entry) * shares - commission
 
         trade = Trade(
@@ -694,7 +794,10 @@ class ForwardRunner:
         )
         await self.orch.on_trade_closed(trade)
         open_trades.pop(rec["ticker"], None)
-        self.available += shares * price - commission
+        # Только комиссия ВЫХОДА: входную уже списал _try_open. `commission`
+        # выше — сумма обеих (для записи в trades), в оперативный счёт она
+        # войти не может, иначе вход оплачивается дважды.
+        self.book.credit(rec["ticker"], shares * price - exit_comm)
         plan.exits.append({
             "bar": dt.isoformat(), "price": round(float(price), 6),
             "reason_type": reason_type.value, "reason": reason_text,
@@ -757,12 +860,17 @@ class ForwardRunner:
         self._db = await asyncpg.connect(self._dsn())
         try:
             await self._seed_belief()
-            open_trades    = await self._load_open_trades()
-            self.available = await self._paper_capital(open_trades)
-            logger.info("Открытых позиций: %d | свободный капитал: %s",
-                        len(open_trades), f"{self.available:,.0f}")
+            open_trades = await self._load_open_trades()
+            self.book   = await self._paper_capital(open_trades)
+            logger.info("Открытых позиций: %d | режим капитала: %s | %s",
+                        len(open_trades),
+                        "потикерный" if self.book.per_ticker else "портфельный",
+                        self.book.detail() if self.book.per_ticker
+                        else self.book.describe(len(open_trades)))
             if self.catchup_note:
                 self._event(self.catchup_note)
+            if self.per_ticker_note:
+                self._event(self.per_ticker_note)
 
             # ── Подготовка: свечи, границы догона, индикаторы ─────────
             plans: dict[str, TickerPlan] = {}
@@ -791,11 +899,13 @@ class ForwardRunner:
 
             # ── ФАЗА 1 — исторические бары ВСЕХ тикеров, только выходы.
             #    ФАЗА 2 — свежий бар ВСЕХ тикеров, выходы и входы.
-            #    Разделение обязательно: все исторические бары хронологически
-            #    раньше любого свежего, поэтому одним проходом вход первого
-            #    тикера оценивался бы против капитала ДО того, как догон
-            #    последнего его освободил. Результат зависел бы от порядка
-            #    TICKERS, а это не свойство стратегии.
+            #    Разделение нужно ПОРТФЕЛЬНОМУ режиму: все исторические бары
+            #    хронологически раньше любого свежего, поэтому одним проходом
+            #    вход первого тикера оценивался бы против общего капитала ДО
+            #    того, как догон последнего его освободил, и результат зависел
+            #    бы от порядка TICKERS — а это не свойство стратегии.
+            #    В потикерном режиме порядок не влияет (бюджеты независимы),
+            #    но фазы оставлены едиными: одна ветка кода на оба режима.
             phases = (
                 ("ФАЗА 1: исторические бары (только выходы)",
                  lambda p: p.historical, False),
@@ -828,8 +938,10 @@ class ForwardRunner:
 
             caught = sum(p.processed for p in plans.values())
             summary = (f"Форвард D1 {started.date()}: позиций {len(open_trades)}, "
-                       f"свободно {self.available:,.0f} руб., "
+                       f"{self.book.describe(len(open_trades))}, "
                        f"догнано баров {caught}, событий {len(self.events)}")
+            if self.book.per_ticker:
+                logger.info("Бюджеты потикерно: %s", self.book.detail())
             print("\n" + "═" * 64)
             print(f"  {summary}")
             for e in self.events:

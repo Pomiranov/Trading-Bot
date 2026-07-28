@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 
+from costs import COMMISSION_PCT
 from qf_platform.repositories.base import BaseRepository
 
 
@@ -27,7 +28,7 @@ class BacktestRepository(BaseRepository):
                 "pend": params.get("period_end"),
                 "capital": params.get("initial_capital", 1_000_000),
                 "risk": params.get("risk_pct", 0.05),
-                "commission": params.get("commission_pct", 0.0003),
+                "commission": params.get("commission_pct", COMMISSION_PCT),
                 "slippage": params.get("slippage_pct", 0.0001),
                 "leverage": params.get("leverage", 1),
                 "results": json.dumps(results),

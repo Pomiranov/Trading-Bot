@@ -8,11 +8,11 @@ from typing import Optional
 
 from sqlalchemy import Engine
 
+from costs import COMMISSION_PCT
 from qf_platform.repositories.paper_repository import PaperRepository
 
 logger = logging.getLogger(__name__)
 
-COMMISSION_PCT = 0.0003   # 0.03% per side (must match engine/paper_engine.py)
 SLIPPAGE_PCT   = 0.0001   # 0.01% slippage
 
 

@@ -4,7 +4,7 @@
 батч-раннером разбора глав (tools/read_chapters.py).
 
 Отправка своя, а не через ui.telegram_bot._send: тот модуль на импорте тянет
-legacy feedback_store, risk, signals и ходит в БД (см. run_forward_d1.py:59).
+legacy feedback_store, risk, signals и ходит в БД (см. run_forward_d1.py:102).
 Служебный скрипт не должен зависеть от торгового стека — сторож тем более не
 должен зависеть от того, что он охраняет.
 

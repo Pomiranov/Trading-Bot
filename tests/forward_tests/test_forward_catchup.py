@@ -88,11 +88,26 @@ class FakeDB:
         return [{k: t[k] for k in cols}
                 for t in self.trades.values() if t.get("closed_at") is None]
 
+    def realized_rows(self) -> list:
+        """Реализованный PnL по тикерам — ответ на группирующий запрос
+        _paper_capital. Базовый стенд pnl не хранит (закрытие пишет только
+        closed_at), поэтому здесь ноли; многодневный паритет проверяет
+        FakeDBWithPnl в test_forward_per_ticker_capital.py."""
+        out: dict = {}
+        for t in self.trades.values():
+            if t.get("closed_at") is not None:
+                out[t["ticker"]] = out.get(t["ticker"], 0.0) + float(t.get("pnl") or 0.0)
+        return [{"ticker": k, "realized": v} for k, v in out.items()]
+
     # ── интерфейс asyncpg ──
     async def fetch(self, sql, *args):
         self.calls.append(("fetch", sql, args))
         if "FROM candles" in sql:
             return self.candles
+        # Порядок ветвей значим: группирующий запрос по pnl тоже содержит
+        # "FROM trades", и без этой проверки он получил бы ОТКРЫТЫЕ позиции.
+        if "SUM(pnl)" in sql:
+            return self.realized_rows()
         if "FROM trades" in sql:
             return self.open_rows()
         return []
@@ -292,7 +307,7 @@ class TestStopInsideSkippedBar(unittest.TestCase):
         пробитых);
       - только хронологически-первое пробитие даёт ВТОРОЙ бар.
 
-    Пробитие задаётся через close, а не low: и backtest/engine.py:195, и форвард
+    Пробитие задаётся через close, а не low: и backtest/engine.py:198, и форвард
     сравнивают со стопом price = close. Сохранение этого — часть паритета.
     """
 
@@ -374,7 +389,9 @@ class TestEntriesOnlyOnFreshBar(unittest.TestCase):
 
         self.assertEqual(len(opened), 1)
         self.assertEqual(opened[0].opened_at, times[259])
-        self.assertLess(runner.available, 1_000_000.0)
+        # Проба переехала с runner.available на бюджет тикера: смысл тот же —
+        # вход списывает капитал (см. CapitalBook, решение 28.07).
+        self.assertLess(runner.book.available("SBER"), 1_000_000.0)
 
     def test_bootstrap_processes_only_fresh_bar(self):
         """forward_state пуст → только свежий бар, три года истории не переигрываем."""
@@ -772,16 +789,16 @@ class TestHelpers(unittest.TestCase):
             datetime(2026, 1, 1, tzinfo=UTC),
             datetime(today.year, today.month, today.day, tzinfo=UTC),
         ]
-        self.assertEqual(fwd._last_closed_index(times), 0)
+        self.assertEqual(fwd.last_closed_index(times), 0)
 
     def test_last_closed_index_all_closed(self):
         times = [datetime(2026, 1, 1, tzinfo=UTC), datetime(2026, 1, 2, tzinfo=UTC)]
-        self.assertEqual(fwd._last_closed_index(times), 1)
+        self.assertEqual(fwd.last_closed_index(times), 1)
 
     def test_last_closed_index_nothing_closed(self):
         today = datetime.now(fwd.MSK).date()
         times = [datetime(today.year, today.month, today.day, tzinfo=UTC)]
-        self.assertEqual(fwd._last_closed_index(times), -1)
+        self.assertEqual(fwd.last_closed_index(times), -1)
 
     def test_duplicate_sessions_matches_production_shape(self):
         """Ровно форма реального дефекта: 21:00+00 и 00:00+00 одной сессии."""

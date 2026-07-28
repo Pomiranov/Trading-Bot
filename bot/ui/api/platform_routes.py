@@ -8,6 +8,7 @@ import time
 
 from flask import Blueprint, Response, jsonify, request, stream_with_context
 
+from costs import COMMISSION_PCT
 from qf_platform.dto import BacktestRequestDTO, to_dict
 from qf_platform.services.backtest_service import BacktestService
 from qf_platform.services.dashboard_service import DashboardService
@@ -183,7 +184,7 @@ def api_backtest_run():
         period_end=body.get("period_end"),
         initial_capital=float(body.get("initial_capital", 1_000_000)),
         risk_pct=float(body.get("risk_pct", 0.05)),
-        commission_pct=float(body.get("commission_pct", 0.0003)),
+        commission_pct=float(body.get("commission_pct", COMMISSION_PCT)),
         slippage_pct=float(body.get("slippage_pct", 0.0001)),
         leverage=float(body.get("leverage", 1)),
     )

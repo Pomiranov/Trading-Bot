@@ -204,6 +204,9 @@ CREATE TABLE IF NOT EXISTS backtest_runs (
     period_end       DATE,
     initial_capital  NUMERIC(18,4) NOT NULL,
     risk_pct         NUMERIC(8,4)  NOT NULL DEFAULT 0.05,
+    -- Ставка обязана совпадать с bot/costs.py (COMMISSION_PCT). DDL импортировать
+    -- Python не может, поэтому здесь ссылка, а не значение: дефолт уже применён
+    -- к живой таблице, менять его нельзя.
     commission_pct   NUMERIC(8,6)  NOT NULL DEFAULT 0.0003,
     slippage_pct     NUMERIC(8,6)  NOT NULL DEFAULT 0.0001,
     leverage         NUMERIC(8,2)  NOT NULL DEFAULT 1,

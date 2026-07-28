@@ -5,6 +5,8 @@ from __future__ import annotations
 from dataclasses import asdict, dataclass, field
 from typing import Any, Optional
 
+from costs import COMMISSION_PCT
+
 
 def to_dict(obj: Any) -> dict:
     if hasattr(obj, "__dataclass_fields__"):
@@ -79,7 +81,7 @@ class BacktestRequestDTO:
     period_end: Optional[str] = None
     initial_capital: float = 1_000_000.0
     risk_pct: float = 0.05
-    commission_pct: float = 0.0003
+    commission_pct: float = COMMISSION_PCT
     slippage_pct: float = 0.0001
     leverage: float = 1.0
 

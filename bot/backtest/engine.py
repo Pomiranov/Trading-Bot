@@ -20,6 +20,8 @@ from typing import Optional
 
 import pandas as pd
 
+from costs import COMMISSION_PCT
+from market_time import last_closed_index
 from signals.indicators import IndicatorEngine, structural_downtrend_series
 from signals.rules_engine import RulesEngine, Action, classify_regime
 from risk.risk_manager import RiskManager
@@ -97,7 +99,7 @@ class BacktestEngine:
     def __init__(
         self,
         initial_capital: float = 1_000_000.0,
-        commission_pct: float = 0.0003,   # 0.03% за сторону
+        commission_pct: float = COMMISSION_PCT,   # см. bot/costs.py
         lot_size: int = 1,
         rules_engine: Optional[RulesEngine] = None,
         orchestrator: Optional[TradingOrchestrator] = None,
@@ -166,6 +168,7 @@ class BacktestEngine:
     def run(self, ticker: str, df: pd.DataFrame) -> BacktestResult:
         """Запустить бэктест. df должен содержать: open, high, low, close, volume."""
         result = BacktestResult(ticker=ticker)
+        df = self._drop_forming_bar(ticker, df)
         if df.empty or len(df) < 50:
             logger.warning("Недостаточно данных: %s (%d строк)", ticker, len(df))
             return result
@@ -333,6 +336,36 @@ class BacktestEngine:
         logger.info(result.summary())
         return result
 
+    # ── Незакрытая сессия ────────────────────────────────────────────
+
+    def _drop_forming_bar(self, ticker: str, df: pd.DataFrame) -> pd.DataFrame:
+        """Обрезать бар сегодняшней (ещё формирующейся) московской сессии.
+
+        Обрезка стоит ДО расчёта индикаторов — одним местом, потому что дальше
+        от df зависят и индикаторы, и vol_ma, и фильтр даунтренда, и
+        принудительное закрытие позиции на последнем баре. Значения на более
+        ранних барах она изменить не может: все индикаторы причинные, что
+        отдельно проверено тестом «нарезка окон ≡ пересчёт на префиксе»
+        (tests/forward_tests/test_forward_catchup.py, T8).
+
+        Почему это не косметика — см. market_time.last_closed_index: на
+        частичном баре движок принудительно закрывал открытую позицию и писал
+        её в n/WR/PF/PnL как состоявшуюся сделку по цене незакрытой сессии.
+        Форвард от этого защищён с долга №14, бэктест — с 2026-07-28.
+
+        Наивный индекс трактуется как UTC: так его отдают все скрипты
+        бэктеста (`r["time"].replace(tzinfo=None)` над timestamptz из БД).
+        """
+        if df.empty or not isinstance(df.index, pd.DatetimeIndex):
+            return df
+        index = df.index.tz_localize("UTC") if df.index.tz is None else df.index
+        last = last_closed_index(list(index))
+        if last == len(df) - 1:
+            return df
+        logger.info("[%s] Незакрытая сессия отброшена: %d бар(ов) из %d",
+                    ticker, len(df) - 1 - last, len(df))
+        return df.iloc[:last + 1]
+
     # ── Фильтр структурного даунтренда ───────────────────────────────
 
     def _downtrend_gate(self, df: pd.DataFrame, index: pd.Index) -> Optional[pd.Series]:
@@ -369,9 +402,16 @@ class BacktestEngine:
         status: str,
         exit_dt=None,
     ) -> tuple[float, float]:
-        commission    = trade.shares * exit_price * self.commission_pct
-        proceeds      = trade.shares * exit_price - commission
+        exit_comm     = trade.shares * exit_price * self.commission_pct
+        proceeds      = trade.shares * exit_price - exit_comm
         capital      += proceeds
+        # pnl вычитает ОБЕ стороны. Комиссия входа уже списана с capital при
+        # открытии (строка 253 в run()), но в pnl не попадала, поэтому
+        # initial_capital + Σpnl не сходился с траекторией капитала — а именно
+        # на этом равенстве стоит потикерный бюджет форварда (_paper_capital).
+        # Траектория capital здесь НЕ меняется: она была верна и до правки.
+        entry_comm    = trade.entry_price * trade.shares * self.commission_pct
+        commission    = entry_comm + exit_comm
         pnl           = (exit_price - trade.entry_price) * trade.shares - commission
         trade.exit_price = exit_price
         trade.exit_date  = exit_dt if exit_dt is not None else datetime.now()

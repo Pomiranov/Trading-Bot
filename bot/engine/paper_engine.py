@@ -8,6 +8,7 @@ from datetime import datetime, timezone
 from decimal import Decimal
 from typing import Optional, TYPE_CHECKING
 
+from costs import COMMISSION_PCT
 from realtime.sse_hub import sse_hub
 
 if TYPE_CHECKING:
@@ -15,7 +16,6 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
-COMMISSION_PCT = 0.0003   # 0.03% per side
 SLIPPAGE_PCT   = 0.0001   # 0.01% slippage
 MONITOR_INTERVAL = 30     # seconds
 SIGNAL_INTERVAL  = 90     # seconds

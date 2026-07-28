@@ -146,7 +146,7 @@ def signal_window(computed: pd.DataFrame, i: int, bars: int = SIGNAL_WINDOW_BARS
     swing_low через .shift(n), ШД-ATR через .shift(1), PTR с eff = i+n2+1),
     поэтому посчитать их один раз по всей истории и затем нарезать окна —
     то же самое, что пересчитывать на каждом префиксе, но за O(n) вместо
-    O(n²). Ровно так делает бэктест (backtest/engine.py:217, 230).
+    O(n²). Ровно так делает бэктест (backtest/engine.py:220, 233).
     """
     return computed.iloc[max(0, i - bars + 1): i + 1]
 

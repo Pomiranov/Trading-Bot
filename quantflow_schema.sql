@@ -285,6 +285,43 @@ CREATE TABLE forward_state (
 
 
 -- ============================================================
+-- ТАБЛИЦА 6: forward_catchup_log
+-- Постоянная запись каждого догона пропущенных баров
+-- (run_forward_d1.py). Сторож (forward_healthcheck.py) — сигнализация,
+-- а не запись: он видит только две конечные точки своего файла состояния
+-- и назавтра разрыв уже не отличит. Улика должна жить здесь.
+--
+-- Строка пишется, когда gap_bars >= 1 или найдены дубли — не каждый день,
+-- иначе журнал утонет в 12 пустых строках в сутки. В норме разрыва нет.
+--
+-- Побочная цель: накопить РАСПРЕДЕЛЕНИЕ длин разрывов. Сейчас известны
+-- две точки (безобидные <=2 бара, один реальный сбой 13 баров), и предел
+-- догона CATCHUP_MAX_BARS выбран в диапазоне, где наблюдений нет вовсе.
+-- Через полгода этих строк хватит, чтобы выбрать его по данным.
+-- ============================================================
+
+CREATE TABLE forward_catchup_log (
+    log_id          BIGSERIAL       PRIMARY KEY,
+    logged_at       TIMESTAMPTZ     NOT NULL DEFAULT NOW(),
+    strategy_id     VARCHAR(50)     NOT NULL,
+    ticker          VARCHAR(20)     NOT NULL,
+
+    state_before    TIMESTAMPTZ,                    -- NULL = первый прогон тикера
+    gap_bars        INTEGER         NOT NULL,       -- исторических баров в разрыве
+    bars_processed  INTEGER         NOT NULL,       -- из них догнано (только выходы)
+    bars_discarded  INTEGER         NOT NULL,       -- признано потерянными
+    first_bar       TIMESTAMPTZ,                    -- первый догнанный бар
+    last_bar        TIMESTAMPTZ,                    -- последний догнанный бар
+    flagged         BOOLEAN         NOT NULL DEFAULT false,
+
+    exits           JSONB,      -- [{bar, price, reason_type, reason, trade_id}]
+    duplicates      JSONB       -- [{date, times: [...]}] — бары-двойники в разрыве
+);
+
+CREATE INDEX idx_catchup_ticker ON forward_catchup_log (strategy_id, ticker, logged_at DESC);
+
+
+-- ============================================================
 -- ФУНКЦИЯ: автообновление updated_at
 -- ============================================================
 

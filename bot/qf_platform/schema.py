@@ -331,6 +331,28 @@ CREATE TABLE IF NOT EXISTS forward_state (
     PRIMARY KEY (strategy_id, ticker)
 );
 
+-- Постоянная запись каждого догона пропущенных баров (run_forward_d1.py).
+-- Сторож — сигнализация, а не запись: он видит только две конечные точки
+-- своего файла состояния и назавтра разрыв уже не отличит.
+CREATE TABLE IF NOT EXISTS forward_catchup_log (
+    log_id          BIGSERIAL       PRIMARY KEY,
+    logged_at       TIMESTAMPTZ     NOT NULL DEFAULT NOW(),
+    strategy_id     VARCHAR(50)     NOT NULL,
+    ticker          VARCHAR(20)     NOT NULL,
+    state_before    TIMESTAMPTZ,
+    gap_bars        INTEGER         NOT NULL,
+    bars_processed  INTEGER         NOT NULL,
+    bars_discarded  INTEGER         NOT NULL,
+    first_bar       TIMESTAMPTZ,
+    last_bar        TIMESTAMPTZ,
+    flagged         BOOLEAN         NOT NULL DEFAULT false,
+    exits           JSONB,
+    duplicates      JSONB
+);
+
+CREATE INDEX IF NOT EXISTS idx_catchup_ticker
+    ON forward_catchup_log (strategy_id, ticker, logged_at DESC);
+
 -- ── Paper engine enhancements (idempotent migrations) ─────────────────────
 ALTER TABLE paper_trades ADD COLUMN IF NOT EXISTS commission    NUMERIC(18,4) NOT NULL DEFAULT 0;
 ALTER TABLE paper_trades ADD COLUMN IF NOT EXISTS slippage      NUMERIC(18,4) NOT NULL DEFAULT 0;

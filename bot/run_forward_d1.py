@@ -3,11 +3,39 @@
 Запуск:
     python run_forward_d1.py        # ежедневно после закрытия MOEX (пн-пт ~19:15 МСК)
 
-Один прогон: догрузить D1-свечи → для каждого тикера обработать последнюю
-свечу зеркально бэктесту (backtest/engine.py): стоп-лосс → exit_rules →
-SELL-сигнал → трейлинг; вход — через orchestrator.check_signal() (внутри
-фильтр структурного даунтренда, отказ пишется в skipped_signals), закрытие —
-через on_trade_closed() (запускает цикл обучения).
+Один прогон: догрузить D1-свечи → для каждого тикера обработать ВСЕ
+необработанные закрытые бары зеркально бэктесту (backtest/engine.py):
+стоп-лосс → exit_rules → SELL-сигнал → трейлинг; вход — через
+orchestrator.check_signal() (внутри фильтр структурного даунтренда, отказ
+пишется в skipped_signals), закрытие — через on_trade_closed() (запускает
+цикл обучения).
+
+Догон пропущенных баров (техдолг №14). Прогон может не состояться — сервер
+выключен, Docker не поднялся, триггер пропущен. Раньше пропущенные бары
+перескакивались НАВСЕГДА: решение принималось только по rows[-1], и стоп,
+который должен был сработать на пропущенном баре, не срабатывал никогда.
+Теперь:
+  - идёт цикл по всем необработанным барам от forward_state.last_candle_time
+    до последнего ЗАКРЫТОГО бара;
+  - на пропущенных (исторических) барах разрешены ТОЛЬКО выходы: стоп,
+    трейлинг, exit_rules, SELL-сигнал;
+  - входы — только на самом свежем баре, задним числом НИКОГДА. Это не
+    вкусовщина: check_signal → _check_structural_downtrend читает .iloc[-1]
+    ПОЛНОЙ серии, то есть всегда считает фильтр по новейшему бару. Вход
+    задним числом был бы отфильтрован заглядывающим вперёд фильтром;
+  - last_candle_time продвигается по КАЖДОМУ обработанному бару, поэтому
+    падение посреди догона не теряет прогресс;
+  - глубина ретроспективных выходов ограничена CATCHUP_MAX_BARS (см. ниже),
+    разрыв от CATCHUP_FLAG_BARS баров флагается человеку, а каждый догон
+    пишется в forward_catchup_log.
+
+Порядок фаз в run(): все исторические бары всех тикеров (только выходы),
+затем свежий бар всех тикеров (выходы и входы). Иначе результат зависел бы
+от порядка тикеров в TICKERS: вход по первому тикеру оценивался бы против
+свободного капитала ДО того, как догон последнего освободил его несколько
+баров назад. Фаза 1 порядко-независима по построению — входы там запрещены,
+а единственный эффект на капитал (self.available += при закрытии) монотонно
+возрастает, поэтому перерасход невозможен.
 
 Паритет с бэктестом: окно индикаторов 61 бар, сделки по ценам закрытия,
 комиссия 0.03% за сторону, ATR-трейлинг (config.risk.atr_stop_multiplier).
@@ -17,11 +45,15 @@ SELL-сигнал → трейлинг; вход — через orchestrator.che
     1 000 000 руб.) на все тикеры и лимит config.risk.max_open_positions —
     в бэктесте у каждого тикера был независимый капитал 1 млн;
   - position_size_multiplier из check_signal логируется, но НЕ применяется
-    (сначала валидируем бэктест-конфигурацию как есть).
+    (сначала валидируем бэктест-конфигурацию как есть);
+  - во время догона последовательность сделок расходится с бэктестом: после
+    выбивания стопа движок бэктеста может войти на следующем баре, форвард —
+    только на свежем. Поэтому закрытия догона помечаются в exit_reason, и
+    сравнение форвард↔бэктест может исключить эти окна по LIKE.
 
 Состояние — только в БД: открытые позиции в trades (closed_at IS NULL,
-strategy_id = osc_range_moex_d1_fwd), идемпотентность через forward_state.
-Повторный запуск в тот же день — no-op.
+strategy_id = osc_range_moex_d1_fwd), идемпотентность через forward_state,
+журнал догонов в forward_catchup_log. Повторный запуск в тот же день — no-op.
 """
 
 import sys
@@ -32,10 +64,13 @@ if hasattr(sys.stderr, "reconfigure"):
     sys.stderr.reconfigure(encoding="utf-8")
 
 import asyncio
+import json
 import logging
 import math
 import os
-from datetime import datetime, timezone
+from bisect import bisect_right
+from dataclasses import dataclass, field
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from pathlib import Path
 from typing import Optional
@@ -45,7 +80,7 @@ import pandas as pd
 
 from config import config
 from data.loader import save_candles_to_db
-from signals.indicators import IndicatorEngine
+from signals.indicators import IndicatorEngine, SIGNAL_WINDOW_BARS, signal_window
 from signals.rules_engine import RulesEngine, Action, classify_regime
 from risk.risk_manager import RiskManager
 from learning.trading_orchestrator import TradingOrchestrator
@@ -70,10 +105,41 @@ TICKERS = ["SBER", "GAZP", "LKOH", "NVTK", "ROSN", "TATN",
 RULES_FILE = Path(__file__).resolve().parent.parent / "knowledge" / "rules" / "rules_osc_range.yaml"
 
 COMMISSION_PCT   = 0.0003    # 0.03% за сторону — как в бэктесте
-WINDOW_BARS      = 61        # окно latest_precomputed — как iloc[i-60:i+1] бэктеста
+WINDOW_BARS      = SIGNAL_WINDOW_BARS   # окно latest_precomputed = iloc[i-60:i+1]
 MIN_HISTORY_BARS = 250       # SMA200 фильтра + запас
+WARMUP_BARS      = 50        # паритет с range(50, len(df_ind)) бэктеста
 STALE_DAYS       = 5         # свеча старше — данные протухли, тикер не обрабатываем
 REFRESH_DAYS     = 10        # окно перекрытия при догрузке свечей
+
+# Предел ГЛУБИНЫ ретроспективных выходов. Причина ограничения одна, и она не
+# календарная: за длинный разрыв цены в БД могли быть перезаписаны
+# корпоративным событием (сплит, крупный дивиденд, переименование), и тогда
+# задним числом сработает стоп по цене, которой не было.
+#
+# ВНИМАНИЕ: 7 — НЕ эмпирическая величина. Измеренное 28.07 распределение
+# разрывов двугорбое: безобидные <=2 бара (календарь; бары идут ~0.96 на
+# календарный день, выходные торгуются с 2025Q2, новогодний провал даёт 0
+# баров), реальный сбой — 13 баров. Между 3 и 12 наблюдений НЕТ НИ ОДНОГО,
+# поэтому 5, 7 и 10 дают на всей накопленной истории идентичное поведение, и
+# выбор между ними на данных неразрешим. Длина каждого разрыва пишется в
+# forward_catchup_log — через полгода предел выбирается по данным, а не
+# аргументом.
+#
+# Временная мера: когда появится список корпоративных событий по тикерам (он
+# нужен и ISS-загрузчику), длину заменить прямой проверкой «событие внутри
+# разрыва → исторические бары не обрабатывать вообще, независимо от длины».
+CATCHUP_MAX_BARS_DEFAULT = 7
+CATCHUP_MAX_BARS_CEILING = 7    # .env может только УЖЕСТОЧИТЬ
+
+# Порог ФЛАГА — отдельное число, и вот оно измеренное: календарь не даёт
+# разрывов >=3 баров. Не путать с пределом догона: предел ограничивает
+# глубину ретроспективных выходов, порог флага — когда звать человека.
+# Разрыв 4 бара: выходы догоняем И флагаем.
+CATCHUP_FLAG_BARS = 3
+
+# В РФ нет перехода на летнее время с 2014 — фиксированный сдвиг вместо
+# ZoneInfo, чтобы не зависеть от наличия tzdata на сервере.
+MSK = timezone(timedelta(hours=3))
 
 FORWARD_CAPITAL = float(os.getenv("FORWARD_CAPITAL", "1000000"))
 
@@ -81,6 +147,85 @@ FORWARD_CAPITAL = float(os.getenv("FORWARD_CAPITAL", "1000000"))
 def _dec(value: float) -> Decimal:
     """float → Decimal без артефактов двоичного представления (как в бэктесте)."""
     return Decimal(str(round(float(value), 6)))
+
+
+def _catchup_max_bars() -> tuple[int, Optional[str]]:
+    """(действующий предел догона, пометка для сообщения или None).
+
+    Пометка возвращается наружу, а не только логируется: попытка ослабить
+    ограничение должна быть видна в Telegram, иначе она потеряется ровно
+    тогда, когда важна — см. forward_healthcheck.py:65-70.
+    """
+    raw = os.getenv("FWD_CATCHUP_MAX_BARS")
+    if raw is None or raw.strip() == "":
+        return CATCHUP_MAX_BARS_DEFAULT, None
+    try:
+        value = int(raw)
+    except ValueError:
+        return (CATCHUP_MAX_BARS_DEFAULT,
+                f"⚠ FWD_CATCHUP_MAX_BARS={raw!r} — не число, "
+                f"взят дефолт {CATCHUP_MAX_BARS_DEFAULT}")
+    if value > CATCHUP_MAX_BARS_CEILING:
+        return (CATCHUP_MAX_BARS_CEILING,
+                f"⚠ предел догона из .env ({value}) проигнорирован, "
+                f"взят жёсткий предел {CATCHUP_MAX_BARS_CEILING}")
+    if value < 1:
+        return 1, f"⚠ FWD_CATCHUP_MAX_BARS={value} поднято до 1"
+    return value, None
+
+
+def _last_closed_index(raw_times: list) -> int:
+    """Индекс последнего ЗАКРЫТОГО бара: сегодняшняя сессия ещё формируется.
+
+    В 00:15 МСК (штатное расписание) поведение не меняется. Но прогон бывает
+    внеурочным — реальный случай 11:41 после пропущенного триггера при
+    StartWhenAvailable=True — и тогда ISS отдаёт ЧАСТИЧНЫЙ бар за сегодня.
+    С побарным продвижением состояния он стал бы last_candle_time, а когда
+    следующий прогон заменит строку завершённым OHLC (DELETE+INSERT в
+    data/loader.py), завершённый бар был бы перешагнут навсегда.
+    """
+    today = datetime.now(MSK).date()
+    for i in range(len(raw_times) - 1, -1, -1):
+        if raw_times[i].astimezone(MSK).date() < today:
+            return i
+    return -1
+
+
+def _duplicate_sessions(raw_times: list) -> list:
+    """Бары, попавшие на одну московскую сессию (дубли конвенции времени).
+
+    Измерено 28.07: 12 таких пар в БД, по одной на тикер — сессия 2026-06-25
+    записана и как 2026-06-24 21:00+00 (московская полночь), и как
+    2026-06-25 00:00+00 (наивная полночь как UTC), OHLCV идентичны.
+    UNIQUE (ticker, timeframe, time) их не ловит: мгновения разные.
+
+    Цикл догона к ним устойчив — каждая СТРОКА обходится ровно один раз, и
+    состояние продвигается на её собственную метку, поэтому легитимный бар не
+    теряется, а повторная оценка той же сессии no-op (позиция уже закрыта либо
+    рэтчет трейлинга отклоняет тот же уровень). Но фантомный бар сдвигает
+    каждое rolling-окно, поэтому факт обязан быть виден.
+    """
+    by_date: dict = {}
+    for t in raw_times:
+        by_date.setdefault(t.astimezone(MSK).date(), []).append(t)
+    return [{"date": str(d), "times": [t.isoformat() for t in ts]}
+            for d, ts in sorted(by_date.items()) if len(ts) > 1]
+
+
+def signal_for_bar(
+    rules: RulesEngine,
+    ind_engine: IndicatorEngine,
+    df_ind: pd.DataFrame,
+    i: int,
+    ticker: str = "",
+):
+    """Индикаторы и сигнал по бару i уже посчитанного df_ind — как в бэктесте.
+
+    Возвращает (iv, signal). Окно берётся через signal_window(), то есть
+    заканчивается ровно на баре i — доступа к будущим барам нет.
+    """
+    iv = ind_engine.latest_precomputed(signal_window(df_ind, i))
+    return iv, rules.evaluate(iv, ticker)
 
 
 def signal_for_last_bar(
@@ -95,8 +240,43 @@ def signal_for_last_bar(
     паритет-тесты могли прогнать ту же логику на обрезанной истории.
     """
     df_ind = ind_engine.compute(df)
-    iv = ind_engine.latest_precomputed(df_ind.iloc[-WINDOW_BARS:])
-    return df_ind, iv, rules.evaluate(iv, ticker)
+    iv, signal = signal_for_bar(rules, ind_engine, df_ind, len(df_ind) - 1, ticker)
+    return df_ind, iv, signal
+
+
+@dataclass
+class TickerPlan:
+    """Подготовленный к обработке тикер: свечи, индикаторы, границы догона."""
+
+    ticker:       str
+    raw_times:    list            # tz-aware метки из БД — ЕДИНСТВЕННАЯ ось времени
+    df_ind:       pd.DataFrame    # индикаторы по всей истории, считаны один раз
+    first_hist:   int             # первый ДОГОНЯЕМЫЙ исторический бар
+    last_closed:  int             # свежий (последний закрытый) бар
+    gap_bars:     int             # исторических баров в разрыве ДО ограничения
+    discarded:    int             # из них признано потерянными
+    duplicates:   list
+    state_before: Optional[datetime]
+    exits:        list = field(default_factory=list)   # для журнала
+    failed:       bool = False    # фаза 1 упала → фазу 2 не пускать
+
+    @property
+    def historical(self) -> range:
+        """Догоняемые исторические бары. Здесь разрешены ТОЛЬКО выходы."""
+        return range(self.first_hist, self.last_closed)
+
+    @property
+    def fresh(self) -> range:
+        """Свежий бар. Единственное место, где разрешён вход."""
+        return range(self.last_closed, self.last_closed + 1)
+
+    @property
+    def processed(self) -> int:
+        return self.last_closed - self.first_hist
+
+    @property
+    def flagged(self) -> bool:
+        return self.gap_bars >= CATCHUP_FLAG_BARS or self.discarded > 0
 
 
 class ForwardRunner:
@@ -110,6 +290,7 @@ class ForwardRunner:
         self._db: Optional[asyncpg.Connection] = None
         self.events: list[str] = []     # сводка дня для консоли и Telegram
         self.available: float = 0.0     # свободный бумажный капитал
+        self.catchup_max, self.catchup_note = _catchup_max_bars()
 
     # ── Инфраструктура ────────────────────────────────────────────────
 
@@ -147,7 +328,14 @@ class ForwardRunner:
         self._event(f"Belief-строка {STRATEGY_ID} создана")
 
     async def _load_open_trades(self) -> dict:
-        """Открытые форвард-позиции из БД: ticker → запись trades."""
+        """Открытые форвард-позиции из БД: ticker → изменяемый dict записи trades.
+
+        dict(r), а не сам asyncpg.Record: Record не поддерживает __setitem__, а
+        цикл по барам ОБЯЗАН видеть ужесточённый трейлингом стоп на следующем
+        баре. С Record рэтчет перезапускался бы с исходного стопа, и стоп,
+        который должен сработать на баре i+2, не сработал бы — тот же дефект
+        №14 на уровень ниже. _try_open уже кладёт обычный dict.
+        """
         rows = await self._db.fetch("""
             SELECT trade_id, ticker, entry_price, stop_loss, position_size,
                    risk_amount, opened_at
@@ -158,9 +346,13 @@ class ForwardRunner:
         open_trades: dict = {}
         for r in rows:
             if r["ticker"] in open_trades:
-                logger.warning("Несколько открытых позиций по %s — использую первую", r["ticker"])
+                # Не logger.warning: это молча НЕУПРАВЛЯЕМАЯ позиция, её стоп
+                # не сработает никогда, потому что форвард её не видит.
+                self._event(f"🚨 {r['ticker']}: несколько открытых позиций — "
+                            f"использую первую, {str(r['trade_id'])[:8]} "
+                            f"остаётся без управления")
                 continue
-            open_trades[r["ticker"]] = r
+            open_trades[r["ticker"]] = dict(r)
         return open_trades
 
     async def _paper_capital(self, open_trades: dict) -> float:
@@ -175,9 +367,19 @@ class ForwardRunner:
         )
         return FORWARD_CAPITAL + float(realized) - open_value
 
-    # ── Обработка тикера ─────────────────────────────────────────────
+    async def _advance_state(self, ticker: str, dt) -> None:
+        """Зафиксировать обработанный бар. Вызывается на КАЖДОМ баре догона."""
+        await self._db.execute("""
+            INSERT INTO forward_state (strategy_id, ticker, last_candle_time, updated_at)
+            VALUES ($1, $2, $3, NOW())
+            ON CONFLICT (strategy_id, ticker)
+            DO UPDATE SET last_candle_time = EXCLUDED.last_candle_time, updated_at = NOW()
+        """, STRATEGY_ID, ticker, dt)
 
-    async def _process_ticker(self, ticker: str, open_trades: dict) -> None:
+    # ── Подготовка тикера ─────────────────────────────────────────────
+
+    async def _prepare_ticker(self, ticker: str) -> Optional[TickerPlan]:
+        """Свечи, границы догона, индикаторы. None = тикер снят с обработки."""
         rows = await self._db.fetch("""
             SELECT time, open, high, low, close, volume
             FROM candles
@@ -186,24 +388,62 @@ class ForwardRunner:
         """, ticker)
         if len(rows) < MIN_HISTORY_BARS:
             self._event(f"⚠ {ticker}: мало истории D1 ({len(rows)} баров) — пропуск")
-            return
+            return None
 
-        last_raw = rows[-1]["time"]     # tz-aware, как в БД
+        raw_times = [r["time"] for r in rows]        # tz-aware, как в БД
 
-        # Идемпотентность: последняя свеча уже обработана?
+        last_closed = _last_closed_index(raw_times)
+        if last_closed < 0:
+            self._event(f"⚠ {ticker}: нет ни одного закрытого бара D1 — пропуск")
+            return None
+        last_raw = raw_times[last_closed]
+
         state_time = await self._db.fetchval("""
             SELECT last_candle_time FROM forward_state
             WHERE strategy_id = $1 AND ticker = $2
         """, STRATEGY_ID, ticker)
-        if state_time is not None and last_raw <= state_time:
-            logger.info("[%s] Свежих свечей нет (последняя %s) — пропуск", ticker, last_raw.date())
-            return
 
-        # Протухшие данные: решение по старой свече опаснее, чем его отсутствие
+        if state_time is None:
+            # Bootstrap: первый прогон тикера (или строку состояния удалили).
+            # Отличить эти два случая нельзя, поэтому берём безопасное
+            # схлопывание — только свежий бар, как и было до догона. Три года
+            # истории задним числом не переигрываем.
+            first_raw = last_closed
+            self._event(f"ℹ {ticker}: forward_state пуст — "
+                        f"только свежий бар {last_raw.date()}")
+        elif state_time > last_raw:
+            # Строки свечей удалены (DELETE прошёл, INSERT упал) или откат часов.
+            # Сторож это тоже не увидит: A1 сравнивает свечи НОВЕЕ обработанного
+            # (пусто), A3 нужен предыдущий снимок. Слепое пятно обоих процессов.
+            self._event(f"⚠ {ticker}: состояние {state_time.date()} опережает свечи "
+                        f"{last_raw.date()} — пропуск, состояние не двигаю")
+            return None
+        elif state_time == last_raw:
+            logger.info("[%s] Свежих свечей нет (последняя %s) — пропуск",
+                        ticker, last_raw.date())
+            return None
+        else:
+            first_raw = bisect_right(raw_times, state_time)
+
+        # Протухшие данные: решение по старой свече опаснее, чем его отсутствие.
+        # Проверяется ТОЛЬКО по свежему бару и НИКОГДА побарно: в разрыве из 7
+        # баров каждый исторический старше STALE_DAYS, и проверка внутри цикла
+        # сделала бы догон невозможным по построению.
         age_days = (datetime.now(timezone.utc) - last_raw).days
         if age_days > STALE_DAYS:
-            self._event(f"⚠ {ticker}: последняя свеча {last_raw.date()} ({age_days} дн. назад) — пропуск")
-            return
+            self._event(f"⚠ {ticker}: последняя свеча {last_raw.date()} "
+                        f"({age_days} дн. назад) — пропуск")
+            return None
+
+        gap_bars   = last_closed - first_raw
+        first_hist = max(first_raw + max(0, gap_bars - self.catchup_max), WARMUP_BARS)
+        discarded  = first_hist - first_raw
+
+        duplicates = _duplicate_sessions(raw_times[first_hist:last_closed + 1])
+        if duplicates:
+            dates = ", ".join(d["date"] for d in duplicates)
+            self._event(f"⚠ {ticker}: бары-двойники на одну сессию ({dates}) — "
+                        f"окна индикаторов сдвинуты, данные требуют ремонта")
 
         df = pd.DataFrame(
             {
@@ -214,66 +454,112 @@ class ForwardRunner:
                 "volume": [int(r["volume"]) for r in rows],
             },
             index=pd.DatetimeIndex(
-                [r["time"].replace(tzinfo=None) for r in rows], name="datetime"
+                [t.replace(tzinfo=None) for t in raw_times], name="datetime"
             ),
         )
 
-        df_ind, iv, signal = signal_for_last_bar(self.rules, self.indicators, df, ticker)
-        row   = df_ind.iloc[-1]
-        price = float(row["close"])
-        _atr  = row.get("atr")
-        atr   = float(_atr) if _atr is not None and pd.notna(_atr) else price * 0.01
+        return TickerPlan(
+            ticker=ticker, raw_times=raw_times,
+            df_ind=self.indicators.compute(df),
+            first_hist=first_hist, last_closed=last_closed,
+            gap_bars=gap_bars, discarded=discarded,
+            duplicates=duplicates, state_before=state_time,
+        )
 
-        pos = open_trades.get(ticker)
-        if pos is not None:
-            # Порядок как в бэктесте: стоп → exit_rules → SELL → трейлинг
-            if price <= float(pos["stop_loss"]):
+    # ── Обработка баров ──────────────────────────────────────────────
+
+    async def _run_bars(self, plan: TickerPlan, open_trades: dict,
+                        bars, allow_entry: bool) -> None:
+        """Прогнать бары plan'а. Шаги пронумерованы как в backtest/engine.py.
+
+        allow_entry — параметр ФАЗЫ, не бара: «входы только на свежем баре»
+        становится свойством графа вызовов, а не проверкой внутри цикла,
+        которую легко потерять при следующей правке.
+        """
+        for i in bars:
+            dt    = plan.raw_times[i]
+            row   = plan.df_ind.iloc[i]
+            price = float(row["close"])
+            _atr  = row.get("atr")
+            atr   = float(_atr) if _atr is not None and pd.notna(_atr) else price * 0.01
+
+            iv, signal = signal_for_bar(
+                self.rules, self.indicators, plan.df_ind, i, plan.ticker)
+
+            pos = open_trades.get(plan.ticker)
+            # Бар, предшествующий входу, не судим. Достижимо: _try_open пишет
+            # сделку через orch (своё соединение), а состояние пишется отдельно,
+            # поэтому падение между ними оставляет состояние на баре N−3 при
+            # позиции с opened_at = бар N. Иначе догон закрыл бы позицию по
+            # цене, которой она ещё не существовала.
+            manage = pos is not None and dt > pos["opened_at"]
+
+            # ── 1. Стоп-лосс ───────────────────────────────── engine.py:194
+            if manage and price <= float(pos["stop_loss"]):
                 await self._close_position(
-                    pos, price, last_raw, ExitReasonType.STOP_LOSS,
-                    f"Форвард: стоп-лосс {float(pos['stop_loss']):.2f}")
-                open_trades.pop(ticker)
-            else:
-                exit_sig = self.rules.evaluate_exit(iv, ticker)
+                    pos, price, dt, ExitReasonType.STOP_LOSS,
+                    f"Форвард: стоп-лосс {float(pos['stop_loss']):.2f}",
+                    open_trades, plan, i)
+                pos, manage = None, False
+
+            # ── 1б. Ведение позиции по R (Швагер, гл. 15) ─── engine.py:202
+            # Для osc_range НЕ включено: target_r/breakeven_r на IS ухудшают H4
+            # и не меняют D1 (rules_osc_range.yaml:30-31). Шаг оставлен пустым
+            # намеренно, чтобы нумерация совпадала с бэктестом.
+
+            # ── 2. Правила выхода (exit_rules) ─────────────── engine.py:215
+            if manage:
+                exit_sig = self.rules.evaluate_exit(iv, plan.ticker)
                 if exit_sig.action == Action.EXIT:
                     await self._close_position(
-                        pos, price, last_raw, ExitReasonType.SIGNAL, exit_sig.reason)
-                    open_trades.pop(ticker)
-                elif signal.action == Action.SELL:
-                    await self._close_position(
-                        pos, price, last_raw, ExitReasonType.SIGNAL, signal.reason)
-                    open_trades.pop(ticker)
-                elif atr > 0:
-                    new_stop = price - atr * self.risk.cfg.atr_stop_multiplier
-                    if new_stop > float(pos["stop_loss"]):
-                        await self._db.execute(
-                            "UPDATE trades SET stop_loss = $2 WHERE trade_id = $1",
-                            pos["trade_id"], _dec(new_stop))
-                        logger.info("[%s] Трейлинг-стоп: %.2f", ticker, new_stop)
+                        pos, price, dt, ExitReasonType.SIGNAL, exit_sig.reason,
+                        open_trades, plan, i)
+                    pos, manage = None, False
 
-        elif signal.action == Action.BUY:
-            await self._try_open(ticker, df_ind, iv, signal, price, atr, last_raw, open_trades)
+            # ── 3. Основной сигнал ─────────────────────────── engine.py:229
+            if manage and signal.action == Action.SELL:
+                await self._close_position(
+                    pos, price, dt, ExitReasonType.SIGNAL, signal.reason,
+                    open_trades, plan, i)
+                pos = None
+            elif pos is None and allow_entry and signal.action == Action.BUY:
+                await self._try_open(plan.ticker, plan.df_ind, i, iv, signal,
+                                     price, atr, dt, open_trades)
+                pos = open_trades.get(plan.ticker)
 
-        # Свеча обработана — зафиксировать для идемпотентности
-        await self._db.execute("""
-            INSERT INTO forward_state (strategy_id, ticker, last_candle_time, updated_at)
-            VALUES ($1, $2, $3, NOW())
-            ON CONFLICT (strategy_id, ticker)
-            DO UPDATE SET last_candle_time = EXCLUDED.last_candle_time, updated_at = NOW()
-        """, STRATEGY_ID, ticker, last_raw)
+            # ── 4. Трейлинг + продвижение состояния ────────── engine.py:298
+            new_stop = None
+            if pos is not None and atr > 0 and dt > pos["opened_at"]:
+                cand = price - atr * self.risk.cfg.atr_stop_multiplier
+                if cand > float(pos["stop_loss"]):
+                    new_stop = cand
 
-    async def _try_open(self, ticker, df_ind, iv, signal, price, atr, dt, open_trades) -> None:
+            # Одной транзакцией: иначе падение между UPDATE и записью состояния
+            # оставило бы состояние продвинутым за бар, чей рэтчет не сохранён —
+            # молчаливая потеря ужесточённого стопа без следов.
+            async with self._db.transaction():
+                if new_stop is not None:
+                    await self._db.execute(
+                        "UPDATE trades SET stop_loss = $2 WHERE trade_id = $1",
+                        pos["trade_id"], _dec(new_stop))
+                    pos["stop_loss"] = _dec(new_stop)   # см. _load_open_trades
+                    logger.info("[%s] Трейлинг-стоп: %.2f", plan.ticker, new_stop)
+                await self._advance_state(plan.ticker, dt)
+
+    async def _try_open(self, ticker, df_ind, i, iv, signal, price, atr, dt,
+                        open_trades) -> None:
         """BUY-сигнал: check_signal (фильтры, confidence) → сайзинг → открытие."""
 
         def _feat(col: str) -> Optional[float]:
-            val = df_ind.iloc[-1].get(col)
+            val = df_ind.iloc[i].get(col)
             if val is None or not pd.notna(val):
                 return None
             val = float(val)
             return val if math.isfinite(val) else None
 
         volume_ratio = None
-        vol_ma = df_ind["volume"].rolling(20).mean().iloc[-1]
-        vol    = df_ind["volume"].iloc[-1]
+        vol_ma = df_ind["volume"].rolling(20).mean().iloc[i]
+        vol    = df_ind["volume"].iloc[i]
         if pd.notna(vol_ma) and vol_ma:
             volume_ratio = round(float(vol) / float(vol_ma), 4)
 
@@ -357,8 +643,30 @@ class ForwardRunner:
         self._event(f"🟢 {ticker}: BUY {pos.shares} акц. @ {price:.2f}, "
                     f"стоп {pos.stop_price:.2f} ({signal.reason[:80]})")
 
-    async def _close_position(self, rec, price: float, dt, reason_type, reason_text: str) -> None:
+    async def _close_position(self, rec, price: float, dt, reason_type,
+                              reason_text: str, open_trades: dict,
+                              plan: TickerPlan, i: int) -> None:
         """Бумажное закрытие по цене закрытия свечи (PnL как в бэктесте)."""
+        if plan.discarded > 0 and reason_type == ExitReasonType.STOP_LOSS:
+            # Часть баров признана потерянной, поэтому НАСТОЯЩЕЕ пробитие могло
+            # случиться на выброшенном баре по цене, которой мы не видели.
+            # Отдельный тип, а не STOP_LOSS: иначе в статистику и
+            # decision_quality попадёт чистый стоп на уровне, которого не было.
+            # И не MANUAL: тот занят paper-движком под «человек закрыл вручную».
+            gap_from = plan.raw_times[plan.first_hist - plan.discarded]
+            gap_to   = plan.raw_times[plan.last_closed - 1]
+            reason_type = ExitReasonType.GAP_FORCED
+            reason_text = (f"Вынужденный выход после разрыва ({plan.gap_bars} баров "
+                           f"{gap_from.date()}–{gap_to.date()}, "
+                           f"выброшено {plan.discarded}): стоп "
+                           f"{float(rec['stop_loss']):.2f} пробит ценой {price:.2f}")
+        elif i < plan.last_closed:
+            # Закрытие на догнанном историческом баре. Помечаем, чтобы
+            # последующее сравнение форвард↔бэктест могло исключить окна догона:
+            # во время догона форвард не может переоткрыться, а бэктест может.
+            reason_text = (f"{reason_text} | догон: бар {dt.date()} "
+                           f"({i - plan.first_hist + 1} из {plan.processed})")
+
         shares     = float(rec["position_size"])
         entry      = float(rec["entry_price"])
         commission = shares * price * COMMISSION_PCT
@@ -385,10 +693,52 @@ class ForwardRunner:
             trade_id         = str(rec["trade_id"]),
         )
         await self.orch.on_trade_closed(trade)
+        open_trades.pop(rec["ticker"], None)
         self.available += shares * price - commission
+        plan.exits.append({
+            "bar": dt.isoformat(), "price": round(float(price), 6),
+            "reason_type": reason_type.value, "reason": reason_text,
+            "trade_id": str(rec["trade_id"]),
+        })
         emoji = "🔴" if pnl <= 0 else "💰"
-        self._event(f"{emoji} {rec['ticker']}: EXIT @ {price:.2f}, PnL {pnl:+,.0f} руб. "
-                    f"({reason_text[:80]})")
+        self._event(f"{emoji} {rec['ticker']}: EXIT @ {price:.2f}, "
+                    f"PnL {pnl:+,.0f} руб. ({reason_text[:100]})")
+
+    # ── Разрывы: флаг и журнал ───────────────────────────────────────
+
+    def _flag_gap(self, plan: TickerPlan, open_trades: dict) -> None:
+        """Позвать человека. Система флагает — решает человек."""
+        gap_from = plan.raw_times[plan.first_hist - plan.discarded]
+        gap_to   = plan.raw_times[plan.last_closed - 1]
+        msg = (f"🚨 {plan.ticker}: разрыв {plan.gap_bars} баров "
+               f"({gap_from.date()}–{gap_to.date()}) — догоняю выходами "
+               f"{plan.processed}, выброшено {plan.discarded} "
+               f"(предел {self.catchup_max})")
+        pos = open_trades.get(plan.ticker)
+        if pos is not None:
+            msg += (f"\n   Открыта позиция {str(pos['trade_id'])[:8]}: вход "
+                    f"{float(pos['entry_price']):.2f}, стоп "
+                    f"{float(pos['stop_loss']):.2f}")
+        self._event(msg)
+
+    async def _log_catchup(self, plan: TickerPlan) -> None:
+        """Постоянная запись догона. Сторож — сигнализация, а не запись."""
+        if plan.gap_bars < 1 and not plan.duplicates:
+            return
+        await self._db.execute("""
+            INSERT INTO forward_catchup_log
+                (strategy_id, ticker, state_before, gap_bars, bars_processed,
+                 bars_discarded, first_bar, last_bar, flagged, exits, duplicates)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+        """,
+            STRATEGY_ID, plan.ticker, plan.state_before, plan.gap_bars,
+            plan.processed, plan.discarded,
+            plan.raw_times[plan.first_hist] if plan.processed else None,
+            plan.raw_times[plan.last_closed - 1] if plan.processed else None,
+            plan.flagged,
+            json.dumps(plan.exits, ensure_ascii=False) if plan.exits else None,
+            json.dumps(plan.duplicates, ensure_ascii=False) if plan.duplicates else None,
+        )
 
     # ── Главный цикл ─────────────────────────────────────────────────
 
@@ -411,16 +761,75 @@ class ForwardRunner:
             self.available = await self._paper_capital(open_trades)
             logger.info("Открытых позиций: %d | свободный капитал: %s",
                         len(open_trades), f"{self.available:,.0f}")
+            if self.catchup_note:
+                self._event(self.catchup_note)
 
+            # ── Подготовка: свечи, границы догона, индикаторы ─────────
+            plans: dict[str, TickerPlan] = {}
             for ticker in TICKERS:
                 try:
-                    await self._process_ticker(ticker, open_trades)
+                    plan = await self._prepare_ticker(ticker)
+                    if plan is not None:      # None = тикер снят с обработки
+                        plans[ticker] = plan
                 except Exception as exc:
-                    self._event(f"⚠ {ticker}: ошибка обработки — {exc}")
-                    logger.exception("[%s] Ошибка обработки", ticker)
+                    self._event(f"⚠ {ticker}: ошибка подготовки — {exc}")
+                    logger.exception("[%s] Ошибка подготовки", ticker)
 
+            # ── ФАЗА 0: разрывы — флаг человеку и продвижение через
+            #    выброшенные бары (они признаны потерянными осознанно) ──
+            for ticker, plan in plans.items():
+                try:
+                    if plan.flagged:
+                        self._flag_gap(plan, open_trades)
+                    if plan.discarded:
+                        await self._advance_state(
+                            ticker, plan.raw_times[plan.first_hist - 1])
+                except Exception as exc:
+                    self._event(f"⚠ {ticker}: ошибка отметки разрыва — {exc}")
+                    logger.exception("[%s] Ошибка отметки разрыва", ticker)
+                    plan.failed = True
+
+            # ── ФАЗА 1 — исторические бары ВСЕХ тикеров, только выходы.
+            #    ФАЗА 2 — свежий бар ВСЕХ тикеров, выходы и входы.
+            #    Разделение обязательно: все исторические бары хронологически
+            #    раньше любого свежего, поэтому одним проходом вход первого
+            #    тикера оценивался бы против капитала ДО того, как догон
+            #    последнего его освободил. Результат зависел бы от порядка
+            #    TICKERS, а это не свойство стратегии.
+            phases = (
+                ("ФАЗА 1: исторические бары (только выходы)",
+                 lambda p: p.historical, False),
+                ("ФАЗА 2: свежий бар (выходы и входы)",
+                 lambda p: p.fresh, True),
+            )
+            for title, bars_of, allow_entry in phases:
+                logger.info(title)
+                for ticker, plan in plans.items():
+                    if plan.failed:
+                        # Фаза 1 упала посреди догона: состояние стоит на
+                        # последнем успешном баре. Пустить фазу 2 значило бы
+                        # продвинуть его на свежий бар и перескочить остаток
+                        # разрыва навсегда — ровно дефект №14.
+                        continue
+                    try:
+                        await self._run_bars(plan, open_trades,
+                                             bars_of(plan), allow_entry)
+                    except Exception as exc:
+                        self._event(f"⚠ {ticker}: ошибка обработки — {exc}")
+                        logger.exception("[%s] Ошибка обработки", ticker)
+                        plan.failed = True
+
+            # ── Журнал догонов (после обеих фаз: exits собраны из обеих) ──
+            for ticker, plan in plans.items():
+                try:
+                    await self._log_catchup(plan)
+                except Exception as exc:
+                    logger.exception("[%s] Журнал догона не записан: %s", ticker, exc)
+
+            caught = sum(p.processed for p in plans.values())
             summary = (f"Форвард D1 {started.date()}: позиций {len(open_trades)}, "
-                       f"свободно {self.available:,.0f} руб., событий {len(self.events)}")
+                       f"свободно {self.available:,.0f} руб., "
+                       f"догнано баров {caught}, событий {len(self.events)}")
             print("\n" + "═" * 64)
             print(f"  {summary}")
             for e in self.events:

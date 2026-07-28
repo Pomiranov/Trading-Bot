@@ -127,6 +127,30 @@ def is_structural_downtrend(df_d1: pd.DataFrame, **params) -> bool:
     return bool(structural_downtrend_series(df_d1, **params).iloc[-1])
 
 
+# ── Окно сигнала ──────────────────────────────────────────────────────────
+
+# Окно latest_precomputed по умолчанию: 61 бар = iloc[i-60 : i+1] бэктеста.
+SIGNAL_WINDOW_BARS = 61
+
+
+def signal_window(computed: pd.DataFrame, i: int, bars: int = SIGNAL_WINDOW_BARS) -> pd.DataFrame:
+    """Окно сигнала, заканчивающееся РОВНО на баре i: iloc[max(0, i-bars+1) : i+1].
+
+    Окно ОБЯЗАНО заканчиваться на текущем баре. `_oscillator_context` считает
+    пивоты и микро-триггеры относительно КОНЦА окна (pivots → range(k, n-k),
+    divergence → n-1-p2, micro_trigger → closes[i+2:n-1]), поэтому окно,
+    заканчивающееся позже бара i, молча даёт заглядывание в будущее, а
+    заканчивающееся раньше — считает сигнал не по тому бару.
+
+    Сами индикаторы `compute()` строго причинные (rolling/ewm назад,
+    swing_low через .shift(n), ШД-ATR через .shift(1), PTR с eff = i+n2+1),
+    поэтому посчитать их один раз по всей истории и затем нарезать окна —
+    то же самое, что пересчитывать на каждом префиксе, но за O(n) вместо
+    O(n²). Ровно так делает бэктест (backtest/engine.py:217, 230).
+    """
+    return computed.iloc[max(0, i - bars + 1): i + 1]
+
+
 class IndicatorEngine:
     """Вычисляет технические индикаторы для переданного DataFrame OHLCV."""
 

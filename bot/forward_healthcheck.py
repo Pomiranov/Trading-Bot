@@ -54,7 +54,7 @@ from config import config  # noqa: E402  — только после sys.path/.e
 # (только datetime), поэтому импорт-бюджет сторожа он не задевает — в отличие от
 # run_forward_d1, который потянул бы pandas и весь learning-стек. Конвенция
 # «закрытый бар» обязана быть у сторожа и у прогона ОДНА.
-from market_time import MSK  # noqa: E402
+from market_time import MSK, session_date  # noqa: E402
 from notify import credentials_ready, escape, first_line, send  # noqa: E402
 
 # Дублируется с run_forward_d1.py:107-111 осознанно: импорт того модуля потянул
@@ -219,7 +219,7 @@ def read_state(prev: dict[str, date] | None = None,
                 for ticker, ts in cur.fetchall():
                     if ts.astimezone(MSK).date() >= today_msk:
                         continue
-                    candle_dates.setdefault(ticker, []).append(_utc_date(ts))
+                    candle_dates.setdefault(ticker, []).append(_bar_date(ts))
 
             # Журнал догонов. Без него сторож не может отличить «форвард прошёл
             # бары насквозь, обработав выходы» от «форвард их перескочил»:
@@ -261,8 +261,8 @@ def read_state(prev: dict[str, date] | None = None,
                     if first_b and last_b:
                         # Даты, которые догон объявил обработанными: по ним A3
                         # больше не тревога.
-                        day = _utc_date(first_b)
-                        while day <= _utc_date(last_b):
+                        day = _bar_date(first_b)
+                        while day <= _bar_date(last_b):
                             agg["covered"].add(day)
                             day += timedelta(days=1)
     finally:
@@ -272,10 +272,17 @@ def read_state(prev: dict[str, date] | None = None,
 
 # ── Вердикт ──────────────────────────────────────────────────────────────
 
-def _utc_date(value: datetime):
-    """Дата в UTC. candles/forward_state — timestamptz, часть истории
-    записана как 21:00+00 (московская полночь), часть как 00:00+00."""
-    return value.astimezone(timezone.utc).date()
+def _bar_date(value: datetime):
+    """МОСКОВСКАЯ дата сессии бара — единственно верная (долг №16).
+
+    Было `.astimezone(timezone.utc).date()`. После нормализации данных к канону
+    (метка = московская полночь сессии) UTC-дата даёт сессию МИНУС ОДИН день у
+    ВСЕХ строк, а не у части. Замерено 28.07 сразу после ремонта: сторож писал
+    «обработано до 2026-07-26» при фактически обработанной сессии 27.07 и
+    возраст «2 дн. при пороге 2» вместо 1 — то есть весь запас порога был съеден
+    молча, и первый же нерабочий день дал бы ложное ⚠.
+    """
+    return session_date(value)
 
 
 # ── Память между запусками ───────────────────────────────────────────────
@@ -412,7 +419,7 @@ def build_message(snap: Snapshot, prev: dict[str, date] | None,
     Вместе они закрывают оба режима отказа: при полной смерти прогона candles
     и forward_state замерзают вместе, A1 слепнет — ловит A2.
     """
-    today = datetime.now(timezone.utc).date()
+    today = datetime.now(MSK).date()   # МСК, не UTC: сравнивается с московскими датами сессий (долг №16)
     log_line = _forward_log_line()
     tail = ([MAX_AGE_NOTE] if MAX_AGE_NOTE else []) \
         + ([prev_note] if prev_note else []) + [log_line]
@@ -424,7 +431,7 @@ def build_message(snap: Snapshot, prev: dict[str, date] | None,
             *tail,
         ])
 
-    dates = {ticker: _utc_date(ts) for ticker, ts in snap.rows}
+    dates = {ticker: _bar_date(ts) for ticker, ts in snap.rows}
     fwd_max = max(dates.values())
     age = (today - fwd_max).days
 
@@ -440,7 +447,7 @@ def build_message(snap: Snapshot, prev: dict[str, date] | None,
             unprocessed[ticker] = len(newer)
 
     # A2 — свечи не поступают (по календарю, с жёстко ограниченным порогом).
-    candles_date = _utc_date(snap.candles_max) if snap.candles_max else None
+    candles_date = _bar_date(snap.candles_max) if snap.candles_max else None
     candles_age = (today - candles_date).days if candles_date else None
     stale_feed = candles_date is None or candles_age > MAX_AGE_DAYS
 
@@ -597,7 +604,7 @@ def main() -> int:
     # недоступен, разрыв будет повторяться в каждом сообщении — так и надо.
     if delivered and snap.rows:
         try:
-            save_state({t: _utc_date(ts) for t, ts in snap.rows})
+            save_state({t: _bar_date(ts) for t, ts in snap.rows})
         except Exception as exc:
             logger.error("Состояние сторожа не сохранено: %s", first_line(exc))
 

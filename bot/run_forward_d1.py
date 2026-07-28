@@ -87,7 +87,7 @@ import pandas as pd
 from config import config
 from costs import COMMISSION_PCT
 from data.loader import save_candles_to_db
-from market_time import MSK, last_closed_index
+from market_time import MSK, last_closed_index, session_date
 from signals.indicators import IndicatorEngine, SIGNAL_WINDOW_BARS, signal_window
 from signals.rules_engine import RulesEngine, Action, classify_regime
 from risk.risk_manager import RiskManager
@@ -269,7 +269,7 @@ def _duplicate_sessions(raw_times: list) -> list:
     """
     by_date: dict = {}
     for t in raw_times:
-        by_date.setdefault(t.astimezone(MSK).date(), []).append(t)
+        by_date.setdefault(session_date(t), []).append(t)
     return [{"date": str(d), "times": [t.isoformat() for t in ts]}
             for d, ts in sorted(by_date.items()) if len(ts) > 1]
 
@@ -498,17 +498,17 @@ class ForwardRunner:
             # истории задним числом не переигрываем.
             first_raw = last_closed
             self._event(f"ℹ {ticker}: forward_state пуст — "
-                        f"только свежий бар {last_raw.date()}")
+                        f"только свежий бар {session_date(last_raw)}")
         elif state_time > last_raw:
             # Строки свечей удалены (DELETE прошёл, INSERT упал) или откат часов.
             # Сторож это тоже не увидит: A1 сравнивает свечи НОВЕЕ обработанного
             # (пусто), A3 нужен предыдущий снимок. Слепое пятно обоих процессов.
-            self._event(f"⚠ {ticker}: состояние {state_time.date()} опережает свечи "
-                        f"{last_raw.date()} — пропуск, состояние не двигаю")
+            self._event(f"⚠ {ticker}: состояние {session_date(state_time)} опережает свечи "
+                        f"{session_date(last_raw)} — пропуск, состояние не двигаю")
             return None
         elif state_time == last_raw:
             logger.info("[%s] Свежих свечей нет (последняя %s) — пропуск",
-                        ticker, last_raw.date())
+                        ticker, session_date(last_raw))
             return None
         else:
             first_raw = bisect_right(raw_times, state_time)
@@ -519,7 +519,7 @@ class ForwardRunner:
         # сделала бы догон невозможным по построению.
         age_days = (datetime.now(timezone.utc) - last_raw).days
         if age_days > STALE_DAYS:
-            self._event(f"⚠ {ticker}: последняя свеча {last_raw.date()} "
+            self._event(f"⚠ {ticker}: последняя свеча {session_date(last_raw)} "
                         f"({age_days} дн. назад) — пропуск")
             return None
 
@@ -751,14 +751,14 @@ class ForwardRunner:
             gap_to   = plan.raw_times[plan.last_closed - 1]
             reason_type = ExitReasonType.GAP_FORCED
             reason_text = (f"Вынужденный выход после разрыва ({plan.gap_bars} баров "
-                           f"{gap_from.date()}–{gap_to.date()}, "
+                           f"{session_date(gap_from)}–{session_date(gap_to)}, "
                            f"выброшено {plan.discarded}): стоп "
                            f"{float(rec['stop_loss']):.2f} пробит ценой {price:.2f}")
         elif i < plan.last_closed:
             # Закрытие на догнанном историческом баре. Помечаем, чтобы
             # последующее сравнение форвард↔бэктест могло исключить окна догона:
             # во время догона форвард не может переоткрыться, а бэктест может.
-            reason_text = (f"{reason_text} | догон: бар {dt.date()} "
+            reason_text = (f"{reason_text} | догон: бар {session_date(dt)} "
                            f"({i - plan.first_hist + 1} из {plan.processed})")
 
         shares     = float(rec["position_size"])
@@ -814,7 +814,7 @@ class ForwardRunner:
         gap_from = plan.raw_times[plan.first_hist - plan.discarded]
         gap_to   = plan.raw_times[plan.last_closed - 1]
         msg = (f"🚨 {plan.ticker}: разрыв {plan.gap_bars} баров "
-               f"({gap_from.date()}–{gap_to.date()}) — догоняю выходами "
+               f"({session_date(gap_from)}–{session_date(gap_to)}) — догоняю выходами "
                f"{plan.processed}, выброшено {plan.discarded} "
                f"(предел {self.catchup_max})")
         pos = open_trades.get(plan.ticker)
@@ -937,7 +937,7 @@ class ForwardRunner:
                     logger.exception("[%s] Журнал догона не записан: %s", ticker, exc)
 
             caught = sum(p.processed for p in plans.values())
-            summary = (f"Форвард D1 {started.date()}: позиций {len(open_trades)}, "
+            summary = (f"Форвард D1 {session_date(started)}: позиций {len(open_trades)}, "
                        f"{self.book.describe(len(open_trades))}, "
                        f"догнано баров {caught}, событий {len(self.events)}")
             if self.book.per_ticker:

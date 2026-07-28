@@ -27,6 +27,7 @@ from telegram.ext import (
 from config import config
 from data.loader import loader
 from learning.feedback import feedback_store
+from notify import truncate
 from risk.risk_manager import risk_manager
 from signals.indicators import indicator_engine
 from signals.rules_engine import rules_engine, Action
@@ -142,9 +143,18 @@ async def _send(text: str, reply_markup=None, parse_mode: str = "HTML") -> None:
     Creates a new Bot instance with its own httpx session per call.
     This is the only safe pattern when calling from an event loop that is
     different from the one running Application (trading loop vs bot thread).
+
+    Два режима отказа Telegram роняли ВСЁ сообщение в HTTP 400, оставляя одну
+    строку в логе: длина больше 4096 и битый HTML. Второе случалось само —
+    любой текст исключения с «<» попадал в сводку через _event(). Поэтому
+    длина срезается заранее, а на ошибке разметки идёт повтор ПЛАИН-ТЕКСТОМ:
+    экранировать здесь нельзя, часть вызывающих (send_signal_alert, дашборд)
+    ставит HTML намеренно, и escape сломал бы их вывод. Лучше сообщение без
+    форматирования, чем отсутствие сообщения.
     """
     if not config.telegram.token or not config.telegram.chat_id:
         return
+    text = truncate(text)
     try:
         async with Bot(token=config.telegram.token) as bot:
             await bot.send_message(
@@ -154,7 +164,11 @@ async def _send(text: str, reply_markup=None, parse_mode: str = "HTML") -> None:
                 reply_markup=reply_markup,
             )
     except Exception as exc:
-        logger.error("Telegram send error: %s", exc)
+        if parse_mode is None:
+            logger.error("Telegram send error: %s", exc)
+            return
+        logger.warning("Telegram отклонил сообщение (%s) — повтор без разметки", exc)
+        await _send(text, reply_markup=reply_markup, parse_mode=None)
 
 
 async def send_notification(text: str) -> None:

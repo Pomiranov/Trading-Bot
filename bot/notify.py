@@ -78,7 +78,13 @@ def credentials_ready() -> bool:
     return True
 
 
-def _truncate(text: str) -> str:
+def truncate(text: str) -> str:
+    """Обрезать до лимита Telegram. Публичная: ловушка 4096 одна на весь проект.
+
+    Второе определение этой константы означало бы, что однажды одно из них
+    отстанет, и сообщение начнёт пропадать в той половине кода, где лимит
+    забыли.
+    """
     if len(text) <= MAX_LEN:
         return text
     logger.warning("Сообщение %d символов — обрезано до лимита Telegram %d",
@@ -96,7 +102,7 @@ def send(text: str, *, parse_mode: str = "HTML") -> bool:
     try:
         resp = requests.post(
             f"https://api.telegram.org/bot{token}/sendMessage",
-            json={"chat_id": chat_id, "text": _truncate(text), "parse_mode": parse_mode},
+            json={"chat_id": chat_id, "text": truncate(text), "parse_mode": parse_mode},
             timeout=TIMEOUT_SEC,
         )
         resp.raise_for_status()

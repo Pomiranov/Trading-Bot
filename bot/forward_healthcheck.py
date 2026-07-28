@@ -69,6 +69,18 @@ MAX_AGE_DEFAULT = 2
 # пишется в само сообщение, а не только в лог.
 MAX_AGE_HARD_LIMIT = 3
 
+# Дублируется с run_forward_d1.py:CATCHUP_FLAG_BARS осознанно (см. выше про
+# импорт-бюджет). Разрыв от этого числа баров зовёт человека: календарь такого
+# не даёт — бары идут ~0.96 на календарный день, максимальный безобидный
+# разрыв за 3 года = 2 бара. Разрыв 1-2 бара форвард догоняет молча, и это ℹ,
+# а не тревога.
+CATCHUP_FLAG_BARS = 3
+
+# В РФ нет перехода на летнее время с 2014. Нужен для того же определения
+# «закрытый бар», что у run_forward_d1._last_closed_index: бар сегодняшней
+# московской сессии ещё формируется, и прогон его сознательно не берёт.
+MSK = timezone(timedelta(hours=3))
+
 DB_ATTEMPTS = 3      # Docker Desktop может дотягиваться после логона
 DB_RETRY_SEC = 10
 DB_CONNECT_TIMEOUT = 10
@@ -131,9 +143,11 @@ class Snapshot(NamedTuple):
     rows: list[tuple[str, datetime]]        # forward_state
     candles_max: datetime | None            # max(candles.time) по нашим тикерам
     candle_dates: dict[str, list[date]]     # тикер → даты баров D1 (окно проверок)
+    catchups: dict[str, dict]               # тикер → сводка догонов из журнала
 
 
-def read_state(prev: dict[str, date] | None = None) -> Snapshot:
+def read_state(prev: dict[str, date] | None = None,
+               log_since: datetime | None = None) -> Snapshot:
     """Снимок состояния. Только SELECT, ничего не пишем.
 
     prev — прошлые last_candle_time по тикерам: от них зависит, с какой даты
@@ -194,11 +208,66 @@ def read_state(prev: dict[str, date] | None = None) -> Snapshot:
                     """,
                     (TICKERS, since - timedelta(days=1)),
                 )
+                # Только ЗАКРЫТЫЕ бары. Догрузка свечей на внеурочном прогоне
+                # тянет с ISS частичный бар за сегодня, а прогон его не
+                # обрабатывает (run_forward_d1._last_closed_index). Без этого
+                # фильтра A1 объявляет его «необработанным» и сторож 🚨-ит
+                # каждый раз, когда днём кто-то запустил форвард руками.
+                # candles_max для A2 считается отдельно и остаётся сырым:
+                # частичный бар — законное доказательство, что загрузка жива.
+                today_msk = datetime.now(MSK).date()
                 for ticker, ts in cur.fetchall():
+                    if ts.astimezone(MSK).date() >= today_msk:
+                        continue
                     candle_dates.setdefault(ticker, []).append(_utc_date(ts))
+
+            # Журнал догонов. Без него сторож не может отличить «форвард прошёл
+            # бары насквозь, обработав выходы» от «форвард их перескочил»:
+            # A3 видит только две конечные точки своей памяти, а после
+            # внедрения догона обе картины дают один и тот же отпечаток.
+            #
+            # Окно журнала — от последней УСПЕШНОЙ доставки (saved_at), а не от
+            # даты состояния: догон случается один раз, и доложить о нём нужно
+            # тоже один раз. С окном по датам состояния разовый разрыв тревожил
+            # бы каждые сутки, пока не выпадет из окна, — та же усталость от
+            # ложных тревог, ради которой всё это и переписывается. Если
+            # доставка не удалась, save_state не вызывается, saved_at остаётся
+            # старым и событие повторится — так и надо (см. main()).
+            catchups: dict[str, dict] = {}
+            window_from = log_since or (since - timedelta(days=1) if since else None)
+            if window_from is not None:
+                cur.execute(
+                    """
+                    SELECT ticker, gap_bars, bars_processed, bars_discarded,
+                           first_bar, last_bar,
+                           COALESCE(jsonb_array_length(exits), 0) AS n_exits,
+                           COALESCE(jsonb_array_length(duplicates), 0) AS n_dups
+                    FROM forward_catchup_log
+                    WHERE strategy_id = %s AND logged_at >= %s
+                    ORDER BY ticker, logged_at
+                    """,
+                    (STRATEGY_ID, window_from),
+                )
+                for tk, gap, done, dropped, first_b, last_b, n_exits, n_dups in cur.fetchall():
+                    agg = catchups.setdefault(tk, {
+                        "max_gap": 0, "processed": 0, "discarded": 0,
+                        "exits": 0, "duplicates": 0, "covered": set(),
+                    })
+                    agg["max_gap"] = max(agg["max_gap"], gap or 0)
+                    agg["processed"] += done or 0
+                    agg["discarded"] += dropped or 0
+                    agg["exits"] += n_exits or 0
+                    agg["duplicates"] += n_dups or 0
+                    if first_b and last_b:
+                        # Даты, которые догон объявил обработанными: по ним A3
+                        # больше не тревога.
+                        day = _utc_date(first_b)
+                        while day <= _utc_date(last_b):
+                            agg["covered"].add(day)
+                            day += timedelta(days=1)
     finally:
         conn.close()
-    return Snapshot(rows, candles_max, candle_dates)
+    return Snapshot(rows, candles_max, candle_dates, catchups)
 
 
 # ── Вердикт ──────────────────────────────────────────────────────────────
@@ -211,23 +280,39 @@ def _utc_date(value: datetime):
 
 # ── Память между запусками ───────────────────────────────────────────────
 
-def read_saved_state() -> tuple[dict[str, date] | None, str | None]:
-    """(прошлые даты по тикерам, пометка). None — базы сравнения нет.
+def read_saved_state() -> tuple[dict[str, date] | None, str | None, datetime | None]:
+    """(прошлые даты по тикерам, пометка, время последней доставки).
 
-    Любая проблема с файлом = «базы нет»: сторож не должен падать из-за
-    своей же памяти, а ложная тревога о разрыве хуже пропущенной.
+    None в первом элементе — базы сравнения нет. Любая проблема с файлом =
+    «базы нет»: сторож не должен падать из-за своей же памяти, а ложная тревога
+    о разрыве хуже пропущенной.
+
+    Третий элемент — saved_at: от него отсчитывается окно журнала догонов,
+    чтобы каждый догон был доложен ровно один раз. None = докладываем всё, что
+    нашли (первый запуск).
     """
     if not STATE_FILE.exists():
-        return None, "база сравнения создана — разрыв проверяется со следующего запуска"
+        return None, "база сравнения создана — разрыв проверяется со следующего запуска", None
     try:
         data = json.loads(STATE_FILE.read_text(encoding="utf-8"))
         if data.get("strategy_id") != STRATEGY_ID:
             return None, (f"база сравнения была по {data.get('strategy_id')!r} — "
-                          f"перезаписана под {STRATEGY_ID}")
+                          f"перезаписана под {STRATEGY_ID}"), None
         saved = {t: date.fromisoformat(v) for t, v in (data.get("tickers") or {}).items()}
-        return (saved or None), (None if saved else "база сравнения пуста — перезаписана")
+        saved_at = None
+        raw_at = data.get("saved_at")
+        if raw_at:
+            try:
+                saved_at = datetime.fromisoformat(raw_at)
+                if saved_at.tzinfo is None:
+                    saved_at = saved_at.replace(tzinfo=timezone.utc)
+            except ValueError:
+                saved_at = None      # битая метка = докладываем всё
+        return ((saved or None),
+                (None if saved else "база сравнения пуста — перезаписана"),
+                saved_at)
     except Exception as exc:
-        return None, f"база сравнения повреждена ({first_line(exc)}) — перезаписана"
+        return None, f"база сравнения повреждена ({first_line(exc)}) — перезаписана", None
 
 
 def save_state(dates: dict[str, date]) -> None:
@@ -315,7 +400,9 @@ def build_message(snap: Snapshot, prev: dict[str, date] | None,
     Четыре независимые проверки вместо одного смешанного условия:
       A1 🚨 есть бары новее обработанного — форвард не обрабатывает свечи;
       A2 ⚠  свечи не поступают N дн. — рынок закрыт ИЛИ сломалась загрузка;
-      A3 🚨 состояние перескочило даты свечей — бары пропущены безвозвратно;
+      A3 ℹ/🚨 состояние прошло через даты свечей — норма (догон), если это
+            подтверждено forward_catchup_log; тревога, если бары выброшены,
+            продвижение не объяснено журналом или разрыв >= CATCHUP_FLAG_BARS;
       A4 🚨 тикер исчез из forward_state.
 
     A1 не зависит от календаря (закрыт рынок → новых дат нет → тихо), поэтому
@@ -357,22 +444,51 @@ def build_message(snap: Snapshot, prev: dict[str, date] | None,
     candles_age = (today - candles_date).days if candles_date else None
     stale_feed = candles_date is None or candles_age > MAX_AGE_DAYS
 
-    # A3 — разрыв: даты баров, перескоченные между прошлым и текущим состоянием.
-    gaps: dict[str, list[date]] = {}
+    # A3 — многобарное продвижение состояния. С внедрением догона (долг №14)
+    # это НОРМА, а не тревога: форвард проходит пропущенные бары насквозь,
+    # обрабатывая на них выходы. По двум конечным точкам своей памяти сторож
+    # «прошёл» от «перескочил» отличить не может — поэтому здесь читается
+    # forward_catchup_log, а не угадывается по датам.
+    #
+    # Тревога остаётся ровно для трёх случаев:
+    #   - бары ВЫБРОШЕНЫ (разрыв глубже предела догона);
+    #   - продвижение НЕ ОБЪЯСНЕНО журналом — после фикса это может значить
+    #     только ручное вмешательство в forward_state или регрессию в коде,
+    #     потому что дальше предела прогон отказывается двигаться сам;
+    #   - разрыв >= CATCHUP_FLAG_BARS, даже полностью догнанный: календарь
+    #     такого не даёт, значит прогон несколько дней не состоялся.
+    walked: dict[str, list[date]] = {}      # догнано — ℹ
+    orphan: dict[str, list[date]] = {}      # не объяснено журналом — 🚨
     if prev:
         for ticker, current in dates.items():
             was = prev.get(ticker)
             if was is None or current <= was:
                 continue
             skipped = [d for d in snap.candle_dates.get(ticker, []) if was < d < current]
-            if skipped:
-                gaps[ticker] = skipped
+            if not skipped:
+                continue
+            covered = snap.catchups.get(ticker, {}).get("covered", set())
+            unexplained = [d for d in skipped if d not in covered]
+            if unexplained:
+                orphan[ticker] = unexplained
+            explained = [d for d in skipped if d in covered]
+            if explained:
+                walked[ticker] = explained
 
-    alarm = bool(unprocessed or gaps or missing)
+    discarded = {t: c["discarded"] for t, c in snap.catchups.items() if c["discarded"]}
+    wide_gaps = {t: c["max_gap"] for t, c in snap.catchups.items()
+                 if c["max_gap"] >= CATCHUP_FLAG_BARS}
+    dup_bars = {t: c["duplicates"] for t, c in snap.catchups.items() if c["duplicates"]}
+
+    alarm = bool(unprocessed or orphan or discarded or wide_gaps or missing)
 
     lines: list[str] = []
-    if gaps:
+    if discarded:
+        lines.append(f"🚨 <b>Форвард выбросил бары разрыва</b> — {STRATEGY_ID}")
+    elif orphan:
         lines.append(f"🚨 <b>Форвард пропустил бары</b> — {STRATEGY_ID}")
+    elif wide_gaps:
+        lines.append(f"🚨 <b>Форвард догнал широкий разрыв</b> — {STRATEGY_ID}")
     elif unprocessed:
         lines.append(f"🚨 <b>Форвард не обрабатывает свечи</b> — {STRATEGY_ID}")
     elif missing:
@@ -387,14 +503,37 @@ def build_message(snap: Snapshot, prev: dict[str, date] | None,
     lines.append(f"Обработано до: <b>{fwd_max}</b> ({age} дн. назад, порог {MAX_AGE_DAYS})")
     lines.append(f"Тикеров в состоянии: {len(dates)}/{len(TICKERS)}")
 
-    if gaps:
-        all_skipped = sorted({d for days in gaps.values() for d in days})
+    if discarded:
+        lines.append(f"🚨 Выброшено баров: {_compact(discarded)}")
+        lines.append("  ⇒ разрыв глубже предела догона: по этим барам выходы НЕ "
+                     "проверялись, решение за человеком")
+
+    if orphan:
+        all_skipped = sorted({d for days in orphan.values() for d in days})
         span = (f"{all_skipped[0]}" if len(all_skipped) == 1
                 else f"{all_skipped[0]}–{all_skipped[-1]}")
-        lines.append(f"🚨 Пропущено баров: {_compact({t: len(v) for t, v in gaps.items()})}"
-                     f" ({span})")
-        lines.append("  ⇒ эти бары не догоняются: форвард берёт только последний "
-                     "(техдолг №10)")
+        lines.append(f"🚨 Не объяснено журналом: "
+                     f"{_compact({t: len(v) for t, v in orphan.items()})} ({span})")
+        lines.append("  ⇒ состояние двинулось без записи в forward_catchup_log: "
+                     "ручная правка forward_state или регрессия в коде")
+
+    if walked:
+        all_walked = sorted({d for days in walked.values() for d in days})
+        span = (f"{all_walked[0]}" if len(all_walked) == 1
+                else f"{all_walked[0]}–{all_walked[-1]}")
+        exits = sum(snap.catchups.get(t, {}).get("exits", 0) for t in walked)
+        icon = "🚨" if wide_gaps else "ℹ"
+        lines.append(f"{icon} Догнано баров: "
+                     f"{_compact({t: len(v) for t, v in walked.items()})} ({span}), "
+                     f"выходов сработало {exits}")
+        if wide_gaps:
+            lines.append(f"  ⇒ разрыв {max(wide_gaps.values())} баров — прогон "
+                         f"несколько дней не состоялся, календарь такого не даёт")
+
+    if dup_bars:
+        lines.append(f"⚠ Бары-двойники на одну сессию: {_compact(dup_bars)}")
+        lines.append("  ⇒ окна индикаторов сдвинуты фантомным баром, данные "
+                     "требуют ремонта")
 
     if unprocessed:
         lines.append(f"🚨 Не обработано баров: {_compact(unprocessed)}")
@@ -430,12 +569,12 @@ def main() -> int:
     if not credentials_ready():
         return 3
 
-    prev, prev_note = read_saved_state()
+    prev, prev_note, saved_at = read_saved_state()
     if prev_note:
         logger.info("Память сторожа: %s", prev_note)
 
     try:
-        snap = read_state(prev)
+        snap = read_state(prev, log_since=saved_at)
     except Exception as exc:
         # Требование: отдельное сообщение, выход без трейсбека.
         # Состояние НЕ трогаем: сравнивать будет не с чем, а разрыв,

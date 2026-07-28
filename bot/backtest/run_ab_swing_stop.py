@@ -30,13 +30,14 @@ import time
 import pandas as pd
 import yaml
 
+from config import config
 from backtest.engine import BacktestEngine, BacktestTrade
 from signals.rules_engine import RulesEngine
 
 TICKERS = ["SBER", "GAZP", "LKOH", "NVTK", "ROSN", "TATN",
            "MGNT", "MOEX", "PLZL", "CHMF", "ALRS", "SNGS"]
 
-RULES_FILE = Path(__file__).resolve().parent.parent / "knowledge" / "rules" / "rules.yaml"
+RULES_FILE = config.rules_dir / "rules.yaml"
 
 IS_END = pd.Timestamp("2025-01-01")   # граница in-sample / out-of-sample
 

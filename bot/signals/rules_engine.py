@@ -124,11 +124,36 @@ class RulesEngine:
     # ── Загрузка/перезагрузка ────────────────────────────────────────
 
     def _load(self) -> None:
-        if not self.rules_file.exists():
-            logger.error("Файл правил не найден: %s", self.rules_file)
-            return
-        with open(self.rules_file, "r", encoding="utf-8") as f:
-            data = yaml.safe_load(f)
+        """Загрузить правила. Отсутствие файла или пустой набор — ИСКЛЮЧЕНИЕ.
+
+        До 2026-07-28 здесь стоял `logger.error` + `return`, и движок оставался с
+        нулём правил. Прогон не падал — он выдавал 0 сделок, а ноль сделок
+        читается как «правило не сработало», то есть как правдоподобный
+        ОТРИЦАТЕЛЬНЫЙ РЕЗУЛЬТАТ. Ровно так две недели молчали шесть скриптов
+        bot/backtest/ со сломанным путём (долг №24). Молчаливый ноль дороже
+        исключения: он выглядит как результат.
+
+        Типы разные, чтобы вызывающий мог ловить осознанно, и в тексте — АБСОЛЮТНЫЙ
+        путь, иначе следующий пойдёт отлаживать тот же дефект заново.
+        """
+        path = Path(self.rules_file).resolve()
+        if not path.exists():
+            raise FileNotFoundError(f"Файл правил не найден: {path}")
+
+        with open(path, "r", encoding="utf-8") as f:
+            data = yaml.safe_load(f) or {}
+
+        # Пустым считается отсутствие ВСЕХ используемых секций, а не только
+        # «rules»: файл только с filters (или только с exit_rules) — законный
+        # сценарий, и среди будущих кандидатов такие будут. Черновики
+        # knowledge/rules/candidates/ сегодня другой схемы (id/status/params) и
+        # сюда не подаются — если подадут, это исключение и нужно.
+        if not any(data.get(k) for k in ("rules", "exit_rules", "ticker_specific",
+                                         "filters", "macro_filters")):
+            raise ValueError(
+                f"В файле правил не разобрано ни одного правила, фильтра или "
+                f"выхода: {path}"
+            )
 
         self._rules   = data.get("rules", [])
         self._settings = data.get("settings", {})
@@ -594,4 +619,30 @@ class RulesEngine:
         }
 
 
-rules_engine = RulesEngine()
+# ── Общий экземпляр: ЛЕНИВЫЙ ────────────────────────────────────────────────
+#
+# Раньше здесь было `rules_engine = RulesEngine()` — конструирование на ИМПОРТЕ
+# модуля. Вместе с fail-loud в _load это стало бы смертельным для форварда:
+# run_forward_d1 импортирует этот модуль (проверено импортом, а не грепом), и
+# отсутствие файла правил валило бы ночной прогон целиком — включая обработку
+# ВЫХОДОВ по уже лежащим в БД барам. Проблема конфига, цена — незакрытые стопы.
+#
+# PEP 562: `from signals.rules_engine import RulesEngine` (так делает форвард)
+# __getattr__ не трогает, а `from signals.rules_engine import rules_engine` (так
+# делают main.py и ui/telegram_bot.py) — трогает. Поэтому форвард изолирован, а
+# живой контур получает громкий отказ, что для торговли и правильно.
+#
+# ИНВАРИАНТ: форвардный путь не импортирует ЭКЗЕМПЛЯР. Кто добавит такой импорт
+# в run_forward_d1 / forward_healthcheck / notify — снимет изоляцию и превратит
+# проблему конфига в потерю стопов. Момент отказа main.py при этом переехал с
+# импорта на первое обращение — долг №29 (предливовый гейт).
+_rules_engine_singleton: Optional["RulesEngine"] = None
+
+
+def __getattr__(name: str):
+    global _rules_engine_singleton
+    if name == "rules_engine":
+        if _rules_engine_singleton is None:
+            _rules_engine_singleton = RulesEngine()
+        return _rules_engine_singleton
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

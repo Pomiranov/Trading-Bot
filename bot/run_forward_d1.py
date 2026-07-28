@@ -110,7 +110,7 @@ SEED_FROM_STRATEGY = "osc_range_moex_d1"     # belief-строка-источн�
 TICKERS = ["SBER", "GAZP", "LKOH", "NVTK", "ROSN", "TATN",
            "MGNT", "MOEX", "PLZL", "CHMF", "ALRS", "SNGS"]
 
-RULES_FILE = Path(__file__).resolve().parent.parent / "knowledge" / "rules" / "rules_osc_range.yaml"
+RULES_FILE = config.rules_dir / "rules_osc_range.yaml"
 
 WINDOW_BARS      = SIGNAL_WINDOW_BARS   # окно latest_precomputed = iloc[i-60:i+1]
 MIN_HISTORY_BARS = 250       # SMA200 фильтра + запас

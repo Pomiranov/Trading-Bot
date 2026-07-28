@@ -64,6 +64,11 @@ MIN_STRATEGY_CONFIDENCE = Decimal("0.20")
 
 # Rules-файлы стратегий, у которых есть именованные фильтры
 # (filters.structural_downtrend и т.п.). Ключ — префикс strategy_id.
+# Единственный источник этого пути — config.rules_dir, и семь скриптов
+# bot/backtest/ переведены на него (долг №24). Здесь выражение оставлено
+# СВОЁ намеренно: модуль держит узкий импорт-бюджет (config не импортирует),
+# а глубина parent.parent.parent тут верна — файл лежит в bot/learning/.
+# Если понадобится править — сверять с config.rules_dir, не по памяти.
 _RULES_DIR = Path(__file__).resolve().parent.parent.parent / "knowledge" / "rules"
 STRATEGY_RULES_FILES = {
     "osc_range_moex": _RULES_DIR / "rules_osc_range.yaml",

@@ -25,11 +25,12 @@ import time
 
 import pandas as pd
 
+from config import config
 from backtest.engine import BacktestEngine, BacktestTrade
 from backtest.run_wrd_backtest import load_candles_db, metrics, IS_END
 from signals.rules_engine import RulesEngine
 
-RULES_FILE = Path(__file__).resolve().parent.parent / "knowledge" / "rules" / "rules_wrd_moex.yaml"
+RULES_FILE = config.rules_dir / "rules_wrd_moex.yaml"
 
 VARIANTS = [
     # (id, подпись, use_stops)

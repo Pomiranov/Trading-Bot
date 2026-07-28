@@ -20,6 +20,7 @@ import time
 
 import pandas as pd
 
+from config import config
 from backtest.engine import BacktestEngine
 from signals.rules_engine import RulesEngine
 from learning.trading_orchestrator import TradingOrchestrator
@@ -29,7 +30,7 @@ TICKERS = ["SBER", "GAZP", "LKOH", "NVTK", "ROSN", "TATN",
 TIMEFRAMES = ["1h", "4h", "1d"]     # значения в таблице candles
 TF_LABEL   = {"1h": "H1", "4h": "H4", "1d": "D1"}
 
-OSC_RULES_FILE = Path(__file__).resolve().parent.parent / "knowledge" / "rules" / "rules_osc_range.yaml"
+OSC_RULES_FILE = config.rules_dir / "rules_osc_range.yaml"
 
 
 def dsn() -> str:

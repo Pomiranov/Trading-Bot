@@ -576,4 +576,7 @@ class BacktestEngine:
         return round(((final / initial) ** (1.0 / years) - 1) * 100, 2)
 
 
-backtest_engine = BacktestEngine()
+# Синглтона `backtest_engine = BacktestEngine()` здесь больше нет: импортёров у
+# него не было ни статических, ни динамических (проверено 28.07, в том числе вне
+# .py), а конструирование на импорте создавало ещё один RulesEngine — то есть
+# лишнюю точку отказа после fail-loud (долг №24).

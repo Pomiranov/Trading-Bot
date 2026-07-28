@@ -96,6 +96,15 @@ class AppConfig:
     logging: LoggingConfig = field(default_factory=LoggingConfig)
 
     moex_base_url: str = "https://iss.moex.com/iss"
+
+    # ЕДИНСТВЕННЫЙ источник пути к правилам. Считается от PROJECT_ROOT, а не от
+    # расположения вызывающего файла: до 2026-07-28 все семь скриптов
+    # bot/backtest/ собирали путь сами как parent.parent (= bot/), тогда как
+    # knowledge/ лежит в КОРНЕ. RulesEngine на несуществующем файле молча
+    # оставался с нулём правил, и прогон выдавал 0 сделок, выглядевших как
+    # честный отрицательный результат. Сломалось merge-коммитом b2b02c4
+    # (2026-07-14), который перенёс скрипты из <root>/backtest/ под bot/.
+    # Долг №24. Новые скрипты обязаны брать путь ОТСЮДА.
     rules_dir: Path = PROJECT_ROOT / "knowledge" / "rules"
     rules_file: Path = PROJECT_ROOT / "knowledge" / "rules" / "rules.yaml"
     log_level: str = field(default_factory=lambda: os.getenv("LOG_LEVEL", "INFO"))

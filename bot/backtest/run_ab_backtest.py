@@ -19,6 +19,7 @@ import logging
 import os
 from datetime import date, timedelta
 
+from config import config
 from data.loader import loader
 from backtest.engine import BacktestEngine
 from signals.rules_engine import RulesEngine
@@ -29,7 +30,7 @@ INTERVAL     = "1h"
 CANDLES_MAX  = 1334
 HISTORY_DAYS = 200
 
-OSC_RULES_FILE = Path(__file__).resolve().parent.parent / "knowledge" / "rules" / "rules_osc_range.yaml"
+OSC_RULES_FILE = config.rules_dir / "rules_osc_range.yaml"
 
 STRATEGIES = [
     # (strategy_id, подпись, rules_file или None=основной rules.yaml)

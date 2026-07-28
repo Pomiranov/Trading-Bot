@@ -24,6 +24,7 @@ import os
 
 import pandas as pd
 
+from config import config
 from backtest.engine import BacktestEngine
 from signals.rules_engine import RulesEngine, classify_regime
 from signals.indicators import IndicatorEngine
@@ -38,7 +39,7 @@ TF_LABEL = {"4h": "H4", "1d": "D1"}
 
 IS_END = pd.Timestamp("2025-01-01")   # граница in-sample / out-of-sample
 
-DEFAULT_RULES = Path(__file__).resolve().parent.parent / "knowledge" / "rules" / "rules_osc_range.yaml"
+DEFAULT_RULES = config.rules_dir / "rules_osc_range.yaml"
 
 
 def dsn() -> str:

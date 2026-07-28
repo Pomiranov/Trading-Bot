@@ -13,6 +13,8 @@ SignalResult содержит:
   reason     — объяснение сигнала на русском языке
 """
 
+import hashlib
+import json
 import logging
 import math
 from dataclasses import dataclass, field
@@ -26,6 +28,28 @@ from config import config
 from signals.indicators import IndicatorValues
 
 logger = logging.getLogger(__name__)
+
+# Длина отпечатка набора правил. 16 hex = 64 бита: для различения десятков
+# наборов в одном проекте с огромным запасом, и строка остаётся читаемой в
+# выводе SQL и в сообщениях.
+RULES_VERSION_LEN = 16
+
+# Конвенция для строк trades, записанных до введения отпечатка (долг №30).
+# Обычная строка, а НЕ NULL: NULL в сравнениях ведёт себя иначе, и предикат
+# «отпечаток известен» пропустил бы его молча.
+RULES_VERSION_UNKNOWN = "unknown"
+
+
+def _fingerprint(data: dict) -> str:
+    """sha256 канонического JSON разобранного yaml → первые RULES_VERSION_LEN.
+
+    Канонизация (`sort_keys`) нужна, чтобы перестановка ключей в файле не
+    меняла отпечаток: значение имеет содержание набора, а не порядок строк.
+    Обоснование выбора «весь yaml, а не секции» — в RulesEngine.rules_version.
+    """
+    payload = json.dumps(data, sort_keys=True, ensure_ascii=False,
+                         separators=(",", ":"), default=str)
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()[:RULES_VERSION_LEN]
 
 
 # ── Классификация рыночного режима ───────────────────────────────────────
@@ -119,7 +143,37 @@ class RulesEngine:
         self._ticker_specific: list[dict] = []
         self._macro_filters: list[dict] = []
         self._settings: dict = {}
+        self._rules_version: str = ""
         self._load()
+
+    # ── Отпечаток набора правил ──────────────────────────────────────
+
+    @property
+    def rules_version(self) -> str:
+        """Отпечаток набора правил, по которому принято решение (долг №30).
+
+        Зачем: имена сработавших правил НЕ различают две версии одного правила с
+        разными параметрами. Именно это произошло с `trend_moex` — движок строил
+        EMA21, а описания в yaml говорили EMA50, под одним и тем же именем
+        правила. Без отпечатка ни одна строка `trades` не привязана к набору, её
+        породившему, и `belief_system` описывает неизвестно что.
+
+        Хешируется ВЕСЬ разобранный yaml, а не выборка секций. Перечислить
+        секции — это и есть способ завести слепое пятно: фикс A3 сделан как
+        `data["indicators"]["ema_slow"] = 50` (`run_ab_trend_fix.py:71`), то есть
+        живёт в `indicators`, и хеш по `rules`/`exit_rules`/`filters` дал бы
+        `baseline` и `a3_ema50` ОДИНАКОВЫЙ отпечаток.
+
+        Разобранный, а не байты файла: комментарии в `rules_osc_range.yaml`
+        правятся при каждой записи измерений, и хеш от байтов дёргался бы без
+        изменения поведения.
+
+        ОГРАНИЧЕНИЕ: отпечаток покрывает только yaml. Смена дефолта на стороне
+        движка (например `IndicatorEngine(ema_slow=21)`) его не сдвинет, хотя
+        сравнимость измерений нарушит. Полное решение — хешировать РАЗРЕШЁННЫЕ
+        параметры вместе с дефолтами; отложено, см. долг о хеше.
+        """
+        return self._rules_version
 
     # ── Загрузка/перезагрузка ────────────────────────────────────────
 
@@ -155,6 +209,7 @@ class RulesEngine:
                 f"выхода: {path}"
             )
 
+        self._rules_version = _fingerprint(data)
         self._rules   = data.get("rules", [])
         self._settings = data.get("settings", {})
         self._divergence = data.get("divergence") or {}

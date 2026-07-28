@@ -117,6 +117,21 @@ CREATE TABLE trades (
     -- Режим торговли
     is_sandbox          BOOLEAN         DEFAULT true,
 
+    -- Привязка к набору правил (долг №30, добавлено 2026-07-28).
+    -- Колонки объявлены ЗДЕСЬ, а не в bot/learning/feedback.py, сознательно:
+    -- этот файл — документированный первый шаг чистой установки
+    -- (docs/LOCAL_DEVELOPMENT.md, docs/WINDOWS_DEPLOYMENT.md, psql -f), а
+    -- легаси-DDL выполняется только при импорте feedback.py. До правки
+    -- signal_rules существовала лишь как ALTER TABLE в легаси-модуле, поэтому на
+    -- чистой БД запись из memory_writer упала бы, пока его никто не импортировал.
+    signal_rules        TEXT[],         -- ИМЕНА сработавших правил
+    rules_version       TEXT,           -- отпечаток разобранного yaml; 'unknown' =
+                                        -- строка записана до введения отпечатка
+    origin              TEXT,           -- 'forward' | 'backtest' | 'live'.
+                                        -- is_sandbox различителем НЕ является:
+                                        -- он про бумагу против реальных денег,
+                                        -- а форвард тоже is_sandbox = true
+
     -- Служебные
     created_at          TIMESTAMPTZ     DEFAULT NOW(),
     broker_order_id     VARCHAR(100)    -- ID ордера в Tinkoff или Bybit

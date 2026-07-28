@@ -532,6 +532,13 @@ class BacktestEngine:
             confidence      = confidence,
             entry_reason    = getattr(signal, "reason", "") or "Сигнал BUY бэктеста",
             is_sandbox      = True,
+            # Привязка к набору правил (долг №30). origin='backtest' — именно это
+            # поле держит бэктестовые прогоны вне обучающей выборки; is_sandbox
+            # для этого не годится, он у форварда тоже true.
+            signal_rules    = sorted(r.name for r in getattr(signal, "triggered_rules", [])
+                                     if r.action == Action.BUY),
+            rules_version   = self._rules.rules_version,
+            origin          = "backtest",
         )
 
     # ── Статические метрики ──────────────────────────────────────────

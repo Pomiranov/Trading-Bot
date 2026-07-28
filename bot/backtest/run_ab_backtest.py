@@ -14,6 +14,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+import argparse
 import asyncio
 import logging
 import os
@@ -60,7 +61,15 @@ def main() -> None:
         d = data[ticker]
         print(f"[{ticker}] {len(d)} свечей ({d.index.min()} → {d.index.max()})")
 
-    orchestrator = TradingOrchestrator()
+    # Долг №28: см. пояснение в run_ab_tf_backtest.py — запись только по флагу.
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--learn", action="store_true",
+                    help="писать сделки в trades и запускать цикл обучения. БЕЗ флага прогон только считает (долг №28)")
+    args = ap.parse_args()
+
+    orchestrator = TradingOrchestrator() if args.learn else None
+    if not args.learn:
+        print("Прогон БЕЗ записи в trades (--learn не указан)")
     results = {}   # strategy_id -> {ticker: BacktestResult}
 
     for strategy_id, label, rules_file in STRATEGIES:
@@ -77,8 +86,9 @@ def main() -> None:
             per_ticker[ticker] = result
             print(f"  {result.summary()}")
         results[strategy_id] = per_ticker
-        engine.run_full_learning_cycle()
-        engine.shutdown_learning()
+        if orchestrator is not None:
+            engine.run_full_learning_cycle()
+            engine.shutdown_learning()
 
     asyncio.run(report(results))
 

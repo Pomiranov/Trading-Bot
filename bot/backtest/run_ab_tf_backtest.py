@@ -13,6 +13,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+import argparse
 import asyncio
 import logging
 import os
@@ -78,7 +79,19 @@ async def load_candles_db(timeframe: str) -> dict[str, pd.DataFrame]:
 def main() -> None:
     logging.basicConfig(level=logging.ERROR)
 
-    orchestrator = TradingOrchestrator()
+    # Долг №28: без --learn прогон НИЧЕГО не пишет в trades. Раньше оркестратор
+    # создавался безусловно, и один штатный запуск этих двух скриптов давал
+    # 10 179 строк при 7 532 существующих — контаминация в 10-20 раз больше
+    # гейта этапа 2 ML (500-1000 закрытых форвардных сделок). Конвенция взята у
+    # run_wrd_backtest.py: безопасный дефолт, запись только по явному флагу.
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--learn", action="store_true",
+                    help="писать сделки в trades и запускать цикл обучения. БЕЗ флага прогон только считает (долг №28)")
+    args = ap.parse_args()
+
+    orchestrator = TradingOrchestrator() if args.learn else None
+    if not args.learn:
+        print("Прогон БЕЗ записи в trades (--learn не указан)")
     all_results = {}    # (tf, strategy_id) -> {ticker: BacktestResult}
 
     last_engine = None

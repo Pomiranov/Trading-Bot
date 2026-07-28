@@ -203,10 +203,16 @@ def _walk(n=300, seed=42, start=100.0) -> list:
 class StubRules:
     """evaluate/evaluate_exit по конкретной цене закрытия."""
 
-    def __init__(self, buy_at=(), sell_at=(), exit_at=()):
+    def __init__(self, buy_at=(), sell_at=(), exit_at=(), rules_version=None):
         self.buy_at = {round(float(c), 6) for c in buy_at}
         self.sell_at = {round(float(c), 6) for c in sell_at}
         self.exit_at = {round(float(c), 6) for c in exit_at}
+        # Отпечаток набора правил (долг №30). У стаба он свой, но ОБЯЗАН быть:
+        # _try_open читает его безусловно, и подставлять getattr-заглушку в
+        # продакшен-коде значило бы вернуть молчаливый пропуск атрибуции.
+        # Разные стабы могут задать разные значения — этим проверяется, что
+        # отпечаток доезжает до строки trades, а не берётся из воздуха.
+        self.rules_version = rules_version or "stub000000000000"
         self.divergence_params: dict = {}
 
     @staticmethod

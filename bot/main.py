@@ -33,6 +33,7 @@ from signals.indicators import IndicatorEngine
 from signals.rules_engine import rules_engine, Action, classify_regime
 from risk.risk_manager import risk_manager
 from broker.tinkoff_client import tinkoff_client
+from learning.belief_seed import seed_belief
 from learning.trading_orchestrator import TradingOrchestrator
 from learning.memory_writer import (
     Trade,
@@ -95,32 +96,22 @@ async def _seed_belief() -> None:
 
     Без неё check_signal отклоняет все сигналы: стратегии нет в belief_system.
     Пул оркестратора приватный — берём отдельное короткоживущее соединение.
+
+    Логика — в learning/belief_seed.py, одна с форвардом. confidence НЕ
+    наследуется: раньше здесь копировалось 0.2887 от trend_moex, что не описывает
+    ни EMA50, ни то, что исполнится, а порог 0.20 это значение проходит (долг №30,
+    §5а PROJECT_STATE).
     """
     conn = await asyncpg.connect(config.db.dsn)
     try:
-        if await conn.fetchval(
-            "SELECT 1 FROM belief_system WHERE strategy_id = $1", STRATEGY_ID
-        ):
-            return
-        await conn.execute("""
-            INSERT INTO belief_system (strategy_id, strategy_name, market, description,
-                                       confidence, best_regime, best_timeframe)
-            SELECT $1, strategy_name || ' (живая)', market, description,
-                   confidence, best_regime, best_timeframe
-            FROM belief_system WHERE strategy_id = $2
-            ON CONFLICT (strategy_id) DO NOTHING
-        """, STRATEGY_ID, SEED_FROM_STRATEGY)
-
-        if not await conn.fetchval(
-            "SELECT 1 FROM belief_system WHERE strategy_id = $1", STRATEGY_ID
-        ):   # источника нет — минимальная строка с дефолтами
-            await conn.execute("""
-                INSERT INTO belief_system (strategy_id, strategy_name, market, description)
-                VALUES ($1, 'Следование тренду (живая)', 'stocks',
-                        'Живой контур trend_moex, H1, исполнение через Tinkoff')
-                ON CONFLICT (strategy_id) DO NOTHING
-            """, STRATEGY_ID)
-        logger.info("Belief-строка %s создана", STRATEGY_ID)
+        await seed_belief(
+            conn,
+            strategy_id=STRATEGY_ID,
+            seed_from=SEED_FROM_STRATEGY,
+            name_suffix=" (живая)",
+            fallback_name="Следование тренду (живая)",
+            fallback_description="Живой контур trend_moex, H1, исполнение через Tinkoff",
+        )
     finally:
         await conn.close()
 
@@ -289,6 +280,13 @@ async def _process_ticker(ticker: str, orchestrator: TradingOrchestrator):
                     confidence=Decimal(str(round(orch_decision["confidence"], 4))),
                     entry_reason=", ".join(r.name for r in sig.triggered_rules),
                     market_features=features or None,
+                    # Привязка к набору правил (долг №30). origin='live' — живой
+                    # контур; is_sandbox здесь означает песочницу БРОКЕРА, а не
+                    # происхождение сделки, поэтому различает не он.
+                    signal_rules=sorted(r.name for r in sig.triggered_rules
+                                        if r.action == Action.BUY),
+                    rules_version=rules_engine.rules_version,
+                    origin="live",
                 )
                 # Сбой learning-слоя не должен ломать торговый цикл: ордер уже стоит.
                 try:

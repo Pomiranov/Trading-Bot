@@ -19,6 +19,8 @@ QuantFlow — belief_updater.py
 """
 
 import logging
+
+from learning.sample import TRAINING_SAMPLE_SQL
 import math
 from decimal import Decimal
 from datetime import datetime, timezone
@@ -100,8 +102,9 @@ class BeliefUpdater:
                 WHERE strategy_id = $1
                   AND closed_at IS NOT NULL
                   AND pnl IS NOT NULL
+                  AND {TRAINING_SAMPLE_SQL}
                 ORDER BY opened_at
-            """, strategy_id)
+            """.format(TRAINING_SAMPLE_SQL=TRAINING_SAMPLE_SQL), strategy_id)
 
             if not trades:
                 logger.warning(f"Нет закрытых сделок для стратегии {strategy_id}")

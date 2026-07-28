@@ -21,6 +21,8 @@ QuantFlow — hypothesis_engine.py
 """
 
 import logging
+
+from learning.sample import TRAINING_SAMPLE_SQL
 import statistics
 from decimal import Decimal
 from typing import Optional
@@ -96,7 +98,8 @@ class HypothesisEngine:
             total = await conn.fetchval("""
                 SELECT COUNT(*) FROM trades
                 WHERE closed_at IS NOT NULL AND pnl IS NOT NULL
-            """)
+                  AND {TRAINING_SAMPLE_SQL}
+            """.format(TRAINING_SAMPLE_SQL=TRAINING_SAMPLE_SQL))
 
         if total < min_trades:
             logger.info(
@@ -131,9 +134,10 @@ class HypothesisEngine:
                 WHERE closed_at IS NOT NULL
                   AND pnl_r IS NOT NULL
                   AND market_regime IS NOT NULL
+                  AND {TRAINING_SAMPLE_SQL}
                 GROUP BY strategy_id, market_regime, market
                 HAVING COUNT(*) >= $1
-            """, STAGE_OBSERVATION_MIN)
+            """.format(TRAINING_SAMPLE_SQL=TRAINING_SAMPLE_SQL), STAGE_OBSERVATION_MIN)
 
         created = []
         for row in rows:
@@ -165,10 +169,11 @@ class HypothesisEngine:
                 FROM trades
                 WHERE closed_at IS NOT NULL
                   AND pnl_r IS NOT NULL
+                  AND {TRAINING_SAMPLE_SQL}
                   AND (market_features->>'volume_ratio')::FLOAT > 1.5
                 GROUP BY strategy_id
                 HAVING COUNT(*) >= $1
-            """, STAGE_OBSERVATION_MIN)
+            """.format(TRAINING_SAMPLE_SQL=TRAINING_SAMPLE_SQL), STAGE_OBSERVATION_MIN)
 
         created = []
         for row in rows:

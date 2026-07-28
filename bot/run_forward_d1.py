@@ -91,6 +91,7 @@ from market_time import MSK, last_closed_index, session_date
 from signals.indicators import IndicatorEngine, SIGNAL_WINDOW_BARS, signal_window
 from signals.rules_engine import RulesEngine, Action, classify_regime
 from risk.risk_manager import RiskManager
+from learning.belief_seed import seed_belief
 from learning.trading_orchestrator import TradingOrchestrator
 from learning.memory_writer import (
     Trade,
@@ -366,29 +367,23 @@ class ForwardRunner:
         logger.info(msg)
 
     async def _seed_belief(self) -> None:
-        """Создать belief-строку форвард-стратегии (однократно, идемпотентно)."""
-        exists = await self._db.fetchval(
-            "SELECT 1 FROM belief_system WHERE strategy_id = $1", STRATEGY_ID)
-        if exists:
-            return
-        await self._db.execute("""
-            INSERT INTO belief_system (strategy_id, strategy_name, market, description,
-                                       confidence, best_regime, best_timeframe)
-            SELECT $1, strategy_name || ' (форвард)', market, description,
-                   confidence, best_regime, best_timeframe
-            FROM belief_system WHERE strategy_id = $2
-            ON CONFLICT (strategy_id) DO NOTHING
-        """, STRATEGY_ID, SEED_FROM_STRATEGY)
-        exists = await self._db.fetchval(
-            "SELECT 1 FROM belief_system WHERE strategy_id = $1", STRATEGY_ID)
-        if not exists:   # источника нет — минимальная строка с дефолтами
-            await self._db.execute("""
-                INSERT INTO belief_system (strategy_id, strategy_name, market, description)
-                VALUES ($1, 'Осцилляторы боковика D1 (форвард)', 'stocks',
-                        'Форвард-контур osc_range_moex, D1, бумажное исполнение')
-                ON CONFLICT (strategy_id) DO NOTHING
-            """, STRATEGY_ID)
-        self._event(f"Belief-строка {STRATEGY_ID} создана")
+        """Создать belief-строку форвард-стратегии (однократно, идемпотентно).
+
+        Логика — в learning/belief_seed.py, одна на форвард и на main.py: раньше
+        это были две копии, и обе копировали confidence. Форвард из-за этого
+        держал 0.6574 при нуле собственных сделок (долг №30). Теперь наследуются
+        только описательные поля.
+        """
+        if await seed_belief(
+            self._db,
+            strategy_id=STRATEGY_ID,
+            seed_from=SEED_FROM_STRATEGY,
+            name_suffix=" (форвард)",
+            fallback_name="Осцилляторы боковика D1 (форвард)",
+            fallback_description="Форвард-контур osc_range_moex, D1, бумажное исполнение",
+        ):
+            self._event(f"Belief-строка {STRATEGY_ID} создана "
+                        f"(confidence НЕ наследован — долг №30)")
 
     async def _load_open_trades(self) -> dict:
         """Открытые форвард-позиции из БД: ticker → изменяемый dict записи trades.
@@ -724,6 +719,12 @@ class ForwardRunner:
             entry_reason    = (signal.reason or "Сигнал BUY форварда")
                               + f" | size_mult={float(decision['position_size_multiplier']):.2f} (не применён)",
             is_sandbox      = True,
+            # Привязка к набору правил (долг №30). origin отдельным полем, потому
+            # что is_sandbox различителем не является — форвард тоже бумажный.
+            signal_rules    = sorted(r.name for r in signal.triggered_rules
+                                     if r.action == Action.BUY),
+            rules_version   = self.rules.rules_version,
+            origin          = "forward",
         )
         await self.orch.on_trade_opened(trade)
 

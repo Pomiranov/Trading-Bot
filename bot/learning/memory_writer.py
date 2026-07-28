@@ -131,6 +131,27 @@ class Trade:
     is_sandbox:         bool = True
     broker_order_id:    Optional[str] = None
 
+    # --- Привязка к набору правил (долг №30) ---
+    # Без этих трёх полей строка не атрибутируема, а belief_system и hypotheses
+    # описывают неизвестно что: до 28.07 так было во всех 7 532 строках.
+    #
+    # signal_rules  — ИМЕНА сработавших правил. Их одних недостаточно: две версии
+    #                 одного правила с разными параметрами носят одно имя (ровно
+    #                 случай trend_moex, EMA21 против EMA50).
+    # rules_version — отпечаток всего разобранного yaml (RulesEngine.rules_version).
+    #                 Штампуется при ОТКРЫТИИ: если yaml правится между открытием и
+    #                 закрытием, выход исполнен по другим exit_rules, чем записанный
+    #                 отпечаток. Отпечаток описывает РЕШЕНИЕ О ВХОДЕ — для метки
+    #                 decision_quality это приемлемо, но знать об этом надо.
+    # origin        — 'forward' | 'backtest' | 'live'. Отдельное поле, потому что
+    #                 is_sandbox различителем НЕ является: он про бумагу против
+    #                 реальных денег, и форвард тоже is_sandbox=true. Без origin
+    #                 бэктестовые прогоны попадали бы в обучающую выборку как
+    #                 полноправные.
+    signal_rules:       Optional[list] = None
+    rules_version:      Optional[str] = None
+    origin:             Optional[str] = None
+
     # Генерируется автоматически
     trade_id: str = field(default_factory=lambda: str(uuid.uuid4()))
 
@@ -271,7 +292,15 @@ class MemoryWriter:
                     randomness_factor,
                     notes,
                     is_sandbox,
-                    broker_order_id
+                    broker_order_id,
+                    -- Привязка сделки к набору правил (долг №30). Без этих трёх
+                    -- полей строка не атрибутируема: имена правил не различают
+                    -- версии одного правила с разными параметрами, а origin
+                    -- отличает форвард от бэктеста — is_sandbox этого не делает,
+                    -- он про бумагу против реальных денег.
+                    signal_rules,
+                    rules_version,
+                    origin
                 ) VALUES (
                     $1,  $2,  $3,  $4,  $5,
                     $6,  $7,  $8,  $9,  $10,
@@ -279,7 +308,8 @@ class MemoryWriter:
                     $16, $17, $18, $19, $20,
                     $21, $22, $23, $24, $25,
                     $26, $27, $28, $29, $30,
-                    $31, $32, $33
+                    $31, $32, $33, $34, $35,
+                    $36
                 )
             """,
                 trade.trade_id,
@@ -315,6 +345,9 @@ class MemoryWriter:
                 trade.notes,
                 trade.is_sandbox,
                 trade.broker_order_id,
+                trade.signal_rules,
+                trade.rules_version,
+                trade.origin,
             )
 
         logger.info(

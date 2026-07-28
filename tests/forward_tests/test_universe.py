@@ -21,6 +21,10 @@ sys.path.insert(0, str(_ROOT / "bot"))
 from universe import (
     FORWARD_TICKERS,
     FORWARD_TICKERS_FIXED_AT,
+    FORWARD_TICKERS_PENDING,
+    FORWARD_TICKERS_PENDING_ENTERS_AT,
+    FORWARD_TICKERS_PENDING_FIXED_AT,
+    FORWARD_TICKERS_PENDING_VERSION,
     FORWARD_TICKERS_VERSION,
     MEASUREMENT_UNIVERSE_2026_07,
     MEASUREMENT_UNIVERSE_2026_07_EXT,
@@ -77,13 +81,37 @@ class TestExtendedUniverse(unittest.TestCase):
 
 
 class TestForwardUniverse(unittest.TestCase):
+    """Форвард откачен к 12 до утра 29.07 — сознательно, см. universe.py.
 
-    def test_forward_uses_twenty(self):
-        self.assertEqual(len(FORWARD_TICKERS), 20)
-        self.assertEqual(FORWARD_TICKERS_VERSION, EXPECTED_20)
+    Расширение до 20 требует бэкфилла и первого прогона по восьми бумагам, а в
+    21:xx это остаётся без запаса времени на разбор. Вдобавок ночной прогон
+    00:15 — первый после четырёх изменений, и проверять их на знакомом наборе
+    чище. Состав на 20 зафиксирован 28.07 и лежит в FORWARD_TICKERS_PENDING.
+    """
 
-    def test_fixation_date_recorded(self):
-        self.assertEqual(FORWARD_TICKERS_FIXED_AT, "2026-07-28")
+    def test_forward_rolled_back_to_twelve(self):
+        self.assertEqual(len(FORWARD_TICKERS), 12)
+        self.assertEqual(FORWARD_TICKERS_VERSION, EXPECTED_12)
+
+    def test_active_fixation_date_is_not_the_deferred_one(self):
+        """28.07 зафиксирован состав на 20, а не действующий. Поставить сюда
+        28.07 значило бы, что поле утверждает неправду."""
+        self.assertEqual(FORWARD_TICKERS_FIXED_AT, "2026-07-12")
+        self.assertNotEqual(FORWARD_TICKERS_FIXED_AT, FORWARD_TICKERS_PENDING_FIXED_AT)
+
+    def test_deferred_set_preserved_with_dates(self):
+        """Факт фиксации ДО прогона не должен потеряться при откате: иначе
+        завтра состав можно было бы незаметно поправить."""
+        self.assertEqual(len(FORWARD_TICKERS_PENDING), 20)
+        self.assertEqual(FORWARD_TICKERS_PENDING_VERSION, EXPECTED_20)
+        self.assertEqual(FORWARD_TICKERS_PENDING_FIXED_AT, "2026-07-28")
+        self.assertEqual(FORWARD_TICKERS_PENDING_ENTERS_AT, "2026-07-29")
+
+    def test_deferred_equals_ext_and_ext_untouched(self):
+        """_EXT — приколоченный ИЗМЕРИТЕЛЬНЫЙ набор, к форварду отношения не
+        имеет и откатом не затронут."""
+        self.assertEqual(FORWARD_TICKERS_PENDING, MEASUREMENT_UNIVERSE_2026_07_EXT)
+        self.assertEqual(MEASUREMENT_UNIVERSE_2026_07_EXT_VERSION, EXPECTED_20)
 
 
 class TestFingerprintProperties(unittest.TestCase):
@@ -157,8 +185,11 @@ class TestUniverseStampedOnTrades(unittest.TestCase):
         from backtest.engine import BacktestEngine
         eng = BacktestEngine(universe_version=MEASUREMENT_UNIVERSE_2026_07_VERSION)
         self.assertEqual(eng._universe_version, MEASUREMENT_UNIVERSE_2026_07_VERSION)
-        self.assertNotEqual(eng._universe_version, FORWARD_TICKERS_VERSION,
-                            "12-набор и 20-набор обязаны различаться")
+        # Сравнивать с FORWARD_TICKERS_VERSION нельзя: после отката 28.07 форвард
+        # снова на 12 бумагах, и отпечатки СОВПАДАЮТ. Инвариант «наборы различимы»
+        # проверяется отдельно — на 12 против 20 (test_two_universes_have_...).
+        ext = BacktestEngine(universe_version=MEASUREMENT_UNIVERSE_2026_07_EXT_VERSION)
+        self.assertNotEqual(eng._universe_version, ext._universe_version)
 
     def test_measurement_scripts_pass_their_universe(self):
         for name in ("run_osc_oos_debug.py", "run_ab_tf_backtest.py",

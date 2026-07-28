@@ -36,41 +36,83 @@ class PaperTradingService:
             return float(rows[0]["close"])
         return None
 
-    def refresh_positions(self, account_id: int) -> list[dict]:
+    def compute_positions(self, account_id: int) -> tuple[list[dict], dict]:
+        """Read-only valuation. Returns `(positions, account_totals)`.
+
+        This is the half of the old ``refresh_positions`` that a GET is allowed to
+        do. The other half — updating position PnL, updating the account and
+        inserting an ``equity_snapshots`` row — sat on the path of four GET
+        endpoints and wrote 6–27 rows a minute purely because a tab was open. That
+        produced 16 123 snapshots holding 44 distinct values, and the equity chart
+        then read its own polling frequency back as a time axis.
+
+        One deliberate behaviour change: when there is no quote, ``current_price``
+        is ``None`` and ``unrealized_pnl`` is ``None``. The old code substituted the
+        entry price, which yields a measured-looking 0,00 ₽ that is
+        indistinguishable from a genuinely flat position.
+        """
         positions = self._repo.list_positions(account_id)
         total_unrealized = 0.0
         margin_used = 0.0
+        priced = 0
 
         for pos in positions:
             price = self._get_market_price(pos["ticker"], self._repo._engine)
-            if price is None:
-                price = float(pos["entry_price"])
             qty = float(pos["quantity"])
             entry = float(pos["entry_price"])
             direction = (pos["direction"] or "long").lower()
 
-            if direction == "short":
-                unrealized = (entry - price) * qty
+            if price is None:
+                pos["current_price"] = None
+                pos["unrealized_pnl"] = None
+                pos["pnl_pct"] = None
             else:
-                unrealized = (price - entry) * qty
-
-            self._repo.update_position_pnl(int(pos["id"]), unrealized)
-            pos["current_price"] = price
-            pos["unrealized_pnl"] = unrealized
-            pos["pnl_pct"] = round(unrealized / (entry * qty) * 100, 4) if entry * qty else 0
-            total_unrealized += unrealized
+                unrealized = (entry - price) * qty if direction == "short" else (price - entry) * qty
+                pos["current_price"] = price
+                pos["unrealized_pnl"] = unrealized
+                pos["pnl_pct"] = round(unrealized / (entry * qty) * 100, 4) if entry * qty else 0
+                total_unrealized += unrealized
+                priced += 1
             margin_used += entry * qty
 
-        account = self._repo._query(
+        rows = self._repo._query(
             "SELECT * FROM paper_accounts WHERE id = :id", {"id": account_id}
-        )[0]
-        initial = float(account["initial_balance"])
+        )
+        account = rows[0] if rows else {}
+        initial = float(account.get("initial_balance") or 0)
         realized = float(self._repo.pnl_periods(account_id).get("realized_pnl") or 0)
-        balance = initial + realized + total_unrealized
-        available = float(account["available_balance"])
 
-        self._repo.update_account_balances(account_id, balance, available, margin_used)
-        self._repo.record_equity_snapshot(account_id, "paper", balance)
+        return positions, {
+            "initial_balance": initial,
+            "realized_pnl": realized,
+            "unrealized_pnl": total_unrealized,
+            "balance": initial + realized + total_unrealized,
+            "available_balance": float(account.get("available_balance") or 0),
+            "margin_used": margin_used,
+            "priced_positions": priced,
+            "unpriced_positions": len(positions) - priced,
+        }
+
+    def refresh_positions(self, account_id: int, *, record_snapshot: bool = True) -> list[dict]:
+        """Valuation **plus** persistence. Engine-only.
+
+        Never call this from a request handler. ``record_snapshot`` exists so the
+        engine can update state on a monitor tick without adding a snapshot on
+        every one — equity snapshots belong on their own cadence.
+        """
+        positions, totals = self.compute_positions(account_id)
+        for pos in positions:
+            if pos.get("unrealized_pnl") is not None:
+                self._repo.update_position_pnl(int(pos["id"]), pos["unrealized_pnl"])
+
+        self._repo.update_account_balances(
+            account_id,
+            totals["balance"],
+            totals["available_balance"],
+            totals["margin_used"],
+        )
+        if record_snapshot:
+            self._repo.record_equity_snapshot(account_id, "paper", totals["balance"])
         return positions
 
     def open_position(

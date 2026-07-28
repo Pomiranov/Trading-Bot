@@ -90,11 +90,17 @@ def api_signals_list():
     except (ValueError, TypeError):
         limit = 100
     svc = SignalsService(_engine)
+    # persist_on_empty=False: this GET used to fall through to
+    # `generate_live_signals(persist=True)` when the query came back empty, so
+    # eight of the rows in `trading_signals` are artefacts of dashboard polling
+    # rather than of market events. A signal table that a viewer can write to
+    # cannot be presented as a decision record.
     signals = svc.list_signals(
         exchange=request.args.get("exchange"),
         asset_class=request.args.get("asset_class"),
         status=request.args.get("status"),
         limit=limit,
+        persist_on_empty=False,
     )
     return jsonify([to_dict(s) for s in signals])
 
@@ -129,17 +135,20 @@ def api_signal_execute(signal_id: int):
 
 @platform_bp.route("/paper/account")
 def api_paper_account():
+    """Read-only. Was `refresh_positions`, which INSERTed an equity_snapshots row
+    and UPDATEd paper_accounts/paper_positions on every GET."""
     err = _require_engine()
     if err:
         return err
     mode = request.args.get("mode", "rub")
     svc = PaperTradingService(_engine)
     account = svc.get_account(mode=mode)
-    positions = svc.refresh_positions(int(account["id"]))
+    positions, totals = svc.compute_positions(int(account["id"]))
     return jsonify({
         "account": {k: (float(v) if k in ("balance", "available_balance", "margin_used", "initial_balance") else v)
                     for k, v in account.items() if k != "updated_at"},
         "positions": positions,
+        "computed": {k: round(v, 2) if isinstance(v, float) else v for k, v in totals.items()},
     })
 
 
@@ -283,21 +292,28 @@ def api_paper_trades():
         offset = max(int(request.args.get("offset", 0)), 0)
     except (ValueError, TypeError):
         return jsonify({"error": "Invalid limit or offset"}), 400
-    from sqlalchemy import text
-    svc = PaperTradingService(_engine)
-    account = svc.get_account()
-    aid = int(account["id"])
-    with _engine.connect() as conn:
-        rows = conn.execute(
-            text(
-                "SELECT * FROM paper_trades WHERE account_id = :aid"
-                " ORDER BY closed_at DESC LIMIT :limit OFFSET :offset"
-            ),
-            {"aid": aid, "limit": limit, "offset": offset},
-        )
-        cols = list(rows.keys())
-        trades = [dict(zip(cols, r)) for r in rows.fetchall()]
-    return jsonify([{k: (str(v) if hasattr(v, "isoformat") else v) for k, v in t.items()} for t in trades])
+    # The envelope mismatch that made «История Paper Trades» permanently empty:
+    # this route returned a bare array while the client read `payload.trades`, so
+    # 35 existing rows rendered as zero. It now returns the object the client
+    # expects, with the total so «N из M» is possible instead of silent truncation.
+    from qf_platform.repositories.trades_repository import TradesRepository
+
+    repo = TradesRepository(_engine)
+    aid = repo.default_account_id()
+    if aid is None:
+        return jsonify({"trades": [], "total": 0, "returned": 0, "offset": offset})
+
+    rows = repo.paper_trades(aid, period="all", limit=limit, offset=offset)
+    total = repo.paper_trades_count(aid, period="all")
+    return jsonify({
+        "trades": [
+            {k: (str(v) if hasattr(v, "isoformat") else v) for k, v in row.items()}
+            for row in rows
+        ],
+        "total": total,
+        "returned": len(rows),
+        "offset": offset,
+    })
 
 
 @platform_bp.route("/paper/position/<int:pos_id>/close", methods=["POST"])
@@ -397,7 +413,10 @@ def api_analytics_summary():
             "total_pnl": stats.get("total_pnl", 0),
             "roi_pct": stats.get("roi_pct", 0),
             "sharpe_ratio": stats.get("sharpe_ratio", 0),
-            "max_drawdown": stats.get("max_drawdown", 0),
+            # `max_drawdown` is gone: it carried a fraction under a name every
+            # renderer printed as a percentage. Both units, both named.
+            "max_drawdown_pct": stats.get("max_drawdown_pct", 0),
+            "max_drawdown_abs": stats.get("max_drawdown_abs", 0),
             "profit_factor": stats.get("profit_factor"),
         })
     except Exception as exc:

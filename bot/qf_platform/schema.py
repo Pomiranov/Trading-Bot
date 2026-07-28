@@ -1,4 +1,20 @@
-"""DDL for platform tables — idempotent migrations."""
+"""DDL for platform tables — the single authoritative schema definition.
+
+This module is *data*, not behaviour: importing it must never touch a database.
+The only thing that executes it is ``qf_platform.migrate``, invoked explicitly:
+
+    python -m qf_platform.migrate            # apply
+    python -m qf_platform.migrate --check    # report drift, change nothing
+
+Three DDL authorities used to race on ``trades``: this file, ``quantflow_schema.sql``
+and ``bot/learning/feedback.py`` (whose module-level singleton ran its own
+migration at import). The analytics columns that ``feedback.py`` owned are now
+declared here, ``feedback.py`` no longer performs DDL, and ``quantflow_schema.sql``
+is reference-only. See docs/DASHBOARD_OPERATIONS.md.
+"""
+
+#: Bumped whenever PLATFORM_SCHEMA_SQL changes in a way `--check` should notice.
+SCHEMA_VERSION = 4
 
 PLATFORM_SCHEMA_SQL = """
 -- ── Full trades table for learning system + platform ─────────────────────────
@@ -63,8 +79,6 @@ CREATE TABLE IF NOT EXISTS trades (
 CREATE INDEX IF NOT EXISTS idx_trades_id      ON trades (id);
 CREATE INDEX IF NOT EXISTS idx_trades_closed  ON trades (closed_at DESC NULLS LAST);
 CREATE INDEX IF NOT EXISTS idx_trades_ticker  ON trades (ticker);
-CREATE INDEX IF NOT EXISTS idx_trades_strategy ON trades (strategy_id);
-CREATE INDEX IF NOT EXISTS idx_trades_sandbox  ON trades (is_sandbox);
 
 -- Idempotent migrations: add missing columns to existing simplified trades table
 ALTER TABLE trades ADD COLUMN IF NOT EXISTS trade_id         VARCHAR(36)   DEFAULT gen_random_uuid()::text;
@@ -97,6 +111,11 @@ ALTER TABLE trades ADD COLUMN IF NOT EXISTS entry_reason     TEXT;
 
 -- Unique index on trade_id for learning system lookups (idempotent)
 CREATE UNIQUE INDEX IF NOT EXISTS idx_trades_trade_id ON trades (trade_id) WHERE trade_id IS NOT NULL;
+
+-- Indexes on migrated columns — must come AFTER the ALTER TABLE block above,
+-- otherwise they abort the whole DDL script on a legacy simplified trades table
+CREATE INDEX IF NOT EXISTS idx_trades_strategy ON trades (strategy_id);
+CREATE INDEX IF NOT EXISTS idx_trades_sandbox  ON trades (is_sandbox);
 
 CREATE TABLE IF NOT EXISTS candles (
     id        BIGSERIAL PRIMARY KEY,
@@ -339,4 +358,211 @@ ALTER TABLE paper_trades ADD COLUMN IF NOT EXISTS entry_reason  TEXT;
 ALTER TABLE paper_positions ADD COLUMN IF NOT EXISTS trailing_stop_pct NUMERIC(10,6);
 ALTER TABLE paper_positions ADD COLUMN IF NOT EXISTS signal_id         INTEGER;
 ALTER TABLE paper_positions ADD COLUMN IF NOT EXISTS entry_reason      TEXT;
+
+-- ── Analytics columns formerly owned by bot/learning/feedback.py ─────────────
+-- Consolidated here so `trades` has exactly one DDL authority. feedback.py's
+-- own migration ran at import time of the `learning` package, which meant the
+-- dashboard performed two independent migrations against this table in one
+-- process. Its columns are declared here and it no longer executes DDL.
+ALTER TABLE trades ADD COLUMN IF NOT EXISTS quantity     INTEGER;
+ALTER TABLE trades ADD COLUMN IF NOT EXISTS pnl_pct      NUMERIC(10,6);
+ALTER TABLE trades ADD COLUMN IF NOT EXISTS signal_rules TEXT[];
+ALTER TABLE trades ADD COLUMN IF NOT EXISTS buy_score    NUMERIC(8,4);
+ALTER TABLE trades ADD COLUMN IF NOT EXISTS sell_score   NUMERIC(8,4);
+ALTER TABLE trades ADD COLUMN IF NOT EXISTS rsi          NUMERIC(8,4);
+ALTER TABLE trades ADD COLUMN IF NOT EXISTS macd_hist    NUMERIC(18,6);
+ALTER TABLE trades ADD COLUMN IF NOT EXISTS adx          NUMERIC(8,4);
+ALTER TABLE trades ADD COLUMN IF NOT EXISTS atr          NUMERIC(18,6);
+ALTER TABLE trades ADD COLUMN IF NOT EXISTS status       VARCHAR(20) DEFAULT 'OPEN';
+ALTER TABLE trades ADD COLUMN IF NOT EXISTS reason_open  TEXT;
+ALTER TABLE trades ADD COLUMN IF NOT EXISTS reason_close TEXT;
+CREATE INDEX IF NOT EXISTS idx_trades_status ON trades (status);
+
+-- ── Environment as an enum-valued column, not a boolean ─────────────────────
+-- `is_sandbox BOOLEAN` cannot express forward/backtest and cannot say "unknown".
+-- A NULL environment is a configuration fault and renders as one; it is never
+-- coerced to 'sandbox'. The backfill below is deliberately conservative: it
+-- only labels rows whose provenance is unambiguous from the boolean.
+ALTER TABLE trades          ADD COLUMN IF NOT EXISTS environment VARCHAR(16);
+ALTER TABLE paper_accounts  ADD COLUMN IF NOT EXISTS environment VARCHAR(16) DEFAULT 'sandbox';
+ALTER TABLE paper_positions ADD COLUMN IF NOT EXISTS environment VARCHAR(16) DEFAULT 'sandbox';
+ALTER TABLE paper_trades    ADD COLUMN IF NOT EXISTS environment VARCHAR(16) DEFAULT 'sandbox';
+ALTER TABLE equity_snapshots ADD COLUMN IF NOT EXISTS environment VARCHAR(16) DEFAULT 'sandbox';
+ALTER TABLE trading_signals ADD COLUMN IF NOT EXISTS environment VARCHAR(16) DEFAULT 'sandbox';
+ALTER TABLE skipped_signals ADD COLUMN IF NOT EXISTS environment VARCHAR(16) DEFAULT 'sandbox';
+ALTER TABLE system_events   ADD COLUMN IF NOT EXISTS environment VARCHAR(16);
+
+UPDATE trades SET environment = CASE WHEN is_sandbox IS TRUE THEN 'sandbox'
+                                     WHEN is_sandbox IS FALSE THEN 'live' END
+ WHERE environment IS NULL AND is_sandbox IS NOT NULL;
+
+-- paper_* tables are simulated by construction; every existing row is sandbox.
+UPDATE paper_trades     SET environment = 'sandbox' WHERE environment IS NULL;
+UPDATE paper_positions  SET environment = 'sandbox' WHERE environment IS NULL;
+UPDATE paper_accounts   SET environment = 'sandbox' WHERE environment IS NULL;
+UPDATE equity_snapshots SET environment = 'sandbox' WHERE environment IS NULL AND source = 'paper';
+
+CREATE INDEX IF NOT EXISTS idx_trades_environment    ON trades (environment);
+CREATE INDEX IF NOT EXISTS idx_paper_trades_env      ON paper_trades (environment, closed_at DESC);
+CREATE INDEX IF NOT EXISTS idx_equity_snapshots_env  ON equity_snapshots (environment, snapshot_at DESC);
+
+-- ── Signal gate decision — the answer to "why was this signal rejected" ─────
+-- `skipped_signals` existed with zero rows because nothing wrote to it. These
+-- columns give the gate somewhere to record a machine-readable stage plus the
+-- human reason, and let a rejection be joined back to the signal it rejected.
+ALTER TABLE skipped_signals ADD COLUMN IF NOT EXISTS signal_id     INTEGER;
+ALTER TABLE skipped_signals ADD COLUMN IF NOT EXISTS gate_stage    VARCHAR(24);
+ALTER TABLE skipped_signals ADD COLUMN IF NOT EXISTS reason_text   TEXT;
+ALTER TABLE skipped_signals ADD COLUMN IF NOT EXISTS confidence    NUMERIC(5,4);
+ALTER TABLE skipped_signals ADD COLUMN IF NOT EXISTS sample_size   INTEGER;
+CREATE INDEX IF NOT EXISTS idx_skipped_at ON skipped_signals (skipped_at DESC);
+
+ALTER TABLE trading_signals ADD COLUMN IF NOT EXISTS gate_decision     VARCHAR(24);
+ALTER TABLE trading_signals ADD COLUMN IF NOT EXISTS gate_stage        VARCHAR(24);
+ALTER TABLE trading_signals ADD COLUMN IF NOT EXISTS gate_reason       TEXT;
+ALTER TABLE trading_signals ADD COLUMN IF NOT EXISTS gate_decided_at   TIMESTAMPTZ;
+ALTER TABLE trading_signals ADD COLUMN IF NOT EXISTS resulting_trade_id VARCHAR(36);
+ALTER TABLE trading_signals ADD COLUMN IF NOT EXISTS strategy_id       VARCHAR(50);
+ALTER TABLE trading_signals ADD COLUMN IF NOT EXISTS source_candle_at  TIMESTAMPTZ;
+ALTER TABLE trading_signals ADD COLUMN IF NOT EXISTS confidence        NUMERIC(5,4);
+ALTER TABLE trading_signals ADD COLUMN IF NOT EXISTS sample_size       INTEGER;
+CREATE INDEX IF NOT EXISTS idx_trading_signals_gate ON trading_signals (gate_decision, generated_at DESC);
+
+-- ── Event log — real rows, filterable, correlatable ─────────────────────────
+ALTER TABLE system_events ADD COLUMN IF NOT EXISTS category       VARCHAR(32);
+ALTER TABLE system_events ADD COLUMN IF NOT EXISTS correlation_id VARCHAR(64);
+CREATE INDEX IF NOT EXISTS idx_system_events_level  ON system_events (level, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_system_events_source ON system_events (source, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_system_events_corr   ON system_events (correlation_id);
+
+-- ── Forward / live runner heartbeat ─────────────────────────────────────────
+-- A runner that has never reported must render as UNKNOWN, not as healthy. That
+-- requires somewhere for it to report; `forward_state` had no status column.
+ALTER TABLE forward_state ADD COLUMN IF NOT EXISTS environment  VARCHAR(16) DEFAULT 'forward';
+ALTER TABLE forward_state ADD COLUMN IF NOT EXISTS status       VARCHAR(24);
+ALTER TABLE forward_state ADD COLUMN IF NOT EXISTS detail       TEXT;
+ALTER TABLE forward_state ADD COLUMN IF NOT EXISTS heartbeat_at TIMESTAMPTZ;
+
+-- ── Dashboard access control ────────────────────────────────────────────────
+-- Server-side sessions. No JWT, no client-side claims, no default password:
+-- a row here is created only by `python -m qf_platform.migrate --create-user`
+-- or the equivalent admin action, and password_hash is always a KDF output.
+CREATE TABLE IF NOT EXISTS dashboard_users (
+    id                  SERIAL PRIMARY KEY,
+    username            VARCHAR(64)  NOT NULL UNIQUE,
+    password_hash       TEXT         NOT NULL,
+    role                VARCHAR(24)  NOT NULL DEFAULT 'observer',
+    trading_authorized  BOOLEAN      NOT NULL DEFAULT false,
+    display_name        VARCHAR(64),
+    is_active           BOOLEAN      NOT NULL DEFAULT true,
+    failed_attempts     INTEGER      NOT NULL DEFAULT 0,
+    locked_until        TIMESTAMPTZ,
+    last_login_at       TIMESTAMPTZ,
+    password_changed_at TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+    created_at          TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+    updated_at          TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS dashboard_sessions (
+    sid          VARCHAR(64)  PRIMARY KEY,
+    user_id      INTEGER      NOT NULL REFERENCES dashboard_users(id) ON DELETE CASCADE,
+    csrf_token   VARCHAR(64)  NOT NULL,
+    created_at   TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+    last_seen_at TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+    expires_at   TIMESTAMPTZ  NOT NULL,
+    revoked_at   TIMESTAMPTZ,
+    client_ip    VARCHAR(64),
+    user_agent   VARCHAR(256)
+);
+
+CREATE INDEX IF NOT EXISTS idx_dashboard_sessions_user    ON dashboard_sessions (user_id);
+CREATE INDEX IF NOT EXISTS idx_dashboard_sessions_expires ON dashboard_sessions (expires_at);
+
+-- Login attempt ledger — the rate limiter's storage. Keyed by (username, ip)
+-- so a distributed guess against one account and a spray from one host are both
+-- visible. Rows older than the window are pruned by the limiter itself.
+CREATE TABLE IF NOT EXISTS dashboard_login_attempts (
+    id           BIGSERIAL PRIMARY KEY,
+    username     VARCHAR(64),
+    client_ip    VARCHAR(64),
+    attempted_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    success      BOOLEAN     NOT NULL DEFAULT false
+);
+
+CREATE INDEX IF NOT EXISTS idx_login_attempts_window ON dashboard_login_attempts (attempted_at DESC);
+CREATE INDEX IF NOT EXISTS idx_login_attempts_ip     ON dashboard_login_attempts (client_ip, attempted_at DESC);
+CREATE INDEX IF NOT EXISTS idx_login_attempts_user   ON dashboard_login_attempts (username, attempted_at DESC);
+
+-- ── Idempotency for trading-capable actions ─────────────────────────────────
+-- A double-clicked «Закрыть позицию» must not close it twice. The key is
+-- supplied by the client, the stored response is replayed verbatim.
+CREATE TABLE IF NOT EXISTS action_idempotency (
+    idempotency_key VARCHAR(80) PRIMARY KEY,
+    action          VARCHAR(64) NOT NULL,
+    actor_id        VARCHAR(64),
+    request_digest  VARCHAR(64),
+    response_json   JSONB,
+    status_code     INTEGER,
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_action_idempotency_created ON action_idempotency (created_at DESC);
+
+-- ── Audit trail (also created by bot/security/audit.py; identical shape) ────
+CREATE TABLE IF NOT EXISTS audit_events (
+    id              BIGSERIAL PRIMARY KEY,
+    event_time      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    event_type      VARCHAR(64)  NOT NULL,
+    actor_type      VARCHAR(32)  NOT NULL,
+    actor_id        VARCHAR(128),
+    resource_type   VARCHAR(64),
+    resource_id     VARCHAR(128),
+    outcome         VARCHAR(16)  NOT NULL,
+    client_ip       VARCHAR(64),
+    correlation_id  VARCHAR(64),
+    request_id      VARCHAR(64),
+    metadata        JSONB
+);
+
+ALTER TABLE audit_events ADD COLUMN IF NOT EXISTS actor_role      VARCHAR(24);
+ALTER TABLE audit_events ADD COLUMN IF NOT EXISTS environment     VARCHAR(16);
+ALTER TABLE audit_events ADD COLUMN IF NOT EXISTS reason          TEXT;
+ALTER TABLE audit_events ADD COLUMN IF NOT EXISTS state_before    JSONB;
+ALTER TABLE audit_events ADD COLUMN IF NOT EXISTS state_after     JSONB;
+ALTER TABLE audit_events ADD COLUMN IF NOT EXISTS idempotency_key VARCHAR(80);
+
+CREATE INDEX IF NOT EXISTS idx_audit_events_time        ON audit_events (event_time DESC);
+CREATE INDEX IF NOT EXISTS idx_audit_events_type        ON audit_events (event_type);
+CREATE INDEX IF NOT EXISTS idx_audit_events_correlation ON audit_events (correlation_id);
+
+-- ── Applied-migration ledger ────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS schema_migrations (
+    version     INTEGER     PRIMARY KEY,
+    applied_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    applied_by  VARCHAR(64),
+    statements  INTEGER,
+    notes       TEXT
+);
 """
+
+#: Columns the dashboard reads and therefore cannot run without. `--check`
+#: verifies these exist rather than trusting the version ledger, because a
+#: partially-rolled-back migration leaves the ledger looking healthy.
+REQUIRED_COLUMNS: dict[str, tuple[str, ...]] = {
+    "trades": (
+        "trade_id", "strategy_id", "decision_quality", "is_sandbox", "environment",
+        "pnl", "pnl_r", "confidence", "market_regime", "exit_reason_type",
+    ),
+    "paper_trades": ("pnl", "pnl_pct", "commission", "close_reason", "environment"),
+    "paper_positions": ("stop_loss", "take_profit", "signal_id", "environment"),
+    "equity_snapshots": ("account_id", "equity", "snapshot_at", "environment"),
+    "trading_signals": ("gate_decision", "gate_reason", "strategy_id", "environment"),
+    "skipped_signals": ("gate_stage", "reason_text", "environment"),
+    "system_events": ("level", "source", "message", "correlation_id"),
+    "forward_state": ("status", "heartbeat_at"),
+    "belief_system": ("confidence", "total_trades", "win_rate", "profit_factor"),
+    "dashboard_users": ("username", "password_hash", "role", "trading_authorized"),
+    "dashboard_sessions": ("sid", "user_id", "csrf_token", "expires_at"),
+    "action_idempotency": ("idempotency_key", "response_json"),
+    "audit_events": ("event_type", "actor_role", "state_before", "state_after"),
+}

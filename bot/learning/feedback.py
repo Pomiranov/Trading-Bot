@@ -98,19 +98,19 @@ class FeedbackStore:
         return self._conn
 
     def _ensure_schema(self) -> None:
-        try:
-            conn = self._connect()
-            with conn.cursor() as cur:
-                cur.execute(CREATE_TABLE_SQL)
-                # Add analytics columns to pre-existing tables without dropping data.
-                for stmt in _MIGRATE_SQL.strip().split(";"):
-                    stmt = stmt.strip()
-                    if stmt:
-                        cur.execute(stmt)
-            conn.commit()
-            logger.info("Схема БД проверена/создана")
-        except Exception as exc:
-            logger.error("Ошибка инициализации схемы БД: %s", exc)
+        """No-op by design — this module is no longer a DDL authority.
+
+        It used to run CREATE_TABLE_SQL + _MIGRATE_SQL against `trades` from
+        `__init__`, and because `feedback_store` was a module-level singleton
+        that happened at *import* of the `learning` package — i.e. every time the
+        dashboard started. Two independent migrations then raced on one table,
+        with `qf_platform/schema.py` as a third definition.
+
+        Those columns are now declared in `qf_platform/schema.py` and applied by
+        `python -m qf_platform.migrate`. The DDL constants above are retained as
+        documentation of this module's column requirements; nothing executes them.
+        """
+        return None
 
     # ─── Запись сделок ────────────────────────────────────────────────
 
@@ -257,4 +257,33 @@ class FeedbackStore:
             return []
 
 
-feedback_store = FeedbackStore()
+class _LazyFeedbackStore:
+    """Defers construction until the store is actually used.
+
+    `feedback_store = FeedbackStore()` at module scope meant that
+    `import learning` — which `bot/learning/__init__.py` does eagerly, and which
+    the dashboard triggers via `learning.knowledge_seeder` — opened a PostgreSQL
+    connection during import. Importing a module must not perform I/O; a proxy
+    keeps every existing `feedback_store.record_open(...)` call site working
+    while moving the connection to first use.
+    """
+
+    __slots__ = ("_store",)
+
+    def __init__(self) -> None:
+        self._store: Optional[FeedbackStore] = None
+
+    def _resolve(self) -> FeedbackStore:
+        if self._store is None:
+            self._store = FeedbackStore()
+        return self._store
+
+    def __getattr__(self, name: str):
+        return getattr(self._resolve(), name)
+
+    def __repr__(self) -> str:  # pragma: no cover - diagnostics only
+        state = "initialised" if self._store is not None else "not yet connected"
+        return f"<LazyFeedbackStore {state}>"
+
+
+feedback_store = _LazyFeedbackStore()

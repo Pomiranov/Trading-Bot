@@ -38,9 +38,16 @@ class PortfolioSummaryDTO:
     closed_trades_count: int
     avg_risk_pct: float
     avg_rr: float
+    #: Signed mean of pnl_pct — the actual average profit. Was AVG(ABS(...)),
+    #: which reported +16,07 % on an account with zero winning trades.
     avg_profit_pct: float
     currency: str
     source: str  # broker | paper | combined
+    #: Sample size for avg_profit_pct. Mandatory: without it a 0,00 % from an
+    #: empty sample is indistinguishable from a measured 0,00 % over 48 trades.
+    avg_profit_pct_n: int = 0
+    #: Mean absolute move — a different statistic, under its own name.
+    avg_abs_move_pct: float = 0.0
     best_positions: list[dict] = field(default_factory=list)
     worst_positions: list[dict] = field(default_factory=list)
     asset_allocation: list[dict] = field(default_factory=list)

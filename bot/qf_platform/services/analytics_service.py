@@ -37,26 +37,23 @@ class AnalyticsService:
     # Equity curve
     # ------------------------------------------------------------------
 
-    def equity_curve(self, limit: int = 200) -> list[dict]:
-        """Return list of {ts, equity} snapshots ordered by time ascending."""
+    def equity_curve(self, limit: int = 200, window: str = "90d") -> list[dict]:
+        """Time-bucketed equity, ascending.
+
+        `ORDER BY snapshot_at DESC LIMIT 200` returned 200 consecutive rows —
+        which, at one snapshot per 12-second poll, spanned **30 minutes** and held
+        a single distinct value. The x-axis was a record of how long a tab had been
+        left open. Bucketing on the time axis is the fix, and it lives in
+        `EquityRepository` so this service and the v2 contract share one
+        implementation.
+        """
         aid = self._get_account_id()
         if aid is None:
             return []
-        rows = self._query(
-            """
-            SELECT snapshot_at AS ts, equity
-            FROM equity_snapshots
-            WHERE account_id = :aid
-            ORDER BY snapshot_at DESC
-            LIMIT :lim
-            """,
-            {"aid": aid, "lim": limit},
-        )
-        result = [
-            {"ts": str(r["ts"]), "equity": float(r["equity"])}
-            for r in reversed(rows)
-        ]
-        return result
+        from qf_platform.repositories.equity_repository import EquityRepository
+
+        rows = EquityRepository(self._engine).series(aid, window=window)
+        return [{"ts": str(r["ts"]), "equity": float(r["equity"])} for r in rows][-limit:]
 
     # ------------------------------------------------------------------
     # Monthly PnL
@@ -178,7 +175,7 @@ class AnalyticsService:
         returns = self._daily_equity_returns(aid)
         sharpe = self._sharpe_from_returns(returns)
         sortino = self._sortino_from_returns(returns)
-        max_dd = self._compute_max_drawdown(aid)
+        max_dd_pct, max_dd_abs = self._compute_max_drawdown(aid)
 
         # ROI
         account_rows = self._query(
@@ -197,7 +194,13 @@ class AnalyticsService:
             "profit_factor": round(profit_factor, 4) if profit_factor != float("inf") else None,
             "sharpe_ratio": round(sharpe, 4),
             "sortino_ratio": round(sortino, 4),
-            "max_drawdown": round(max_dd, 4),
+            # `max_drawdown` carried a *fraction* under a name every renderer
+            # printed as a percentage, so a −23,73 % drawdown displayed as
+            # «−0,2 %». Both units now ship under names that state them, and the
+            # ambiguous field is gone.
+            "max_drawdown_pct": round(max_dd_pct, 2),
+            "max_drawdown_abs": round(max_dd_abs, 2),
+            "max_drawdown_n": len(returns) + 1 if returns else 0,
             "total_pnl": round(total_pnl, 2),
             "avg_win": round(avg_win, 2),
             "avg_loss": round(avg_loss, 2),
@@ -210,21 +213,32 @@ class AnalyticsService:
         }
 
     def _daily_equity_returns(self, account_id: int) -> list[float]:
-        """Daily equity returns from equity_snapshots (shared by Sharpe/Sortino)."""
+        """Daily equity returns (shared by Sharpe/Sortino).
+
+        Two changes: the daily value is the day's *close*, not its average —
+        an equity curve is a level, and averaging inside a day invents values the
+        account never held. And `DATE(snapshot_at)` in the GROUP BY defeated the
+        index, giving a Seq Scan + Sort over 16 000 rows on every analytics call;
+        `DISTINCT ON` over an ordered scan uses `idx_equity_snapshots_account`.
+        """
         rows = self._query(
             """
-            SELECT DATE(snapshot_at) AS day, AVG(equity) AS eq
+            SELECT DISTINCT ON (day) CAST(snapshot_at AS date) AS day, equity AS eq
             FROM equity_snapshots
             WHERE account_id = :aid
-            GROUP BY day
-            ORDER BY day ASC
+            ORDER BY day DESC, snapshot_at DESC
+            LIMIT 400
             """,
             {"aid": account_id},
         )
         if len(rows) < 2:
             return []
-        equities = [float(r["eq"]) for r in rows]
-        return [(equities[i] - equities[i - 1]) / equities[i - 1] for i in range(1, len(equities))]
+        equities = [float(r["eq"]) for r in reversed(rows)]
+        return [
+            (equities[i] - equities[i - 1]) / equities[i - 1]
+            for i in range(1, len(equities))
+            if equities[i - 1]
+        ]
 
     def _sharpe_from_returns(self, returns: list[float]) -> float:
         if not returns:
@@ -255,8 +269,16 @@ class AnalyticsService:
     def _compute_sortino(self, account_id: int) -> float:
         return self._sortino_from_returns(self._daily_equity_returns(account_id))
 
-    def _compute_max_drawdown(self, account_id: int) -> float:
-        """Return max drawdown as a fraction (e.g. 0.15 = 15%)."""
+    def _compute_max_drawdown(self, account_id: int) -> tuple[float, float]:
+        """Return `(percent, absolute)`, both negative.
+
+        Percent is already ×100 — `-23.73` means −23,73 %. The previous version
+        returned a bare fraction, which every caller then printed as a percentage.
+        Delegates to `contracts.drawdown_from_equity` so the drawdown maths exists
+        in exactly one place.
+        """
+        from qf_platform.contracts import drawdown_from_equity
+
         rows = self._query(
             """
             SELECT equity FROM equity_snapshots
@@ -265,19 +287,8 @@ class AnalyticsService:
             """,
             {"aid": account_id},
         )
-        if not rows:
-            return 0.0
-        equities = [float(r["equity"]) for r in rows]
-        peak = equities[0]
-        max_dd = 0.0
-        for eq in equities:
-            if eq > peak:
-                peak = eq
-            if peak > 0:
-                dd = (peak - eq) / peak
-                if dd > max_dd:
-                    max_dd = dd
-        return max_dd
+        pct, abs_value, _peak = drawdown_from_equity([float(r["equity"]) for r in rows])
+        return (pct or 0.0), (abs_value or 0.0)
 
     # ------------------------------------------------------------------
     # Best / worst trades
@@ -385,7 +396,9 @@ def _empty_stats() -> dict:
         "profit_factor": None,
         "sharpe_ratio": 0.0,
         "sortino_ratio": 0.0,
-        "max_drawdown": 0.0,
+        "max_drawdown_pct": 0.0,
+        "max_drawdown_abs": 0.0,
+        "max_drawdown_n": 0,
         "total_pnl": 0.0,
         "avg_win": 0.0,
         "avg_loss": 0.0,

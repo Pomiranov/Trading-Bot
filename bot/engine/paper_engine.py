@@ -21,6 +21,40 @@ MONITOR_INTERVAL = 30     # seconds
 SIGNAL_INTERVAL  = 90     # seconds
 
 
+class _GateStage:
+    """Local mirror of qf_platform.repositories.signals_gate_repository.GateStage.
+
+    Duplicated deliberately: this module is imported by the bot process, where
+    pulling in the platform repository layer at import time would drag in
+    SQLAlchemy for a handful of string constants. The repository import stays
+    inside the one method that writes.
+    """
+
+    RISK = "risk"
+    LEARNING = "learning"
+    FILTER = "filter"
+    DUPLICATE = "duplicate"
+    BROKER = "broker"
+    MARKET_CLOSED = "market_closed"
+
+
+def _risk_reason_code(text: str) -> str:
+    """Map the gate's Russian message onto a stable machine-readable code.
+
+    The message is what an operator reads; the code is what a filter and a chart
+    group by. Deriving the code from the message keeps a single source for the
+    wording while still giving the UI something it can aggregate.
+    """
+    lowered = (text or "").lower()
+    if "уже открыта" in lowered:
+        return "duplicate_position"
+    if "лимит позиций" in lowered:
+        return "max_open_positions"
+    if "дневной лимит" in lowered:
+        return "daily_loss_limit"
+    return "risk_rejected"
+
+
 def _is_market_open() -> bool:
     """Return True during Moscow exchange trading hours (UTC 07:00–15:59)."""
     now = datetime.utcnow()
@@ -645,6 +679,58 @@ class PaperEngine:
             logger.debug("Risk check error: %s", exc)
         return True, ""
 
+    def _record_gate_rejection(
+        self,
+        *,
+        signal,
+        strategy_id: str,
+        stage: str,
+        reason_code: str,
+        reason_text: str,
+        confidence: Optional[float] = None,
+        sample_size: Optional[int] = None,
+    ) -> None:
+        """Write one row to `skipped_signals` and stamp the signal's decision.
+
+        Best-effort by design: the gate's job is to stop a trade, and a failure to
+        record why must never prevent that. Both writes swallow their own errors
+        and log instead.
+        """
+        try:
+            from qf_platform.environment import Environment
+            from qf_platform.repositories.signals_gate_repository import (
+                GateDecision,
+                SignalsGateRepository,
+            )
+
+            repo = SignalsGateRepository(self._get_db_engine())
+            repo.record_skip(
+                strategy_id=strategy_id,
+                ticker=getattr(signal, "asset", None),
+                direction=getattr(signal, "signal_type", None),
+                timeframe=getattr(signal, "timeframe", None),
+                gate_stage=stage,
+                reason_code=reason_code,
+                reason_text=reason_text,
+                environment=Environment.SANDBOX,
+                signal_id=getattr(signal, "id", None) or None,
+                confidence=confidence,
+                sample_size=sample_size,
+                details={"probability_pct": getattr(signal, "probability_pct", None)},
+            )
+            signal_id = getattr(signal, "id", None)
+            if signal_id:
+                decision = (
+                    GateDecision.DUPLICATE if stage == _GateStage.DUPLICATE
+                    else GateDecision.REJECTED
+                )
+                repo.record_decision(
+                    int(signal_id), decision=decision, stage=stage,
+                    reason=reason_text, confidence=confidence, sample_size=sample_size,
+                )
+        except Exception:  # noqa: BLE001
+            logger.warning("Не удалось записать отклонение сигнала", exc_info=True)
+
     def _run_signal_cycle(self) -> None:
         db = self._get_db_engine()
         try:
@@ -684,6 +770,21 @@ class PaperEngine:
             allowed, reject_reason = self._check_risk_limits(sig.asset, account_id, portfolio_value)
             if not allowed:
                 logger.info("PaperEngine: REJECTED %s — %s", sig.asset, reject_reason)
+                # Persist the rejection. `skipped_signals` had a schema and zero
+                # rows because nothing ever wrote to it, which made "why was this
+                # signal rejected?" unanswerable from data rather than merely
+                # unrendered. A duplicate position and a breached limit are
+                # different stages, so they are recorded as different stages.
+                self._record_gate_rejection(
+                    signal=sig,
+                    strategy_id=meta.get("strategy", "default_sandbox"),
+                    stage=(
+                        _GateStage.DUPLICATE if "уже открыта" in reject_reason
+                        else _GateStage.RISK
+                    ),
+                    reason_code=_risk_reason_code(reject_reason),
+                    reason_text=reject_reason,
+                )
                 self._push_sse("signal_rejected", {
                     "ticker": sig.asset,
                     "reason": reject_reason,
@@ -722,6 +823,15 @@ class PaperEngine:
                         logger.info(
                             "PaperEngine: learning BLOCKED %s — %s",
                             sig.asset, decision.get("reason"),
+                        )
+                        self._record_gate_rejection(
+                            signal=sig,
+                            strategy_id=strategy_id,
+                            stage=_GateStage.LEARNING,
+                            reason_code="learning_blocked",
+                            reason_text=decision.get("reason") or "Заблокировано системой обучения",
+                            confidence=decision.get("confidence"),
+                            sample_size=decision.get("sample_size"),
                         )
                         self._push_sse("signal_rejected", {
                             "ticker": sig.asset,

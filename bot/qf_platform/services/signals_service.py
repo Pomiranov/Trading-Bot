@@ -230,11 +230,21 @@ class SignalsService:
         asset_class: Optional[str] = None,
         status: Optional[str] = None,
         limit: int = 100,
+        *,
+        persist_on_empty: bool = False,
     ) -> list[SignalDTO]:
+        """Read stored signals.
+
+        `persist_on_empty` used to be implicit and true: an empty result generated
+        fresh signals and wrote them, which made a GET a writer and turned the
+        signal table into a partial record of dashboard polling. It now defaults to
+        false, and the engine — which has its own schedule — is the only caller
+        that passes true.
+        """
         if exchange:
             exchange = EXCHANGE_ALIASES.get(exchange.lower(), exchange)
         rows = self._repo.list_signals(exchange=exchange, asset_class=asset_class, status=status, limit=limit)
-        if not rows:
+        if not rows and persist_on_empty:
             return self.generate_live_signals(persist=True)
         return [self._row_to_dto(r) for r in rows]
 

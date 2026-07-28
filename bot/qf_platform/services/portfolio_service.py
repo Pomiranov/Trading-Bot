@@ -112,7 +112,10 @@ class PortfolioService:
     def _paper_portfolio(self, mode: str = "rub") -> dict:
         account = self._paper.get_account(mode=mode)
         account_id = int(account["id"])
-        positions = self._paper.refresh_positions(account_id)
+        # compute_positions, not refresh_positions: this method is reached from
+        # GET /api/platform/portfolio and /overview, and the write half inserted
+        # an equity_snapshots row plus two UPDATEs on every read.
+        positions, _totals = self._paper.compute_positions(account_id)
         periods = self._paper_repo.pnl_periods(account_id)
         initial = float(account["initial_balance"])
         realized = float(periods.get("realized_pnl") or 0)
@@ -121,14 +124,23 @@ class PortfolioService:
 
         paper_positions = []
         for p in positions:
+            # `current_price` is None when no quote exists. Falling back to the
+            # entry price here is what made an unpriced position look flat.
+            mark = p.get("current_price")
+            reference = float(mark) if mark is not None else float(p["entry_price"])
             paper_positions.append({
                 "ticker": p["ticker"],
                 "quantity": float(p["quantity"]),
                 "entry_price": float(p["entry_price"]),
-                "current_price": float(p.get("current_price", p["entry_price"])),
-                "unrealized_pnl": float(p.get("unrealized_pnl", 0)),
-                "unrealized_pnl_pct": float(p.get("pnl_pct", 0)),
-                "current_value": float(p.get("current_price", p["entry_price"])) * float(p["quantity"]),
+                "current_price": float(mark) if mark is not None else None,
+                "unrealized_pnl": (
+                    float(p["unrealized_pnl"]) if p.get("unrealized_pnl") is not None else None
+                ),
+                "unrealized_pnl_pct": (
+                    float(p["pnl_pct"]) if p.get("pnl_pct") is not None else None
+                ),
+                "current_value": reference * float(p["quantity"]),
+                "has_quote": mark is not None,
                 "currency": account["currency"],
             })
 
@@ -202,21 +214,47 @@ class PortfolioService:
         ]
 
         closed = int(data.get("closed_trades_count", 0))
-        trades_stats = self._paper_repo._query(
-            """
-            SELECT AVG(ABS(pnl_pct)) AS avg_profit_pct FROM paper_trades
-            WHERE account_id = (SELECT id FROM paper_accounts LIMIT 1)
-            """,
-        ) if use_paper else self._paper_repo._query(
-            """
-            SELECT AVG(ABS(pnl_pct)) AS avg_profit_pct,
-                   COUNT(*) AS closed_count
-            FROM trades WHERE closed_at IS NOT NULL
-            """,
-        )
-        avg_profit = float(trades_stats[0].get("avg_profit_pct") or 0) * 100 if trades_stats else 0
-        if not use_paper and trades_stats:
-            closed = int(trades_stats[0].get("closed_count") or closed)
+        # `AVG(ABS(pnl_pct))` was the shipped expression. It discards the sign, so
+        # the live account — 35 trades, zero wins, −₽2 373 454 — reported an
+        # average profit of **+16,07 %**. A signed mean is the average profit; the
+        # absolute mean is the average *move*, and both are returned under names
+        # that say which is which.
+        #
+        # `LIMIT 1` on paper_accounts was also wrong once a second account exists;
+        # the account is now selected explicitly.
+        if use_paper:
+            account_id = int(self._paper.get_account(mode=mode)["id"])
+            trades_stats = self._paper_repo._query(
+                """
+                SELECT AVG(pnl_pct)      AS avg_profit_pct,
+                       AVG(ABS(pnl_pct)) AS avg_abs_move_pct,
+                       COUNT(*)          AS closed_count
+                FROM paper_trades
+                WHERE account_id = :aid
+                """,
+                {"aid": account_id},
+            )
+        else:
+            trades_stats = self._paper_repo._query(
+                """
+                SELECT AVG(pnl_pct)      AS avg_profit_pct,
+                       AVG(ABS(pnl_pct)) AS avg_abs_move_pct,
+                       COUNT(*)          AS closed_count
+                FROM trades WHERE closed_at IS NOT NULL
+                """,
+            )
+
+        row = trades_stats[0] if trades_stats else {}
+        sample = int(row.get("closed_count") or 0)
+        # An empty sample yields 0.0 only because the DTO's field is not Optional;
+        # `avg_profit_pct_n` carries the sample size so the client can render
+        # «н/д» instead of a measured-looking zero.
+        raw_avg = row.get("avg_profit_pct")
+        avg_profit = float(raw_avg) * 100 if raw_avg is not None else 0.0
+        raw_abs = row.get("avg_abs_move_pct")
+        avg_abs_move = float(raw_abs) * 100 if raw_abs is not None else 0.0
+        if not use_paper and sample:
+            closed = sample
 
         roi = round(total_pnl / initial * 100, 4) if initial else 0
 
@@ -237,6 +275,8 @@ class PortfolioService:
             avg_risk_pct=5.0,
             avg_rr=2.0,
             avg_profit_pct=round(avg_profit, 2),
+            avg_profit_pct_n=sample,
+            avg_abs_move_pct=round(avg_abs_move, 2),
             currency=data.get("currency", "RUB"),
             source="paper" if use_paper else data.get("source", "broker"),
             best_positions=best,

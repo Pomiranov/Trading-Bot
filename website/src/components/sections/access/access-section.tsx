@@ -4,7 +4,6 @@ import { SectionHeader } from "@/components/ui/section-header";
 import { InteractiveCard } from "@/components/ui/interactive-card";
 import { GridBackplate } from "@/components/ui/grid-backplate";
 import { SignalField } from "@/components/ui/signal-field";
-import { RouteSpine } from "@/components/ui/route-spine";
 import { Reveal } from "@/components/motion/reveal";
 import { AccessForm } from "./access-form";
 
@@ -40,15 +39,6 @@ export async function AccessSection({ locale }: { locale: string }) {
 
   return (
     <Section id="access" rhythm="major">
-      {/* The route arrives from the FAQ and terminates *on* the panel below —
-          flush, with no margin, so the line meets the panel's top edge instead of
-          stopping 40px short of it. A connector that ends in mid-air is the
-          "lines end abruptly" note this pass was correcting.
-
-          No node on the leading edge: this is the end of the route, and a
-          junction dot at the top of the last connector implies another follows. */}
-      <RouteSpine size="md" node={false} />
-
       {/* Same pointer-lit field as the hero, on the panel that rhymes with it —
           the page is bookended by the two objects that respond to the cursor. */}
       <SignalField className="relative isolate overflow-hidden rounded-[var(--radius-2xl)] border border-[color:var(--color-border)] bg-[color:var(--color-bg-elevated)] px-6 py-12 shadow-[var(--shadow-panel)] sm:px-10 sm:py-14 lg:px-14 lg:py-16">

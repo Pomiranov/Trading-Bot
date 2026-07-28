@@ -3,7 +3,6 @@ import { contentSource } from "@/content-layer/source";
 import { Section } from "@/components/ui/section";
 import { SectionHeader } from "@/components/ui/section-header";
 import { MonoLabel } from "@/components/ui/mono-label";
-import { RouteSpine } from "@/components/ui/route-spine";
 import { PipelineSpine } from "./pipeline-spine";
 
 /**
@@ -95,9 +94,9 @@ export async function HowItWorksSection({ locale }: { locale: string }) {
       its brightest point on the section's own top edge — directly under the
       hairline divider. Two adjacent horizontal features in the same 40px band
       read as a seam artefact rather than as depth, and it was the first thing
-      visible when arriving from the audience row. The spine's own drawn line is
-      the entrance to this section now, which is a better one: it arrives *from*
-      the block above instead of drawing a boundary against it.
+      visible when arriving from the audience row. The section's own heading and
+      the pipeline rail below it carry the entrance, which is a better one: the
+      reader arrives at content rather than at a boundary.
     */
     <Section
       id="how-it-works"
@@ -129,11 +128,6 @@ export async function HowItWorksSection({ locale }: { locale: string }) {
       <SectionHeader id="how-it-works" eyebrow={t("eyebrow")} heading={t("heading")} />
 
       <PipelineSpine stages={stages} techLabel={techLabel} extras={extras} />
-
-      {/* Out of the pipeline and on toward `#foundation` — the principles the
-          mechanism above was built under. A plain stem: there are no columns to
-          gather here, the spine is already one line. */}
-      <RouteSpine size="md" className="mt-2" />
     </Section>
   );
 }

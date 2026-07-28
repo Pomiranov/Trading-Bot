@@ -138,16 +138,10 @@ body::before {
   background-size: 256px 256px;
 }
 
-/* ─── Premium keyframes ─── */
-@keyframes qf-pulse-glow {
-  0%, 100% { opacity: 0.5; }
-  50% { opacity: 1; }
-}
-
-@keyframes qf-blink {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.25; }
-}
+/* ─── Premium keyframes ───
+   `qf-pulse-glow` and `qf-blink` lived here and were removed as dead: nothing
+   referenced the first, and the second was the old status-dot blink, replaced by
+   `qf-signal-ping` further down when the live dot gained its expanding ring. */
 
 /* Transform-only, deliberately. An entrance that starts at opacity: 0 with
    fill-mode `both` makes its subtree ineligible as an LCP candidate for the
@@ -729,28 +723,13 @@ section[id][data-rhythm="tight"] {
 }
 
 /* ─── Signal line ──────────────────────────────────────────────────────────
-   The connective tissue: audience -> pipeline, the pipeline spine itself, the
-   broker route diagram. Drawn by `ui/signal-line.tsx`.
-
-   `stroke-dashoffset` only. It is compositor-safe, it is the same technique the
-   hero's exit vector already uses, and — the part that matters — it degrades
-   correctly: the base style is the *drawn* state, so when the reduced-motion
-   reset collapses the duration the line is simply already there. A line that
-   animated its `stroke-dasharray` or its width would vanish instead. */
-.signal-draw {
-  stroke-dasharray: var(--signal-len, 1000);
-  stroke-dashoffset: 0;
-}
-
-@media (prefers-reduced-motion: no-preference) {
-  .signal-draw[data-drawn="false"] {
-    stroke-dashoffset: var(--signal-len, 1000);
-  }
-
-  .signal-draw {
-    transition: stroke-dashoffset 1.2s var(--ease-out-quint);
-  }
-}
+   Removed. `.signal-draw` and its `--signal-len` custom property drew the
+   connective-tissue lines — audience into pipeline, the broker route diagram —
+   through `ui/signal-line.tsx`. That component was already gone before this
+   pass; the class outlived it by several commits with nothing referencing it,
+   and the whole decorative-connector family has since been removed on owner
+   direction. Nothing here is waiting to be re-enabled: bringing the technique
+   back means bringing the component back, and git history has both. */
 
 /* ─── Pointer signal field ─────────────────────────────────────────────────
    The cold light that follows the cursor across the hero and the closing CTA
@@ -820,100 +799,403 @@ section[id][data-rhythm="tight"] {
   }
 }
 
-/* ─── The route spine ──────────────────────────────────────────────────────
-   The continuous decision route between sections, drawn by `ui/route-spine.tsx`.
-   Read that file first — it documents why this is a CSS scroll-driven animation
-   rather than anything JavaScript touches.
+/* ─── The band blend ───────────────────────────────────────────────────────
+   The material change between the page's black base and one of its two paper
+   bands, drawn by `ui/band-transition.tsx`. Read that file first — it owns the
+   gradient ramp and the geometry; this owns the grid layers and the one
+   scroll-driven effect on them.
 
-   The short version: nothing on this page may read scroll position except
-   motion/scroll-driver.ts, because a second reader on the value Lenis animates
-   is what caused the backward-scroll bug. A native view() timeline is resolved
-   by the compositor from the element's own position, so it observes nothing and
-   there is nothing for Lenis to fight.
+   ── What replaced the route line ──
 
-   ── The stroke colour ──
+   This block used to also carry `.route-spine`: a cold hairline drawn down the
+   middle of every blend and continued between sections as a "decision route".
+   The whole family was removed on owner direction. Measured on the live page,
+   the connectors read as accidental rather than as a route — a 1px line
+   descending out of a heading into empty space, a fragment hanging under the
+   dashboard's left column, another floating above the FAQ with nothing above it
+   to join. A line that connects two things has to visibly touch both, and once
+   the sections around them settled at their final rhythm these did not.
 
-   Two variables so the spine inverts with the band it sits in. On black the
-   cold hairline is at its documented ceiling (--color-signal-line, 28% alpha);
-   on paper that is invisible, and raising the alpha to compensate reads as a
-   print registration error, so paper gets graphite instead. Because
-   `.section-paper` re-points these, a spine inside a paper band inverts without
-   knowing paper exists.
+   Nothing replaces them structurally. Section order and the vertical rhythm
+   carry the sequence, which is what the rest of the page already relied on.
 
-   This is a decorative SVG stroke, which is the permitted use of the cold blue
-   — see the doctrine at the top of tokens/color.css and the `cyan-as-ink` gate
-   in check-design-tokens.mjs. It carries no text and no information. */
-:root {
-  --color-route-stroke: var(--color-signal-line);
-  --color-route-stroke-strong: var(--color-signal);
+   ── The grid ──
+
+   The blend is where the page changes material, so the grid changes material
+   with it: the same 64px geometry `ui/grid-backplate.tsx` draws behind the hero,
+   in white over the dark end of the ramp and in graphite over the paper end,
+   each masked to its own half and overlapping through the middle. The result
+   reads as one grid whose ink flips as the ground does, rather than as two
+   textures butted together.
+
+   Both layers are `background-image` + `mask-image` only. They paint and they
+   composite; they never lay out, so the band's height is identical in every
+   state and it cannot shift anything above or below it. */
+
+.band-blend__grid {
+  /* Base state is the FINISHED state — fully lit. Every failure mode below
+     (no scroll-driven animation support, reduced motion, a timeline that never
+     resolves) lands here rather than on a grid that never fades in. Same rule
+     the reveals and the old spine followed, and for the same reason. */
+  opacity: 1;
 }
 
-.section-paper {
-  --color-route-stroke: var(--color-border-on-paper-strong);
-  --color-route-stroke-strong: var(--color-on-paper-muted);
-}
+/* The gentle brightening as the blend crosses the viewport. Opacity only, on a
+   compositor layer, driven by a native `view()` timeline.
 
-/* ── The draw is a clip wipe, NOT stroke-dashoffset ──
-   Two failed attempts, and the second one is instructive enough to record.
+   The timeline matters as much as the effect: nothing on this page may read
+   scroll position except motion/scroll-driver.ts, because a second reader on
+   the value Lenis animates is what caused the backward-scroll bug documented at
+   length in that module. A view timeline is resolved by the compositor from the
+   element's own position in its scrollport — it observes nothing, ships no JS,
+   and there is nothing for Lenis to fight.
 
-   `stroke-dasharray`/`dashoffset` is the conventional way to draw an SVG line and
-   it cannot work here, because these paths combine `vectorEffect: non-scaling-stroke`
-   with `preserveAspectRatio="none"`. Dash arithmetic for a non-scaling stroke is
-   resolved in *screen pixels*, while the geometry is authored in viewBox units on
-   a box that stretches horizontally — so a crossbar 66 units wide renders ~800px
-   long. Handing CSS a dash length computed in user units produced a dash
-   *pattern* instead of one stroke: the Foundation and Pricing crossbars rendered
-   as two ~257px segments with a hole between them.
-
-   `pathLength="100"` was the second attempt. It does normalise the length used
-   for dash arithmetic, but it normalises it to the path's *user-unit* length,
-   which non-scaling-stroke then reinterprets as pixels — so the mismatch
-   survives, and the gaps came back at exactly the same 257px pitch.
-
-   A clip wipe has no lengths in it at all. `inset()` percentages resolve against
-   the element's own box, so one rule is correct for every variant at every
-   viewport, and it composites. Removing the dash properties entirely is part of
-   the fix — leaving them would reintroduce the pattern.
-
-   The base style is the FINISHED, unclipped line. Every failure mode — no JS,
-   reduced motion, a browser without scroll-driven animations, a timeline that
-   never resolves — lands here, fully drawn. Never invert this. */
-.route-spine {
-  clip-path: inset(0 0 0 0);
-}
-
-@keyframes qf-route-draw {
+   Gated twice, deliberately. `prefers-reduced-motion: no-preference` is the
+   outer gate, so a reduced-motion reader gets the lit grid with no animation
+   attached at all rather than a fast one. `@supports` is the inner gate:
+   without it a browser lacking view timelines attaches a *document*-timeline
+   animation instead, which would run once on load regardless of scroll. */
+@keyframes qf-band-grid-lift {
   from {
-    clip-path: inset(0 0 100% 0);
+    opacity: 0.15;
   }
   to {
-    clip-path: inset(0 0 0 0);
+    opacity: 1;
   }
 }
 
-/* Progressive enhancement, gated twice. `prefers-reduced-motion: no-preference`
-   is the outer gate because a reduced-motion reader must get the static line
-   with no animation attached at all — not a fast one. `@supports` is the inner
-   gate: without it, a browser lacking view() timelines would attach a
-   *document*-timeline animation instead and the line would draw itself once on
-   load regardless of scroll, which is worse than static.
-
-   `animation-range` starts the draw as the connector enters the viewport and
-   completes it around the middle of its pass, so the line is finished by the
-   time the reader's eye arrives at what it points to rather than still crawling
-   behind them. `both` holds `from` before the range and `to` after it. */
 @media (prefers-reduced-motion: no-preference) {
   @supports (animation-timeline: view()) {
-    /* The element both declares the timeline and animates against it, which is
-       allowed — timeline lookup starts at the element itself. */
-    .route-spine {
-      view-timeline-name: --route-spine;
+    .band-blend {
+      view-timeline-name: --band-blend;
       view-timeline-axis: block;
-      animation: qf-route-draw linear both;
-      animation-timeline: --route-spine;
-      animation-range: entry 5% cover 50%;
+    }
+
+    .band-blend__grid {
+      animation: qf-band-grid-lift linear both;
+      animation-timeline: --band-blend;
+      /* Finished by the time the blend is halfway across, so the grid is at
+         full strength while the reader is looking at it rather than still
+         arriving behind them. */
+      animation-range: entry 10% cover 55%;
     }
   }
+}
+
+/* ── Closing the gap the blend leaves ──
+
+   The band is 176–256px of deliberate transition, and the paper section that
+   follows it opened with its own `--space-section-y-major` on top of that —
+   up to 232px more. Measured at 1440: 430px of empty paper between the end of
+   the ramp and the section heading, which is most of why the band read as "a
+   white block appeared" rather than as a change of register. The blend *is* the
+   section's lead-in, so the section stops paying for one of its own.
+
+   Adjacent-sibling selectors rather than a prop, because the relationship is
+   positional: only a paper section that actually follows a blend should give up
+   its padding, and only on the side the blend is on. */
+.band-blend + section {
+  /* Dark side. The blend's bottom row *is* --color-bg, so there is no ground
+     change to mark where the section begins; it needs more clearance than the
+     paper side, but nothing like a full major rhythm on top of 256px of ramp. */
+  padding-top: var(--space-section-y-tight);
+}
+
+.band-blend + .section-paper {
+  padding-top: var(--space-block);
+}
+
+.section-paper:has(+ .band-blend) {
+  padding-bottom: var(--space-section-y-tight);
+}
+
+/* A blend is already a separator, and the section on the dark side of one
+   carries `divider` for the case where it follows an ordinary section. Two
+   separators stacked on the same edge is the seam artefact the glows were
+   removed for — the hairline lands on the exact pixel row where the ramp
+   finishes. Suppressed rather than removed from the call site, because the prop
+   is still correct whenever that section is not preceded by a blend. */
+.band-blend + section {
+  border-top-color: transparent;
+}
+
+/* ── Anchor landing has to follow the padding ──
+
+   `scroll-margin-top` for a section is `--anchor-clearance` minus that
+   section's own top padding, because the target is the first line of content
+   rather than the section box — see the block above `--anchor-clearance`. The
+   two rules above change that padding, so the scroll margin has to change with
+   them or the deep link lands using the old number.
+
+   It is not a cosmetic drift. `#foundation` and `#pricing` are `rhythm="major"`
+   and were still being offset by 232px of padding they no longer have, which
+   put both headings 6–22px *above* the viewport top — behind the sticky header,
+   the exact overlap the anchor rules exist to prevent.
+
+   The smooth-scroll path needs no equivalent change: `anchorOffsetFor` in
+   motion/scroll-driver.ts reads the target's computed padding at click time, so
+   it already agreed with the new layout while this rule did not. Three
+   selectors' worth of specificity so these beat `[id][data-rhythm="…"]`. */
+.band-blend + section[id][data-rhythm] {
+  scroll-margin-top: calc(var(--anchor-clearance) - var(--space-section-y-tight));
+}
+
+.band-blend + .section-paper[id][data-rhythm] {
+  scroll-margin-top: calc(var(--anchor-clearance) - var(--space-block));
+}
+
+/* ─── Graphite objects on paper ────────────────────────────────────────────
+   The card treatment inside both paper bands: dark panels on warm paper.
+
+   ── Why the cards invert rather than the band ──
+
+   White cards on #f4f2ec differ from the ground behind them by roughly two
+   luminance steps. At card size that is not "elevated", it is "a slightly
+   lighter rectangle", and it cost both bands the thing they exist for: the
+   Foundation numerals had nothing to sit against, and the pricing row read as
+   one pale block rather than three tiers. Graphite panels give the objects the
+   weight the copy claims and rhyme with the black on either side of the band,
+   which is what makes the paper read as punctuation rather than as a gap.
+
+   ── How it works ──
+
+   Exactly the way `.section-paper` works, in the opposite direction: it
+   re-points the tokens its subtree already reads. No card, heading, list marker,
+   code element or CTA inside it learns that anything changed, and reverting a
+   band to white cards is deleting one class from one call site.
+
+   The values mirror the dark palette in tokens/color.css. They are written out
+   rather than referenced because `.section-paper` has already re-pointed those
+   same variable names on the ancestor — there is no way to ask for "the value
+   this token had before the band flipped it". If the dark palette moves, this
+   block moves with it. */
+.on-paper-graphite {
+  --color-text-primary: #ffffff;
+  --color-text-secondary: rgba(255, 255, 255, 0.72);
+  --color-text-tertiary: rgba(255, 255, 255, 0.56);
+  --color-text-quaternary: rgba(255, 255, 255, 0.48);
+
+  --color-border: rgba(255, 255, 255, 0.1);
+  --color-border-strong: rgba(255, 255, 255, 0.35);
+  --color-highlight-border: rgba(255, 255, 255, 0.28);
+  --color-highlight-bg: rgba(255, 255, 255, 0.045);
+  --color-fill-subtle: rgba(255, 255, 255, 0.03);
+
+  /* Graphite, not the page's own #0a0a0a. A pure near-black card on warm paper
+     reads as a hole punched through the page; one step up sits *on* it. */
+  --color-surface: var(--color-graphite);
+  --color-panel: var(--color-graphite-raised);
+  --color-panel-raised: var(--color-graphite-raised);
+
+  /* The CTA inverts back to white-on-black — `.section-paper` had flipped it to
+     black-on-paper, which inside a graphite card is black on black. `--color-bg`
+     travels with it because `Button` paints its *foreground* from it. */
+  --color-accent: #ffffff;
+  --color-accent-hover: rgba(255, 255, 255, 0.88);
+  --color-bg: #030303;
+  --shadow-cta-rest: 0 4px 20px rgba(255, 255, 255, 0.1);
+  --shadow-cta-hover: 0 8px 30px -6px rgba(255, 255, 255, 0.18);
+
+  /* Resting: a soft dark drop, so the panel sits on the paper.
+     Hover: the same drop, deepened, plus a white edge and a soft white bloom —
+     graphite elevation and white glow, never a coloured one. On paper the cold
+     blue is invisible at its permitted alpha and looks like a print
+     registration error above it, so it is not used here at all. */
+  --shadow-card-rest: 0 2px 8px -2px rgba(0, 0, 0, 0.18);
+  --shadow-card-hover:
+    0 24px 56px -20px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.14),
+    0 0 44px -12px rgba(255, 255, 255, 0.12);
+
+  color: var(--color-text-primary);
+}
+
+/* The focal pricing card, restored to its dark treatment.
+
+   `.glass-premium-featured` hard-codes its own fill and border instead of
+   reading tokens, so it is the one surface a token re-point cannot reach — see
+   the long note above `.section-paper .glass-premium-featured`, which inverts it
+   to white for a paper band. Inside a graphite subtree that inversion is wrong
+   again, so it is undone at one more level of specificity. The blur stays off:
+   there is nothing behind the card to blur, and it costs a compositing layer to
+   simulate depth against a flat fill. */
+.on-paper-graphite .glass-premium-featured {
+  background: var(--color-graphite-raised);
+  box-shadow:
+    0 28px 64px -24px rgba(0, 0, 0, 0.55),
+    0 0 0 1px rgba(255, 255, 255, 0.06);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+@supports (backdrop-filter: blur(1px)) {
+  .on-paper-graphite .glass-premium-featured {
+    backdrop-filter: none;
+  }
+}
+
+/* The gradient border returns to white — same 135° sweep and the same four
+   stops as the dark band's, so the focal card is one object across the page. */
+.on-paper-graphite .glass-premium-featured::before {
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.42) 0%,
+    rgba(255, 255, 255, 0.14) 40%,
+    rgba(255, 255, 255, 0.04) 60%,
+    rgba(255, 255, 255, 0.28) 100%
+  );
+}
+
+/* `.glass-premium-featured` is not a `.card-premium`, so it has no hover state
+   of its own. On the one card in the section a visitor can act on, that made it
+   the only inert card in the row. It gets the same white-glow lift as its
+   siblings, on the same gated hover. */
+.on-paper-graphite .glass-premium-featured {
+  transition:
+    box-shadow var(--duration-base) var(--ease-out-expo),
+    transform var(--duration-base) var(--ease-out-expo);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .on-paper-graphite .glass-premium-featured:hover,
+  .on-paper-graphite .glass-premium-featured:focus-within {
+    box-shadow:
+      0 32px 72px -24px rgba(0, 0, 0, 0.6),
+      0 0 0 1px rgba(255, 255, 255, 0.16),
+      0 0 48px -12px rgba(255, 255, 255, 0.14);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  @media (hover: hover) and (pointer: fine) {
+    .on-paper-graphite .glass-premium-featured:hover {
+      transform: translateY(-6px);
+    }
+  }
+}
+
+/* ─── Panel hover bloom ────────────────────────────────────────────────────
+   For the large non-card panels that should acknowledge the pointer without
+   behaving like a card: today, the operator terminal in `#dashboard`.
+
+   Distinct from `.card-premium` in two ways that matter for a panel this size.
+   It does not translate — a 700px-wide object sliding 6px under the cursor
+   reads as the page wobbling, not as elevation — and the glow is white only.
+   A cold-blue bloom across a whole panel is the "neon" failure the palette
+   doctrine exists to prevent; the cold blue on this page is a 1px edge or a
+   16px node halo, never a wash.
+
+   Border, shadow and background only, so nothing here can shift layout. Hover
+   is gated behind `hover: hover` + `pointer: fine` for the same reason every
+   other hover on the page is: on a touch screen a `:hover` rule sticks after a
+   tap and reads as a stuck selected state. */
+.panel-bloom {
+  transition:
+    border-color var(--duration-base) var(--ease-out-expo),
+    background-color var(--duration-base) var(--ease-out-expo),
+    box-shadow var(--duration-base) var(--ease-out-expo);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .panel-bloom:hover {
+    border-color: var(--color-highlight-border);
+    background-color: var(--color-panel-raised);
+    box-shadow:
+      0 28px 72px -28px rgba(0, 0, 0, 0.85),
+      0 0 0 1px rgba(255, 255, 255, 0.08),
+      0 0 56px -16px rgba(255, 255, 255, 0.1);
+  }
+}
+
+/* Keyboard parity: the terminal is full of focusable tabs, so a keyboard user
+   moving into it gets the same acknowledgement a pointer user gets. */
+.panel-bloom:focus-within {
+  border-color: var(--color-highlight-border);
+  box-shadow:
+    0 28px 72px -28px rgba(0, 0, 0, 0.85),
+    0 0 0 1px rgba(255, 255, 255, 0.08),
+    0 0 56px -16px rgba(255, 255, 255, 0.1);
+}
+
+/* ─── Live status dot ──────────────────────────────────────────────────────
+   The pulsing dot on `ui/status-chip.tsx`'s `pulse` variant. One use today: the
+   mode chip in the operator terminal's own chrome.
+
+   ── The honesty boundary, which has not moved ──
+
+   `status-chip.tsx` records why the footer's old "Systems operational" pulse was
+   removed: it was a live-status claim with no telemetry behind it. That rule
+   still stands. This dot is inside a panel that is labelled a demo in its own
+   chrome and again in the caption beneath it — it is part of the depiction of an
+   instrument, not an assertion about a running system. Do not put it back on
+   page furniture.
+
+   ── Why the core is white and only the light is cold ──
+
+   The cold blue on this page is light, never ink: box-shadow, radial-gradient,
+   or a stroke on decorative geometry. A status colour is explicitly on the
+   forbidden list — see the doctrine at the top of tokens/color.css — so the dot
+   itself stays the chip's own tone colour, raised to white for this variant, and
+   the cold blue arrives entirely as a halo and an expanding ring. A white core
+   inside a cyan bloom is how a real status LED reads anyway.
+
+   ── Geometry ──
+
+   The ring is a pseudo-element pinned with `inset`, animating `transform` and
+   `opacity` only. It is out of flow, so it cannot affect the chip's size,
+   baseline or line-height no matter how far it expands, and both properties
+   composite. */
+.status-dot-live {
+  box-shadow:
+    0 0 0 1px rgba(124, 200, 255, 0.35),
+    0 0 12px 1px rgba(124, 200, 255, 0.45);
+}
+
+.status-dot-live::after {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--color-signal);
+  animation: qf-signal-ping 2.4s var(--ease-out-quart) infinite;
+}
+
+@keyframes qf-signal-ping {
+  0% {
+    transform: scale(0.8);
+    opacity: 0.65;
+  }
+  70%,
+  100% {
+    transform: scale(2.6);
+    opacity: 0;
+  }
+}
+
+/* Reduced motion gets the static active state: the dot and its steady halo,
+   with the expanding ring removed outright rather than slowed to a stop. The
+   global reduced-motion reset collapses animation duration to 0.01ms, which
+   would otherwise freeze the ring at its first keyframe — a permanent extra
+   circle around the dot. */
+@media (prefers-reduced-motion: reduce) {
+  .status-dot-live::after {
+    display: none;
+  }
+}
+
+/* ─── FAQ disclosure marker ────────────────────────────────────────────────
+   The open state of the chevron/diamond indicator in `#faq`.
+
+   The shape carries the state; this adds only the cold light around it, which
+   is why it is here with the rest of the decorative geometry rather than in the
+   component. `drop-shadow` on an SVG stroke is the permitted use of the signal
+   colour, and the `cyan-as-ink` gate in check-design-tokens.mjs refuses colour
+   utilities in component source precisely so the legitimate cases collect here.
+
+   Applied only when the row is open: a glow on ten closed rows at once would be
+   ten cold points down a dark card, which is the noise this pass removed
+   elsewhere. */
+.group[open] .faq-marker-open {
+  filter: drop-shadow(0 0 5px rgba(124, 200, 255, 0.55));
 }
 
 /* ─── Pipeline spine rail ──────────────────────────────────────────────────

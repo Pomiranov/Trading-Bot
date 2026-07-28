@@ -2,7 +2,6 @@ import { getTranslations } from "next-intl/server";
 import { Section } from "@/components/ui/section";
 import { SectionHeader } from "@/components/ui/section-header";
 import { PricingCard } from "@/components/ui/pricing-card";
-import { RouteSpine } from "@/components/ui/route-spine";
 import { Reveal } from "@/components/motion/reveal";
 
 const PLANS = [1, 2, 3] as const;
@@ -79,16 +78,16 @@ export async function PricingSection({ locale }: { locale: string }) {
         lead={t("lead")}
       />
 
-      {/* The route arrives from the transition band and fans out to the three
-          tiers, then gathers below and continues into `#faq`. Graphite here, not
-          cold blue — `.section-paper` re-points the stroke. */}
-      <RouteSpine variant="fan" lanes={3} size="md" node={false} className="mt-8" />
-
       {/* The focal card is first in DOM order, so on mobile — where the grid
           collapses to one column — the actionable tier is the one a visitor
           reaches first rather than the one they scroll past two placeholders
-          to find. */}
-      <ul className="mt-6 grid items-stretch gap-[var(--space-card-gap)] md:grid-cols-3">
+          to find.
+
+          `on-paper-graphite`, the same treatment `#foundation` uses, so the
+          page's two paper bands are one composition rather than two: dark
+          objects on warm paper, in both. See the note there for how the class
+          works and why the cards invert rather than the band. */}
+      <ul className="on-paper-graphite mt-[var(--space-header-to-body)] grid items-stretch gap-[var(--space-card-gap)] md:grid-cols-3">
         {plans.map((plan, i) => (
           <li key={plan.id} className="flex">
             <Reveal index={i} className="flex w-full">
@@ -132,8 +131,6 @@ export async function PricingSection({ locale }: { locale: string }) {
         self-corrects when billing ships instead of relying on someone to
         remember.
       */}
-
-      <RouteSpine variant="gather" lanes={3} size="md" className="mt-[var(--space-block)]" />
     </Section>
   );
 }

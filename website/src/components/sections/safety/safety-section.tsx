@@ -3,7 +3,6 @@ import { Section } from "@/components/ui/section";
 import { SectionHeader } from "@/components/ui/section-header";
 import { Surface } from "@/components/ui/surface";
 import { MonoLabel } from "@/components/ui/mono-label";
-import { RouteSpine } from "@/components/ui/route-spine";
 import { Reveal } from "@/components/motion/reveal";
 
 /**
@@ -150,9 +149,6 @@ export async function SafetySection({ locale }: { locale: string }) {
         that is a copy decision — but it may not be replaced with "keys are
         encrypted" full stop, which is the one rewrite that would be false.
       */}
-
-      {/* Out of safety and on into pricing. */}
-      <RouteSpine variant="gather" lanes={2} size="md" className="mt-[var(--space-block)]" />
     </Section>
   );
 }

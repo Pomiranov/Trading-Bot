@@ -346,7 +346,19 @@ export function DashboardTerminal() {
       panels in DOM order after the tablist. Only `aria-orientation` flips, and
       the key handler already accepted both axes.
     */
-    <Surface variant="raised" interactive={false} className="overflow-hidden">
+    /*
+      `panel-bloom` rather than the card primitive's `interactive`: this panel
+      should acknowledge the pointer, but it must not translate. A 700px object
+      sliding 6px under the cursor reads as the page wobbling rather than as
+      elevation, and it would drag the six tab targets with it mid-aim. The
+      bloom is a border brighten, a background step and a soft *white* glow —
+      never a coloured one across a surface this size. See globals.css.
+    */
+    <Surface
+      variant="raised"
+      interactive={false}
+      className="panel-bloom overflow-hidden"
+    >
       {/* ── Chrome ──
           The three grey dots that used to sit here were a monochrome macOS
           traffic-light imitation: the single most generic "this is a fake app
@@ -360,7 +372,13 @@ export function DashboardTerminal() {
         </span>
         <span className="ml-auto flex items-center gap-2">
           <MonoLabel as="span">{t("mockModeLabel")}</MonoLabel>
-          <StatusChip tone="muted" label={t("mockModeValue")} />
+          {/* The one `pulse` on the page. It reads as the mode indicator of a
+              running instrument, which is what this panel is a picture of — and
+              the picture is labelled as one, in this chrome and again in the
+              caption below it. It is not a claim that anything on the site is
+              live; see the honesty note on StatusChip's `pulse` prop, which has
+              not been relaxed. */}
+          <StatusChip tone="muted" label={t("mockModeValue")} pulse />
         </span>
       </div>
 

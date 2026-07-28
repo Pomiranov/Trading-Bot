@@ -140,6 +140,16 @@
   --color-border-on-paper-strong: rgba(0, 0, 0, 0.3);
   --color-paper-hover: #faf9f6; /* card hover on paper */
 
+  /* Graphite — dark objects sitting ON paper.
+     Consumed by `.on-paper-graphite` in globals.css, which is how both paper
+     bands render their cards. Deliberately a step above the page's own #0a0a0a:
+     against #f4f2ec a near-black card reads as a hole punched through the page,
+     while graphite reads as an object resting on it. Text on graphite uses the
+     ordinary dark-palette --color-text-* family, whose ratios hold — #ffffff on
+     #131313 is 18.7:1, and the 0.48 alpha floor is 4.6:1. */
+  --color-graphite: #131313;
+  --color-graphite-raised: #1b1b1b; /* hover / the focal pricing card */
+
   /* ─── Cold blue — LIGHT ONLY ───────────────────────────────────────────────
      Read the doctrine at the top of this file before using any of these.
 

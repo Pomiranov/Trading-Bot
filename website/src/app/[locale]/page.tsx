@@ -58,8 +58,11 @@ import { ScrollAnalytics } from "@/components/analytics/scroll-analytics";
  * `BandTransition` sits on both sides of each `tone="paper"` section.
  * `tone="paper"` flips the tokens at a hard edge — #030303 meeting #f4f2ec on one
  * pixel row — which read as two sites stacked. The band ramps black → graphite →
- * paper across 160px and carries the route line through the change. Direction
- * matters and is not symmetric: `into-paper` before, `into-dark` after.
+ * paper across 176–256px, with the page's 64px grid crossing it and changing ink
+ * as the ground does. Direction matters and is not symmetric: `into-paper`
+ * before, `into-dark` after. A `.band-blend + .section-paper` rule in globals.css
+ * then takes the following section's top padding away, so the blend is the
+ * section's lead-in rather than a preface to 232px of empty paper.
  *
  * SiteHeader sits outside <main> because a banner landmark must not be a
  * descendant of main.

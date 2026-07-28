@@ -3,7 +3,6 @@ import { contentSource } from "@/content-layer/source";
 import { Section } from "@/components/ui/section";
 import { SectionHeader } from "@/components/ui/section-header";
 import { Surface } from "@/components/ui/surface";
-import { RouteSpine } from "@/components/ui/route-spine";
 import { Reveal } from "@/components/motion/reveal";
 
 /**
@@ -51,13 +50,25 @@ export async function FoundationSection({ locale }: { locale: string }) {
         lead={t("lead")}
       />
 
-      {/* The route arrives from the transition band above, then fans out to the
-          three principles — so the cards read as *what the line leads to* rather
-          than as a grid that happens to sit here. Graphite rather than cold blue,
-          automatically: `.section-paper` re-points `--color-route-stroke`. */}
-      <RouteSpine variant="fan" lanes={3} size="md" node={false} className="mt-8" />
+      {/*
+        `on-paper-graphite` — the three principles are graphite panels on the
+        warm paper, not white cards on it.
 
-      <ol className="mt-6 grid gap-[var(--space-card-gap)] md:grid-cols-3">
+        It works the way `.section-paper` itself works: the class re-points the
+        card and text tokens back to their dark values for this subtree only, so
+        no card, heading or code element learns that anything changed. The band
+        keeps its paper background and its dark-on-paper heading; only the
+        objects sitting on it invert.
+
+        Why they invert at all: three white cards on #f4f2ec differ from the page
+        behind them by about two luminance steps, so the row read as a lighter
+        rectangle rather than as three objects, and the numerals — the whole
+        design of this block — had nothing to sit against. Graphite gives the
+        manifesto the weight the copy claims and rhymes with the black the reader
+        just came out of, which is what makes the band read as a deliberate
+        change of register instead of a gap in the page.
+      */}
+      <ol className="on-paper-graphite mt-[var(--space-header-to-body)] grid gap-[var(--space-card-gap)] md:grid-cols-3">
         {principles.map((block, i) => (
           <li key={block.id} className="flex">
             <Reveal index={i} className="flex w-full">
@@ -100,10 +111,6 @@ export async function FoundationSection({ locale }: { locale: string }) {
           </li>
         ))}
       </ol>
-
-      {/* Gathers the three principles back into one line, which then continues
-          out through the transition band below and into `#dashboard`. */}
-      <RouteSpine variant="gather" lanes={3} size="md" className="mt-8" />
     </Section>
   );
 }

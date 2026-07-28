@@ -2,7 +2,6 @@ import { getTranslations } from "next-intl/server";
 import { Section } from "@/components/ui/section";
 import { SectionHeader } from "@/components/ui/section-header";
 import { InteractiveCard } from "@/components/ui/interactive-card";
-import { RouteSpine } from "@/components/ui/route-spine";
 import { Reveal } from "@/components/motion/reveal";
 import type { CtaTarget } from "@/lib/analytics/events";
 
@@ -28,10 +27,11 @@ import type { CtaTarget } from "@/lib/analytics/events";
  * swallows the click. `InteractiveCard` fixes that: the whole surface is the
  * link, with one tab stop and one focus ring.
  *
- * The bracket connector is the other half. The reference draws a line
- * descending from the card row into the pipeline, so the audience choice
- * visibly *routes into* how it works. Previously: three cards, a 347px gap, and
- * an unrelated H2.
+ * The row used to end in a drawn bracket descending into the pipeline. That
+ * whole family of decorative connectors was removed on owner direction — they
+ * read as accidental once the sections around them settled. The relationship is
+ * carried by order and by the section rhythm instead, which is what the rest of
+ * the page already relies on.
  */
 export async function AudienceSection({ locale }: { locale: string }) {
   const t = await getTranslations({ locale, namespace: "audience" });
@@ -133,22 +133,6 @@ export async function AudienceSection({ locale }: { locale: string }) {
           </li>
         ))}
       </ul>
-
-      {/*
-        The route out of the audience row and into the pipeline.
-
-        Still in flow and still owned by *this* section's bottom edge, for the
-        reason the old bracket documented: a connector positioned across a
-        section boundary has to be re-derived at every breakpoint and misaligns
-        the moment a card grows a line. Removing the section below leaves nothing
-        floating.
-
-        What changed is that it now draws itself against scroll position rather
-        than snapping in once on an IntersectionObserver — see ui/route-spine.tsx.
-        `gather` at two lanes matches the 2×2 above: the two columns converge into
-        one stem that continues into `#how-it-works`.
-      */}
-      <RouteSpine variant="gather" lanes={2} size="lg" className="mt-10" />
     </Section>
   );
 }

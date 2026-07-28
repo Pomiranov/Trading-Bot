@@ -20,11 +20,14 @@ interface StatusChipProps extends Omit<ComponentPropsWithoutRef<"span">, "childr
    */
   variant?: "solid" | "outline";
   /**
-   * Pulsing dot. Reserved for genuinely live telemetry.
+   * Live-signal dot: a white core inside a cold halo, with a ring expanding out
+   * of it. See `.status-dot-live` in globals.css for the geometry and for why
+   * only the *light* around the dot is cold blue.
    *
-   * The footer's old "Systems operational" pulse had no telemetry behind it —
-   * it was a live-status claim the page could not support. Do not reintroduce
-   * it for static copy.
+   * Reserved for a genuine live state, or for the depiction of one inside an
+   * explicitly labelled demo. The footer's old "Systems operational" pulse had
+   * no telemetry behind it — it was a live-status claim the page could not
+   * support — and that is still the line. Do not put this on static copy.
    */
   pulse?: boolean;
 }
@@ -65,16 +68,24 @@ export function StatusChip({
       }}
       {...props}
     >
+      {/* `relative` only on the live variant — the expanding ring is an
+          absolutely-positioned pseudo-element and needs this as its containing
+          block. It is out of flow, so the chip's box is identical in both
+          variants and turning the pulse on cannot move anything. */}
       <span
         aria-hidden="true"
         className={cn(
           "size-1.5 shrink-0 rounded-[var(--radius-full)]",
-          pulse && "motion-safe:animate-[qf-blink_2s_ease-in-out_infinite]",
+          pulse && "status-dot-live relative",
         )}
         style={
           outline
             ? { border: `1px solid ${s.color}` }
-            : { backgroundColor: s.color }
+            : // The live dot's core is white, not the tone colour: at 1.5 units
+              // across, a grey core inside a cold halo reads as smudged rather
+              // than as lit. The tone still carries in the chip's border, fill
+              // and text, and the label states the status in words regardless.
+              { backgroundColor: pulse ? "var(--color-text-primary)" : s.color }
         }
       />
       {label}

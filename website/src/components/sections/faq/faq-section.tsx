@@ -2,7 +2,6 @@ import { getTranslations } from "next-intl/server";
 import { Section } from "@/components/ui/section";
 import { SectionHeader } from "@/components/ui/section-header";
 import { Surface } from "@/components/ui/surface";
-import { RouteSpine } from "@/components/ui/route-spine";
 import { Reveal } from "@/components/motion/reveal";
 
 const QUESTIONS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10] as const;
@@ -28,30 +27,40 @@ const QUESTIONS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10] as const;
  * The rows sat as bare hairline-separated text in a 68ch column inside a 1280
  * field — the narrowest block on the page by a wide margin, floating with
  * nothing around it, so it read as a different site. They are now inside one
- * `SurfaceCard`. The section also gains an eyebrow; it was the only one without
- * one.
+ * `SurfaceCard`.
  *
- * The disclosure indicator was a bare `+` rotating 45°. It is now a drawn
- * chevron rotating 180°, and each row has a hover and focus background so the
- * target is visible before it is hit.
+ * The disclosure indicator was a bare `+` rotating 45°, then a chevron rotating
+ * 180°. It is now a chevron that turns into a cold-lit diamond on open, and
+ * each row has a hover and focus background so the target is visible before it
+ * is hit.
  */
 export async function FaqSection({ locale }: { locale: string }) {
   const t = await getTranslations({ locale, namespace: "faq" });
 
   return (
     /*
-      No `divider`. The route line coming out of `#pricing`'s transition band now
-      arrives here, and a hairline across the top of the section on top of that
-      gave the join two competing horizontal edges — the line pointing in and a
-      rule saying "new block". The connector is the better separator: it says the
-      same thing and says it as continuity rather than as a cut.
+      No `divider`. This section is entered out of `#pricing`'s transition band,
+      and a hairline across the top of it directly under that blend gives the
+      join two competing horizontal edges. The tone change is the separator.
     */
     <Section id="faq" rhythm="default" width="prose">
-      {/* Arrives from pricing. `prose` width, so this is a 68ch column — the
-          spine sits centred in it, directly above the heading it introduces. */}
-      <RouteSpine size="sm" className="mb-10" />
+      {/*
+        No eyebrow.
 
-      <SectionHeader id="faq" eyebrow={t("eyebrow")} heading={t("heading")} />
+        Every other section has one because its heading is a *claim* and the
+        eyebrow names the topic. Here the heading already is the topic, so the
+        eyebrow was the same word twice, at two sizes, 12px apart — "ВОПРОСЫ"
+        over "Вопросы". Removed on owner direction; the heading takes the
+        eyebrow's uppercase treatment so nothing is lost from the register.
+
+        Uppercased in CSS rather than in the message files: the source strings
+        stay natural-cased for both locales, so RU/EN parity is unaffected and a
+        translator never has to remember the convention.
+      */}
+      <SectionHeader
+        id="faq"
+        heading={<span className="uppercase">{t("heading")}</span>}
+      />
 
       <Reveal lift={false} className="mt-[var(--space-header-to-body)]">
         <Surface interactive={false} className="overflow-hidden">
@@ -62,20 +71,59 @@ export async function FaqSection({ locale }: { locale: string }) {
             >
               <summary className="flex cursor-pointer list-none items-start justify-between gap-6 px-6 py-5 text-[length:var(--text-lead)] leading-[var(--text-lead--line-height)] text-[color:var(--color-text-primary)] transition-colors duration-[var(--duration-micro)] marker:hidden hover:bg-[color:var(--color-highlight-bg)] focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[color:var(--color-accent)] [&::-webkit-details-marker]:hidden">
                 {t(`q${q}`)}
-                <svg
+
+                {/*
+                  Closed: a chevron. Open: a cold-lit diamond.
+
+                  Two shapes stacked in one 16×16 box and cross-faded through a
+                  rotation, rather than one path morphing — SMIL path morphing is
+                  not reliably interpolable between a 3-point polyline and a
+                  4-point closed rhombus, and the CSS `d` property that would do
+                  it is Chromium-only.
+
+                  Stacked with `grid` + `[grid-area:1/1]`: both children occupy
+                  the same cell, so the box is exactly one glyph tall in both
+                  states and the row cannot reflow when a question is opened. The
+                  transition is `opacity` + `transform` only, both compositor
+                  properties.
+
+                  The open state is not carried by colour: the shape itself
+                  changes, and <details> exposes `open` to assistive tech
+                  regardless. The cyan is a drop-shadow on decorative geometry,
+                  which is the permitted use — see the doctrine in
+                  tokens/color.css and `.faq-marker-open` in globals.css.
+                */}
+                <span
                   aria-hidden="true"
-                  viewBox="0 0 16 16"
-                  className="mt-1.5 size-4 shrink-0 text-[color:var(--color-text-tertiary)] transition-transform duration-[var(--duration-base)] ease-[var(--ease-out-expo)] group-open:rotate-180"
+                  className="mt-1.5 grid size-4 shrink-0 place-items-center"
                 >
-                  <path
-                    d="M3 6 L8 11 L13 6"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="1.5"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </svg>
+                  <svg
+                    viewBox="0 0 16 16"
+                    className="size-4 [grid-area:1/1] text-[color:var(--color-text-tertiary)] transition-[opacity,transform] duration-[var(--duration-base)] ease-[var(--ease-out-expo)] group-open:scale-75 group-open:rotate-180 group-open:opacity-0"
+                  >
+                    <path
+                      d="M3 6 L8 11 L13 6"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+
+                  <svg
+                    viewBox="0 0 16 16"
+                    className="faq-marker-open size-4 scale-50 rotate-45 opacity-0 [grid-area:1/1] transition-[opacity,transform] duration-[var(--duration-base)] ease-[var(--ease-out-expo)] group-open:scale-100 group-open:rotate-0 group-open:opacity-100"
+                  >
+                    <path
+                      d="M8 2.5 L13.5 8 L8 13.5 L2.5 8 Z"
+                      fill="none"
+                      stroke="var(--color-signal)"
+                      strokeWidth="1.5"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                </span>
               </summary>
               <p className="px-6 pb-6 text-[length:var(--text-body)] leading-[var(--text-body--line-height)] text-[color:var(--color-text-secondary)]">
                 {t(`a${q}`)}

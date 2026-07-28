@@ -218,7 +218,6 @@
     "cta": "Request access"
   },
   "faq": {
-    "eyebrow": "Questions",
     "heading": "Questions",
     "q1": "Is this AI?",
     "a1": "No — not neural networks, and not language models. There is not a single ML library in the project. The rules are written in advance and readable, and “confidence” is a smoothed mean of win rate, profit factor and expectancy, updated after each closed trade.",

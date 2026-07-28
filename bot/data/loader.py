@@ -14,6 +14,7 @@ import pandas as pd
 import requests
 
 from config import config
+from market_time import MSK, d1_bar_time
 
 logger = logging.getLogger(__name__)
 
@@ -224,20 +225,35 @@ def save_candles_to_db(
 
             df = df.reset_index()
             df = df.rename(columns={"datetime": "time"})
+            # ISS отдаёт МОСКОВСКИЕ стенные часы наивным datetime, а колонка
+            # candles.time — TIMESTAMPTZ. Наивное значение сервер трактует в своём
+            # TimeZone, поэтому до правки (долг №16) московская полночь ложилась
+            # как 00:00+00 — на 3 часа позже настоящего начала суток, и таблица
+            # получила вторую конвенцию. Локализация здесь, на границе записи:
+            # результат перестаёт зависеть от настроек соединения.
             records = [
-                (row.time.to_pydatetime(), ticker, interval,
+                (row.time.to_pydatetime().replace(tzinfo=MSK), ticker, interval,
                  float(row.open), float(row.high), float(row.low),
                  float(row.close), int(row.volume))
                 for row in df.itertuples(index=False)
             ]
+
+            # Границы окна — tz-aware московские полуночи, а не date. С `date`
+            # Postgres брал UTC-полночь, и каноничный бар первого дня окна
+            # (он стоит на (D−1) 21:00 UTC) оказывался РАНЬШЕ начала окна: DELETE
+            # его не забирал, а INSERT добавлял ту же сессию второй раз. Это и
+            # создало 12 дублей на 25.06. Полуинтервал [начало, конец) — чтобы
+            # бар следующей сессии не попадал в окно.
+            win_start = d1_bar_time(start_dt)
+            win_end   = d1_bar_time(end_dt + timedelta(days=1))
 
             with conn.cursor() as cur:
                 cur.execute("""
                     DELETE FROM candles
                     WHERE ticker    = %s
                       AND timeframe = %s
-                      AND time BETWEEN %s AND %s
-                """, (ticker, interval, start_dt, end_dt))
+                      AND time >= %s AND time < %s
+                """, (ticker, interval, win_start, win_end))
                 if cur.rowcount:
                     _say(f"[{ticker}] Удалено {cur.rowcount} старых строк")
                 execute_values(cur, """
@@ -297,6 +313,8 @@ if __name__ == "__main__":
         df["ticker"]    = ticker
         df["timeframe"] = args.interval
         df["volume"]    = df["volume"].astype("int64")
+        # Та же локализация и то же окно, что в save_candles_to_db — долг №16.
+        df["time"]      = df["time"].dt.tz_localize(MSK)
         df = df[["time", "ticker", "timeframe", "open", "high", "low", "close", "volume"]]
 
         # Удалить существующие строки за этот период, затем вставить свежие
@@ -305,9 +323,10 @@ if __name__ == "__main__":
                 DELETE FROM candles
                 WHERE ticker    = :ticker
                   AND timeframe = :tf
-                  AND time BETWEEN :start AND :end
+                  AND time >= :start AND time < :end
             """), {"ticker": ticker, "tf": args.interval,
-                   "start": start_dt, "end": end_dt}).rowcount
+                   "start": d1_bar_time(start_dt),
+                   "end":   d1_bar_time(end_dt + timedelta(days=1))}).rowcount
 
             if deleted:
                 print(f"[{ticker}] Удалено {deleted} старых строк")

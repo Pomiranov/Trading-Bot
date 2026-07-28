@@ -100,7 +100,12 @@ export async function Footer({ locale }: { locale: string }) {
               <br />
               {t("tagline2")}
             </p>
-            <StatusChip tone="muted" label={t("status")} />
+            {/* `beacon`, not `pulse`. This is the closed-testing badge, and
+                owner direction is that every one of them carries the same cold
+                dot. It marks the programme's state, not a live system — see the
+                note on the prop, which restates the boundary the footer's old
+                "Systems operational" pulse was removed for. */}
+            <StatusChip tone="muted" label={t("status")} beacon />
 
             {/* Locale switch. The header's is hidden below sm, so on a phone
                 this was previously the one place a visitor could not change

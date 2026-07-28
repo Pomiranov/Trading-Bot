@@ -1,5 +1,6 @@
 import type { ComponentPropsWithoutRef } from "react";
 import { TONE_STYLE, type StatusTone } from "@/lib/strategy-status";
+import { SignalDot } from "@/components/ui/signal-dot";
 import { cn } from "@/lib/utils";
 
 interface StatusChipProps extends Omit<ComponentPropsWithoutRef<"span">, "children"> {
@@ -30,6 +31,21 @@ interface StatusChipProps extends Omit<ComponentPropsWithoutRef<"span">, "childr
    * support — and that is still the line. Do not put this on static copy.
    */
   pulse?: boolean;
+  /**
+   * The closed-testing beacon: a white core in a cold halo, breathing slowly.
+   *
+   * Distinct from `pulse`, and the distinction is the honesty boundary rather
+   * than a style choice. `pulse` depicts a *live system* and needs telemetry (or
+   * an explicitly labelled demo) behind it. `beacon` marks the *programme's*
+   * state — the product is in closed testing — which is a fact about how access
+   * is granted, stated in words in the label right beside it.
+   *
+   * Owner direction is that every "closed testing" badge on the site carries it.
+   * See `ui/signal-dot.tsx`. Mutually exclusive with `pulse`; `pulse` wins if
+   * both are somehow set, since a live claim is the stronger assertion and
+   * should not be silently downgraded.
+   */
+  beacon?: boolean;
 }
 
 /**
@@ -45,12 +61,15 @@ export function StatusChip({
   detail,
   variant = "solid",
   pulse = false,
+  beacon = false,
   className,
   style,
   ...props
 }: StatusChipProps) {
   const s = TONE_STYLE[tone];
   const outline = variant === "outline";
+  // A live claim outranks a programme marker, so it is never downgraded.
+  const isBeacon = beacon && !pulse;
 
   return (
     <span
@@ -72,22 +91,29 @@ export function StatusChip({
           absolutely-positioned pseudo-element and needs this as its containing
           block. It is out of flow, so the chip's box is identical in both
           variants and turning the pulse on cannot move anything. */}
-      <span
-        aria-hidden="true"
-        className={cn(
-          "size-1.5 shrink-0 rounded-[var(--radius-full)]",
-          pulse && "status-dot-live relative",
-        )}
-        style={
-          outline
-            ? { border: `1px solid ${s.color}` }
-            : // The live dot's core is white, not the tone colour: at 1.5 units
-              // across, a grey core inside a cold halo reads as smudged rather
-              // than as lit. The tone still carries in the chip's border, fill
-              // and text, and the label states the status in words regardless.
-              { backgroundColor: pulse ? "var(--color-text-primary)" : s.color }
-        }
-      />
+      {isBeacon ? (
+        // `SignalDot` owns its own core colour and halo — passing the tone
+        // colour through would defeat the point, since the beacon's core is
+        // white on every tone by design (see the note in that file).
+        <SignalDot />
+      ) : (
+        <span
+          aria-hidden="true"
+          className={cn(
+            "size-1.5 shrink-0 rounded-[var(--radius-full)]",
+            pulse && "status-dot-live relative",
+          )}
+          style={
+            outline
+              ? { border: `1px solid ${s.color}` }
+              : // The live dot's core is white, not the tone colour: at 1.5 units
+                // across, a grey core inside a cold halo reads as smudged rather
+                // than as lit. The tone still carries in the chip's border, fill
+                // and text, and the label states the status in words regardless.
+                { backgroundColor: pulse ? "var(--color-text-primary)" : s.color }
+          }
+        />
+      )}
       {label}
       {detail ? (
         <span className="font-normal tracking-normal normal-case opacity-80">· {detail}</span>

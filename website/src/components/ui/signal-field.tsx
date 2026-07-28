@@ -1,6 +1,13 @@
 "use client";
 
-import { useEffect, useRef, type ReactNode } from "react";
+import {
+  createElement,
+  useEffect,
+  useRef,
+  type ComponentPropsWithoutRef,
+  type ElementType,
+  type ReactNode,
+} from "react";
 import { cn } from "@/lib/utils";
 
 /**
@@ -53,15 +60,31 @@ import { cn } from "@/lib/utils";
  * fades out *in place* instead of sliding back to the top-left corner on the way
  * out. That difference is the whole reason it reads as a light going out rather
  * than as an element being moved.
+ *
+ * ── `as`, and why the field is not always a <div> ──
+ *
+ * The two dark panels wrap their content, so a <div> is the right element for
+ * them. The two paper bands do not: their field is the *section itself*, because
+ * the grid now runs the full height of the band rather than sitting inside a
+ * panel, and the pointer has to be tracked over that whole area.
+ *
+ * Rendering an extra wrapper <div> inside the <section> would not work — it would
+ * be the padding box, so the grid could not reach the section's edges — and
+ * wrapping the <section> in a <div> would put a non-landmark between <main> and
+ * its sections. `as="section"` lets `ui/section.tsx` make the section element
+ * itself the field, with every section attribute (id, aria-labelledby,
+ * data-rhythm) spread straight through.
  */
-export function SignalField({
+export function SignalField<T extends ElementType = "div">({
+  as,
   className,
   children,
-}: {
-  className?: string;
-  children: ReactNode;
-}) {
-  const ref = useRef<HTMLDivElement>(null);
+  ...rest
+}: { as?: T; className?: string; children: ReactNode } & Omit<
+  ComponentPropsWithoutRef<T>,
+  "as" | "className" | "children"
+>) {
+  const ref = useRef<HTMLElement>(null);
 
   useEffect(() => {
     const el = ref.current;
@@ -115,9 +138,12 @@ export function SignalField({
     };
   }, []);
 
-  return (
-    <div ref={ref} className={cn("signal-field", className)}>
-      {children}
-    </div>
+  // createElement, not JSX, for the polymorphic tag — the same escape hatch
+  // `ui/mono-label.tsx` uses, and for the same reason: TS cannot verify an
+  // arbitrary generic ElementType's props against JSX.IntrinsicElements.
+  return createElement(
+    as ?? "div",
+    { ref, className: cn("signal-field", className), ...rest },
+    children,
   );
 }

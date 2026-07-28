@@ -525,12 +525,28 @@ section[id][data-rhythm="tight"] {
   scroll-margin-top: calc(var(--anchor-clearance) - var(--space-section-y-tight));
 }
 
-/* ─── Animated border gradient ─── */
+/* ─── Animated border gradient ───────────────────────────────────────────────
+   ── The transparent border is not decoration ──
+
+   Every other Surface variant carries `border: 1px solid …`, and this one drew
+   its edge entirely with the ::before ring instead, with no border at all. That
+   put the focal pricing card's border box 2px larger than its two siblings' and
+   its content box 1px higher — measured at 1440 the row came out 404/402/402px
+   with the first card's eyebrow one pixel above the other two. Small, and
+   exactly the kind of thing that makes a comparison row read as slightly wrong
+   without the reason being findable.
+
+   A transparent 1px border restores identical box metrics, and the ring moves
+   from `inset: -1px` (outside the box) to `inset: 0` (on it) so it paints in
+   precisely the band the flat cards' border occupies. The two have to change
+   together: a transparent border with the ring still outside would push the
+   card 2px wider again, in the other direction. */
 .glass-premium-featured {
   position: relative;
   background: var(--color-glass-surface-strong);
   backdrop-filter: blur(var(--blur-glass));
   -webkit-backdrop-filter: blur(var(--blur-glass));
+  border: 1px solid transparent;
   border-radius: var(--radius-lg);
   box-shadow:
     0 8px 40px rgba(0, 0, 0, 0.5),
@@ -540,7 +556,7 @@ section[id][data-rhythm="tight"] {
 .glass-premium-featured::before {
   content: "";
   position: absolute;
-  inset: -1px;
+  inset: 0;
   border-radius: inherit;
   padding: 1px;
   background: linear-gradient(
@@ -759,19 +775,26 @@ section[id][data-rhythm="tight"] {
   color: var(--color-signal);
   opacity: calc(var(--signal-on, 0) * 0.55);
 
-  /* Two masks, intersected: the pointer's circle AND the panel's edge fade.
-     The edge fade is the same ellipse `grid-backplate.tsx` puts on the base
-     layer, and it has to be repeated here — without it the lit copy stays at
+  /* Two masks, intersected: the pointer's circle AND the host's own edge fade.
+     The edge fade has to be repeated here — without it the lit copy stays at
      full strength all the way to the panel's clipped edge while the grid
      underneath it has already dissolved, so dragging the pointer into a corner
-     lights up lines that are not visibly there. */
+     lights up lines that are not visibly there.
+
+     It arrives as `--signal-edge-fade`, set by `grid-backplate.tsx` to whichever
+     of its three masks the host is using, rather than being hard-coded to the
+     ellipse. That hard-coding was a real defect and not a tidiness point: the
+     wide access panel and the full-height paper bands both need a different
+     falloff, and a lit layer masked to a shape the base layer no longer uses
+     lights lines the reader cannot see. The fallback keeps the hero's ellipse
+     for any caller that predates the property. */
   mask-image: radial-gradient(
       240px circle at var(--signal-x, 50%) var(--signal-y, 50%),
       #000 0%,
       rgba(0, 0, 0, 0.35) 45%,
       transparent 72%
     ),
-    radial-gradient(ellipse 80% 70% at 50% 45%, #000 0%, transparent 78%);
+    var(--signal-edge-fade, radial-gradient(ellipse 80% 70% at 50% 45%, #000 0%, transparent 78%));
   mask-composite: intersect;
   -webkit-mask-image: radial-gradient(
       240px circle at var(--signal-x, 50%) var(--signal-y, 50%),
@@ -779,7 +802,7 @@ section[id][data-rhythm="tight"] {
       rgba(0, 0, 0, 0.35) 45%,
       transparent 72%
     ),
-    radial-gradient(ellipse 80% 70% at 50% 45%, #000 0%, transparent 78%);
+    var(--signal-edge-fade, radial-gradient(ellipse 80% 70% at 50% 45%, #000 0%, transparent 78%));
   -webkit-mask-composite: source-in;
   /* Only the fade in/out is eased. The mask position itself is not transitioned:
      at any duration above ~0 the light lags the cursor and reads as a bug rather
@@ -795,6 +818,60 @@ section[id][data-rhythm="tight"] {
    reading, so it is pinned off here rather than left to the JS guard. */
 @media (prefers-reduced-motion: reduce) {
   .signal-field__grid {
+    opacity: 0;
+  }
+}
+
+/* ── The same field, on paper ──
+   The two light bands get a pointer response too, so a reader crossing them is
+   not moving over the one inert area of the page. It cannot be the cyan one.
+
+   Cold blue on #f4f2ec is invisible at the alpha the palette doctrine permits,
+   and above it reads as a print registration error — the same reason route
+   cards drop their cold edge inside a paper band. So the lit copy of the grid
+   is drawn in a cold slate instead: near the cursor the hairlines *deepen and
+   cool* by a couple of levels rather than glowing. On a light ground that is
+   what "lighting up" actually looks like.
+
+   The white half of the effect is the ground, not the lines — see
+   `.signal-field__bloom` below, which lifts the paper toward a cool white under
+   the cursor. Two layers, because on paper a single one can only do one of the
+   two: tint the lines or lift the ground.
+
+   Alpha is deliberately below the dark field's 0.55. The eye is far more
+   sensitive to a dark mark appearing on a light ground than to a light one
+   appearing on black, so matching the numbers would not match the effect. */
+.signal-field__grid--paper {
+  color: #2b3440;
+  opacity: calc(var(--signal-on, 0) * 0.3);
+}
+
+/* The cold-white ground lift. A pool rather than geometry, so it is the one
+   part of the paper field that is *not* masked to the grid — the brief asks for
+   the field around the cards to lift, and lines alone cannot carry that.
+
+   Held very low: at 55% peak alpha of a colour four levels off the paper it is
+   under the threshold of "a glow" and squarely at "the surface responded",
+   which is the same bar `.section-glow` is held to on the dark side. If you can
+   see where it ends, it is too strong.
+
+   `background-image` and `opacity` only. It never lays out. */
+.signal-field__bloom {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: calc(var(--signal-on, 0) * 0.55);
+  background-image: radial-gradient(
+    420px circle at var(--signal-x, 50%) var(--signal-y, 50%),
+    rgba(252, 253, 255, 0.9),
+    rgba(250, 251, 255, 0.42) 42%,
+    transparent 72%
+  );
+  transition: opacity var(--duration-panel) var(--ease-out-quart);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .signal-field__bloom {
     opacity: 0;
   }
 }
@@ -840,6 +917,23 @@ section[id][data-rhythm="tight"] {
   opacity: 1;
 }
 
+/* ── The held ramp ──
+   `ui/band-transition.tsx` draws a second copy of the ramp with the same
+   endpoints and a much later crossover. Fading it out as the blend crosses the
+   viewport makes the paper front advance up the band while the reader scrolls,
+   which is the difference between a material changing state and a fixed
+   gradient being panned across.
+
+   Base state is the FINISHED state — fully transparent — for the same reason
+   the grid's is fully lit: no view timelines, reduced motion, or a timeline
+   that never resolves all land on the correct static blend rather than on a
+   band stuck at its dark extreme. That failure would be far more visible than
+   the effect itself, which is why the direction is "fade out" and not "fade
+   in". */
+.band-blend__hold {
+  opacity: 0;
+}
+
 /* The gentle brightening as the blend crosses the viewport. Opacity only, on a
    compositor layer, driven by a native `view()` timeline.
 
@@ -864,6 +958,15 @@ section[id][data-rhythm="tight"] {
   }
 }
 
+@keyframes qf-band-hold-clear {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
 @media (prefers-reduced-motion: no-preference) {
   @supports (animation-timeline: view()) {
     .band-blend {
@@ -878,6 +981,18 @@ section[id][data-rhythm="tight"] {
          full strength while the reader is looking at it rather than still
          arriving behind them. */
       animation-range: entry 10% cover 55%;
+    }
+
+    .band-blend__hold {
+      animation: qf-band-hold-clear linear both;
+      animation-timeline: --band-blend;
+      /* Starts clearing only once the band is properly on screen and is done
+         before it leaves, so the whole crossing happens in view. Running it to
+         `cover 100%` would put the last of the change off the bottom edge,
+         where the reader would never see the thing this exists to show; ending
+         at 78% leaves the band settled and static for its final stretch, which
+         is when the section heading below it is being read. */
+      animation-range: entry 25% cover 78%;
     }
   }
 }
@@ -1179,6 +1294,70 @@ section[id][data-rhythm="tight"] {
 @media (prefers-reduced-motion: reduce) {
   .status-dot-live::after {
     display: none;
+  }
+}
+
+/* ─── Closed-testing beacon ────────────────────────────────────────────────
+   `ui/signal-dot.tsx` — the dot beside every "closed testing" badge. Read that
+   file for why this is a separate treatment from `.status-dot-live` and why
+   marking a programme state does not cross the honesty boundary that removed
+   the footer's old "Systems operational" pulse.
+
+   White core, cold halo. The blue is entirely `box-shadow`, which is the
+   permitted use of the signal colour — light on geometry, never ink.
+
+   The alphas are the quiet end of the range on purpose. The brief is a glow
+   that reads as expensive rather than as neon, and the difference between those
+   two is almost entirely restraint in the outer radius: 10px of 0.4-alpha halo
+   reads as a lit indicator; four times that reads as a torch pointed at the
+   reader. */
+.signal-beacon {
+  background-color: var(--color-text-primary);
+  box-shadow:
+    0 0 0 1px rgba(124, 200, 255, 0.3),
+    0 0 10px 1px rgba(124, 200, 255, 0.4);
+}
+
+/* On paper the halo has nothing to bloom into — a cold glow on #f4f2ec reads as
+   a print registration error, the same reason route cards drop their cold edge
+   inside a band. The dot keeps its cold *edge* and loses the bloom, and the
+   core inverts so it is visible at all. */
+.section-paper .signal-beacon {
+  background-color: var(--color-on-paper);
+  box-shadow: 0 0 0 1px rgba(56, 132, 184, 0.45);
+}
+
+/* The breathe. Deliberately not the live dot's expanding ring: no travel, no
+   second element, just the halo swelling and easing back over 3.6s. At that
+   period it is never the thing you are looking at, which is the whole
+   specification — a calm pulse, no sharp flashes.
+
+   `opacity` and `box-shadow` only. Neither lays out, so this cannot move the
+   text baseline it sits on. */
+@keyframes qf-beacon-breathe {
+  0%,
+  100% {
+    opacity: 0.72;
+    box-shadow:
+      0 0 0 1px rgba(124, 200, 255, 0.22),
+      0 0 7px 0 rgba(124, 200, 255, 0.28);
+  }
+  50% {
+    opacity: 1;
+    box-shadow:
+      0 0 0 1px rgba(124, 200, 255, 0.34),
+      0 0 13px 2px rgba(124, 200, 255, 0.46);
+  }
+}
+
+/* Gated on `no-preference` rather than left to the global reduced-motion reset.
+   That reset collapses duration to 0.01ms, which freezes an animation on its
+   first keyframe — here the *dimmest* one — so a reduced-motion reader would
+   get a permanently faded dot rather than a steady lit one. Gating it here
+   means the base style is what shows, and the base style is the lit state. */
+@media (prefers-reduced-motion: no-preference) {
+  .signal-beacon {
+    animation: qf-beacon-breathe 3.6s var(--ease-out-quart) infinite;
   }
 }
 

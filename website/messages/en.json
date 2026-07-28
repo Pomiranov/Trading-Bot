@@ -42,7 +42,14 @@
     "headline2": "Quant turns it into a decision.",
     "subline": "An automated trading operator for MOEX and Bybit: it analyses the market, checks the strategy, limits risk and executes through your broker account.",
     "ctaPrimary": "Get sandbox access",
-    "ctaSecondary": "See how it works"
+    "ctaSecondary": "See how it works",
+    "systemsLabel": "System envelope",
+    "system1": "MOEX + Bybit",
+    "system2": "Risk limits before order",
+    "system3": "Manual confirmation available",
+    "apertureIn": "Input",
+    "apertureRule": "Rule",
+    "apertureOut": "Order"
   },
   "audience": {
     "eyebrow": "Audiences",

@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { SignalField } from "@/components/ui/signal-field";
 import { cn } from "@/lib/utils";
 
 type Rhythm = "hero" | "major" | "default" | "tight";
@@ -51,6 +52,17 @@ interface SectionProps {
   divider?: boolean;
   /** Decorative background. Rendered into a clipped, aria-hidden layer. */
   glow?: ReactNode;
+  /**
+   * Track the pointer across the whole section, exposing `--signal-x/y/on` to
+   * everything in the `glow` layer.
+   *
+   * Only worth setting on a section whose background is decoration a reader can
+   * plausibly interact with — today the two paper bands, whose grid now runs
+   * their full height. It costs one client shell and one custom-property write
+   * per frame, and it installs no listener at all under reduced motion or on a
+   * coarse pointer, so a touch device pays nothing. See `ui/signal-field.tsx`.
+   */
+  field?: boolean;
   /** Escape hatch for a section whose heading id differs from the convention. */
   labelledBy?: string;
   className?: string;
@@ -87,12 +99,29 @@ export function Section({
   tone = "dark",
   divider = false,
   glow,
+  field = false,
   labelledBy,
   className,
   children,
 }: SectionProps) {
+  /*
+    `SignalField as="section"` renders the <section> itself, rather than
+    wrapping it. Both alternatives are wrong here and in ways that matter:
+
+      • a <div> *inside* the section is its padding box, so a full-height
+        background could not reach the section's own edges — which is the entire
+        point of the grid running the whole band
+      • a <div> *around* it puts a non-landmark element between <main> and its
+        sections
+
+    With `field={false}` this is a plain <section> and no client component is
+    involved at all, so nothing that does not ask for a field pays for one.
+  */
+  const Root = field ? SignalField : "section";
+
   return (
-    <section
+    <Root
+      {...(field ? ({ as: "section" } as const) : {})}
       id={id}
       // Read by the anchor-landing rules in globals.css and by the offset
       // calculation in motion/lenis-provider.tsx. A section's rhythm determines
@@ -127,7 +156,7 @@ export function Section({
       >
         {children}
       </div>
-    </section>
+    </Root>
   );
 }
 

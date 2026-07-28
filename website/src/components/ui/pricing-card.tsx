@@ -32,6 +32,22 @@ interface PricingCardProps {
  * Uses the `featured` Surface variant for the focal card — a gradient border
  * via `mask-composite` that was already built in globals.css for exactly this
  * and used nowhere.
+ *
+ * ── The focal card is no longer a different size ──
+ *
+ * It used to carry `md:-my-2 md:py-9`, making it 16px taller than its two
+ * siblings and giving it 4px more vertical padding. Measured at 1440 the row
+ * came out as 420px / 402px / 402px with three different top edges, which read
+ * as one card having slipped rather than as one card being chosen — and it put
+ * the three tiers on two baselines in a section whose whole job is a
+ * side-by-side comparison.
+ *
+ * All three now share one radius, one padding and one height (the grid is
+ * `items-stretch` and each card is `w-full` inside a flex `li`, so they resolve
+ * to the tallest). Emphasis is carried entirely by the `featured` surface: a
+ * lighter graphite fill, a gradient hairline border and a deeper lift. That is
+ * enough — it is the only card in the row with a price and the only one with a
+ * CTA — and it costs nothing in symmetry to say so.
  */
 export function PricingCard({
   tier,
@@ -45,13 +61,7 @@ export function PricingCard({
     <Surface
       variant={available ? "featured" : "flat"}
       padding="md"
-      className={cn(
-        "flex w-full flex-col gap-6",
-        // The focal card is slightly taller rather than scaled or tinted. A
-        // scale would resample its text; a tint would need a colour, and there
-        // is no accent hue to reach for.
-        available && "md:-my-2 md:py-9",
-      )}
+      className="flex w-full flex-col gap-6"
     >
       <div className="flex flex-col gap-2">
         <h3 className="font-mono text-[length:var(--text-label)] tracking-[var(--text-label--letter-spacing)] text-[color:var(--color-text-tertiary)] uppercase">

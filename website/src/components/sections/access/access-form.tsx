@@ -142,7 +142,50 @@ export function AccessForm({
             autoComplete="email"
             aria-invalid={!!errors.email}
             aria-describedby={errors.email ? "access-email-error" : undefined}
-            className="h-12 w-full min-w-0 rounded-[var(--radius-md)] border border-[color:var(--color-border-strong)] bg-[rgba(255,255,255,0.04)] px-4 font-mono text-[length:var(--text-caption)] text-[color:var(--color-text-primary)] outline-none placeholder:text-[color:var(--color-text-quaternary)] focus-visible:border-[color:var(--color-accent)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--color-accent)]"
+            /*
+              Hover was the one control in the closing panel that did not
+              acknowledge the pointer: the CTA beside it lifts, the card next to
+              it lifts and glows, and the input — the field a visitor actually
+              has to use — computed identically whether the cursor was on it or
+              not.
+
+              A barely-raised fill and a soft cold glow.
+
+              ── Why the border is not part of it ──
+
+              Two earlier attempts both got this wrong, in opposite directions,
+              and the reason is worth recording because the tokens make it easy
+              to repeat.
+
+              The first put the signal-line token in a Tailwind arbitrary
+              `border-` value. The `cyan-as-ink` gate in check-design-tokens.mjs
+              rejected it, correctly: an arbitrary colour value is
+              indistinguishable from painting with the hue, and the cold blue is
+              light — `box-shadow`, `radial-gradient` or an SVG stroke, never a
+              colour utility.
+
+              The second reached for `--color-highlight-border`, the page's
+              standard hover edge. On a card that works, because a card rests on
+              `--color-border` (0.10 alpha) and 0.28 is a step up. This input
+              rests on `--color-border-strong` (0.35) — it is an interactive
+              control, so it already carries the strong edge — and 0.28 is a step
+              *down*. Measured: the border got dimmer on hover, which is a
+              regression dressed as a hover state, and it is invisible enough to
+              survive review.
+
+              So hover is carried by the two channels that have somewhere to go
+              from here: the fill lifts and a cold glow appears. Focus still
+              wins outright — white accent border plus a real outline, glow
+              dropped — so hover can never be mistaken for focus.
+
+              Do not quote a rejected utility literally in a comment here, even
+              to document it: Tailwind scans this file for class candidates and
+              would compile the example into real CSS. That is the failure mode
+              recorded at the top of globals.css, where a placeholder in a lint
+              script's hint string became a font-size and took the dev server to
+              a 500. It would also re-trip the grep gate from the comment alone.
+            */
+            className="h-12 w-full min-w-0 rounded-[var(--radius-md)] border border-[color:var(--color-border-strong)] bg-[rgba(255,255,255,0.04)] px-4 font-mono text-[length:var(--text-caption)] text-[color:var(--color-text-primary)] outline-none transition-[border-color,background-color,box-shadow] duration-[var(--duration-base)] ease-[var(--ease-out-expo)] placeholder:text-[color:var(--color-text-quaternary)] hover:bg-[color:var(--color-fill-subtle)] hover:shadow-[var(--glow-signal-sm)] focus-visible:border-[color:var(--color-accent)] focus-visible:shadow-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--color-accent)]"
             {...register("email")}
           />
 

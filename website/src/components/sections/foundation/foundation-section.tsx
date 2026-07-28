@@ -3,6 +3,7 @@ import { contentSource } from "@/content-layer/source";
 import { Section } from "@/components/ui/section";
 import { SectionHeader } from "@/components/ui/section-header";
 import { Surface } from "@/components/ui/surface";
+import { PaperField } from "@/components/ui/paper-field";
 import { Reveal } from "@/components/motion/reveal";
 
 /**
@@ -34,6 +35,11 @@ import { Reveal } from "@/components/motion/reveal";
  * for it: the contrast flip gives the manifesto the weight the copy already
  * claims, and it breaks up ~7 000px of unrelieved black at the point where the
  * argument shifts from mechanism to principle. Reverting is `tone="dark"`.
+ *
+ * `field` + `PaperField` carry the page's grid through the whole band and let it
+ * respond to the pointer, so the band is the same material as the page either
+ * side of it rather than a light rectangle between two dark ones. See the note
+ * on `ui/paper-field.tsx` for the measurement that prompted it.
  */
 export async function FoundationSection({ locale }: { locale: string }) {
   const [principles, t] = await Promise.all([
@@ -42,7 +48,7 @@ export async function FoundationSection({ locale }: { locale: string }) {
   ]);
 
   return (
-    <Section id="foundation" rhythm="major" tone="paper">
+    <Section id="foundation" rhythm="major" tone="paper" field glow={<PaperField />}>
       <SectionHeader
         id="foundation"
         eyebrow={t("eyebrow")}

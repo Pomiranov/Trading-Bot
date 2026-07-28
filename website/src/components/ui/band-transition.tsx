@@ -31,9 +31,16 @@ import { cn } from "@/lib/utils";
  *   1. **It is taller.** 160px at every viewport was not enough room for a
  *      220-luminance-level change, so the change happened in a visible ~60px
  *      horizon two-thirds of the way down and the rest of the band was flat
- *      grey. It is now 176px on a phone and 256px from `lg`, and the ramp has
- *      six stops instead of four, weighted so no two adjacent stops are more
- *      than about 60 levels apart.
+ *      grey. It went to 176/256px, and then — because that was still being read
+ *      as an edge — to 208px on a phone and 352px from `lg`. The ramp has six
+ *      stops instead of four, weighted so no two adjacent stops are more than
+ *      about 60 levels apart.
+ *
+ *      A fourth thing was added later, and it is the one that finally settled
+ *      the complaint: **the crossing happens as the reader scrolls**, via a
+ *      second copy of the ramp that fades out on a view timeline. A gradient of
+ *      any height is still a static image the reader pans across; the held ramp
+ *      makes the paper front actually advance. See `held` below.
  *
  *   2. **The grid crosses it.** The same 64px geometry as the hero backplate,
  *      in white over the dark end and in graphite over the paper end, each
@@ -116,6 +123,30 @@ export function BandTransition({ direction, className }: BandTransitionProps) {
     ? `linear-gradient(to bottom, ${BLACK} 0%, ${GRAPHITE} 26%, ${MIX(22)} 46%, ${MIX(55)} 64%, ${MIX(85)} 82%, ${PAPER} 100%)`
     : `linear-gradient(to bottom, ${PAPER} 0%, ${MIX(85)} 18%, ${MIX(55)} 36%, ${MIX(22)} 54%, ${GRAPHITE} 74%, ${BLACK} 100%)`;
 
+  /*
+    ── The held ramp: the same change, later ──
+
+    A second copy of the ramp with *identical endpoints* and a crossover pushed
+    most of the way toward the paper end. It sits on top of the ramp above and
+    fades out as the blend crosses the viewport, so the paper front visibly
+    advances through the band while the reader scrolls rather than being a fixed
+    gradient they pan past. That is the "resolves as you scroll" the brief asks
+    for, and it is the part a static gradient cannot do at any height.
+
+    Endpoints being identical is the load-bearing constraint, not a detail. This
+    layer's top row must equal the neighbouring section's colour and its bottom
+    row must equal the other neighbour's, at every opacity — otherwise the
+    element it is trying to blend away from reappears as a seam at one edge for
+    the whole first half of the animation. Only the middle may move.
+
+    Base opacity is 0, so every failure mode — no view-timeline support, reduced
+    motion, a timeline that never resolves — lands on the finished ramp rather
+    than on a band stuck dark. Same rule as the grid layers below it.
+  */
+  const held = intoPaper
+    ? `linear-gradient(to bottom, ${BLACK} 0%, ${BLACK} 44%, ${GRAPHITE} 68%, ${MIX(22)} 84%, ${MIX(62)} 94%, ${PAPER} 100%)`
+    : `linear-gradient(to bottom, ${PAPER} 0%, ${MIX(62)} 6%, ${MIX(22)} 16%, ${GRAPHITE} 32%, ${BLACK} 56%, ${BLACK} 100%)`;
+
   /**
    * The two tints, on the existing hairline tokens rather than fresh alphas:
    * `--color-border` is the white hairline the hero grid already uses, and
@@ -167,11 +198,27 @@ export function BandTransition({ direction, className }: BandTransitionProps) {
           width — this element spans the full viewport, outside any section's
           horizontal padding, and the no-horizontal-scroll guarantee is absolute.
         */
-        "band-blend relative isolate h-44 w-full overflow-hidden sm:h-56 lg:h-64",
+        /*
+          Taller than it was — 176/224/256 became 208/288/352. A 220-level
+          luminance change needs room, and at 256px the crossing was still
+          happening fast enough to read as a horizon two-thirds of the way down
+          rather than as a material changing. 352px at `lg` is about a fifth of
+          a 1440×900 viewport, which is the point where the eye stops being able
+          to see both ends of the ramp at once and therefore stops reading it as
+          an edge at all.
+        */
+        "band-blend relative isolate h-52 w-full overflow-hidden sm:h-72 lg:h-88",
         className,
       )}
       style={{ backgroundImage: ramp }}
     >
+      {/* The held ramp. First child, so it sits under the grid layers — the grid
+          belongs to the blend as a whole and should not fade with the ground. */}
+      <div
+        className="band-blend__hold pointer-events-none absolute inset-0"
+        style={{ backgroundImage: held }}
+      />
+
       {layers.map((layer) => (
         <div
           key={layer.key}

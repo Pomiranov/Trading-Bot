@@ -42,14 +42,41 @@ export async function AccessSection({ locale }: { locale: string }) {
       {/* Same pointer-lit field as the hero, on the panel that rhymes with it —
           the page is bookended by the two objects that respond to the cursor. */}
       <SignalField className="relative isolate overflow-hidden rounded-[var(--radius-2xl)] border border-[color:var(--color-border)] bg-[color:var(--color-bg-elevated)] px-6 py-12 shadow-[var(--shadow-panel)] sm:px-10 sm:py-14 lg:px-14 lg:py-16">
-        <GridBackplate signal />
+        {/*
+          `mask="panel"`, not the hero's default ellipse.
 
-        {/* A soft white pool rising from the panel's foot. Well under a "glow"
-            at this alpha — the point is only that the black is not flat. */}
-        <div
-          aria-hidden="true"
-          className="section-glow pointer-events-none [--glow-x:50%] [--glow-y:100%]"
-        />
+          This panel is ~1210×740 at 1440px, and the `pool` mask is a centred
+          ellipse covering x 10–90% and y 10–80% of whatever it is applied to.
+          On a near-square panel that reaches all four edges at about the same
+          rate; on this one it left every vertical line stopping ~110px short of
+          the panel's foot and every horizontal one ~120px short of its right
+          edge. Measured, that is what the "random floating lines" in the closing
+          block actually were — not stray elements, but a grid whose falloff was
+          tuned for a different aspect ratio, cut off mid-line with nothing to
+          explain the terminus.
+
+          `panel` fades each axis independently over a long ramp, so the lines
+          dissolve instead of ending. See EDGE_FADE in ui/grid-backplate.tsx.
+        */}
+        <GridBackplate signal mask="panel" />
+
+        {/*
+          ── Removed: the white pool at the panel's foot ──
+
+          A `.section-glow` at `--glow-y: 100%`, i.e. a radial centred on the
+          bottom edge. On the hero the same layer works because it is offset to
+          one side and reads as the aperture sitting in light; here it was
+          centred under the form, so the panel had a bright base and dark
+          shoulders with no object to justify the gradient. Against the grid it
+          also washed out the middle rows while leaving the outer ones visible,
+          which is the second half of why the block read as "random glow".
+
+          Removed on owner direction: the closing block should be clean and
+          quiet. The panel's own `--color-bg-elevated` fill already lifts it off
+          the page, and the pointer field is now the only light in it — which
+          means the one thing that glows here is the one thing responding to the
+          reader.
+        */}
 
         <div className="relative">
           <SectionHeader

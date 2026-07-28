@@ -2,6 +2,7 @@ import { getTranslations } from "next-intl/server";
 import { Section } from "@/components/ui/section";
 import { SectionHeader } from "@/components/ui/section-header";
 import { PricingCard } from "@/components/ui/pricing-card";
+import { PaperField } from "@/components/ui/paper-field";
 import { Reveal } from "@/components/motion/reveal";
 
 const PLANS = [1, 2, 3] as const;
@@ -67,10 +68,14 @@ export async function PricingSection({ locale }: { locale: string }) {
       change register, and both sit far enough apart (~5 000px) that the page
       still reads as black with two breaths in it.
 
-      No `glow` here: the section-glow is a white radial pool, which on #f4f2ec
-      is invisible at best and a grey smudge at worst.
+      The `glow` slot carries `PaperField`, not `.section-glow`. The latter is a
+      white radial pool, which on #f4f2ec is invisible at best and a grey smudge
+      at worst; the former is the page's grid at full band height plus a
+      cold-white pool that follows the pointer, which is what a light ground can
+      actually show. Identical to `#foundation`, so the two bands stay one
+      composition.
     */
-    <Section id="pricing" rhythm="major" tone="paper">
+    <Section id="pricing" rhythm="major" tone="paper" field glow={<PaperField />}>
       <SectionHeader
         id="pricing"
         eyebrow={t("eyebrow")}

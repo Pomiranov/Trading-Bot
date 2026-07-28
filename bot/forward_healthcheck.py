@@ -50,6 +50,7 @@ sys.path.insert(0, str(ROOT / "bot"))
 load_dotenv(ROOT / ".env")
 
 from config import config  # noqa: E402  — только после sys.path/.env
+from universe import FORWARD_TICKERS, FORWARD_TICKERS_VERSION  # noqa: E402
 # market_time импортируется, а не дублируется: модуль сознательно без импортов
 # (только datetime), поэтому импорт-бюджет сторожа он не задевает — в отличие от
 # run_forward_d1, который потянул бы pandas и весь learning-стек. Конвенция
@@ -60,9 +61,11 @@ from notify import credentials_ready, escape, first_line, send  # noqa: E402
 # Дублируется с run_forward_d1.py:107-111 осознанно: импорт того модуля потянул
 # бы pandas и весь learning-стек в сторожа.
 STRATEGY_ID = "osc_range_moex_d1_fwd"
-TICKERS = ["SBER", "GAZP", "LKOH", "NVTK", "ROSN", "TATN",
-           "MGNT", "MOEX", "PLZL", "CHMF", "ALRS", "SNGS"]
-
+# Набор РАСТЁТ (bot/universe.py). Единственный расширяемый: форвард и сторож
+# ходят по нему, измерительные скрипты — по приколоченным наборам.
+# list(), а не tuple: psycopg2 адаптирует tuple как SQL-запись, а не массив,
+# и ANY(%s) в стороже сломался бы.
+TICKERS = list(FORWARD_TICKERS)
 # Допуск в календарных днях для проверки «свечи не поступают» (A2). В норме
 # возраст последней свечи = 1 день: прогон в 00:15 грузит бар за прошлый день.
 MAX_AGE_DEFAULT = 2

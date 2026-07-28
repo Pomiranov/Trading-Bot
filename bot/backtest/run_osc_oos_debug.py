@@ -25,13 +25,17 @@ import os
 import pandas as pd
 
 from config import config
+from universe import (
+    MEASUREMENT_UNIVERSE_2026_07, MEASUREMENT_UNIVERSE_2026_07_VERSION,
+)
 from backtest.engine import BacktestEngine
 from signals.rules_engine import RulesEngine, classify_regime
 from signals.indicators import IndicatorEngine
 
-TICKERS = ["SBER", "GAZP", "LKOH", "NVTK", "ROSN", "TATN",
-           "MGNT", "MOEX", "PLZL", "CHMF", "ALRS", "SNGS"]
-
+# Набор ПРИКОЛОЧЕН: на нём посчитаны все опорные числа проекта. Не менять —
+# набор есть часть определения измерения (bot/universe.py). Новые валидации
+# делаются на MEASUREMENT_UNIVERSE_2026_07_EXT.
+TICKERS = list(MEASUREMENT_UNIVERSE_2026_07)
 # Тикеры в многолетнем даунтренде — для раздельной оценки фильтра
 DOWNTREND_TICKERS = {"GAZP", "ROSN", "SNGS"}
 TIMEFRAMES = ["4h", "1d"]
@@ -184,7 +188,11 @@ def main() -> None:
     ap.add_argument("--show-oos", action="store_true", help="показать out-of-sample (только финал)")
     args = ap.parse_args()
 
+    # Отпечаток НАБОРА печатается наравне с файлом правил: отчёт без него через
+    # полгода нечитаем — по нему нельзя сказать, на каких бумагах он посчитан.
     print(f"Правила: {args.rules}\nМетка: {args.label}  pm={args.pm}")
+    print(f"Набор: MEASUREMENT_UNIVERSE_2026_07, {len(TICKERS)} бумаг, "
+          f"отпечаток {MEASUREMENT_UNIVERSE_2026_07_VERSION}")
     trades, skipped = collect_trades(args.rules, pm=args.pm)
     out_csv = Path(__file__).resolve().parent / f"osc_debug_{args.label}.csv"
     trades.to_csv(out_csv, index=False)

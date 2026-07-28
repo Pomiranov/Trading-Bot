@@ -27,13 +27,17 @@ import os
 import pandas as pd
 
 from config import config
+from universe import (
+    MEASUREMENT_UNIVERSE_2026_07, MEASUREMENT_UNIVERSE_2026_07_VERSION,
+)
 from backtest.engine import BacktestEngine, BacktestTrade
 from signals.indicators import IndicatorEngine
 from signals.rules_engine import RulesEngine
 
-TICKERS = ["SBER", "GAZP", "LKOH", "NVTK", "ROSN", "TATN",
-           "MGNT", "MOEX", "PLZL", "CHMF", "ALRS", "SNGS"]
-
+# Набор ПРИКОЛОЧЕН: на нём посчитаны все опорные числа проекта. Не менять —
+# набор есть часть определения измерения (bot/universe.py). Новые валидации
+# делаются на MEASUREMENT_UNIVERSE_2026_07_EXT.
+TICKERS = list(MEASUREMENT_UNIVERSE_2026_07)
 RULES_FILE = config.rules_dir / "rules_wrd_moex.yaml"
 
 IS_END = pd.Timestamp("2025-01-01")   # граница in-sample / out-of-sample

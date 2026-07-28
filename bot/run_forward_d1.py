@@ -85,6 +85,7 @@ import asyncpg
 import pandas as pd
 
 from config import config
+from universe import FORWARD_TICKERS, FORWARD_TICKERS_VERSION
 from costs import COMMISSION_PCT
 from data.loader import save_candles_to_db
 from market_time import MSK, last_closed_index, session_date
@@ -108,9 +109,11 @@ logger = logging.getLogger("quantflow.forward")
 STRATEGY_ID        = "osc_range_moex_d1_fwd"
 SEED_FROM_STRATEGY = "osc_range_moex_d1"     # belief-строка-источник (бэктест)
 
-TICKERS = ["SBER", "GAZP", "LKOH", "NVTK", "ROSN", "TATN",
-           "MGNT", "MOEX", "PLZL", "CHMF", "ALRS", "SNGS"]
-
+# Набор РАСТЁТ (bot/universe.py). Единственный расширяемый: форвард и сторож
+# ходят по нему, измерительные скрипты — по приколоченным наборам.
+# list(), а не tuple: psycopg2 адаптирует tuple как SQL-запись, а не массив,
+# и ANY(%s) в стороже сломался бы.
+TICKERS = list(FORWARD_TICKERS)
 RULES_FILE = config.rules_dir / "rules_osc_range.yaml"
 
 WINDOW_BARS      = SIGNAL_WINDOW_BARS   # окно latest_precomputed = iloc[i-60:i+1]

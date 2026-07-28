@@ -22,12 +22,17 @@ import time
 import pandas as pd
 
 from config import config
+from universe import (
+    MEASUREMENT_UNIVERSE_2026_07, MEASUREMENT_UNIVERSE_2026_07_VERSION,
+)
 from backtest.engine import BacktestEngine
 from signals.rules_engine import RulesEngine
 from learning.trading_orchestrator import TradingOrchestrator
 
-TICKERS = ["SBER", "GAZP", "LKOH", "NVTK", "ROSN", "TATN",
-           "MGNT", "MOEX", "PLZL", "CHMF", "ALRS", "SNGS"]
+# Набор ПРИКОЛОЧЕН: на нём посчитаны все опорные числа проекта. Не менять —
+# набор есть часть определения измерения (bot/universe.py). Новые валидации
+# делаются на MEASUREMENT_UNIVERSE_2026_07_EXT.
+TICKERS = list(MEASUREMENT_UNIVERSE_2026_07)
 TIMEFRAMES = ["1h", "4h", "1d"]     # значения в таблице candles
 TF_LABEL   = {"1h": "H1", "4h": "H4", "1d": "D1"}
 

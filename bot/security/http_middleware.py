@@ -36,10 +36,17 @@ def _csp(*, nonce: str, frame_ancestors: str) -> str:
     custom properties inline (panel heights, chart geometry) and a nonce cannot be
     attached to a style attribute. Scripts, which are what an XSS needs, do not
     get that latitude.
+
+    An *empty* nonce is omitted rather than emitted. ``'nonce-'`` is an invalid
+    source expression, and a browser that rejects it discards the whole
+    ``script-src`` directive — which is the opposite of what this header is for.
+    Responses with no inline script (API JSON, error pages) legitimately have no
+    nonce.
     """
+    script_src = f"script-src 'self' 'nonce-{nonce}'" if nonce else "script-src 'self'"
     return "; ".join([
         "default-src 'self'",
-        f"script-src 'self' 'nonce-{nonce}'",
+        script_src,
         "style-src 'self' 'unsafe-inline'",
         "font-src 'self'",
         "img-src 'self' data:",

@@ -47,7 +47,7 @@ class FaultsService:
                 "state": HealthState.FAILED,
                 "subject": "Схема базы данных",
                 "reason": getattr(schema_report, "describe", lambda: "устарела")(),
-                "action": {"label": "Как исправить", "route": "/health", "hint": "python -m qf_platform.migrate"},
+                "action": {"label": "Как исправить", "route": "/status", "hint": "python -m qf_platform.migrate"},
                 "occurred_at": None,
                 "severity": 3,
             })
@@ -83,7 +83,7 @@ class FaultsService:
                     "state": HealthState.STALE,
                     "subject": "Рыночные данные",
                     "reason": _humanise_age(age) + " — все цены и PnL производные от этих свечей.",
-                    "action": {"label": "Проверить загрузчик", "route": "/health"},
+                    "action": {"label": "Проверить загрузчик", "route": "/status"},
                     "occurred_at": to_display(env.market_as_of),
                     "severity": 3,
                 })
@@ -93,7 +93,7 @@ class FaultsService:
                     "state": HealthState.UNKNOWN,
                     "subject": "Рыночные данные",
                     "reason": "Возраст последней свечи не определён.",
-                    "action": {"label": "Проверить загрузчик", "route": "/health"},
+                    "action": {"label": "Проверить загрузчик", "route": "/status"},
                     "occurred_at": None,
                     "severity": 2,
                 })
@@ -118,7 +118,7 @@ class FaultsService:
                     "reason": service.get("reason") or STATE_PRESENTATION[state]["label"],
                     "action": {
                         "label": service.get("action") or "Открыть здоровье системы",
-                        "route": "/health",
+                        "route": "/status",
                     },
                     "occurred_at": service.get("checked_at"),
                     "severity": service["severity"],
@@ -133,7 +133,7 @@ class FaultsService:
                     "reason": "Проверки не выполнялись" + (
                         "" if collector_age is None else f" {_humanise_age(collector_age)}"
                     ),
-                    "action": {"label": "Открыть здоровье системы", "route": "/health"},
+                    "action": {"label": "Открыть здоровье системы", "route": "/status"},
                     "occurred_at": None,
                     "severity": 2,
                 })

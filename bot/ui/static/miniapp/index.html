@@ -159,8 +159,11 @@
 
   <div id="maToast" class="ma-toast-root"></div>
 
-  <script src="../core/format.js?v=6"></script>
-  <script src="../core/api.js?v=6"></script>
+  <!-- Vendored from the retired bot/ui/static/core/. The Mini App is the only
+       consumer left; keeping a copy here removes its dependency on the
+       operational dashboard's client, which was replaced wholesale. -->
+  <script src="legacy-format.js?v=20260729"></script>
+  <script src="legacy-api.js?v=20260729"></script>
   <script src="game.js?v=6"></script>
   <script src="miniapp.js?v=6"></script>
 </body>

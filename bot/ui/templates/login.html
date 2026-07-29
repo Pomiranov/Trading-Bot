@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>Вход · QuantFlow</title>
+
+  <link rel="icon" type="image/svg+xml"
+        href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23030303'/%3E%3Cpath d='M16 8 L9.5 24 M16 8 L23 21.5' stroke='%23ffffff' stroke-width='2' stroke-linecap='round' fill='none'/%3E%3Ccircle cx='16' cy='8' r='3.4' fill='%23ffffff'/%3E%3C/svg%3E" />
+
+  <link rel="preload" href="{{ url_for('static', filename='fonts/geist-latin.woff2') }}"
+        as="font" type="font/woff2" crossorigin />
+  <link rel="preload" href="{{ url_for('static', filename='fonts/geist-cyrillic.woff2') }}"
+        as="font" type="font/woff2" crossorigin />
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/tokens.css') }}?v={{ asset_version }}" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/base.css') }}?v={{ asset_version }}" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}?v={{ asset_version }}" />
+</head>
+
+<body>
+  <main class="qf-signin">
+    {# The one surface where decorative geometry belongs: there is no data here to
+       compete with. Cold blue as stroke and shadow, ≤0.28 alpha, and static — the
+       site's orbit animation is not ported, because a login screen that animates
+       forever is the same sustained-attention cost as a pulsing dot. #}
+    <div class="qf-signin-geometry" aria-hidden="true">
+      <svg viewBox="0 0 760 420" focusable="false">
+        <circle cx="380" cy="210" r="150" />
+        <circle cx="380" cy="210" r="104" />
+        <circle cx="380" cy="210" r="58" />
+        <path d="M80 210 H230 M530 210 H680" />
+        <path d="M380 40 V96 M380 324 V380" />
+      </svg>
+    </div>
+
+    <div class="qf-signin-card">
+      <div class="qf-brand">
+        <svg class="qf-brand-mark" viewBox="0 0 32 32" aria-hidden="true" focusable="false">
+          <path d="M16 8 L9.5 24 M16 8 L23 21.5" stroke="currentColor" stroke-width="2"
+                stroke-linecap="round" fill="none" />
+          <circle cx="16" cy="8" r="3.4" fill="currentColor" />
+        </svg>
+        <span class="qf-brand-name">QuantFlow</span>
+      </div>
+
+      <div>
+        <h1>Терминал оператора</h1>
+        <p class="qf-caption">Доступ только для авторизованных операторов.</p>
+      </div>
+
+      {% if not db_available %}
+        {# A form that cannot possibly succeed, returning a generic "wrong
+           password", is a support call. Say what is actually wrong. #}
+        <div class="qf-state qf-state--error" role="alert">
+          <div class="qf-state-title">База данных недоступна</div>
+          <div class="qf-state-detail">Вход невозможен, пока нет соединения с БД.</div>
+        </div>
+      {% elif not has_users %}
+        <div class="qf-state qf-state--error" role="alert">
+          <div class="qf-state-title">Оператор не создан</div>
+          <div class="qf-state-detail">
+            Создайте первого пользователя:
+            <code class="qf-mono">python -m qf_platform.migrate --create-user NAME --role administrator</code>
+          </div>
+        </div>
+      {% else %}
+        <form id="qf-login-form" method="post" action="/api/v2/auth/login" novalidate>
+          <div class="qf-field">
+            <label class="qf-field-label" for="qf-username">Логин</label>
+            <input class="qf-input" id="qf-username" name="username" type="text"
+                   autocomplete="username" required autocapitalize="none" spellcheck="false" />
+          </div>
+          <div class="qf-field">
+            <label class="qf-field-label" for="qf-password">Пароль</label>
+            <input class="qf-input" id="qf-password" name="password" type="password"
+                   autocomplete="current-password" required />
+          </div>
+
+          {# One generic message for every failure kind. Distinguishing "no such
+             user" from "wrong password" is an account-enumeration oracle; the
+             specific kind goes to the audit log instead. #}
+          <div class="qf-field-error" id="qf-login-error" role="alert" aria-live="assertive"></div>
+
+          <button class="qf-btn qf-btn--primary" id="qf-login-submit" type="submit">Войти</button>
+        </form>
+      {% endif %}
+
+      <p class="qf-caption">
+        Все действия оператора записываются в журнал аудита.
+      </p>
+    </div>
+  </main>
+
+  {# One inline script, carrying the per-response CSP nonce. The policy no longer
+     grants script-src 'unsafe-inline' to the whole page. #}
+  <script nonce="{{ csp_nonce }}">
+    (function () {
+      var form = document.getElementById('qf-login-form');
+      if (!form) return;
+      var errorNode = document.getElementById('qf-login-error');
+      var submit = document.getElementById('qf-login-submit');
+
+      function readCookie(name) {
+        var match = document.cookie.match(new RegExp('(?:^|; )' + name + '=([^;]*)'));
+        return match ? decodeURIComponent(match[1]) : null;
+      }
+
+      form.addEventListener('submit', function (event) {
+        event.preventDefault();
+        errorNode.textContent = '';
+        submit.disabled = true;
+        submit.setAttribute('aria-busy', 'true');
+
+        var headers = { 'Content-Type': 'application/json', Accept: 'application/json' };
+        var token = readCookie('qf_csrf');
+        if (token) headers['X-CSRF-Token'] = token;
+
+        fetch('/api/v2/auth/login', {
+          method: 'POST',
+          headers: headers,
+          credentials: 'same-origin',
+          body: JSON.stringify({
+            username: document.getElementById('qf-username').value,
+            password: document.getElementById('qf-password').value
+          })
+        }).then(function (response) {
+          return response.json().then(function (payload) {
+            return { ok: response.ok, payload: payload };
+          });
+        }).then(function (result) {
+          if (result.ok) {
+            var params = new URLSearchParams(window.location.search);
+            var next = params.get('next');
+            // Only a same-origin relative path — an open redirect on a login form
+            // is a phishing primitive.
+            window.location.assign(next && next.charAt(0) === '/' && next.charAt(1) !== '/' ? next : '/');
+            return;
+          }
+          var error = result.payload && result.payload.error;
+          errorNode.textContent = (error && error.message) || 'Не удалось войти.';
+          if (error && error.id) errorNode.textContent += ' (ID: ' + error.id + ')';
+          submit.disabled = false;
+          submit.removeAttribute('aria-busy');
+          document.getElementById('qf-password').value = '';
+          document.getElementById('qf-password').focus();
+        }).catch(function () {
+          errorNode.textContent = 'Нет связи с сервером.';
+          submit.disabled = false;
+          submit.removeAttribute('aria-busy');
+        });
+      });
+
+      document.getElementById('qf-username').focus();
+    })();
+  </script>
+</body>
+</html>

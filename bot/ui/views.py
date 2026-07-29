@@ -46,13 +46,44 @@ def _shell_context() -> dict:
     return {"asset_version": _asset_version, "csp_nonce": nonce}
 
 
-@views_bp.get("/")
-def index():
+#: Client-side routes that must all serve the same shell.
+#:
+#: The router uses real paths (``/positions``, ``/trades``) rather than a hash, so
+#: a view is linkable, bookmarkable and restorable — which is the whole point of
+#: adding routing. That only works if the *server* answers those paths too:
+#: otherwise the first request for a deep link, or any reload away from ``/``,
+#: reaches Flask and 404s. The list is explicit rather than a catch-all so a
+#: genuine typo still 404s instead of silently rendering an empty dashboard.
+#: `health` is deliberately absent: ``GET /health`` is the liveness probe and a
+#: documented deployment contract (docs/windows-deployment.md, README). The
+#: System Health *view* lives at ``/status`` so the two cannot collide.
+CLIENT_ROUTES = (
+    "portfolio", "positions", "trades", "signals", "strategies",
+    "backtest", "analytics", "risk", "status", "events", "settings",
+)
+
+
+def _render_shell():
     from security.session_auth import current_principal
 
     if current_principal() is None:
-        return redirect(url_for("views.login"))
+        # `next` preserves the deep link across the sign-in round trip.
+        from flask import request
+
+        return redirect(url_for("views.login", next=request.path))
     return render_template("dashboard.html", **_shell_context())
+
+
+@views_bp.get("/")
+def index():
+    return _render_shell()
+
+
+@views_bp.get("/<any(portfolio, positions, trades, signals, strategies, backtest,"
+              " analytics, risk, status, events, settings):view>")
+def client_route(view: str):
+    """Serve the shell for a deep-linked client route."""
+    return _render_shell()
 
 
 @views_bp.get("/login")

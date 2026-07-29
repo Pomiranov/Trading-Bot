@@ -290,13 +290,19 @@ class TestAnalyticsService(unittest.TestCase):
         with patch.object(svc, "_get_account_id", return_value=1), \
              patch.object(svc, "_query", side_effect=_make_query_side_effect(fake_trades)), \
              patch.object(svc, "_daily_equity_returns", return_value=[]), \
-             patch.object(svc, "_compute_max_drawdown", return_value=0.05):
+             patch.object(svc, "_compute_max_drawdown", return_value=(-5.0, -250.0)):
             stats = svc.trade_stats()
         self.assertEqual(stats["total_trades"], 4)
         self.assertAlmostEqual(stats["win_rate"], 75.0, places=2)
         self.assertAlmostEqual(stats["total_pnl"], 1400.0, places=2)
         self.assertAlmostEqual(stats["avg_win"], (1000 + 500 + 200) / 3, places=2)
         self.assertAlmostEqual(stats["avg_loss"], -300.0, places=2)
+        # Percent and absolute drawdown are separate, unambiguous fields. The old
+        # `max_drawdown` carried a fraction under a name the UI printed as a
+        # percentage, rendering −23,73 % as «−0,2 %».
+        self.assertAlmostEqual(stats["max_drawdown_pct"], -5.0, places=2)
+        self.assertAlmostEqual(stats["max_drawdown_abs"], -250.0, places=2)
+        self.assertNotIn("max_drawdown", stats)
 
     def test_trade_stats_all_wins(self):
         from qf_platform.services.analytics_service import AnalyticsService
@@ -305,7 +311,7 @@ class TestAnalyticsService(unittest.TestCase):
         with patch.object(svc, "_get_account_id", return_value=1), \
              patch.object(svc, "_query", side_effect=_make_query_side_effect(fake_trades)), \
              patch.object(svc, "_daily_equity_returns", return_value=[]), \
-             patch.object(svc, "_compute_max_drawdown", return_value=0.0):
+             patch.object(svc, "_compute_max_drawdown", return_value=(0.0, 0.0)):
             stats = svc.trade_stats()
         self.assertAlmostEqual(stats["win_rate"], 100.0, places=1)
 
@@ -316,7 +322,7 @@ class TestAnalyticsService(unittest.TestCase):
         with patch.object(svc, "_get_account_id", return_value=1), \
              patch.object(svc, "_query", side_effect=_make_query_side_effect(fake_trades)), \
              patch.object(svc, "_daily_equity_returns", return_value=[]), \
-             patch.object(svc, "_compute_max_drawdown", return_value=0.0):
+             patch.object(svc, "_compute_max_drawdown", return_value=(0.0, 0.0)):
             stats = svc.trade_stats()
         self.assertAlmostEqual(stats["win_rate"], 0.0, places=1)
         self.assertLess(stats["total_pnl"], 0)

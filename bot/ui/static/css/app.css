@@ -1001,9 +1001,35 @@
   padding: var(--qf-space-8);
   display: flex;
   flex-direction: column;
-  gap: var(--qf-space-4);
+  gap: var(--qf-space-5);
   position: relative;
   z-index: var(--qf-z-content);
+}
+
+/* The card's own gap applies to *its* children, and the form is a single child —
+   so without this the label/input pairs inside it collapsed against each other
+   and «Пароль» sat on top of the field above it. */
+.qf-signin-card form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--qf-space-4);
+}
+
+.qf-signin-card .qf-input {
+  /* 36px, not 32: this is the one form on the product where a comfortable target
+     costs nothing — there is no density to preserve on a sign-in surface. */
+  min-height: var(--qf-control-lg);
+  width: 100%;
+}
+
+.qf-signin-card .qf-btn {
+  min-height: var(--qf-control-lg);
+  width: 100%;
+}
+
+/* Empty until a failure, so it must not reserve a gap of its own. */
+.qf-signin-card .qf-field-error:empty {
+  display: none;
 }
 
 /* The sign-in surface is the one place decorative geometry belongs: there is no
@@ -1024,7 +1050,9 @@
   fill: none;
   stroke-width: 1;
   filter: drop-shadow(var(--qf-signal-glow));
-  opacity: 0.6;
+  /* No extra opacity. The stroke token is already 0.24 alpha — the doctrine's
+     ceiling is 0.28 — and multiplying it by 0.6 again took it to ~0.14, at which
+     point it read as a rendering artefact rather than as restraint. */
 }
 
 /* ═══ Responsive ══════════════════════════════════════════════════════════════ */

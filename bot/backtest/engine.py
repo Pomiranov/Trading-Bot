@@ -60,8 +60,22 @@ class BacktestTrade:
 
 @dataclass
 class BacktestResult:
+    """Итог прогона. n/WR/PF/PnL считаются ТОЛЬКО по закрытым сделкам (долг №25).
+
+    `trades` — закрытые. Позиция, открытая на краю данных, живёт отдельно в
+    `open_trades_at_end` и в статистику не входит. Разделение сделано ПОЛЕМ, а не
+    фильтром у потребителей: `trades` читают семь мест, и строка «ещё открыта»
+    внутри общего списка вернула бы дефект у первого, кто забудет её отсеять.
+
+    Что правка НЕ приколачивает, и это надо знать при цитировании:
+    `max_drawdown`, `sharpe`, `cagr` считаются по equity-кривой, а она
+    mark-to-market и удлиняется с каждым новым баром. Они зависят от объёма данных
+    ПО ПОСТРОЕНИЮ, и требование «число не зависит от дня прогона» на них не
+    распространяется — только на n/WR/PF/PnL и на pnl каждой закрытой сделки.
+    """
+
     ticker: str
-    total_trades: int = 0
+    total_trades: int = 0        # ЗАКРЫТЫХ. Было «открытых»: инкремент стоял на входе
     winning_trades: int = 0
     losing_trades: int = 0
     total_pnl: float = 0.0
@@ -74,9 +88,22 @@ class BacktestResult:
     trading_days: int = 0
     skipped_downtrend: int = 0   # BUY-сигналы, отклонённые фильтром структурного даунтренда
     trades: list[BacktestTrade] = field(default_factory=list)
+    # СПИСОК, а не одиночное поле, хотя сегодня движок держит одну переменную
+    # open_trade и длина всегда 0 или 1. Пирамидинг (гл. 8) стоит в очереди
+    # валидации, и с ним открытых станет несколько: одиночное поле выбросило бы
+    # лишние МОЛЧА, а «открытых: 0» из пустого списка получается само, без
+    # отдельной ветки. Длина 0/1 — свойство сегодняшнего движка, не конструкции.
+    open_trades_at_end: list[BacktestTrade] = field(default_factory=list)
+    unrealized_pnl: float = 0.0  # сумма mark-to-market открытых, ОБЕ комиссии
     equity_curve: list[float] = field(default_factory=list)
 
     def summary(self) -> str:
+        # Открытая позиция ПЕЧАТАЕТСЯ всегда, когда есть. Тихо выбросить её было бы
+        # хуже дефекта: дрейф хотя бы виден в числах, а пропавшая позиция — ни в чём.
+        tail = ""
+        if self.open_trades_at_end:
+            tail = (f" | открыто на краю: {len(self.open_trades_at_end)} "
+                    f"(нереализовано {self.unrealized_pnl:+,.0f}, в PnL НЕ входит)")
         return (
             f"[{self.ticker}] Сделок: {self.total_trades} | "
             f"Win Rate: {self.win_rate:.1f}% | "
@@ -84,7 +111,7 @@ class BacktestResult:
             f"Просадка: {self.max_drawdown:.1f}% | "
             f"Sharpe: {self.sharpe:.2f} | "
             f"PF: {self.profit_factor:.2f} | "
-            f"CAGR: {self.cagr:+.1f}%"
+            f"CAGR: {self.cagr:+.1f}%" + tail
         )
 
 
@@ -267,7 +294,10 @@ class BacktestEngine:
                             if r.action == Action.BUY
                         )),
                     )
-                    result.total_trades += 1
+                    # result.total_trades здесь БОЛЬШЕ НЕ инкрементируется: счётчик
+                    # считал ОТКРЫТЫЕ сделки, и незакрытая на краю данных попадала в
+                    # знаменатель WR наравне с состоявшимися. Теперь n = len(trades),
+                    # то есть закрытые, и присваивается в блоке финальных метрик.
 
                     # ── Обучение: зафиксировать открытие сделки ──────
                     if self._orchestrator is not None:
@@ -315,19 +345,39 @@ class BacktestEngine:
                 cur_equity += open_trade.entry_price * open_trade.shares + unrealized
             equity.append(cur_equity)
 
-        # Принудительно закрыть открытую позицию на последней свече
+        # ── Позиция, открытая на КРАЮ ДАННЫХ (долг №25) ───────────────
+        #
+        # Раньше здесь стояло принудительное закрытие по последнему бару, и результат
+        # шёл в n/WR/PF/PnL наравне с выходами по правилу. Последний бар каждый день
+        # другой, поэтому число дрейфовало САМО, без единой правки кода. Замерено
+        # 30.07 на живых данных, одна позиция SBER при неизменном коде:
+        #     окно по сессию 27.07 → выход 26.07 21:00, pnl +21 117.22 → PnL +74 054.52
+        #     окно по сессию 28.07 → выход 27.07 21:00, pnl +14 809.73 → PnL +67 747.03
+        #     окно по сессию 29.07 → выход 28.07 21:00, pnl +24 914.27 → PnL +77 851.57
+        # Остальные 205 сделок разреза во всех трёх прогонах побайтово идентичны, то
+        # есть весь разброс +67 747…+77 852 создавала ОДНА незакрытая позиция.
+        #
+        # Отличать от исправленного 28.07 частичного бара (_drop_forming_bar): там бар
+        # был НЕЗАКРЫТ, это чинится обрезкой. Здесь бар закрыт, а СДЕЛКА не
+        # состоялась — обрезать нечего, и единственный честный ответ: не считать её.
+        #
+        # Конвенция форварда уже была такой: _paper_capital считает «база +
+        # РЕАЛИЗОВАННЫЙ PnL − стоимость открытых» (run_forward_d1.py). Бэктест
+        # единственный выбивался, и правка сближает контуры, а не расходит их.
         if open_trade:
             last_price = float(df_ind.iloc[-1]["close"])
-            last_dt    = df_ind.index[-1] if len(df_ind.index) else None
-            status = "WIN" if last_price > open_trade.entry_price else "LOSS"
-            pnl, capital = self._close(open_trade, last_price, capital, status, exit_dt=last_dt)
-            result.trades.append(open_trade)
-            result.total_pnl += pnl
-            result.winning_trades += (1 if pnl > 0 else 0)
-            result.losing_trades  += (0 if pnl > 0 else 1)
+            unrealized, _ = self._pnl_at(open_trade, last_price)
+            open_trade.status = "OPEN"
+            result.open_trades_at_end.append(open_trade)
+            result.unrealized_pnl += unrealized
 
         # ── Финальные метрики ─────────────────────────────────────────
         result.equity_curve  = equity
+        # n — ЗАКРЫТЫЕ сделки. Раньше сюда попадала и незакрытая, потому что счётчик
+        # инкрементировался при входе, а принудительное закрытие делало её похожей на
+        # состоявшуюся. Совпадение winning+losing с total теперь тождество, а не
+        # следствие того, что каждая открытая обязательно закрывалась.
+        result.total_trades  = len(result.trades)
         total = result.total_trades
         result.win_rate      = result.winning_trades / total * 100 if total else 0.0
         result.avg_pnl       = result.total_pnl / total if total else 0.0
@@ -398,6 +448,24 @@ class BacktestEngine:
 
     # ── Закрытие сделки ──────────────────────────────────────────────
 
+    def _pnl_at(self, trade: BacktestTrade, price: float) -> tuple[float, float]:
+        """(pnl, комиссия) сделки при выходе по price. ОДНА копия формулы.
+
+        Вынесено 30.07: тем же выражением считается и pnl закрытой сделки, и
+        нереализованный результат позиции, открытой на краю данных. Две копии
+        разошлись бы на комиссии входа — ровно тот дефект, который чинился 28.07
+        (P4 в tests/forward_tests/test_costs_and_commission.py).
+
+        pnl вычитает ОБЕ стороны. Комиссия входа списывается с capital при открытии
+        (в run()), но в pnl не попадала, поэтому initial_capital + Σpnl не сходился
+        с траекторией капитала — а именно на этом равенстве стоит потикерный бюджет
+        форварда (_paper_capital).
+        """
+        entry_comm = trade.entry_price * trade.shares * self.commission_pct
+        exit_comm  = trade.shares * price * self.commission_pct
+        commission = entry_comm + exit_comm
+        return (price - trade.entry_price) * trade.shares - commission, commission
+
     def _close(
         self,
         trade: BacktestTrade,
@@ -409,14 +477,8 @@ class BacktestEngine:
         exit_comm     = trade.shares * exit_price * self.commission_pct
         proceeds      = trade.shares * exit_price - exit_comm
         capital      += proceeds
-        # pnl вычитает ОБЕ стороны. Комиссия входа уже списана с capital при
-        # открытии (строка 253 в run()), но в pnl не попадала, поэтому
-        # initial_capital + Σpnl не сходился с траекторией капитала — а именно
-        # на этом равенстве стоит потикерный бюджет форварда (_paper_capital).
-        # Траектория capital здесь НЕ меняется: она была верна и до правки.
-        entry_comm    = trade.entry_price * trade.shares * self.commission_pct
-        commission    = entry_comm + exit_comm
-        pnl           = (exit_price - trade.entry_price) * trade.shares - commission
+        # Траектория capital здесь НЕ меняется: она была верна и до правки 28.07.
+        pnl, commission = self._pnl_at(trade, exit_price)
         trade.exit_price = exit_price
         trade.exit_date  = exit_dt if exit_dt is not None else datetime.now()
         trade.pnl        = pnl

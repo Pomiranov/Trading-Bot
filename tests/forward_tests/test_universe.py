@@ -357,13 +357,6 @@ class TestMeasurementScriptsPassTheWindow(unittest.TestCase):
                "run_ab_swing_stop.py", "run_ab_trend_fix.py",
                "run_wrd_backtest.py", "run_ab_wrd_sar.py")
 
-    # Скрипты, которые окно НЕ передают и передавать не обязаны. Список ОБЯЗАН быть
-    # пустым после удаления двух ISS-скриптов (долги №37/№28, этап В сессии 30.07):
-    # они брали свечи не из candles, а прямо с MOEX ISS со скользящим окном
-    # `date.today() - 200 дней`, и приколачивание одного start для них было бы no-op
-    # из-за `df.tail(CANDLES_MAX)` — окно продолжило бы скользить от конца.
-    NOT_ON_THE_LOADER = ("run_ab_backtest.py", "run_learning_backtest.py")
-
     def test_no_measurement_script_is_missing_from_the_list(self):
         """Список собран руками — проверить, что каталог с ним не разошёлся.
 
@@ -371,12 +364,18 @@ class TestMeasurementScriptsPassTheWindow(unittest.TestCase):
         существовал, в списке отсутствовал, падал TypeError — и поймать было нечем.
 
         Тест падает ЗАКОННО при появлении нового `run_*.py` в bot/backtest: тогда
-        решается, идёт он в SCRIPTS (берёт выборку) или в NOT_ON_THE_LOADER (не
-        берёт), и решение записывается. Молча пройти нельзя — в этом смысл.
+        решается, берёт он выборку или нет, и решение записывается в SCRIPTS. Молча
+        пройти нельзя — в этом смысл.
+
+        Исключений НЕТ, и это утверждение, а не умолчание: два скрипта, бравшие
+        свечи не из candles, а прямо с MOEX ISS со скользящим окном
+        `date.today() − 200 дней`, удалены 30.07 (долги №37/№28). Приколачивание
+        одного start для них было бы no-op — `df.tail(CANDLES_MAX)` продолжил бы
+        двигать окно от КОНЦА.
         """
         found = {p.name for p in (_ROOT / "bot" / "backtest").glob("run_*.py")}
         # run_forward_d1.py живёт в bot/, выборки не берёт (см. довод 1 в universe.py)
-        self.assertEqual(found, set(self.SCRIPTS) | set(self.NOT_ON_THE_LOADER),
+        self.assertEqual(found, set(self.SCRIPTS),
                          "каталог измерительных скриптов разошёлся со списком теста")
 
     def test_each_script_passes_the_window_explicitly(self):

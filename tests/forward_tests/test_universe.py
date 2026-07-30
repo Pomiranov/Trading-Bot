@@ -20,6 +20,7 @@ sys.path.insert(0, str(_ROOT / "bot"))
 
 from universe import (
     FORWARD_TICKERS,
+    FORWARD_TICKERS_ENTERED_AT,
     FORWARD_TICKERS_FIXED_AT,
     FORWARD_TICKERS_PENDING,
     FORWARD_TICKERS_PENDING_ENTERS_AT,
@@ -81,37 +82,88 @@ class TestExtendedUniverse(unittest.TestCase):
 
 
 class TestForwardUniverse(unittest.TestCase):
-    """Форвард откачен к 12 до утра 29.07 — сознательно, см. universe.py.
+    """Форвард расширен до 20 бумаг 2026-07-30.
 
-    Расширение до 20 требует бэкфилла и первого прогона по восьми бумагам, а в
-    21:xx это остаётся без запаса времени на разбор. Вдобавок ночной прогон
-    00:15 — первый после четырёх изменений, и проверять их на знакомом наборе
-    чище. Состав на 20 зафиксирован 28.07 и лежит в FORWARD_TICKERS_PENDING.
+    ⚠ ВСЕ утверждения этого класса ЗАВИСЯТ ОТ СОСТАВА набора (правило 2 §8
+    PROJECT_STATE). Они падают ЗАКОННО при следующем расширении форварда и
+    НЕ означают дефекта. Признак законного падения: изменился
+    FORWARD_TICKERS_VERSION вместе с len(FORWARD_TICKERS). Признак дефекта:
+    разошлись длина и отпечаток, либо тронут MEASUREMENT_UNIVERSE_2026_07.
     """
 
-    def test_forward_rolled_back_to_twelve(self):
-        self.assertEqual(len(FORWARD_TICKERS), 12)
-        self.assertEqual(FORWARD_TICKERS_VERSION, EXPECTED_12)
+    def test_forward_expanded_to_twenty(self):
+        self.assertEqual(len(FORWARD_TICKERS), 20)
+        self.assertEqual(FORWARD_TICKERS_VERSION, EXPECTED_20)
 
-    def test_active_fixation_date_is_not_the_deferred_one(self):
-        """28.07 зафиксирован состав на 20, а не действующий. Поставить сюда
-        28.07 значило бы, что поле утверждает неправду."""
-        self.assertEqual(FORWARD_TICKERS_FIXED_AT, "2026-07-12")
-        self.assertNotEqual(FORWARD_TICKERS_FIXED_AT, FORWARD_TICKERS_PENDING_FIXED_AT)
+    def test_active_fixation_date_is_now_the_preregistered_one(self):
+        """Утверждение ПЕРЕВЕРНУЛОСЬ 30.07, и это не дефект.
 
-    def test_deferred_set_preserved_with_dates(self):
-        """Факт фиксации ДО прогона не должен потеряться при откате: иначе
-        завтра состав можно было бы незаметно поправить."""
+        До расширения тест требовал обратного: FIXED_AT == 2026-07-12 и !=
+        _PENDING_FIXED_AT, потому что 28.07 был зафиксирован состав на 20, а не
+        действующий. С вводом 30.07 действующим стал именно тот состав, поэтому
+        даты обязаны СОВПАСТЬ. Оставить прежнее утверждение значило бы, что поле
+        FIXED_AT врёт про свой собственный состав.
+        """
+        self.assertEqual(FORWARD_TICKERS_FIXED_AT, "2026-07-28")
+        self.assertEqual(FORWARD_TICKERS_FIXED_AT, FORWARD_TICKERS_PENDING_FIXED_AT)
+
+    def test_planned_and_actual_entry_dates_both_kept(self):
+        """Плановая дата ввода 29.07 НЕ затирается фактической 30.07.
+
+        29.07 ввод не состоялся: прогон 00:15 не запустился, машина была
+        выключена. Расхождение планового и фактического само есть факт, и
+        затирать его нельзя — иначе через полгода прочтётся, что всё шло по плану.
+        """
+        self.assertEqual(FORWARD_TICKERS_PENDING_ENTERS_AT, "2026-07-29")
+        self.assertEqual(FORWARD_TICKERS_ENTERED_AT, "2026-07-30")
+        self.assertNotEqual(FORWARD_TICKERS_PENDING_ENTERS_AT,
+                            FORWARD_TICKERS_ENTERED_AT)
+
+    def test_preregistration_record_survived_the_switch(self):
+        """Факт фиксации ДО прогона — единственное, что отличает
+        пре-регистрацию от подгонки, и он обязан быть виден после ввода."""
         self.assertEqual(len(FORWARD_TICKERS_PENDING), 20)
         self.assertEqual(FORWARD_TICKERS_PENDING_VERSION, EXPECTED_20)
         self.assertEqual(FORWARD_TICKERS_PENDING_FIXED_AT, "2026-07-28")
-        self.assertEqual(FORWARD_TICKERS_PENDING_ENTERS_AT, "2026-07-29")
+        self.assertEqual(FORWARD_TICKERS_PENDING, FORWARD_TICKERS,
+                         "введён обязан быть ровно зафиксированный состав")
 
-    def test_deferred_equals_ext_and_ext_untouched(self):
-        """_EXT — приколоченный ИЗМЕРИТЕЛЬНЫЙ набор, к форварду отношения не
-        имеет и откатом не затронут."""
-        self.assertEqual(FORWARD_TICKERS_PENDING, MEASUREMENT_UNIVERSE_2026_07_EXT)
+    def test_measurement_universe_12_untouched_by_the_switch(self):
+        """Приколоченный набор расширением НЕ затронут — на нём посчитаны все
+        опорные числа проекта."""
+        self.assertEqual(len(MEASUREMENT_UNIVERSE_2026_07), 12)
+        self.assertEqual(MEASUREMENT_UNIVERSE_2026_07_VERSION, EXPECTED_12)
         self.assertEqual(MEASUREMENT_UNIVERSE_2026_07_EXT_VERSION, EXPECTED_20)
+
+
+class TestUniverseVersionIsNoLongerASoleDiscriminator(unittest.TestCase):
+    """Оговорка к долгу №33, закодированная тестом (PROJECT_STATE раздел 3).
+
+    Тест утверждает СОВПАДЕНИЕ отпечатков — не для того чтобы поймать дефект, а
+    чтобы оговорку нельзя было забыть при чтении кода.
+    """
+
+    def test_forward_and_ext_fingerprints_now_coincide(self):
+        """FORWARD == _EXT, поэтому universe_version в одиночку НЕ различает
+        форвардную сделку от бэктестовой.
+
+        Различает только пара (origin, universe_version). Запрос «сделки на
+        наборе 20» без origin смешает два контура МОЛЧА — а `is_sandbox`
+        различителем не является, форвард тоже бумажный (долг №30).
+        """
+        self.assertEqual(FORWARD_TICKERS_VERSION,
+                         MEASUREMENT_UNIVERSE_2026_07_EXT_VERSION)
+        self.assertEqual(FORWARD_TICKERS_VERSION, EXPECTED_20)
+
+    def test_forward_eras_remain_separable(self):
+        """Что оговорка НЕ отменяет: эры форварда различимы отпечатком.
+
+        Ради этого долг №33 и заводился — confidence агрегируется по
+        strategy_id и смешал бы эру 12 бумаг с эрой 20.
+        """
+        self.assertNotEqual(EXPECTED_12, EXPECTED_20)
+        self.assertEqual(MEASUREMENT_UNIVERSE_2026_07_VERSION, EXPECTED_12,
+                         "эра 12 бумаг обязана остаться адресуемой отпечатком")
 
 
 class TestFingerprintProperties(unittest.TestCase):
@@ -185,9 +237,13 @@ class TestUniverseStampedOnTrades(unittest.TestCase):
         from backtest.engine import BacktestEngine
         eng = BacktestEngine(universe_version=MEASUREMENT_UNIVERSE_2026_07_VERSION)
         self.assertEqual(eng._universe_version, MEASUREMENT_UNIVERSE_2026_07_VERSION)
-        # Сравнивать с FORWARD_TICKERS_VERSION нельзя: после отката 28.07 форвард
-        # снова на 12 бумагах, и отпечатки СОВПАДАЮТ. Инвариант «наборы различимы»
-        # проверяется отдельно — на 12 против 20 (test_two_universes_have_...).
+        # Сравнивать с FORWARD_TICKERS_VERSION нельзя, но причина с 30.07 ДРУГАЯ.
+        # Было (после отката 28.07): форвард на 12 бумагах, совпадали FORWARD и
+        # MEASUREMENT_12. Стало (расширение 30.07): форвард на 20, и совпадают
+        # FORWARD и _EXT. То есть сравнение бессмысленно в обе эпохи, но раньше
+        # оно бы ложно ПРОШЛО как «наборы совпали», а теперь ложно прошло бы как
+        # «набор бэктеста отличается от форвардного». Инвариант «наборы различимы»
+        # проверяется отдельно — на 12 против 20.
         ext = BacktestEngine(universe_version=MEASUREMENT_UNIVERSE_2026_07_EXT_VERSION)
         self.assertNotEqual(eng._universe_version, ext._universe_version)
 

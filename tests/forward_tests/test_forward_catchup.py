@@ -844,5 +844,81 @@ class TestHelpers(unittest.TestCase):
         self.assertIsNone(note)
 
 
+# ─────────────────────────────────────────────────────────────────────────────
+# Отказ догрузки свечей НЕ отменяет обработку выходов
+# ─────────────────────────────────────────────────────────────────────────────
+
+class TestCandleRefreshFailureDoesNotCancelExits(unittest.TestCase):
+    """Догрузка упала — выходы обязаны обработаться всё равно.
+
+    Предмет и почему тест понадобился только 30.07. Первый пункт открытого
+    чеклиста требовал подтвердить, что отказ загрузки по уникальному индексу
+    `candles_d1_one_per_msk_session` не отменяет обработку выходов. Разбор дал
+    результат СИЛЬНЕЕ требования: **загрузчик этот индекс нарушить не может по
+    построению.** Окно DELETE считается как
+    `[d1_bar_time(start), d1_bar_time(end+1))`, то есть множество всех метк с
+    московской датой в [start, end], а ключ индекса — ровно московская дата
+    (`market_time.d1_bar_time`, `loader.py:247-256`, indexdef). Окно в точности
+    накрывает ключи, которые тронет INSERT, поэтому конфликт недостижим — это и
+    есть результат ремонта долга №16, и границы окна отдельно покрыты
+    test_market_time_canon.
+
+    Значит проверять надо не индекс, а СУЩЕСТВО: живёт ли прогон, когда загрузка
+    падает по ЛЮБОЙ причине. Причин, до которых код обязан дожить, хватает и без
+    индекса: ISS недоступен, таймаут, чужой писатель нарушил индекс, битый ответ.
+    Такого теста не было ни одного.
+
+    Цена отсутствия: если исключение загрузчика уронит прогон, стоп открытой
+    позиции не сработает — тот же класс, что дефект №14, только вход в него
+    другой.
+    """
+
+    def setUp(self):
+        closes = _smooth(260)
+        closes[259] = 105.0            # свежий бар ниже стопа → выход обязателен
+        self.closes = closes
+        rows = _bars(closes)
+        self.times = [r["time"] for r in rows]
+        self.db = FakeDB(rows, state={"SBER": self.times[258]})
+        _seed_position(self.db, "SBER", entry=120.0, stop=110.0,
+                       opened_at=self.times[252])
+        self.runner, self.opened, self.closed = _make_runner(self.db, StubRules())
+
+        # Настоящий run(), но загрузчик швыряется. return_value НЕ подходит:
+        # предмет теста — именно исключение.
+        tg = MagicMock()
+        tg.send_notification = AsyncMock()
+        with patch.object(fwd, "save_candles_to_db",
+                          side_effect=RuntimeError("ISS 503 / нарушение уникального индекса")), \
+             patch.object(fwd, "TICKERS", ["SBER"]), \
+             patch.object(fwd.asyncpg, "connect", AsyncMock(return_value=self.db)), \
+             patch.dict(sys.modules, {"ui": MagicMock(), "ui.telegram_bot": tg}):
+            import asyncio
+            asyncio.run(self.runner.run())
+        self.tg = tg
+
+    def test_run_survives_the_failure(self):
+        """Прогон не падает: исключение загрузчика поймано."""
+        self.assertTrue(self.runner.events, "прогон обязан дойти до сводки")
+
+    def test_failure_is_visible_in_summary(self):
+        notes = [e for e in self.runner.events if "Догрузка свечей" in e]
+        self.assertEqual(len(notes), 1, "отказ загрузки обязан быть в сводке, а не в логе")
+        self.assertTrue(notes[0].startswith("⚠"), "отказ обязан быть помечен как тревожный")
+        self.assertIn("ISS 503", notes[0], "текст причины обязан доехать до человека")
+
+    def test_stop_loss_is_still_processed(self):
+        """ГЛАВНОЕ: выход обработан несмотря на отказ загрузки."""
+        self.assertEqual(len(self.closed), 1,
+                         "стоп обязан сработать: свежий бар уже лежит в БД, "
+                         "догрузка нужна не для него")
+        self.assertEqual(self.closed[0].exit_reason_type, ExitReasonType.STOP_LOSS)
+        self.assertEqual(self.closed[0].exit_price, fwd._dec(self.closes[259]))
+
+    def test_state_advanced_despite_the_failure(self):
+        """Состояние продвинуто — иначе завтра тот же бар судился бы повторно."""
+        self.assertEqual(self.db.state["SBER"], self.times[259])
+
+
 if __name__ == "__main__":
     unittest.main()

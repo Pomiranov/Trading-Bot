@@ -30,11 +30,19 @@ sys.path.insert(0, str(_ROOT / "bot"))
 from config import config
 from signals.rules_engine import RulesEngine
 
-# Семь скриптов долга №24 и файл правил, который каждый должен брать.
+# Скрипты долга №24 и файл правил, который каждый должен брать.
+#
+# Было СЕМЬ, стало ШЕСТЬ: `run_ab_backtest.py` удалён 30.07 (долги №37/№28) как
+# перекрытый `run_ab_tf_backtest.py --learn` — те же две стратегии A/B, 12 бумаг
+# вместо 4, три таймфрейма включая 1h, приколоченное окно из БД вместо
+# скользящего `date.today() - 200 дней` с MOEX ISS.
+#
+# Тест падает ЗАКОННО при добавлении или удалении измерительного скрипта: он
+# читает файлы с диска, и отсутствующий даёт FileNotFoundError. Тогда правится
+# этот словарь — сознательно, а не подгонкой (правило 2 §8 PROJECT_STATE).
 SCRIPTS = {
     "run_osc_oos_debug.py":  "rules_osc_range.yaml",
     "run_ab_tf_backtest.py": "rules_osc_range.yaml",
-    "run_ab_backtest.py":    "rules_osc_range.yaml",
     "run_ab_swing_stop.py":  "rules.yaml",
     "run_ab_trend_fix.py":   "rules.yaml",
     "run_wrd_backtest.py":   "rules_wrd_moex.yaml",

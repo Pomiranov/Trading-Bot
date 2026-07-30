@@ -34,7 +34,7 @@ from universe import (
     SAMPLE_START_2026_07,
     MEASUREMENT_UNIVERSE_2026_07, MEASUREMENT_UNIVERSE_2026_07_VERSION,
 )
-from backtest.candles import dsn, load_candles_db
+from backtest.candles import dsn, load_candles_db, window_note
 from backtest.engine import BacktestEngine, BacktestTrade
 from signals.rules_engine import RulesEngine
 
@@ -126,9 +126,12 @@ def main() -> None:
 
     data = asyncio.run(load_candles_db("1d", TICKERS, SAMPLE_START_2026_07))
     n_bars = sum(len(d) for d in data.values())
-    lo = min(d.index.min() for d in data.values())
-    hi = max(d.index.max() for d in data.values())
-    print(f"D1: {len(data)} тикеров, {n_bars} свечей, {lo.date()} → {hi.date()}")
+    print(f"D1: {len(data)} тикеров, {n_bars} свечей")
+    # Окно печатает window_note (одна копия расчёта). Было `lo.date() → hi.date()`,
+    # то есть НАИВНАЯ UTC-дата — третья из трёх дат бара и самая обманчивая: у D1 она
+    # равна «сессия − 1 день» у ВСЕХ строк (долг №26).
+    for line in window_note(data, SAMPLE_START_2026_07).splitlines():
+        print(f"  {line}")
 
     with tempfile.TemporaryDirectory(prefix="ab_trend_fix_") as tmp:
         variant_files = build_variant_files(Path(tmp))

@@ -21,16 +21,16 @@ import argparse
 import asyncio
 import logging
 import os
+from datetime import date
 
 import pandas as pd
 
 from config import config
 from universe import (
-    SAMPLE_START_2026_07,
-    sample_version,
+    SAMPLE_START_2026_07, SAMPLE_END_2026_07,
     MEASUREMENT_UNIVERSE_2026_07, MEASUREMENT_UNIVERSE_2026_07_VERSION,
 )
-from backtest.candles import dsn, load_candles_db
+from backtest.candles import dsn, load_candles_db, window_note
 from backtest.engine import BacktestEngine
 from signals.rules_engine import RulesEngine, classify_regime
 from signals.indicators import IndicatorEngine
@@ -53,16 +53,32 @@ DEFAULT_RULES = config.rules_dir / "rules_osc_range.yaml"
 # окно выборки стало ОБЯЗАТЕЛЬНЫМ аргументом, а пять копий одного запроса
 # были той же болезнью, что девять копий списка тикеров.
 
-def collect_trades(rules_file: Path, pm: bool = False) -> tuple[pd.DataFrame, dict]:
+def collect_trades(rules_file: Path, pm: bool = False,
+                   as_of: date | None = None) -> tuple[pd.DataFrame, dict, list]:
     """Прогнать бэктест по всем ТФ/тикерам.
 
-    Возвращает (DataFrame сделок, {(tf, ticker): пропущено фильтром даунтренда}).
+    Возвращает (DataFrame ЗАКРЫТЫХ сделок,
+                {(tf, ticker): пропущено фильтром даунтренда},
+                список позиций, открытых на краю данных).
+
+    Открытые в DataFrame и в CSV НЕ попадают (долг №25): они не сделки, а положение
+    дел на конце данных, и их результат ещё не определён. Идут отдельным списком и
+    печатаются отдельным блоком — так их нельзя случайно сложить в n/WR/PF/PnL.
+
+    Окно печатается ПО ТАЙМФРЕЙМАМ, а не одной строкой на прогон: на 2026-07-30
+    D1 доходит до сессии 30.07, а H4 стоит на 11.07 (свечи H4/H1 не догружались,
+    форвард качает только D1). Общая строка это различие скрыла бы, а оно объясняет,
+    почему обрезка конца в диапазоне после 11.07 меняет только D1-числа.
     """
     ind_engine = IndicatorEngine()
     rows = []
+    open_at_edge: list = []
     skipped: dict = {}
     for tf in TIMEFRAMES:
-        data = asyncio.run(load_candles_db(tf, TICKERS, SAMPLE_START_2026_07))
+        data = asyncio.run(load_candles_db(tf, TICKERS, SAMPLE_START_2026_07, as_of))
+        print(f"\n── {TF_LABEL[tf]} ──")
+        for line in window_note(data, SAMPLE_START_2026_07, as_of).splitlines():
+            print(f"  {line}")
         rules = RulesEngine(rules_file=rules_file)
         engine = BacktestEngine(
             universe_version=MEASUREMENT_UNIVERSE_2026_07_VERSION,
@@ -91,8 +107,19 @@ def collect_trades(rules_file: Path, pm: bool = False) -> tuple[pd.DataFrame, di
                     "regime":  classify_regime(adx) or "unknown",
                     "sample":  "IS" if t.entry_date < IS_END else "OOS",
                 })
+            for t in res.open_trades_at_end:
+                open_at_edge.append({
+                    "tf":          TF_LABEL[tf],
+                    "ticker":      ticker,
+                    "entry":       t.entry_date,
+                    "entry_price": t.entry_price,
+                    "shares":      t.shares,
+                    "last_bar":    df.index[-1],
+                    "unrealized":  round(res.unrealized_pnl, 2),
+                    "sample":      "IS" if t.entry_date < IS_END else "OOS",
+                })
         print(f"  {TF_LABEL[tf]}: прогнано {len(data)} тикеров")
-    return pd.DataFrame(rows), skipped
+    return pd.DataFrame(rows), skipped, open_at_edge
 
 
 def stats(df: pd.DataFrame) -> str:
@@ -153,6 +180,9 @@ def main() -> None:
     ap.add_argument("--label", default="baseline")
     ap.add_argument("--pm", action="store_true", help="ведение позиции: безубыток +1R, цель 2R")
     ap.add_argument("--show-oos", action="store_true", help="показать out-of-sample (только финал)")
+    ap.add_argument("--as-of", type=date.fromisoformat, default=None, metavar="YYYY-MM-DD",
+                    help="обрезать выборку по эту МОСКОВСКУЮ СЕССИЮ включительно "
+                         "(не метку бара). Без флага — по самые свежие данные")
     args = ap.parse_args()
 
     # Отпечатки НАБОРА и ОКНА печатаются наравне с файлом правил: отчёт без них
@@ -162,12 +192,34 @@ def main() -> None:
     print(f"Правила: {args.rules}\nМетка: {args.label}  pm={args.pm}")
     print(f"Набор: MEASUREMENT_UNIVERSE_2026_07, {len(TICKERS)} бумаг, "
           f"отпечаток {MEASUREMENT_UNIVERSE_2026_07_VERSION}")
-    print(f"Окно: с {SAMPLE_START_2026_07.isoformat()}, "
-          f"отпечаток {sample_version(SAMPLE_START_2026_07)}")
-    trades, skipped = collect_trades(args.rules, pm=args.pm)
+    if args.as_of is None:
+        # Константа названа ЗДЕСЬ, а не только в universe.py, чтобы у неё был живой
+        # потребитель: приколоченная дата, которую никто не печатает, гниёт молча.
+        print(f"Конец окна НЕ приколочен. Опорные числа эры 2026-07 считаны по "
+              f"сессию {SAMPLE_END_2026_07.isoformat()}; воспроизвести: "
+              f"--as-of {SAMPLE_END_2026_07.isoformat()}")
+    trades, skipped, open_at_edge = collect_trades(args.rules, pm=args.pm,
+                                                   as_of=args.as_of)
     out_csv = Path(__file__).resolve().parent / f"osc_debug_{args.label}.csv"
     trades.to_csv(out_csv, index=False)
-    print(f"\nСделки сохранены: {out_csv} ({len(trades)} шт.)")
+    print(f"\nЗакрытые сделки сохранены: {out_csv} ({len(trades)} шт.)")
+
+    # Блок открытых печатается ВСЕГДА, даже пустой: «открытых нет» — это тоже
+    # результат, и его отсутствие в отчёте неотличимо от «забыли посмотреть».
+    # Именно на этом стоял долг №25: тройка с фильтром воспроизводилась ровно
+    # потому, что открытых там не было, — а прочитать это было негде.
+    print(f"\n{'─' * 64}")
+    if not open_at_edge:
+        print("  Открытых позиций на краю данных: НЕТ — n/WR/PF/PnL полны")
+    else:
+        print(f"  ОТКРЫТО НА КРАЮ ДАННЫХ: {len(open_at_edge)} — в n/WR/PF/PnL НЕ входят")
+        print("  (долг №25: до 30.07 они закрывались по последнему бару и дрейфовали)")
+        for o in open_at_edge:
+            print(f"    {o['tf']} {o['ticker']:<6} вход {o['entry']} по {o['entry_price']:.2f} "
+                  f"× {o['shares']} шт. [{o['sample']}]")
+            print(f"      последний бар {o['last_bar']}, "
+                  f"нереализовано {o['unrealized']:+,.2f} руб.")
+    print(f"{'─' * 64}")
     if skipped:
         total = sum(skipped.values())
         print(f"Отклонено фильтром структурного даунтренда: {total} BUY-баров")

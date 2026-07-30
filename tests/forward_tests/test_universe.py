@@ -18,9 +18,10 @@ _ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(_ROOT))
 sys.path.insert(0, str(_ROOT / "bot"))
 
-from datetime import date
+from datetime import date, datetime, timedelta, timezone
 
 from universe import (
+    SAMPLE_END_2026_07,
     SAMPLE_START_2026_07,
     SAMPLE_START_2026_07_VERSION,
     sample_version,
@@ -344,17 +345,59 @@ class TestMeasurementScriptsPassTheWindow(unittest.TestCase):
     невоспроизводимый результат.
     """
 
+    # ВОСЕМЬ, а не пять. `run_ab_wrd_sar.py` добавлен 30.07: он своей копии запроса
+    # не имел и потому в исходный список пяти не попал — он брал загрузчик из
+    # run_wrd_backtest по цепочке ре-экспорта и звал его БЕЗ окна и БЕЗ набора.
+    # С 30.07 падал TypeError, то есть был мёртв, и поймать это было нечем: тест
+    # перечислял скрипты вручную. Урок тот же, что у долга №37: список, собранный
+    # руками, проверяет ровно то, что в него вписали.
+    # Тест падает ЗАКОННО при добавлении/удалении измерительного скрипта — тогда
+    # правится список (правило 2 §8 PROJECT_STATE).
     SCRIPTS = ("run_osc_oos_debug.py", "run_ab_tf_backtest.py",
                "run_ab_swing_stop.py", "run_ab_trend_fix.py",
-               "run_wrd_backtest.py")
+               "run_wrd_backtest.py", "run_ab_wrd_sar.py")
+
+    # Скрипты, которые окно НЕ передают и передавать не обязаны. Список ОБЯЗАН быть
+    # пустым после удаления двух ISS-скриптов (долги №37/№28, этап В сессии 30.07):
+    # они брали свечи не из candles, а прямо с MOEX ISS со скользящим окном
+    # `date.today() - 200 дней`, и приколачивание одного start для них было бы no-op
+    # из-за `df.tail(CANDLES_MAX)` — окно продолжило бы скользить от конца.
+    NOT_ON_THE_LOADER = ("run_ab_backtest.py", "run_learning_backtest.py")
+
+    def test_no_measurement_script_is_missing_from_the_list(self):
+        """Список собран руками — проверить, что каталог с ним не разошёлся.
+
+        Ровно этого не было при закрытии №37: восьмой потребитель загрузчика
+        существовал, в списке отсутствовал, падал TypeError — и поймать было нечем.
+
+        Тест падает ЗАКОННО при появлении нового `run_*.py` в bot/backtest: тогда
+        решается, идёт он в SCRIPTS (берёт выборку) или в NOT_ON_THE_LOADER (не
+        берёт), и решение записывается. Молча пройти нельзя — в этом смысл.
+        """
+        found = {p.name for p in (_ROOT / "bot" / "backtest").glob("run_*.py")}
+        # run_forward_d1.py живёт в bot/, выборки не берёт (см. довод 1 в universe.py)
+        self.assertEqual(found, set(self.SCRIPTS) | set(self.NOT_ON_THE_LOADER),
+                         "каталог измерительных скриптов разошёлся со списком теста")
 
     def test_each_script_passes_the_window_explicitly(self):
+        """Проверяется ВЫЗОВ, а не упоминание константы в файле.
+
+        Усилено 30.07 внесением дефекта: прежняя версия искала строку
+        `SAMPLE_START_2026_07` где угодно в исходнике и потому проходила на скрипте,
+        который константу печатает в шапке, но в загрузчик НЕ передаёт. Проверка
+        наличия имени в файле — не проверка его использования.
+        """
         for name in self.SCRIPTS:
             src = (_ROOT / "bot" / "backtest" / name).read_text(encoding="utf-8")
-            self.assertIn("SAMPLE_START_2026_07", src,
-                          f"{name}: окно выборки не передаётся")
             self.assertIn("from backtest.candles import", src,
                           f"{name}: обязан брать общий загрузчик, а не свою копию")
+            calls = [ln.strip() for ln in src.splitlines()
+                     if "load_candles_db(" in ln and not ln.lstrip().startswith("#")
+                     and "import" not in ln]
+            self.assertTrue(calls, f"{name}: вызова load_candles_db не найдено")
+            for call in calls:
+                self.assertIn("SAMPLE_START_2026_07", call,
+                              f"{name}: окно не передано в вызов: {call}")
 
     def test_no_script_keeps_its_own_loader(self):
         """Пять копий одного запроса были той же болезнью, что девять копий
@@ -380,9 +423,135 @@ class TestMeasurementScriptsPassTheWindow(unittest.TestCase):
         src = (_ROOT / "bot" / "backtest" / "candles.py").read_text(encoding="utf-8")
         self.assertIn("time >= $3", src,
                       "без фильтра в запросе обязательный аргумент бесполезен")
+        self.assertIn("time < $4", src,
+                      "без второго фильтра конец окна не приколачивается ничем")
         self.assertIn("d1_bar_time", src,
                       "граница обязана быть МОСКОВСКОЙ полуночью: с UTC-полуночью "
                       "первый бар окна отрезался бы (канон долга №16)")
+
+
+class TestWindowEnd(unittest.TestCase):
+    """Конец окна: СЕССИЯ включительно, а не метка бара и не наивная UTC-дата.
+
+    Заведено 30.07. Ошибка в один день здесь неотличима от отсутствия эффекта:
+    прогон с неверной границей напечатает правдоподобные числа, просто другие.
+    Поэтому граница проверяется на чистой функции, а не через прогон с БД.
+    """
+
+    def test_no_end_means_no_upper_bound(self):
+        from backtest.candles import window_bounds
+        since, until = window_bounds(SAMPLE_START_2026_07)
+        self.assertIsNone(until)
+        self.assertEqual(since.astimezone(timezone.utc).isoformat(),
+                         "2023-07-11T21:00:00+00:00",
+                         "левый край — МОСКОВСКАЯ полночь начала (канон долга №16)")
+
+    def test_last_session_is_included_whole(self):
+        """Главное свойство: бары ПОСЛЕДНЕЙ сессии входят все, а следующей — ни один.
+
+        С `time <= d1_bar_time(end)` вместо `<` от последней сессии остался бы ровно
+        один бар. На D1 незаметно (у сессии один бар), на H4/H1 — обрезанный день.
+        """
+        from backtest.candles import window_bounds
+        from market_time import d1_bar_time
+        end = date(2026, 7, 29)
+        _, until = window_bounds(SAMPLE_START_2026_07, end)
+        last_bar_of_end   = d1_bar_time(end)                       # сессия 29.07
+        first_bar_of_next = d1_bar_time(end + timedelta(days=1))   # сессия 30.07
+        self.assertLess(last_bar_of_end, until, "бар последней сессии обязан войти")
+        self.assertGreaterEqual(first_bar_of_next, until,
+                                "бар следующей сессии обязан НЕ войти")
+
+    def test_one_day_shift_moves_the_boundary_by_one_day(self):
+        from backtest.candles import window_bounds
+        _, a = window_bounds(SAMPLE_START_2026_07, date(2026, 7, 29))
+        _, b = window_bounds(SAMPLE_START_2026_07, date(2026, 7, 28))
+        self.assertEqual(a - b, timedelta(days=1))
+
+    def test_end_as_string_is_rejected(self):
+        from backtest.candles import window_bounds
+        with self.assertRaises(TypeError):
+            window_bounds(SAMPLE_START_2026_07, "2026-07-29")
+
+    def test_end_before_start_is_rejected(self):
+        """Пустое окно — отказ, а не ноль сделок: ноль читается как результат."""
+        from backtest.candles import window_bounds
+        with self.assertRaises(ValueError):
+            window_bounds(date(2026, 7, 29), date(2023, 7, 12))
+
+    def test_pinned_end_of_the_measurement_era(self):
+        """Литерал, как EXPECTED_12/20. Тихая правка ломает тест.
+
+        Падает ЗАКОННО при сознательном сдвиге эры измерений — тогда правятся оба
+        места: universe.py и docs/PROJECT_STATE.md.
+        """
+        self.assertEqual(SAMPLE_END_2026_07, date(2026, 7, 29))
+        self.assertGreater(SAMPLE_END_2026_07, SAMPLE_START_2026_07)
+
+
+class TestWindowNoteNamesAllThreeDates(unittest.TestCase):
+    """Три даты на один бар, и все три уже путались в документах проекта.
+
+    Пометка «данные по сессию 28.07» у +74 054.52 не выходит ни из сессии (27.07),
+    ни из наивной UTC-даты (26.07) — это ДАТА ПРОГОНА. Рядом +77 851.57 помечен
+    «по сессию 29.07», и там это действительно последняя сессия. Одно слово, два
+    смысла (замерено 30.07 прогоном обоих окон).
+
+    Стенд строится ОТНОСИТЕЛЬНО сегодняшнего дня, поэтому тест не привязан к дате.
+    """
+
+    def _frame(self, sessions):
+        import pandas as pd
+        from market_time import d1_bar_time
+        marks = [d1_bar_time(s) for s in sessions]
+        naive = [m.astimezone(timezone.utc).replace(tzinfo=None) for m in marks]
+        return pd.DataFrame(
+            {"open": [1.0] * len(marks), "high": [1.0] * len(marks),
+             "low": [1.0] * len(marks), "close": [1.0] * len(marks),
+             "volume": [1] * len(marks)},
+            index=pd.DatetimeIndex(naive, name="datetime"),
+        )
+
+    def setUp(self):
+        from market_time import MSK
+        from backtest.candles import window_note
+        self.today = datetime.now(MSK).date()
+        sessions = [self.today - timedelta(days=2),
+                    self.today - timedelta(days=1),
+                    self.today]
+        self.note = window_note({"SBER": self._frame(sessions)},
+                                SAMPLE_START_2026_07)
+
+    def test_run_date_is_named(self):
+        self.assertIn(f"Прогон: {self.today.isoformat()}", self.note)
+
+    def test_last_loaded_bar_shows_session_and_internal_mark(self):
+        """Сессия и метка стоят РЯДОМ — спутать их после этого нельзя."""
+        from market_time import d1_bar_time
+        mark = d1_bar_time(self.today).astimezone(timezone.utc)
+        self.assertIn(f"{mark.strftime('%Y-%m-%d %H:%M')}+00 "
+                      f"(сессия {self.today.isoformat()})", self.note)
+
+    def test_last_closed_session_is_separate_from_last_loaded(self):
+        """Именно на этом расхождении стоял долг №25: движок считает НЕ последний бар.
+
+        В день прогона последний загруженный бар относится к формирующейся сессии, а
+        считает движок предыдущую. Печатать только одну из двух — значит подписать
+        число не той датой.
+        """
+        closed = [ln for ln in self.note.splitlines() if "ЗАКРЫТАЯ" in ln]
+        self.assertEqual(len(closed), 1, "строка про закрытую сессию обязана быть одна")
+        yesterday = (self.today - timedelta(days=1)).isoformat()
+        self.assertIn(f"(сессия {yesterday})", closed[0])
+        self.assertNotIn(self.today.isoformat(), closed[0],
+                         "формирующаяся сессия не может быть последней закрытой")
+
+    def test_fingerprint_of_the_start_is_printed(self):
+        self.assertIn(SAMPLE_START_2026_07_VERSION, self.note)
+
+    def test_open_end_is_announced_loudly(self):
+        """Без --as-of шапка обязана сказать, что конец не приколочен."""
+        self.assertIn("конец не приколочен", self.note)
 
 
 if __name__ == "__main__":

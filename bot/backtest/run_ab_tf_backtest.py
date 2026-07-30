@@ -26,7 +26,7 @@ from universe import (
     SAMPLE_START_2026_07,
     MEASUREMENT_UNIVERSE_2026_07, MEASUREMENT_UNIVERSE_2026_07_VERSION,
 )
-from backtest.candles import dsn, load_candles_db
+from backtest.candles import dsn, load_candles_db, window_note
 from backtest.engine import BacktestEngine
 from signals.rules_engine import RulesEngine
 from learning.trading_orchestrator import TradingOrchestrator
@@ -68,6 +68,10 @@ def main() -> None:
         data = asyncio.run(load_candles_db(tf, TICKERS, SAMPLE_START_2026_07))
         n_bars = sum(len(d) for d in data.values())
         print(f"\n{'═' * 60}\n  ТАЙМФРЕЙМ {TF_LABEL[tf]}: {len(data)} тикеров, {n_bars} свечей\n{'═' * 60}")
+        # Окно ПО ТАЙМФРЕЙМАМ: на 30.07 D1 доходит до сессии 30.07, а H4/H1 стоят
+        # на 11.07 — свечи этих ТФ не догружались, форвард качает только D1.
+        for line in window_note(data, SAMPLE_START_2026_07).splitlines():
+            print(f"  {line}")
 
         for base, rules_file in [("trend_moex", None), ("osc_range_moex", OSC_RULES_FILE)]:
             strategy_id = f"{base}_{TF_LABEL[tf].lower()}"

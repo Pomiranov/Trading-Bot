@@ -21,16 +21,16 @@ import argparse
 import asyncio
 import logging
 import os
+from datetime import date
 
 import pandas as pd
 
 from config import config
 from universe import (
-    SAMPLE_START_2026_07,
-    sample_version,
+    SAMPLE_START_2026_07, SAMPLE_END_2026_07,
     MEASUREMENT_UNIVERSE_2026_07, MEASUREMENT_UNIVERSE_2026_07_VERSION,
 )
-from backtest.candles import dsn, load_candles_db
+from backtest.candles import dsn, load_candles_db, window_note
 from backtest.engine import BacktestEngine
 from signals.rules_engine import RulesEngine, classify_regime
 from signals.indicators import IndicatorEngine
@@ -53,16 +53,25 @@ DEFAULT_RULES = config.rules_dir / "rules_osc_range.yaml"
 # окно выборки стало ОБЯЗАТЕЛЬНЫМ аргументом, а пять копий одного запроса
 # были той же болезнью, что девять копий списка тикеров.
 
-def collect_trades(rules_file: Path, pm: bool = False) -> tuple[pd.DataFrame, dict]:
+def collect_trades(rules_file: Path, pm: bool = False,
+                   as_of: date | None = None) -> tuple[pd.DataFrame, dict]:
     """Прогнать бэктест по всем ТФ/тикерам.
 
     Возвращает (DataFrame сделок, {(tf, ticker): пропущено фильтром даунтренда}).
+
+    Окно печатается ПО ТАЙМФРЕЙМАМ, а не одной строкой на прогон: на 2026-07-30
+    D1 доходит до сессии 30.07, а H4 стоит на 11.07 (свечи H4/H1 не догружались,
+    форвард качает только D1). Общая строка это различие скрыла бы, а оно объясняет,
+    почему обрезка конца в диапазоне после 11.07 меняет только D1-числа.
     """
     ind_engine = IndicatorEngine()
     rows = []
     skipped: dict = {}
     for tf in TIMEFRAMES:
-        data = asyncio.run(load_candles_db(tf, TICKERS, SAMPLE_START_2026_07))
+        data = asyncio.run(load_candles_db(tf, TICKERS, SAMPLE_START_2026_07, as_of))
+        print(f"\n── {TF_LABEL[tf]} ──")
+        for line in window_note(data, SAMPLE_START_2026_07, as_of).splitlines():
+            print(f"  {line}")
         rules = RulesEngine(rules_file=rules_file)
         engine = BacktestEngine(
             universe_version=MEASUREMENT_UNIVERSE_2026_07_VERSION,
@@ -153,6 +162,9 @@ def main() -> None:
     ap.add_argument("--label", default="baseline")
     ap.add_argument("--pm", action="store_true", help="ведение позиции: безубыток +1R, цель 2R")
     ap.add_argument("--show-oos", action="store_true", help="показать out-of-sample (только финал)")
+    ap.add_argument("--as-of", type=date.fromisoformat, default=None, metavar="YYYY-MM-DD",
+                    help="обрезать выборку по эту МОСКОВСКУЮ СЕССИЮ включительно "
+                         "(не метку бара). Без флага — по самые свежие данные")
     args = ap.parse_args()
 
     # Отпечатки НАБОРА и ОКНА печатаются наравне с файлом правил: отчёт без них
@@ -162,9 +174,13 @@ def main() -> None:
     print(f"Правила: {args.rules}\nМетка: {args.label}  pm={args.pm}")
     print(f"Набор: MEASUREMENT_UNIVERSE_2026_07, {len(TICKERS)} бумаг, "
           f"отпечаток {MEASUREMENT_UNIVERSE_2026_07_VERSION}")
-    print(f"Окно: с {SAMPLE_START_2026_07.isoformat()}, "
-          f"отпечаток {sample_version(SAMPLE_START_2026_07)}")
-    trades, skipped = collect_trades(args.rules, pm=args.pm)
+    if args.as_of is None:
+        # Константа названа ЗДЕСЬ, а не только в universe.py, чтобы у неё был живой
+        # потребитель: приколоченная дата, которую никто не печатает, гниёт молча.
+        print(f"Конец окна НЕ приколочен. Опорные числа эры 2026-07 считаны по "
+              f"сессию {SAMPLE_END_2026_07.isoformat()}; воспроизвести: "
+              f"--as-of {SAMPLE_END_2026_07.isoformat()}")
+    trades, skipped = collect_trades(args.rules, pm=args.pm, as_of=args.as_of)
     out_csv = Path(__file__).resolve().parent / f"osc_debug_{args.label}.csv"
     trades.to_csv(out_csv, index=False)
     print(f"\nСделки сохранены: {out_csv} ({len(trades)} шт.)")

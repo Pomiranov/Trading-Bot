@@ -26,10 +26,22 @@ import time
 import pandas as pd
 
 from config import config
+from universe import SAMPLE_START_2026_07, MEASUREMENT_UNIVERSE_2026_07
 from backtest.engine import BacktestEngine, BacktestTrade
-from backtest.run_wrd_backtest import load_candles_db, metrics, IS_END
+from backtest.candles import load_candles_db, window_note
+from backtest.run_wrd_backtest import metrics, IS_END
 from signals.rules_engine import RulesEngine
 
+# ВОСЬМОЙ потребитель общего загрузчика, пропущенный при закрытии долга №37.
+# Долг перевёл ПЯТЬ скриптов со своей копией запроса, а этот копии не имел — он
+# импортировал загрузчик из run_wrd_backtest по цепочке ре-экспорта, поэтому в
+# список пяти не попал и в тест окна (tests/forward_tests/test_universe.py) тоже.
+# Результат: с 30.07 он падал `TypeError` на `load_candles_db("1d")` — окна нет,
+# набора нет. Fail-loud отработал как задуман (громко, а не молча более широкой
+# выборкой), но скрипт всё это время был мёртв, и заметить это было нечем.
+# Ре-экспорт заменён прямым импортом: цепочка «скрипт → скрипт → модуль» и была
+# тем, что спрятало пропуск.
+TICKERS = list(MEASUREMENT_UNIVERSE_2026_07)
 RULES_FILE = config.rules_dir / "rules_wrd_moex.yaml"
 
 VARIANTS = [
@@ -66,11 +78,14 @@ def exit_breakdown(trades: list[BacktestTrade], last_bar: dict[str, pd.Timestamp
 def main() -> None:
     logging.basicConfig(level=logging.ERROR)
 
-    data = asyncio.run(load_candles_db("1d"))
+    data = asyncio.run(load_candles_db("1d", TICKERS, SAMPLE_START_2026_07))
     n_bars = sum(len(d) for d in data.values())
-    lo = min(d.index.min() for d in data.values())
-    hi = max(d.index.max() for d in data.values())
-    print(f"D1: {len(data)} тикеров, {n_bars} свечей, {lo.date()} → {hi.date()}")
+    print(f"D1: {len(data)} тикеров, {n_bars} свечей")
+    # Окно печатает window_note (одна копия расчёта). Было `lo.date() → hi.date()`,
+    # то есть НАИВНАЯ UTC-дата — третья из трёх дат бара и самая обманчивая: у D1 она
+    # равна «сессия − 1 день» у ВСЕХ строк (долг №26).
+    for line in window_note(data, SAMPLE_START_2026_07).splitlines():
+        print(f"  {line}")
     last_bar = {ticker: df.index[-1] for ticker, df in data.items()}
 
     all_trades: dict[str, list[BacktestTrade]] = {}

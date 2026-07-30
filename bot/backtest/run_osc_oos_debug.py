@@ -26,8 +26,11 @@ import pandas as pd
 
 from config import config
 from universe import (
+    SAMPLE_START_2026_07,
+    sample_version,
     MEASUREMENT_UNIVERSE_2026_07, MEASUREMENT_UNIVERSE_2026_07_VERSION,
 )
+from backtest.candles import dsn, load_candles_db
 from backtest.engine import BacktestEngine
 from signals.rules_engine import RulesEngine, classify_regime
 from signals.indicators import IndicatorEngine
@@ -46,46 +49,9 @@ IS_END = pd.Timestamp("2025-01-01")   # граница in-sample / out-of-sample
 DEFAULT_RULES = config.rules_dir / "rules_osc_range.yaml"
 
 
-def dsn() -> str:
-    from dotenv import load_dotenv
-    load_dotenv()
-    return "postgresql://{}:{}@{}:{}/{}".format(
-        os.getenv("DB_USER", "trader"), os.getenv("DB_PASSWORD", ""),
-        os.getenv("DB_HOST", "localhost"), os.getenv("DB_PORT", "5432"),
-        os.getenv("DB_NAME", "trading_bot"))
-
-
-async def load_candles_db(timeframe: str) -> dict[str, pd.DataFrame]:
-    import asyncpg
-    conn = await asyncpg.connect(dsn())
-    data = {}
-    try:
-        for ticker in TICKERS:
-            rows = await conn.fetch("""
-                SELECT time, open, high, low, close, volume
-                FROM candles
-                WHERE ticker = $1 AND timeframe = $2
-                ORDER BY time
-            """, ticker, timeframe)
-            if not rows:
-                continue
-            df = pd.DataFrame(
-                {
-                    "open":   [float(r["open"]) for r in rows],
-                    "high":   [float(r["high"]) for r in rows],
-                    "low":    [float(r["low"]) for r in rows],
-                    "close":  [float(r["close"]) for r in rows],
-                    "volume": [int(r["volume"]) for r in rows],
-                },
-                index=pd.DatetimeIndex(
-                    [r["time"].replace(tzinfo=None) for r in rows], name="datetime"
-                ),
-            )
-            data[ticker] = df
-    finally:
-        await conn.close()
-    return data
-
+# dsn() и load_candles_db() вынесены в backtest/candles.py (долг №37):
+# окно выборки стало ОБЯЗАТЕЛЬНЫМ аргументом, а пять копий одного запроса
+# были той же болезнью, что девять копий списка тикеров.
 
 def collect_trades(rules_file: Path, pm: bool = False) -> tuple[pd.DataFrame, dict]:
     """Прогнать бэктест по всем ТФ/тикерам.
@@ -96,7 +62,7 @@ def collect_trades(rules_file: Path, pm: bool = False) -> tuple[pd.DataFrame, di
     rows = []
     skipped: dict = {}
     for tf in TIMEFRAMES:
-        data = asyncio.run(load_candles_db(tf))
+        data = asyncio.run(load_candles_db(tf, TICKERS, SAMPLE_START_2026_07))
         rules = RulesEngine(rules_file=rules_file)
         engine = BacktestEngine(
             universe_version=MEASUREMENT_UNIVERSE_2026_07_VERSION,
@@ -189,11 +155,15 @@ def main() -> None:
     ap.add_argument("--show-oos", action="store_true", help="показать out-of-sample (только финал)")
     args = ap.parse_args()
 
-    # Отпечаток НАБОРА печатается наравне с файлом правил: отчёт без него через
-    # полгода нечитаем — по нему нельзя сказать, на каких бумагах он посчитан.
+    # Отпечатки НАБОРА и ОКНА печатаются наравне с файлом правил: отчёт без них
+    # через полгода нечитаем — по нему нельзя сказать ни на каких бумагах он
+    # посчитан, ни с какого момента. Окно добавлено 30.07 (долг №37): до этого
+    # конец выборки назывался, а начало — нет.
     print(f"Правила: {args.rules}\nМетка: {args.label}  pm={args.pm}")
     print(f"Набор: MEASUREMENT_UNIVERSE_2026_07, {len(TICKERS)} бумаг, "
           f"отпечаток {MEASUREMENT_UNIVERSE_2026_07_VERSION}")
+    print(f"Окно: с {SAMPLE_START_2026_07.isoformat()}, "
+          f"отпечаток {sample_version(SAMPLE_START_2026_07)}")
     trades, skipped = collect_trades(args.rules, pm=args.pm)
     out_csv = Path(__file__).resolve().parent / f"osc_debug_{args.label}.csv"
     trades.to_csv(out_csv, index=False)

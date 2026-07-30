@@ -31,8 +31,10 @@ import yaml
 
 from config import config
 from universe import (
+    SAMPLE_START_2026_07,
     MEASUREMENT_UNIVERSE_2026_07, MEASUREMENT_UNIVERSE_2026_07_VERSION,
 )
+from backtest.candles import dsn, load_candles_db
 from backtest.engine import BacktestEngine, BacktestTrade
 from signals.rules_engine import RulesEngine
 
@@ -83,46 +85,9 @@ def build_variant_files(tmp_dir: Path) -> dict[str, Path]:
     return paths
 
 
-def dsn() -> str:
-    from dotenv import load_dotenv
-    load_dotenv()
-    return "postgresql://{}:{}@{}:{}/{}".format(
-        os.getenv("DB_USER", "trader"), os.getenv("DB_PASSWORD", ""),
-        os.getenv("DB_HOST", "localhost"), os.getenv("DB_PORT", "5432"),
-        os.getenv("DB_NAME", "trading_bot"))
-
-
-async def load_candles_db(timeframe: str = "1d") -> dict[str, pd.DataFrame]:
-    """Свечи всех тикеров одного таймфрейма из таблицы candles (как в run_ab_tf)."""
-    import asyncpg
-    conn = await asyncpg.connect(dsn())
-    data = {}
-    try:
-        for ticker in TICKERS:
-            rows = await conn.fetch("""
-                SELECT time, open, high, low, close, volume
-                FROM candles
-                WHERE ticker = $1 AND timeframe = $2
-                ORDER BY time
-            """, ticker, timeframe)
-            if not rows:
-                continue
-            data[ticker] = pd.DataFrame(
-                {
-                    "open":   [float(r["open"]) for r in rows],
-                    "high":   [float(r["high"]) for r in rows],
-                    "low":    [float(r["low"]) for r in rows],
-                    "close":  [float(r["close"]) for r in rows],
-                    "volume": [int(r["volume"]) for r in rows],
-                },
-                index=pd.DatetimeIndex(
-                    [r["time"].replace(tzinfo=None) for r in rows], name="datetime"
-                ),
-            )
-    finally:
-        await conn.close()
-    return data
-
+# dsn() и load_candles_db() вынесены в backtest/candles.py (долг №37):
+# окно выборки стало ОБЯЗАТЕЛЬНЫМ аргументом, а пять копий одного запроса
+# были той же болезнью, что девять копий списка тикеров.
 
 def metrics(trades: list[BacktestTrade]) -> dict:
     n      = len(trades)
@@ -159,7 +124,7 @@ def main() -> None:
     import logging
     logging.basicConfig(level=logging.ERROR)
 
-    data = asyncio.run(load_candles_db("1d"))
+    data = asyncio.run(load_candles_db("1d", TICKERS, SAMPLE_START_2026_07))
     n_bars = sum(len(d) for d in data.values())
     lo = min(d.index.min() for d in data.values())
     hi = max(d.index.max() for d in data.values())

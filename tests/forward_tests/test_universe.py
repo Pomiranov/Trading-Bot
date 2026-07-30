@@ -18,7 +18,12 @@ _ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(_ROOT))
 sys.path.insert(0, str(_ROOT / "bot"))
 
+from datetime import date
+
 from universe import (
+    SAMPLE_START_2026_07,
+    SAMPLE_START_2026_07_VERSION,
+    sample_version,
     FORWARD_TICKERS,
     FORWARD_TICKERS_ENTERED_AT,
     FORWARD_TICKERS_FIXED_AT,
@@ -38,8 +43,20 @@ from universe import (
 # два места, и оба надо править сознательно.
 EXPECTED_12 = "753d9f90fef9401e"
 EXPECTED_20 = "0b2df2ce43ffaa25"
+# Отпечаток ОКНА выборки (долг №37). Литерал, как EXPECTED_12/20:
+# приколоченное значение, а не вычисленное из данных.
+EXPECTED_WINDOW = "03d19a4525d7d6c5"
 
 NEW_8 = ("AFLT", "FLOT", "MTLR", "MTSS", "OZON", "PHOR", "SMLT", "VKCO")
+
+
+def _top_level_imports(code: str) -> set[str]:
+    """Модули верхнего уровня, которые импортирует исходник."""
+    import re
+    mods = set()
+    for m in re.finditer(r"^(?:import|from)\s+([A-Za-z_][\w.]*)", code, re.M):
+        mods.add(m.group(1).split(".")[0])
+    return mods
 
 
 class TestPinnedUniverseUnchanged(unittest.TestCase):
@@ -263,6 +280,110 @@ class TestUniverseStampedOnTrades(unittest.TestCase):
         self.assertIn("universe_version", text.split("INSERT INTO trades")[1].split(") VALUES")[0],
                       "колонка обязана быть в списке INSERT, иначе поле никуда не доедет")
         self.assertIn("trade.universe_version", text)
+
+
+class TestSampleWindowIsPinned(unittest.TestCase):
+    """Окно выборки приколочено и обязательно (долг №37).
+
+    До 30.07 дата НАЧАЛА выборки не фиксировалась нигде: все семь измерительных
+    скриптов брали из БД всё, что лежит. Опорная тройка воспроизводилась ровно
+    потому, что у 12 действующих первый бар оказался 2023-07-12, — а не потому,
+    что это записано. Докачай кто-нибудь историю глубже, и число изменилось бы
+    МОЛЧА.
+
+    ⚠ Утверждения про литерал отпечатка ЗАВИСЯТ ОТ ЗНАЧЕНИЯ окна (правило 2 §8):
+    падают законно при сознательном сдвиге окна, и тогда обязаны быть обновлены
+    вместе с перемером всех опорных чисел.
+    """
+
+    def test_window_start_is_a_pinned_literal(self):
+        self.assertEqual(SAMPLE_START_2026_07, date(2023, 7, 12))
+        self.assertEqual(SAMPLE_START_2026_07_VERSION, EXPECTED_WINDOW)
+
+    def test_window_is_not_computed_from_data(self):
+        """Авторасчёт из max(first_bar) запрещён: он молча меняется при догрузке.
+
+        Проверяется по исходнику, потому что предмет — именно способ получения
+        значения, а не само значение: вычисленное из БД окно дало бы сегодня ту же
+        дату и тест по значению прошёл бы.
+
+        Утверждение СТРУКТУРНОЕ, а не текстовое, и это важно: искать подстроки
+        «max(first_bar» или «config» нельзя — они законно стоят в комментарии и
+        докстринге, объясняющих запрет и четвёртый набор. Обе первые версии этого
+        теста упали именно на них. Настоящая гарантия одна: universe.py физически
+        НЕ УМЕЕТ ходить в данные, потому что не импортирует ничего, кроме stdlib.
+        """
+        src = (_ROOT / "bot" / "universe.py").read_text(encoding="utf-8")
+        self.assertIn("SAMPLE_START_2026_07 = date(2023, 7, 12)", src,
+                      "окно обязано быть литералом")
+        self.assertEqual(_top_level_imports(src), {"hashlib", "datetime"},
+                         "импорт-бюджет universe.py: только stdlib. Появление "
+                         "asyncpg/psycopg2/config означает, что окно стало "
+                         "вычисляемым — то есть молча меняющимся при догрузке")
+
+    def test_fingerprint_namespaces_do_not_collide(self):
+        """Отпечаток окна и отпечаток набора живут в РАЗНЫХ пространствах.
+
+        Иначе набор из одного тикера с именем «2023-07-12» дал бы тот же
+        отпечаток, что окно, — безвредно ровно до дня, когда кто-то сравнит их
+        напрямую.
+        """
+        self.assertNotEqual(sample_version(SAMPLE_START_2026_07),
+                            universe_version(("2023-07-12",)))
+
+    def test_one_day_shift_changes_the_fingerprint(self):
+        self.assertNotEqual(sample_version(date(2023, 7, 12)),
+                            sample_version(date(2023, 7, 13)))
+
+
+class TestMeasurementScriptsPassTheWindow(unittest.TestCase):
+    """Fail-loud: окно — обязательный аргумент, а не дисциплина.
+
+    Дефолт превратил бы механизм обратно в дисциплину: скрипт, забывший окно,
+    молча получил бы более широкую выборку и напечатал бы правдоподобный, но
+    невоспроизводимый результат.
+    """
+
+    SCRIPTS = ("run_osc_oos_debug.py", "run_ab_tf_backtest.py",
+               "run_ab_swing_stop.py", "run_ab_trend_fix.py",
+               "run_wrd_backtest.py")
+
+    def test_each_script_passes_the_window_explicitly(self):
+        for name in self.SCRIPTS:
+            src = (_ROOT / "bot" / "backtest" / name).read_text(encoding="utf-8")
+            self.assertIn("SAMPLE_START_2026_07", src,
+                          f"{name}: окно выборки не передаётся")
+            self.assertIn("from backtest.candles import", src,
+                          f"{name}: обязан брать общий загрузчик, а не свою копию")
+
+    def test_no_script_keeps_its_own_loader(self):
+        """Пять копий одного запроса были той же болезнью, что девять копий
+        списка тикеров."""
+        for name in self.SCRIPTS:
+            src = (_ROOT / "bot" / "backtest" / name).read_text(encoding="utf-8")
+            self.assertNotIn("async def load_candles_db", src,
+                             f"{name}: своя копия загрузчика вернулась")
+
+    def test_shared_loader_requires_the_window(self):
+        import asyncio
+        from backtest.candles import load_candles_db
+        with self.assertRaises(TypeError):
+            asyncio.run(load_candles_db("1d", ["SBER"]))       # окна нет
+
+    def test_shared_loader_rejects_a_non_date_window(self):
+        import asyncio
+        from backtest.candles import load_candles_db
+        with self.assertRaises(TypeError):
+            asyncio.run(load_candles_db("1d", ["SBER"], "2023-07-12"))   # строка
+
+    def test_query_filters_on_the_window(self):
+        src = (_ROOT / "bot" / "backtest" / "candles.py").read_text(encoding="utf-8")
+        self.assertIn("time >= $3", src,
+                      "без фильтра в запросе обязательный аргумент бесполезен")
+        self.assertIn("d1_bar_time", src,
+                      "граница обязана быть МОСКОВСКОЙ полуночью: с UTC-полуночью "
+                      "первый бар окна отрезался бы (канон долга №16)")
+
 
 if __name__ == "__main__":
     unittest.main()

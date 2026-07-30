@@ -158,6 +158,57 @@ def _dec(value: float) -> Decimal:
     return Decimal(str(round(float(value), 6)))
 
 
+# Имя боевой БД. Реплей обязан быть не в состоянии её тронуть, и это свойство
+# КОДА, а не аккуратности запускающего: переменная окружения, пережившая сессию,
+# иначе однажды отправит контрольную сделку в боевые trades.
+PRODUCTION_DB = "trading_bot"
+
+
+class ReplayMisconfigured(RuntimeError):
+    """Реплей направлен в боевую БД. Падаем до любого действия."""
+
+
+def _replay_mode() -> tuple[bool, Optional[str]]:
+    """(режим реплея?, громкая пометка или None).
+
+    Реплей нужен ПОЛОЖИТЕЛЬНОМУ и ОТРИЦАТЕЛЬНОМУ контролю пути сигналов: чтобы
+    доказать, что форвардный код выдаёт BUY на баре, где бэктест его давал, и
+    отклоняет там, где фильтр даунтренда обязан отклонить. Без такого прогона
+    путь «правила → индикаторы → кворум → фильтр → решение» подтверждён только
+    отсутствием падений, то есть не подтверждён вовсе.
+
+    ДАТЫ ЗДЕСЬ НЕТ НАМЕРЕННО. Момент, на который отматывается время, задаётся
+    СОСТАВОМ ДАННЫХ (в клоне БД лишние свечи удалены), а не фильтром внутри
+    путей чтения. Причина: фильтр в `_prepare_ticker` не накрыл бы
+    `TradingOrchestrator._check_structural_downtrend` — тот читает свечи СВОИМ
+    запросом и берёт `.iloc[-1]` полной серии (`trading_orchestrator.py:410-414`,
+    `indicators.py:123-127`). Фильтр считался бы по сегодняшнему бару, а не по
+    целевому, и отрицательный контроль стал бы бессмысленным. Правка общего
+    оркестратора не годится — по нему же ходит живой контур `main.py`.
+
+    Флаг делает ровно две вещи, обе — следствия определения «это реплей»:
+      1. не тянуть свечи с MOEX ISS. Догрузка вернула бы удалённые бары назад и
+         отменила обрезку;
+      2. не проверять протухание данных. `STALE_DAYS` защищает от решения по
+         старой свече; в реплее старая свеча и ЕСТЬ предмет, поэтому проверка
+         здесь не ослаблена, а неприменима. Без этого недоступны ВСЕ цели
+         контроля: ближайшая (сессия 24.07) старше порога на один день.
+
+    Ослабить боевой контур флаг не может: при боевой БД он не ослабляет
+    проверку, а роняет прогон.
+    """
+    raw = os.getenv("FWD_REPLAY")
+    if raw is None or raw.strip() == "" or raw.strip().lower() in ("0", "false", "no", "off"):
+        return False, None
+    if config.db.name == PRODUCTION_DB:
+        raise ReplayMisconfigured(
+            f"FWD_REPLAY={raw!r} при DB_NAME={config.db.name!r}: реплей в боевую БД "
+            f"запрещён. Поднять клон и запускать с DB_NAME=<клон>."
+        )
+    return True, (f"⚠ РЕЖИМ РЕПЛЕЯ (FWD_REPLAY={raw}), БД {config.db.name}: догрузка "
+                  f"свечей и проверка протухания ОТКЛЮЧЕНЫ. Это не боевой прогон.")
+
+
 def _catchup_max_bars() -> tuple[int, Optional[str]]:
     """(действующий предел догона, пометка для сообщения или None).
 
@@ -358,6 +409,8 @@ class ForwardRunner:
         self.book: Optional[CapitalBook] = None   # бюджеты, см. _paper_capital
         self.catchup_max, self.catchup_note = _catchup_max_bars()
         self.per_ticker, self.per_ticker_note = _per_ticker_capital()
+        # Первым делом: при реплее в боевую БД падаем ДО любого действия.
+        self.replay, self.replay_note = _replay_mode()
 
     # ── Инфраструктура ────────────────────────────────────────────────
 
@@ -516,7 +569,7 @@ class ForwardRunner:
         # баров каждый исторический старше STALE_DAYS, и проверка внутри цикла
         # сделала бы догон невозможным по построению.
         age_days = (datetime.now(timezone.utc) - last_raw).days
-        if age_days > STALE_DAYS:
+        if age_days > STALE_DAYS and not self.replay:
             self._event(f"⚠ {ticker}: последняя свеча {session_date(last_raw)} "
                         f"({age_days} дн. назад) — пропуск")
             return None
@@ -855,11 +908,16 @@ class ForwardRunner:
 
         # 1. Догрузка свечей: сбой не фатален — идемпотентность и проверка
         #    протухания не дадут решать по старым данным.
-        try:
-            saved = save_candles_to_db(TICKERS, interval="1d", days=REFRESH_DAYS, verbose=False)
-            logger.info("Догрузка свечей: %d строк", saved)
-        except Exception as exc:
-            self._event(f"⚠ Догрузка свечей с MOEX ISS не удалась: {exc}")
+        #    В реплее не вызывается вовсе: догрузка вернула бы обрезанные бары и
+        #    отменила момент, на который отматано время (см. _replay_mode).
+        if self.replay:
+            self._event(self.replay_note)
+        else:
+            try:
+                saved = save_candles_to_db(TICKERS, interval="1d", days=REFRESH_DAYS, verbose=False)
+                logger.info("Догрузка свечей: %d строк", saved)
+            except Exception as exc:
+                self._event(f"⚠ Догрузка свечей с MOEX ISS не удалась: {exc}")
 
         await self.orch.connect()
         self._db = await asyncpg.connect(self._dsn())

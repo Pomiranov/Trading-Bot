@@ -59,6 +59,13 @@ from universe import FORWARD_TICKERS, FORWARD_TICKERS_VERSION  # noqa: E402
 # «закрытый бар» обязана быть у сторожа и у прогона ОДНА.
 from market_time import MSK, session_date  # noqa: E402
 from notify import credentials_ready, escape, first_line, send  # noqa: E402
+# Слоты, льготный интервал и путь журнала — ОДНО место на проект (долг №46).
+# Своей копии «00:15» у сторожа нет: две копии одного факта разъехались бы при
+# переносе слота, и сторож начал бы врать молча — класс «список вместо
+# предиката». Модуль сам stdlib-only, импорт-бюджет сторожа не задевает.
+from run_schedule import (GRACE_SEC, SLOT_TOLERANCE_SEC,  # noqa: E402
+                         journal_path, last_slot)
+from schedule_check import describe_tasks  # noqa: E402
 
 # Дублируется с run_forward_d1.py:107-111 осознанно: импорт того модуля потянул
 # бы pandas и весь learning-стек в сторожа.
@@ -391,6 +398,181 @@ def _forward_log_line() -> str:
         return f"Ночной прогон: лог не прочитать ({first_line(exc)})"
 
 
+# ── A5: состоялся ли прогон в свой слот ──────────────────────────────────
+#
+# Проверка стоит на ПОЛОЖИТЕЛЬНОМ свидетельстве — записи, которую прогон делает
+# о себе сам (bot/run_journal.py), — а не на выводе из пустоты. Вывод по пустоте
+# уже подвёл: 01.08 прогон уехал с слота 00:15 на 11:38, к моменту проверки бар
+# был на месте, и сторож сказал «✅ Форвард жив» (долг №46).
+#
+# Торгового календаря здесь НЕТ и не нужно: задача стоит на каждый день, значит
+# запись обязана быть и в биржевой праздник. Календарь нужен ДРУГОЙ проверке —
+# «прогон был, но сессию не обработал», — и она сознательно вынесена: календаря
+# в проекте нет, а без него она дала бы ложные тревоги на праздниках.
+#
+# 🚩 ГРАНИЦА ЭТОГО ЛЕКАРСТВА, записанная явно (долг №46, пункт 3): проверка
+# живёт на ТОЙ ЖЕ машине, что и прогон, и потому срабатывает только ПОСЛЕ её
+# пробуждения. Спящая или выключенная машина по-прежнему не скажет ничего —
+# ровно как 29.07 и 31.07. Остаётся человеческая процедура: ОТСУТСТВИЕ
+# сообщения в 09:00 есть тревога, и замечает её человек. Кодом на этой машине
+# не лечится; это же — измеренный довод за внешний хост (§10).
+
+
+class SlotReport(NamedTuple):
+    alarm: bool
+    headline: str | None      # заголовок сообщения, если тревога
+    lines: list[str]          # строки подробностей (уходят в тело всегда)
+
+
+def _read_journal() -> tuple[list[dict], str | None]:
+    """(записи журнала прогонов, причина недоступности или None).
+
+    Битые строки НЕ пропускаются молча: журнал — свидетельство, и «часть строк
+    не разобралась» обязано быть видно, иначе пропуск прогона спрячется за
+    испорченной строкой.
+    """
+    path = Path(journal_path(ROOT))
+    if not path.exists():
+        return [], "файла нет"
+    records: list[dict] = []
+    broken = 0
+    try:
+        for line in path.read_text(encoding="utf-8", errors="replace").splitlines():
+            if not line.strip():
+                continue
+            try:
+                records.append(json.loads(line))
+            except json.JSONDecodeError:
+                broken += 1
+    except OSError as exc:
+        return [], first_line(exc)
+    if broken:
+        return records, f"{broken} строк не разобрано"
+    return records, None
+
+
+def _parse_at(value) -> datetime | None:
+    try:
+        return datetime.fromisoformat(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _slot_report(now: datetime) -> SlotReport:
+    """Вердикт по последнему прошедшему слоту 00:15. Шесть состояний.
+
+    Пятое состояние — «прогон ИДЁТ» — не роскошь: замерено 01.08, что при
+    догоне после сна планировщик стартует форвард и сторожа ОДНОЙ секундой
+    (форвард 11:38:44, сторож 11:38:45, финиш прогона 11:38:56). Без льготного
+    интервала сторож объявлял бы собственный живой прогон мёртвым, и не разово,
+    а на КАЖДОЙ догнанной ночи.
+    """
+    slot = last_slot(now)
+    slot_txt = f"{slot:%d.%m %H:%M}"
+    records, unreadable = _read_journal()
+
+    if unreadable == "файла нет":
+        return SlotReport(True, "🚨 <b>Журнал прогонов потерян</b>",
+                          [f"Слот {slot_txt}: проверить нечем — "
+                           f"{escape(str(journal_path(ROOT)))} отсутствует.",
+                           "  ⇒ это НЕ «прогона не было»: свидетельство утрачено, "
+                           "и различить два случая нельзя"])
+    if unreadable:
+        return SlotReport(True, "🚨 <b>Журнал прогонов не читается</b>",
+                          [f"Слот {slot_txt}: {escape(unreadable)}"])
+
+    created = next((_parse_at(r.get("at")) for r in records
+                    if r.get("event") == "journal_created"), None)
+    if created is None:
+        return SlotReport(True, "🚨 <b>Журнал прогонов без метки создания</b>",
+                          [f"Слот {slot_txt}: строки journal_created нет — "
+                           "журнал усечён или подменён"])
+    if created > slot:
+        return SlotReport(True, "🚨 <b>Журнал прогонов пересоздан после слота</b>",
+                          [f"Слот {slot_txt}: журнал создан {created:%d.%m %H:%M}, "
+                           f"то есть ПОЗЖЕ слота — свидетельство утрачено.",
+                           "  ⇒ при вводе журнала в строй это ожидаемо ОДИН раз "
+                           "(раздел 2з); второй раз — дефект"])
+
+    # Пары старт→финиш: финиш относится к ближайшему предшествующему старту.
+    # Позиционно, а не по полю: у финиша слота нет и быть не может — .bat пишет
+    # его, не зная о слотах, и вторая копия этого знания была бы лишней.
+    runs: list[dict] = []
+    for rec in records:
+        event = rec.get("event")
+        if event == "start":
+            runs.append({"at": _parse_at(rec.get("at")),
+                         "slot": _parse_at(rec.get("slot")),
+                         "rc": None, "done": None, "session": None})
+        elif event == "finish" and runs:
+            runs[-1]["rc"] = rec.get("rc")
+            runs[-1]["done"] = _parse_at(rec.get("at"))
+        elif event == "session" and runs:
+            runs[-1]["session"] = rec.get("session")
+
+    mine = [r for r in runs if r["slot"] == slot and r["at"] is not None]
+    if not mine:
+        return SlotReport(True, "🚨 <b>Форвард НЕ СТАРТОВАЛ в слот 00:15</b>",
+                          [f"Слот {slot_txt} пуст: прогона до сих пор нет, "
+                           "записи о старте в журнале нет.",
+                           "  ⇒ смотреть, спала ли машина; долг №45"])
+
+    run = mine[-1]
+    late = (run["at"] - slot).total_seconds() > SLOT_TOLERANCE_SEC
+    started_txt = f"{run['at']:%d.%m %H:%M:%S}"
+    # Время финиша печатается рядом со стартом: по двум меткам видно, сколько
+    # прогон шёл, и потому «код 0» перестаёт быть единственным свидетельством.
+    finish_txt = f", финиш {run['done']:%H:%M:%S}" if run["done"] else ""
+    session_txt = (f", обработана московская сессия {run['session']}"
+                   if run["session"] else "")
+
+    if run["rc"] is None:
+        elapsed = int((now - run["at"]).total_seconds())
+        detail = (f"старт {started_txt}, финиша нет, "
+                  f"прошло {elapsed} с из {GRACE_SEC}")
+        if elapsed >= GRACE_SEC:
+            if late:
+                return SlotReport(
+                    True, "🚨 <b>Слот 00:15 пропущен, ДОГОН УМЕР</b>",
+                    [f"Слот {slot_txt} пуст; {detail}.",
+                     "  ⇒ прогон умер: запустился и не дошёл до конца; долг №45"])
+            return SlotReport(
+                True, "🚨 <b>Прогон умер</b>",
+                [f"Слот {slot_txt}: {detail}.",
+                 "  ⇒ прогон умер: запустился и не дошёл до конца"])
+        # Прогон ИДЁТ. Тревога — только если при этом пропущен слот: сам факт
+        # «идёт» нормален и составляет пятое состояние (см. докстринг).
+        if late:
+            return SlotReport(
+                True, "🚨 <b>Слот 00:15 пропущен, ДОГОН ИДЁТ</b>",
+                [f"Слот {slot_txt} пуст; {detail}.",
+                 "  ⇒ смотреть, спала ли машина; долг №45"])
+        return SlotReport(False, None,
+                          [f"Прогон слота {slot_txt}: старт {started_txt}, "
+                           f"идёт {elapsed} с из {GRACE_SEC}"])
+
+    if run["rc"] != 0:
+        return SlotReport(True, "🚨 <b>Прогон завершился с ошибкой</b>",
+                          [f"Слот {slot_txt}: старт {started_txt}"
+                           f"{finish_txt}, код завершения {run['rc']}"
+                           f"{session_txt}"])
+    if late:
+        return SlotReport(True, "🚨 <b>Слот 00:15 пропущен, ДОГОН СОСТОЯЛСЯ</b>",
+                          [f"Слот {slot_txt} пуст; старт {started_txt}"
+                           f"{finish_txt}, код 0{session_txt}.",
+                           "  ⇒ данные на месте, чинить расписание, а не прогон; "
+                           "долг №45"])
+    if not run["session"]:
+        return SlotReport(True, "🚨 <b>Прогон отчитался успехом без сессии</b>",
+                          [f"Слот {slot_txt}: старт {started_txt}"
+                           f"{finish_txt}, код 0, но записи об обработанной "
+                           "московской сессии нет",
+                           "  ⇒ прогон завершился, не дойдя до обработки тикеров"])
+    return SlotReport(False, None,
+                      [f"Прогон слота {slot_txt}: старт {started_txt}"
+                       f"{finish_txt}, код 0{session_txt}"])
+
+
 def _compact(per_ticker: dict[str, int]) -> str:
     """«13 по всем 20 тикерам» вместо двадцати одинаковых строк.
 
@@ -415,7 +597,9 @@ def build_message(snap: Snapshot, prev: dict[str, date] | None,
       A3 ℹ/🚨 состояние прошло через даты свечей — норма (догон), если это
             подтверждено forward_catchup_log; тревога, если бары выброшены,
             продвижение не объяснено журналом или разрыв >= CATCHUP_FLAG_BARS;
-      A4 🚨 тикер исчез из forward_state.
+      A4 🚨 тикер исчез из forward_state;
+      A5 🚨 прогон НЕ СОСТОЯЛСЯ в свой слот — по журналу прогонов, шесть
+            состояний, включая «идёт» (см. _slot_report).
 
     A1 не зависит от календаря (закрыт рынок → новых дат нет → тихо), поэтому
     ложных тревог на праздниках не даёт. A2 зависит и потому только ⚠ и с
@@ -423,14 +607,36 @@ def build_message(snap: Snapshot, prev: dict[str, date] | None,
     умерла» без торгового календаря нельзя, а человек различает за секунду.
     Вместе они закрывают оба режима отказа: при полной смерти прогона candles
     и forward_state замерзают вместе, A1 слепнет — ловит A2.
+
+    A5 не заменяет их, а закрывает то, что все четыре пропускали по построению:
+    они судят о ДАННЫХ, а не о том, случился ли прогон. 01.08 данные были на
+    месте (прогон отработал в 11:38 вместо 00:15), и все четыре молчали
+    законно. A5 календаря не требует и потому от праздников не зависит вовсе.
+
+    Тревога A5 НЕ добавляется в `alarm`: тот флаг включает поимённый дамп баров
+    по тикерам, а пропуск прогона про тикеры ничего не говорит — дамп был бы
+    двадцатью строками шума.
     """
-    today = datetime.now(MSK).date()   # МСК, не UTC: сравнивается с московскими датами сессий (долг №16)
+    now = datetime.now(MSK)
+    today = now.date()   # МСК, не UTC: сравнивается с московскими датами сессий (долг №16)
     log_line = _forward_log_line()
-    tail = ([MAX_AGE_NOTE] if MAX_AGE_NOTE else []) \
+    slot = _slot_report(now)
+    tasks_alarm, tasks_line = describe_tasks()
+    tail = slot.lines + [tasks_line] \
+        + ([MAX_AGE_NOTE] if MAX_AGE_NOTE else []) \
         + ([prev_note] if prev_note else []) + [log_line]
+
+    # Заголовки тревог, которые к состоянию тикеров не относятся и потому
+    # выносятся вперёд основного вердикта.
+    top: list[str] = []
+    if slot.alarm:
+        top.append(f"{slot.headline} — {STRATEGY_ID}")
+    if tasks_alarm:
+        top.append(f"🚨 <b>Расписание задач уехало</b> — {STRATEGY_ID}")
 
     if not snap.rows:
         return "\n".join([
+            *top,
             f"🚨 <b>Форвард не запускался</b> — {STRATEGY_ID}",
             "В forward_state нет ни одной строки по стратегии.",
             *tail,
@@ -454,7 +660,12 @@ def build_message(snap: Snapshot, prev: dict[str, date] | None,
     # A2 — свечи не поступают (по календарю, с жёстко ограниченным порогом).
     candles_date = _bar_date(snap.candles_max) if snap.candles_max else None
     candles_age = (today - candles_date).days if candles_date else None
-    stale_feed = candles_date is None or candles_age > MAX_AGE_DAYS
+    # `>=`, а НЕ `>`. Со строгим сравнением порог, названный «2», стрелял с 3:
+    # 01.08 сообщение сказало «✅ Форвард жив» при «2 дн. назад, порог 2», потому
+    # что `2 > 2` = False. Класс «проглоченный порог» §8, второй раз в проекте.
+    # Норма этим не задета: в норме возраст последней свечи = 1 день (см.
+    # MAX_AGE_DEFAULT), то есть запас остаётся, но он теперь тот, который назван.
+    stale_feed = candles_date is None or candles_age >= MAX_AGE_DAYS
 
     # A3 — многобарное продвижение состояния. С внедрением догона (долг №14)
     # это НОРМА, а не тревога: форвард проходит пропущенные бары насквозь,
@@ -494,7 +705,7 @@ def build_message(snap: Snapshot, prev: dict[str, date] | None,
 
     alarm = bool(unprocessed or orphan or discarded or wide_gaps or missing)
 
-    lines: list[str] = []
+    lines: list[str] = list(top)
     if discarded:
         lines.append(f"🚨 <b>Форвард выбросил бары разрыва</b> — {STRATEGY_ID}")
     elif orphan:
@@ -507,12 +718,16 @@ def build_message(snap: Snapshot, prev: dict[str, date] | None,
         lines.append(f"🚨 <b>Форвард потерял тикеры</b> — {STRATEGY_ID}")
     elif stale_feed:
         lines.append(f"⚠ <b>Свечи не поступают</b> — {STRATEGY_ID}")
-    else:
+    elif not top:
+        # ✅ только когда молчат И тикеры, И A5, И расписание. Иначе строка
+        # «Форвард жив» стояла бы рядом с 🚨 о непроизошедшем прогоне.
         lines.append(f"✅ <b>Форвард жив</b> — {STRATEGY_ID}")
 
-    # Порог печатается ВСЕГДА, в любой ветке: 26.07 неоднозначность «жив при
-    # 14 днях» существовала только потому, что ветка ✅ его не показывала.
-    lines.append(f"Обработано до: <b>{fwd_max}</b> ({age} дн. назад, порог {MAX_AGE_DAYS})")
+    # Возраст обработанного — БЕЗ подписи «порог»: он с этим порогом не
+    # сравнивается. До 01.08 подпись стояла именно здесь, а сравнивался возраст
+    # СВЕЧЕЙ (см. stale_feed) — две разные величины, совпавшие в тот день на
+    # числе 2, из-за чего сообщение выглядело связным. Долг №46, пункт 2б.
+    lines.append(f"Обработано до: <b>{fwd_max}</b> ({age} дн. назад)")
     lines.append(f"Тикеров в состоянии: {len(dates)}/{len(TICKERS)}")
 
     if discarded:
@@ -551,11 +766,16 @@ def build_message(snap: Snapshot, prev: dict[str, date] | None,
         lines.append(f"🚨 Не обработано баров: {_compact(unprocessed)}")
         lines.append("  ⇒ прогон стартует, но не обрабатывает тикеры")
 
+    # Порог печатается ВСЕГДА и РЯДОМ С ТЕМ ЧИСЛОМ, которое с ним сравнивается.
+    # Оба требования куплены замерами: 26.07 неоднозначность «жив при 14 днях»
+    # существовала потому, что ветка ✅ порога не показывала; 01.08 подпись
+    # стояла у возраста forward_state, а сравнивался возраст свечей.
     if candles_date is None:
-        lines.append("⚠ Свечи D1 в БД: нет ни одной по этим тикерам")
+        lines.append(f"⚠ Свечи D1 в БД: нет ни одной по этим тикерам "
+                     f"(порог {MAX_AGE_DAYS})")
     else:
-        lines.append(f"Свечи D1 в БД: до {candles_date}"
-                     + (f" ({candles_age} дн. назад)" if stale_feed else ""))
+        lines.append(f"Свечи D1 в БД: до {candles_date} "
+                     f"({candles_age} дн. назад, порог {MAX_AGE_DAYS})")
         if stale_feed:
             lines.append("  ⇒ либо рынок закрыт, либо сломалась загрузка свечей")
 

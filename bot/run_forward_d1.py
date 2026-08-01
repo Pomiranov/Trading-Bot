@@ -89,6 +89,10 @@ from universe import FORWARD_TICKERS, FORWARD_TICKERS_VERSION
 from costs import COMMISSION_PCT
 from data.loader import save_candles_to_db
 from market_time import MSK, last_closed_index, session_date
+# Журнал прогонов: одна копия писателя на .bat и на прогон (долг №46).
+# Импорт-бюджет самого модуля — stdlib + run_schedule + market_time.
+import run_journal
+import run_schedule
 from signals.indicators import IndicatorEngine, SIGNAL_WINDOW_BARS, signal_window
 from signals.rules_engine import RulesEngine, Action, classify_regime
 from risk.risk_manager import RiskManager
@@ -998,6 +1002,40 @@ class ForwardRunner:
                     await self._log_catchup(plan)
                 except Exception as exc:
                     logger.exception("[%s] Журнал догона не записан: %s", ticker, exc)
+
+            # ── Обработанная московская сессия → журнал прогонов (долг №46) ──
+            # Пишет ПРОГОН, а не .bat: конвенция сессии живёт в market_time и
+            # .bat её не знает. Передавать через .bat значило бы либо завести
+            # вторую копию конвенции, либо парсить лог.
+            #
+            # Пишем ТОЛЬКО если процесс запущен по расписанию (признак ставит
+            # .bat сразу после записи `start`). Найдено живой проверкой 01.08:
+            # без этого условия replay-тесты налили 97 строк `session` в боевой
+            # журнал, а сторож привязывает `session` к последнему `start` — то
+            # есть тестовая строка могла прицепиться к настоящему прогону.
+            # Условие — предикат «о старте этого процесса есть запись», а не
+            # «не забыть переменную в тестах».
+            if not run_schedule.in_slot_run():
+                logger.info("Журнал прогонов: прогон не по расписанию "
+                            "(%s не выставлен) — сессия не пишется",
+                            run_schedule.IN_SLOT_RUN_ENV)
+            else:
+                # Ошибка записи НЕ глушится и НЕ подменяется дефолтом: без строки
+                # session сторож увидит «rc=0, а сессии нет» и закричит — это и
+                # есть нужное поведение. Уровень ERROR, а не INFO: отказ, после
+                # которого прогон не сделал того, за чем запускался, обязан быть
+                # виден (долг №46, пункт 4).
+                processed = [session_date(p.raw_times[p.last_closed])
+                             for p in plans.values()
+                             if not p.failed and p.last_closed >= 0]
+                if processed:
+                    try:
+                        run_journal.write("session", max(processed))
+                    except Exception as exc:
+                        logger.error("Журнал прогонов: сессия НЕ записана: %s", exc)
+                else:
+                    logger.error("Журнал прогонов: обработанной сессии нет ни у "
+                                 "одного тикера — сессия не записана")
 
             caught = sum(p.processed for p in plans.values())
             summary = (f"Форвард D1 {session_date(started)}: позиций {len(open_trades)}, "

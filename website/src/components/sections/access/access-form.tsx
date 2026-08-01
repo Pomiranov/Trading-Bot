@@ -178,6 +178,21 @@ export function AccessForm({
               wins outright — white accent border plus a real outline, glow
               dropped — so hover can never be mistaken for focus.
 
+              ── The fill made the same mistake the border did ──
+
+              And it survived the review that recorded the border version. The
+              resting fill was a raw 0.04 white while the hover token is 0.03, so
+              the "fill lifts" above was measurably false: hovering the field made
+              it 0.01 *darker*. The glow masked it, which is why it read as
+              working.
+
+              Both ends are tokens now and they are ordered: the field rests on
+              the subtle fill and hovers to the standard highlight (0.03 → 0.045).
+              Same direction as every card on the page, and one fewer raw alpha
+              for the design-token gate to tolerate. If either token moves, they
+              must keep that order — the whole point of this state is that it goes
+              up.
+
               Do not quote a rejected utility literally in a comment here, even
               to document it: Tailwind scans this file for class candidates and
               would compile the example into real CSS. That is the failure mode
@@ -185,7 +200,7 @@ export function AccessForm({
               script's hint string became a font-size and took the dev server to
               a 500. It would also re-trip the grep gate from the comment alone.
             */
-            className="h-12 w-full min-w-0 rounded-[var(--radius-md)] border border-[color:var(--color-border-strong)] bg-[rgba(255,255,255,0.04)] px-4 font-mono text-[length:var(--text-caption)] text-[color:var(--color-text-primary)] outline-none transition-[border-color,background-color,box-shadow] duration-[var(--duration-base)] ease-[var(--ease-out-expo)] placeholder:text-[color:var(--color-text-quaternary)] hover:bg-[color:var(--color-fill-subtle)] hover:shadow-[var(--glow-signal-sm)] focus-visible:border-[color:var(--color-accent)] focus-visible:shadow-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--color-accent)]"
+            className="h-12 w-full min-w-0 rounded-[var(--radius-md)] border border-[color:var(--color-border-strong)] bg-[color:var(--color-fill-subtle)] px-4 font-mono text-[length:var(--text-caption)] text-[color:var(--color-text-primary)] outline-none transition-[border-color,background-color,box-shadow] duration-[var(--duration-base)] ease-[var(--ease-out-expo)] placeholder:text-[color:var(--color-text-quaternary)] hover:bg-[color:var(--color-highlight-bg)] hover:shadow-[var(--glow-signal-sm)] focus-visible:border-[color:var(--color-accent)] focus-visible:shadow-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--color-accent)]"
             {...register("email")}
           />
 

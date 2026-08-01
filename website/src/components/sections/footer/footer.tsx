@@ -109,12 +109,20 @@ export async function Footer({ locale }: { locale: string }) {
 
             {/* Locale switch. The header's is hidden below sm, so on a phone
                 this was previously the one place a visitor could not change
-                language at all. */}
+                language at all — which is also why its hit area matters more
+                than its size suggests. At 11px mono with `py-2` it measured
+                32×34, the smallest target on the page; `min-h-11` and a 44px
+                minimum width put it on the floor without enlarging the label.
+
+                `justify-start`, not `justify-center`: centring an 22px label in a
+                44px box pushed "EN" 11px right of the column's left edge, where
+                the tagline and the brand above it start. A hit area is allowed to
+                be wider than its label — it is not allowed to move it. */}
             <Link
               href="/"
               locale={otherLocale.code}
               aria-label={`${t("brand")} — ${otherLocale.label}`}
-              className="-mx-2 rounded-[var(--radius-sm)] px-2 py-2 font-mono text-[length:var(--text-label)] tracking-[var(--text-label--letter-spacing)] text-[color:var(--color-text-tertiary)] uppercase no-underline transition-colors duration-[var(--duration-micro)] hover:text-[color:var(--color-text-primary)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--color-accent)]"
+              className="-mx-2 inline-flex min-h-11 min-w-11 items-center justify-start rounded-[var(--radius-sm)] px-2 font-mono text-[length:var(--text-label)] tracking-[var(--text-label--letter-spacing)] text-[color:var(--color-text-tertiary)] uppercase no-underline transition-colors duration-[var(--duration-micro)] hover:text-[color:var(--color-text-primary)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--color-accent)]"
             >
               {otherLocale.label}
             </Link>
@@ -126,14 +134,27 @@ export async function Footer({ locale }: { locale: string }) {
               <p className="font-mono text-[length:var(--text-label)] tracking-[var(--text-label--letter-spacing)] text-[color:var(--color-text-quaternary)] uppercase">
                 {col.heading}
               </p>
-              <ul className="flex flex-col gap-1">
+              {/* `gap-0`: each link is its own 44px row and they sit flush.
+                  With `gap-1` and the negative margin the boxes below needed to
+                  keep the old rhythm, consecutive targets *overlapped* by 4px —
+                  measured 39px of effective height each, with the top and bottom
+                  strip of every link belonging to its neighbour. A 44px row that
+                  another target eats into is not a 44px target. */}
+              <ul className="flex flex-col">
                 {col.links.map((link) => (
                   <li key={link.href}>
                     <a
                       href={link.href}
-                      // -mx-2/px-2/py-2 keeps the hit area at the 44px floor
-                      // without changing the visual rhythm of the column.
-                      className="-mx-2 inline-block rounded-[var(--radius-sm)] px-2 py-2 text-[length:var(--text-caption)] text-[color:var(--color-text-tertiary)] no-underline transition-colors duration-[var(--duration-micro)] hover:text-[color:var(--color-text-primary)] focus-visible:text-[color:var(--color-text-primary)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--color-accent)]"
+                      // The hit area is the 44px floor by *construction*, not by
+                      // arithmetic. `py-2` was meant to reach it and did not:
+                      // 13px of caption at 1.5 line-height is 19.5px, plus 16px
+                      // of padding, is 35.5 — measured at 37px, seven short, on
+                      // seven links. `min-h-11` states the floor instead of
+                      // computing it, so it cannot drift when the type scale
+                      // moves. No negative vertical margin — see the note on the
+                      // list above for why clawing the height back overlapped the
+                      // targets; the column is 3px per row looser instead.
+                      className="-mx-2 inline-flex min-h-11 items-center rounded-[var(--radius-sm)] px-2 text-[length:var(--text-caption)] text-[color:var(--color-text-tertiary)] no-underline transition-colors duration-[var(--duration-micro)] hover:text-[color:var(--color-text-primary)] focus-visible:text-[color:var(--color-text-primary)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--color-accent)]"
                     >
                       {link.label}
                     </a>

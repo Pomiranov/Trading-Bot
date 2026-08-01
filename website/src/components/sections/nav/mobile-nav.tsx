@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence, useReducedMotion } from "motion/react";
+import { getLenis } from "@/components/motion/scroll-driver";
 import { track } from "@/lib/analytics/events";
 
 interface NavLink {
@@ -27,17 +28,91 @@ export function MobileNav({
 }) {
   const [open, setOpen] = useState(false);
   const reduce = useReducedMotion();
+  const toggleRef = useRef<HTMLButtonElement>(null);
 
+  /**
+   * Release the scroll lock *synchronously*, then close.
+   *
+   * The ordering here is load-bearing and cost an outright broken link to find.
+   * A tap on an in-panel anchor dispatches: React's `onClick` (this function) →
+   * the document-level interceptor in motion/lenis-provider.tsx → React commit →
+   * effect cleanup. That interceptor calls `lenis.scrollTo(el, …)` *without*
+   * `force`, and Lenis drops a non-forced `scrollTo` while it is stopped. So if
+   * the lock were released only in the effect cleanup — one step too late — every
+   * link in this menu would close the panel and navigate nowhere.
+   *
+   * Releasing before `setOpen(false)` means Lenis is already running by the time
+   * the interceptor sees the click. The effect cleanup repeats both operations;
+   * `start()` and restoring `overflow` are both idempotent, so that is harmless
+   * and keeps the unmount path correct on its own.
+   */
   function close() {
+    getLenis()?.start();
+    document.documentElement.style.overflow = "";
     setOpen(false);
   }
+
+  /**
+   * The three things an open overlay owes the reader, none of which were here.
+   *
+   * Measured on the live page before this: with the panel open, Escape did
+   * nothing (`aria-expanded` stayed `true`), the document scrolled freely
+   * underneath — the panel is `position: fixed`, so it stayed put while the page
+   * ran past behind it — and at 390px the nav labels ended up sitting on top of
+   * the audience cards' body copy. A menu that cannot be dismissed by the two
+   * gestures every reader already knows is a trap, and one that lets the page
+   * move behind it reads as a rendering fault rather than as a layer.
+   *
+   *   1. **Escape closes.** Keyed off `open` so no listener exists while closed.
+   *   2. **Scroll is locked, on both paths.** Lenis owns scroll here, so the
+   *      lock is `lenis.stop()` — reaching around it with `overflow: hidden`
+   *      alone would leave its RAF loop animating a position the document no
+   *      longer honours, which is the class of desync documented at length in
+   *      scroll-driver.ts. But under reduced motion Lenis is never instantiated
+   *      at all, so the overflow lock is the only thing holding that path, and it
+   *      has to go on `documentElement`: measured with a real wheel event, the
+   *      first version set it on `body` and the page scrolled 900px with the
+   *      panel open, because the scrolling box on this document is `<html>`.
+   *      Both are applied, so neither path depends on the other.
+   *   3. **Focus comes back.** Dismissing returns it to the toggle that opened
+   *      the panel, rather than dropping it at the top of the document.
+   *
+   * The cleanup runs on close *and* on unmount, so a locale switch mid-open
+   * cannot leave the page unscrollable.
+   */
+  useEffect(() => {
+    if (!open) return;
+
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        event.stopPropagation();
+        close();
+        toggleRef.current?.focus();
+      }
+    }
+
+    const lenis = getLenis();
+    const root = document.documentElement;
+    const previousOverflow = root.style.overflow;
+
+    lenis?.stop();
+    root.style.overflow = "hidden";
+    window.addEventListener("keydown", onKeyDown);
+
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+      root.style.overflow = previousOverflow;
+      lenis?.start();
+    };
+  }, [open]);
 
   return (
     <>
       {/* Hamburger toggle */}
       <button
+        ref={toggleRef}
         type="button"
-        onClick={() => setOpen((o) => !o)}
+        onClick={() => (open ? close() : setOpen(true))}
         aria-expanded={open}
         aria-label={open ? closeLabel : openLabel}
         className="relative flex size-11 flex-col items-center justify-center gap-[5.5px] rounded-[var(--radius-md)] border transition-colors duration-[var(--duration-base)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--color-accent)] lg:hidden"
@@ -69,16 +144,32 @@ export function MobileNav({
       <AnimatePresence>
         {open && (
           <>
-            {/* Tap-outside backdrop */}
+            {/*
+              Tap-outside backdrop, and now also a scrim.
+
+              It used to be fully transparent — it existed only to catch the
+              dismiss tap. That left the panel as the sole thing separating its
+              own 11px mono labels from whatever card copy happened to be behind
+              them, and the panel is translucent glass by design. A 55% scrim
+              puts the page a clear step back instead, which is also what makes
+              the blur read as "this layer is in front" rather than as a
+              rendering artefact.
+            */}
             <motion.div
               key="backdrop"
               className="fixed inset-0"
-              style={{ zIndex: "calc(var(--z-nav) - 2)" }}
+              style={{
+                zIndex: "calc(var(--z-nav) - 2)",
+                background: "var(--color-scrim)",
+              }}
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.15 }}
-              onClick={close}
+              onClick={() => {
+                close();
+                toggleRef.current?.focus();
+              }}
               aria-hidden="true"
             />
 

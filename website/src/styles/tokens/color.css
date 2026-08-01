@@ -124,6 +124,21 @@
      sitting *on* the page rather than as a border drawn on it. */
   --color-bg-elevated: #060607;
 
+  /* ─── Scrim ───
+     Behind the one overlay on the site: the mobile nav panel.
+
+     The panel is glass (`--color-glass-surface-strong` plus a 32px blur), and
+     glass is a *material*, not an isolation layer — on its own it left the
+     panel's 11px mono labels sharing a plane with whatever card copy happened
+     to be behind them. 55% black is inside the 40–60% the platform guidelines
+     put on a modal scrim, and it is what makes the blur read as depth rather
+     than as a rendering fault.
+
+     Not in `@theme`: consumed through an inline `style`, so it must live in a
+     plain `:root` or Tailwind tree-shakes it to an empty string. See the note
+     above this block. */
+  --color-scrim: rgba(0, 0, 0, 0.55);
+
   /* ─── Inverted band ───────────────────────────────────────────────────────
      Two light bands maximum on the page (Foundation, Execution/Pricing). The
      deep black base is the identity; paper is punctuation, not a second theme.

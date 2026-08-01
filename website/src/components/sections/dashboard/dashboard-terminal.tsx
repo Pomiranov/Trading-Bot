@@ -389,10 +389,42 @@ export function DashboardTerminal() {
           panel at narrow viewports by design — it is a declared horizontal
           scroller, which is why the overflow gate in scripts/visual-qa.mjs
           exempts `.overflow-x-auto`. */}
-      <div
-        data-lenis-prevent-horizontal
-        className="overflow-x-auto border-b border-[color:var(--color-border)]"
-      >
+      {/* ── Telling the reader it scrolls ──
+
+          Measured at 390px: the strip is 566px inside a 320px panel, so the sixth
+          tab was clipped mid-word — "БЭ" — against a hard edge. A declared
+          horizontal scroller is fine; one that ends in a guillotine is
+          indistinguishable from a layout that broke, and this panel's whole job is
+          to look like a working instrument. The mask fades the overflow instead:
+          content that dissolves reads as content that continues.
+
+          ── Why the fade is unconditional, and why a breakpoint gate was wrong ──
+
+          The first attempt gated it off at `md`, reasoning that the strip fits by
+          then. It does at 768 (637px of panel) and 834 (693px) — but the panel's
+          width is *not* monotonic in the viewport's. At `lg` this section becomes
+          two columns and the panel drops to 457px, so the strip overflowed again
+          from ~1024 to ~1250 with the fade switched off: the exact guillotine,
+          reintroduced by the fix for it.
+
+          No breakpoint describes "it fits" — only the real scroll width does, and
+          CSS cannot ask. Unconditional is correct rather than merely safe: where
+          the strip fits, the tabs end well short of the container (566 of 637 at
+          768, of 693 at 834, of 658 at 1440), so the 40px ramp falls on empty
+          panel and is invisible. It only has something to act on when there is
+          somewhere to scroll.
+
+          The hairline lives on the wrapper, not the scroller: a mask applies to
+          everything the element paints, `border-b` included, so with the fade on
+          the scroller the rule under the tabs dissolved at its right end on every
+          wide viewport — trading a clipped tab for a broken-looking divider.
+
+          `scroll-snap` so a flick lands on a tab boundary, not mid-label. */}
+      <div className="border-b border-[color:var(--color-border)]">
+        <div
+          data-lenis-prevent-horizontal
+          className="overflow-x-auto [scroll-snap-type:x_proximity] [mask-image:linear-gradient(to_right,#000_0,#000_calc(100%_-_2.5rem),transparent_100%)]"
+        >
         <div
           role="tablist"
           aria-orientation="horizontal"
@@ -417,7 +449,7 @@ export function DashboardTerminal() {
                 onKeyDown={(e) => onTabKeyDown(e, i)}
                 title={tab.desc}
                 className={cn(
-                  "group relative shrink-0 cursor-pointer px-5 py-3.5 text-left font-mono text-[length:var(--text-label)] tracking-[var(--text-label--letter-spacing)] uppercase outline-none",
+                  "group relative shrink-0 cursor-pointer px-5 py-3.5 text-left font-mono text-[length:var(--text-label)] tracking-[var(--text-label--letter-spacing)] uppercase outline-none [scroll-snap-align:start]",
                   "transition-colors duration-[var(--duration-base)] ease-[var(--ease-out-expo)]",
                   "focus-visible:z-10 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[color:var(--color-accent)]",
                   selected
@@ -440,6 +472,7 @@ export function DashboardTerminal() {
               </button>
             );
           })}
+        </div>
         </div>
       </div>
 

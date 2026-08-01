@@ -81,6 +81,48 @@ export function PointerTilt({ children }: { children: ReactNode }) {
     };
   }, []);
 
+  /**
+   * Stop the aperture animating once it has scrolled away.
+   *
+   * The aperture is the page's only expensive decoration: three orbit rotations,
+   * three ring breaths, a sweep line and a core pulse — eight of the eleven
+   * infinite animations on the document — over an SVG carrying a 40px
+   * `drop-shadow`. All eight ran for the whole session, and the page is 12 900px
+   * tall, so on any view past the hero the browser was compositing a filtered SVG
+   * nobody could see. Measured symptom: `document.getAnimations()` never settles,
+   * which is also why a screenshot of this page never completes.
+   *
+   * A separate effect from the tilt above, deliberately. The tilt returns early on
+   * a coarse pointer and under reduced motion; this must not, because a phone is
+   * exactly where the wasted frames cost battery. Under reduced motion there are
+   * no animations to pause and the observer simply finds nothing to do.
+   *
+   * `animation-play-state` rather than unmounting: the loops resume mid-cycle at
+   * the phase they held, so scrolling back up finds the instrument where it was
+   * left rather than snapping to the start of every keyframe. The 200px margin
+   * restarts it just before it is visible, so it is never caught frozen.
+   *
+   * IntersectionObserver, and nothing here reads scroll position — the hard rule
+   * documented in motion/scroll-driver.ts.
+   */
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || typeof IntersectionObserver === "undefined") return;
+
+    const io = new IntersectionObserver(
+      ([entry]) => {
+        el.toggleAttribute("data-qf-offscreen", !entry.isIntersecting);
+      },
+      { rootMargin: "200px 0px" },
+    );
+
+    io.observe(el);
+    return () => {
+      io.disconnect();
+      el.removeAttribute("data-qf-offscreen");
+    };
+  }, []);
+
   return (
     <div ref={ref} className="hero-tilt">
       {children}

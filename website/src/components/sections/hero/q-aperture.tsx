@@ -25,14 +25,33 @@ import { BrandMark } from "@/components/ui/brand-mark";
  * precisely what an earlier hero was corrected for. Orbits carry "a system that
  * is running" without asserting a single thing about outcomes.
  *
+ * ── What the polish pass took out, and why it is not coming back ──
+ *
+ * Three concentric white measurement rings, four quadrant ticks, a horizontal
+ * scan trace and three axis labels ("Вход" / "Правило" / "Заявка") around the
+ * outside.
+ *
+ * Owner direction, and one note covers all of them: they read as *technical
+ * markup laid over the object* rather than as the object. The rings were the
+ * instrument's "fixed reference", the ticks existed to anchor the labels, and
+ * the labels named the three stages `#how-it-works` documents properly 900px
+ * later — so the hero was captioning itself with a diagram key while the orbits
+ * were already saying the only thing this visual is for: a system that is
+ * running. Stripped back, it is one object with one light on it, which is the
+ * whole brief.
+ *
+ * If a fixed reference is ever wanted here again it has to be composed with the
+ * orbits rather than drawn as a target over them, and it must not need labels
+ * to be legible. `.hero-ring` / `.hero-scan` and their keyframes were deleted
+ * from globals.css with this.
+ *
  * ── Motion ──
  *
- * Three loops, all compositor-only (`transform` / `opacity`), so this cannot
+ * Two loops, both compositor-only (`transform` / `opacity`), so this cannot
  * shift layout or cost LCP:
  *   • three orbit groups rotating at 32 / 46 / 61s — coprime, so they never
  *     resync into one visible beat
  *   • the core bloom breathing over 8s
- *   • the ring breathe on desynced 9 / 11 / 13s cycles
  *
  * No keyframe uses `animation-fill-mode`, so the base style *is* the resting
  * state. Under `prefers-reduced-motion` the global reset collapses duration to
@@ -42,7 +61,7 @@ import { BrandMark } from "@/components/ui/brand-mark";
  *
  * Server-rendered, zero client JS, no external asset.
  */
-export function QAperture({ labels }: { labels?: readonly [string, string, string] }) {
+export function QAperture() {
   return (
     // One fluid width rather than a `max-w-[…] sm: lg:` chain. The chain was
     // the first attempt and it silently capped at the `sm` value — arbitrary
@@ -76,9 +95,6 @@ export function QAperture({ labels }: { labels?: readonly [string, string, strin
             <stop offset="65%" stopColor="var(--color-signal-core)" stopOpacity="0.7" />
             <stop offset="100%" stopColor="var(--color-signal)" stopOpacity="0.08" />
           </linearGradient>
-          <clipPath id="qa-clip">
-            <circle cx="200" cy="200" r="196" />
-          </clipPath>
         </defs>
 
         {/* ── Orbits ──
@@ -133,26 +149,6 @@ export function QAperture({ labels }: { labels?: readonly [string, string, strin
           </g>
         </g>
 
-        {/* ── The instrument's fixed reference ──
-            Concentric measurement rings in white, not blue: these are the
-            structure, and the blue belongs to the moving parts. They breathe on
-            desynced 9/11/13s cycles via `.hero-ring`; the stroke opacities here
-            are the resting values reduced motion reverts to. */}
-        <g fill="none" stroke="#ffffff">
-          <circle className="hero-ring" cx="200" cy="200" r="128" strokeOpacity="0.07" />
-          <circle className="hero-ring" cx="200" cy="200" r="96" strokeOpacity="0.1" />
-          <circle className="hero-ring" cx="200" cy="200" r="64" strokeOpacity="0.14" />
-
-          {/* Quadrant ticks. Static by design — the fixed reference of an
-              instrument is the one thing that must not move. */}
-          <g strokeOpacity="0.22" strokeLinecap="round">
-            <path d="M200 58 v14" />
-            <path d="M200 328 v14" />
-            <path d="M58 200 h14" />
-            <path d="M328 200 h14" />
-          </g>
-        </g>
-
         {/*
           ── Removed: the exit vector and its node ──
 
@@ -171,22 +167,11 @@ export function QAperture({ labels }: { labels?: readonly [string, string, strin
           wanted here it has to be composed with the orbits, not laid across
           them. `.hero-vector` / `@keyframes qf-vector-flow` were deleted from
           globals.css with it.
-        */}
 
-        {/* A single faint trace crossing the aperture every 14s, clipped to the
-            rings so it reads as internal instrumentation rather than a line
-            drawn over the panel. */}
-        <g clipPath="url(#qa-clip)">
-          <line
-            className="hero-scan"
-            x1="72"
-            y1="200"
-            x2="328"
-            y2="200"
-            stroke="#ffffff"
-            strokeOpacity="0.07"
-          />
-        </g>
+          The white measurement rings, the quadrant ticks and the scan trace
+          that used to sit here went the same way in a later pass, for the same
+          reason — see the note at the top of this file.
+        */}
       </svg>
 
       {/*
@@ -202,42 +187,21 @@ export function QAperture({ labels }: { labels?: readonly [string, string, strin
       />
 
       {/*
-        ── Axis labels ──
+        ── Removed: the axis labels ──
 
-        Three words naming the instrument's own axes, sitting just outside the
-        outermost measurement ring at the left, top and right quadrant ticks —
-        which is why the ticks are there and why they are the one static element
-        in the composition.
+        "Вход" / "Правило" / "Заявка", pinned to the left, top and right
+        quadrant ticks. They were defended here as "the reason this is a diagram
+        of a decision rather than an abstract orbit animation" — which was the
+        mistake. The hero does not want a diagram; the headline and the subline
+        beside it make the argument, and `#how-it-works` names those exact three
+        stages properly, with a sentence each.
 
-        They are the reason this is a diagram of a decision rather than an
-        abstract orbit animation, and they cost nothing in honesty: "input",
-        "rule", "order" name the three stages `#how-it-works` documents at
-        length, in the same order. No figure, no unit, no outcome.
-
-        `aria-hidden`, like the rest of the aperture. The whole instrument is
-        decorative — the argument is in the headline and the subline beside it,
-        and reading three orphan nouns aloud between them would be noise. They
-        are also below the 4.5:1 body-text floor by design, at the tertiary tone
-        on a panel, which is the other reason they must not be exposed as
-        content.
-
-        Hidden below `sm`: at 215px across, the aperture's clamp floor, three
-        labels around a 215px circle collide with each other and with the
-        headline above.
+        What they actually did was force the ticks to exist so they had
+        something to hang on, which forced the rings to exist so the ticks had a
+        reference — three layers of markup standing up one caption. All of it is
+        gone together. `hero.apertureIn/Rule/Out` were deleted from both message
+        catalogues.
       */}
-      {labels ? (
-        <div aria-hidden="true" className="pointer-events-none absolute inset-0 hidden sm:block">
-          <span className="absolute top-[3%] left-1/2 -translate-x-1/2 font-mono text-[length:var(--text-label)] tracking-[var(--text-label--letter-spacing)] text-[color:var(--color-text-quaternary)] uppercase">
-            {labels[0]}
-          </span>
-          <span className="absolute top-1/2 left-0 -translate-y-1/2 font-mono text-[length:var(--text-label)] tracking-[var(--text-label--letter-spacing)] text-[color:var(--color-text-quaternary)] uppercase">
-            {labels[1]}
-          </span>
-          <span className="absolute top-1/2 right-0 -translate-y-1/2 font-mono text-[length:var(--text-label)] tracking-[var(--text-label--letter-spacing)] text-[color:var(--color-text-quaternary)] uppercase">
-            {labels[2]}
-          </span>
-        </div>
-      ) : null}
     </div>
   );
 }

@@ -105,13 +105,34 @@ export async function FoundationSection({ locale }: { locale: string }) {
                   {block.body}
                 </div>
 
-                {/* Every sourceRef is preserved: they resolve to real symbols
-                    and are the most verifiable claim on the site. */}
-                {block.sourceRef ? (
-                  <code className="mt-auto border-t border-[color:var(--color-border)] pt-4 font-mono text-[length:var(--text-label)] break-all text-[color:var(--color-text-quaternary)]">
-                    {block.sourceRef}
-                  </code>
-                ) : null}
+                {/*
+                  ── Removed: the sourceRef line ──
+
+                  Each principle used to close on a hairline rule and an 11px
+                  mono citation — `belief_updater.py:37 ·
+                  MIN_TRADES_FOR_CONFIDENCE = 20`, `belief_updater.py:46-47 ·
+                  trading_orchestrator.py:63`, `knowledge/ · ручной журнал,
+                  автозаморозки нет`.
+
+                  Owner direction, same call as the pipeline cards. These are
+                  audit artefacts: precise, honest, and addressed to a reader
+                  who has the repository open. On a manifesto — three sentences
+                  about how the product decides what to believe — a file-and-line
+                  reference is the loudest thing in the card and the least
+                  legible, and it made the section read as an internal document
+                  someone had put a heading on.
+
+                  The claims themselves are untouched and still checkable: the
+                  20-trade floor and the 0.05–0.95 bounds are stated *in the body
+                  copy* of principles 01 and 02, and the belief gate's own node
+                  in `#how-it-works` still shows all three constants under their
+                  "confidence bounds" label. What went is the citation, not the
+                  number.
+
+                  `sourceRef` stays in `content/{ru,en}/philosophy/*.mdx` and
+                  stays parsed, as internal provenance — see the note on the
+                  field in content-layer/types.ts.
+                */}
               </Surface>
             </Reveal>
           </li>

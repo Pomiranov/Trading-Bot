@@ -1,86 +1,87 @@
 import { Surface } from "./surface";
 import { ButtonLink } from "./button-link";
-import { cn } from "@/lib/utils";
 
 interface PricingCardProps {
   tier: string;
-  /** Pre-formatted. "Бесплатно" / "Планируется" — never a number we invented. */
-  price: string;
   /**
-   * Whether this tier can actually be used today.
-   *
-   * This — not a marketing decision — is what drives emphasis. The reference
-   * emphasises its middle card, and copying that would mean highlighting an
-   * unpriced, unavailable tier: a conversion pattern with nothing behind it.
-   * There is no payment code in the repository at all (grep for
-   * stripe|billing|checkout returns a Permissions-Policy header and nothing
-   * else), so the only tier that can honestly carry focus is the one that
-   * exists. Today that is Explore.
-   *
-   * Deriving emphasis from availability also means the composition self-corrects
-   * the moment billing ships, rather than needing someone to remember.
+   * Pre-formatted and locale-owned. "Бесплатно" / "5 000 ₽" in RU, "Free" /
+   * "≈ $55" in EN — the message catalogue is the pricing config, so a currency
+   * never has to be assembled at render time and the approximation marker on
+   * the dollar figures is part of the string a translator owns.
    */
-  available: boolean;
+  price: string;
+  /** "в месяц" / "per month" / "7 дней". Sits under the price, never beside it. */
+  period: string;
   body: string;
   features: readonly string[];
-  cta?: { href: string; label: string };
+  cta: { href: string; label: string };
 }
 
 /**
  * One pricing tier.
  *
- * Uses the `featured` Surface variant for the focal card — a gradient border
- * via `mask-composite` that was already built in globals.css for exactly this
- * and used nowhere.
+ * ── All three cards are identical, and that is the design ──
  *
- * ── The focal card is no longer a different size ──
+ * The previous version emphasised one card with the `featured` Surface variant
+ * — a lighter graphite fill and a gradient hairline — deriving the emphasis
+ * from which tier was actually purchasable. That was the right answer to the
+ * old question: two of the three tiers said "Планируется" and had no CTA, so
+ * something had to say which one was real.
  *
- * It used to carry `md:-my-2 md:py-9`, making it 16px taller than its two
- * siblings and giving it 4px more vertical padding. Measured at 1440 the row
- * came out as 420px / 402px / 402px with three different top edges, which read
- * as one card having slipped rather than as one card being chosen — and it put
- * the three tiers on two baselines in a section whose whole job is a
- * side-by-side comparison.
+ * All three are real now, all three are priced, and all three end in the same
+ * ask. With nothing left to disambiguate, a lighter card is just a thumb on the
+ * scale — and read across the row it made the other two look dimmed rather than
+ * equal, which was the note this pass was opened on. Three identical objects,
+ * differing only in what they say, is both the more honest arrangement and the
+ * more expensive-looking one.
  *
- * All three now share one radius, one padding and one height (the grid is
+ * So: one variant, one padding, one radius, one hover. The grid is
  * `items-stretch` and each card is `w-full` inside a flex `li`, so they resolve
- * to the tallest). Emphasis is carried entirely by the `featured` surface: a
- * lighter graphite fill, a gradient hairline border and a deeper lift. That is
- * enough — it is the only card in the row with a price and the only one with a
- * CTA — and it costs nothing in symmetry to say so.
+ * to the tallest and the row sits on one baseline top and bottom.
+ *
+ * If a tier ever should carry focus again, do it with a hairline or a label —
+ * not by making its neighbours darker.
  */
 export function PricingCard({
   tier,
   price,
-  available,
+  period,
   body,
   features,
   cta,
 }: PricingCardProps) {
   return (
-    <Surface
-      variant={available ? "featured" : "flat"}
-      padding="md"
-      className="flex w-full flex-col gap-6"
-    >
+    <Surface padding="md" className="flex w-full flex-col gap-6">
       <div className="flex flex-col gap-2">
         <h3 className="font-mono text-[length:var(--text-label)] tracking-[var(--text-label--letter-spacing)] text-[color:var(--color-text-tertiary)] uppercase">
           {tier}
         </h3>
-        <p
-          className={cn(
-            "text-[length:var(--text-display-number)] leading-[var(--text-display-number--line-height)] font-medium tracking-[var(--text-display-number--letter-spacing)]",
-            // An unavailable tier's "price" is the word "Планируется", and at
-            // full primary contrast twice over it became the loudest typography
-            // in the section — a repeated placeholder shouting. Dimmed, so the
-            // one real price reads first.
-            available
-              ? "text-[color:var(--color-text-primary)]"
-              : "text-[color:var(--color-text-tertiary)]",
-          )}
-        >
-          {price}
-        </p>
+
+        {/*
+          Price and period on one baseline.
+
+          `items-baseline` rather than a stacked block: "5 000 ₽" and "в месяц"
+          are one statement, and putting the qualifier on its own line under a
+          40px figure opens a gap the eye reads as a missing element. The period
+          is the only thing between the price and the body copy, so it also has
+          to carry the vertical rhythm — hence `gap-2` above rather than a
+          margin here.
+
+          The `min-h` on the row is what keeps the three cards aligned: the
+          tokens' `--text-display-number--line-height` is 1, so a price's line
+          box is exactly `--text-display-number` tall, and reserving that as a
+          floor means the body copy, the feature list and the CTA all start on
+          the same line in all three cards regardless of how the strings wrap.
+        */}
+        <div className="flex min-h-[var(--text-display-number)] flex-wrap items-baseline gap-x-2.5 gap-y-1">
+          <p className="text-[length:var(--text-display-number)] leading-[var(--text-display-number--line-height)] font-medium tracking-[var(--text-display-number--letter-spacing)] text-[color:var(--color-text-primary)]">
+            {price}
+          </p>
+          <p className="font-mono text-[length:var(--text-label)] tracking-[var(--text-label--letter-spacing)] text-[color:var(--color-text-tertiary)] uppercase">
+            {period}
+          </p>
+        </div>
+
         <p className="text-[length:var(--text-body)] leading-[var(--text-body--line-height)] text-[color:var(--color-text-secondary)]">
           {body}
         </p>
@@ -92,26 +93,37 @@ export function PricingCard({
             key={f}
             className="flex items-start gap-2.5 text-[length:var(--text-caption)] leading-[var(--text-caption--line-height)] text-[color:var(--color-text-secondary)]"
           >
+            {/*
+              Centred on the first line by arithmetic rather than by eye.
+
+              `mt-[0.45em]` was 5.85px at this 13px size, and the centre of a
+              19.5px line box minus a 4px dot is 7.75px — so every marker in
+              every tier sat ~2px high, which at this scale reads as the bullets
+              floating above their own text. Visible in the row, hard to name.
+
+              Derived from the same tokens that set the line box and the dot, so
+              it cannot drift if either changes: half of (line-height − dot).
+            */}
             <span
               aria-hidden="true"
-              className="mt-[0.45em] size-1 shrink-0 rounded-[var(--radius-full)] bg-[color:var(--color-text-quaternary)]"
+              className="mt-[calc((var(--text-caption--line-height)*1em-0.25rem)/2)] size-1 shrink-0 rounded-[var(--radius-full)] bg-[color:var(--color-text-quaternary)]"
             />
             {f}
           </li>
         ))}
       </ul>
 
-      {/* Only the available tier gets a CTA. A button on a tier that cannot be
-          bought is the same false affordance as a fake price. */}
-      {cta ? (
-        <ButtonLink
-          href={cta.href}
-          className="w-full justify-center"
-          analytics={{ target: "sandbox_access", location: "pricing_card" }}
-        >
-          {cta.label}
-        </ButtonLink>
-      ) : null}
+      {/* Required, not optional. Every tier is purchasable now, so a card
+          without an ask would be the odd one out — and the reason the prop used
+          to be optional (a button on a tier that cannot be bought is the same
+          false affordance as a fake price) no longer applies to any of them. */}
+      <ButtonLink
+        href={cta.href}
+        className="w-full justify-center"
+        analytics={{ target: "sandbox_access", location: "pricing_card" }}
+      >
+        {cta.label}
+      </ButtonLink>
     </Surface>
   );
 }

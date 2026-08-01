@@ -1,15 +1,10 @@
 import { getTranslations } from "next-intl/server";
 import { ButtonLink } from "@/components/ui/button-link";
-import { ArrowLink } from "@/components/ui/arrow-link";
-import { MonoLabel } from "@/components/ui/mono-label";
 import { GridBackplate } from "@/components/ui/grid-backplate";
 import { SignalField } from "@/components/ui/signal-field";
 import { SignalDot } from "@/components/ui/signal-dot";
 import { QAperture } from "./q-aperture";
 import { PointerTilt } from "./pointer-tilt";
-
-/** The system-envelope row under the CTAs. See the note at its call site. */
-const SYSTEM_FACTS = ["system1", "system2", "system3"] as const;
 
 /**
  * The argument in one screen, inside a contained dark panel.
@@ -21,11 +16,36 @@ const SYSTEM_FACTS = ["system1", "system2", "system3"] as const;
  * what makes the rest of the page read as a document rather than a poster, and
  * it rhymes with the closing CTA panel so the page is bookended.
  *
- * Inside, and now that is all of it: eyebrow, headline, subline and two calls
- * to action on the left; the Q-aperture on the right. The recessed proof strip
- * that used to run across the panel's foot, and the caption under it, were
- * removed — see the note at the foot of the panel for what went and why the
- * honesty guarantee is unaffected.
+ * Inside, and this is now all of it: a status pill, a two-line headline, one
+ * subline and one call to action on the left; the Q-aperture on the right.
+ *
+ * ── What the polish pass removed, and why ──
+ *
+ * Four things, all owner direction, all the same note in different places: the
+ * hero was arguing five times and should argue once.
+ *
+ *   • the three-clause eyebrow ("Закрытое тестирование · MOEX · песочница по
+ *     умолчанию") — a metadata line where a status marker belongs. MOEX and
+ *     sandbox-by-default are both stated at full weight in `#safety` and in the
+ *     subline; what the eyebrow is actually for is the programme's state, so
+ *     that is all it says now, as a pill rather than as running text.
+ *   • the system-envelope row across the panel's foot ("MOEX + Bybit ·
+ *     Пределы риска до заявки · Ручное подтверждение доступно") — three mono
+ *     items that read as furniture rather than as a value proposition. Each is
+ *     load-bearing somewhere else: risk limits before the order and manual
+ *     confirmation in `#safety` and in the belief-gate node of `#how-it-works`,
+ *     the venue in the subline directly above.
+ *   • the secondary "Посмотреть как работает →" arrow link, which is now the
+ *     primary button's own label.
+ *   • the white pool behind the aperture. `.section-glow` was pinned at
+ *     74%/34% while the aperture's own cold pool sits at its centre, so the
+ *     panel had two unrelated light sources overlapping — a grey smudge up and
+ *     left of the instrument. One light, and it belongs to the object making
+ *     it.
+ *
+ * Anything added back here has to clear the same bar the removed proof strip
+ * did: no results and no figures of any kind, and nothing whose only home is
+ * this panel.
  *
  * ── Honesty ──
  *
@@ -71,31 +91,74 @@ export async function HeroSection({ locale }: { locale: string }) {
               ui/grid-backplate.tsx. */}
           <GridBackplate signal mask="panel" />
 
-          {/* Depth, weighted right so the aperture sits in the light and the
-              headline stays on flat black. Clipped by the panel. */}
-          <div
-            aria-hidden="true"
-            className="section-glow pointer-events-none [--glow-x:74%] [--glow-y:34%]"
-          />
+          {/*
+            ── Removed: the panel's own white pool ──
 
-          {/* Row and column gaps are set separately from `lg`. They used to be
-              one `gap-14`, which was right when the grid had a single row — but
-              the system-envelope row below makes a second one, and 56px between
-              the composition and a single 11px mono line is a gap looking for a
-              third element. 32px reads as a foot; the column gap stays at 56. */}
-          <div className="relative grid items-center gap-8 px-6 pt-10 pb-8 sm:px-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)] lg:gap-x-14 lg:gap-y-8 lg:px-14 lg:pt-16 lg:pb-10">
+            A `.section-glow` at `[--glow-x:74%] [--glow-y:34%]`, added to keep
+            the aperture "in the light". The aperture already carries its own
+            cold pool at its exact centre (`--glow-aperture`), so the panel had
+            two overlapping light sources with different colours and different
+            centres — which is not depth, it is a smudge, and it sat up and to
+            the left of the instrument where nothing needed lighting.
+
+            One light source, owned by the object that emits it. If the panel
+            ever needs more depth than the grid and the aperture give it, the
+            fix is the aperture's own pool, not a second gradient over the top.
+          */}
+
+          {/* One row now that the system-envelope strip is gone, so `gap-y` no
+              longer has a second row to separate — the column gap is the only
+              one doing work at `lg`.
+
+              ── The columns swapped weight, and the headline is why ──
+
+              It was `[1fr, 1.05fr]` with a 56px gap, which gave the text column
+              504px at 1440. "Больше контроля." sets at 554px there (66px type,
+              -0.03em), so the second line of a two-line headline wrapped — and
+              a headline that wraps mid-phrase is a headline nobody chose.
+
+              `[1.2fr, 1fr]` with a 48px gap takes the text column to ~569px,
+              which clears it with room, and costs the aperture 45px of its 520.
+              That is the right trade: the instrument is decoration and reads at
+              any size above ~400px, the headline is the argument.
+
+              At exactly `lg` (1024px) the text column is ~382px against the
+              393px the line needs there, so the headline takes three lines in
+              that one narrow band before the `xl` widths resolve it. Left as
+              is: it is a clean break between two words, not a defect, and
+              buying it back would cost the aperture another 40px at every
+              width above it. */}
+          <div className="relative grid items-center gap-10 px-5 pt-10 pb-10 sm:px-10 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)] lg:gap-x-12 lg:px-14 lg:py-16">
             {/* ── Left: the argument ── */}
             <div className="flex min-w-0 flex-col items-start gap-7">
-              {/* The closed-testing beacon. This eyebrow opens with "Closed
-                  testing" in both locales, and owner direction is that every
-                  badge saying so carries the same cold dot — see
-                  ui/signal-dot.tsx for why this is not the live-status pulse.
-                  `items-center` on a mono line whose cap height is 11px puts the
-                  1.5-unit dot on the optical centre without a nudge. */}
-              <MonoLabel className="flex items-center gap-2.5">
+              {/*
+                ── The status pill ──
+
+                Two words and a lit dot, inside a hairline capsule.
+
+                It replaces a three-clause mono line that ran 47 characters
+                across the top of the hero and read as a build stamp. The pill
+                states one thing — the programme is in closed testing — which is
+                the part that buys trust; the venue and sandbox-by-default are
+                stated where a reader is actually deciding about them.
+
+                Not `StatusChip`: that component is driven by `StatusTone`,
+                which is the *strategy/broker* status vocabulary, and borrowing
+                a tone for page furniture is how a vocabulary stops meaning
+                anything. This is a bare capsule with the page's own border and
+                fill tokens.
+
+                The dot is `SignalDot` — the same cold beacon every
+                "closed testing" badge on the site carries, breathing on a 3.6s
+                cycle. Deliberately *not* `.status-dot-live`'s expanding sonar
+                ring, which is reserved for a genuine live state or a labelled
+                demo of one: a programme marker that pings like telemetry is a
+                claim about a running system. See ui/signal-dot.tsx.
+              */}
+              <span className="inline-flex items-center gap-2.5 rounded-[var(--radius-full)] border border-[color:var(--color-border)] bg-[color:var(--color-fill-subtle)] py-1.5 pr-3.5 pl-3 font-mono text-[length:var(--text-label)] tracking-[var(--text-label--letter-spacing)] text-[color:var(--color-text-secondary)] uppercase">
                 <SignalDot />
                 {t("eyebrow")}
-              </MonoLabel>
+              </span>
 
               <h1
                 id="hero-heading"
@@ -110,24 +173,49 @@ export async function HeroSection({ locale }: { locale: string }) {
                 {t("subline")}
               </p>
 
-              <div className="flex w-full flex-wrap items-center gap-x-7 gap-y-4">
-                <ButtonLink
-                  href="#access"
-                  size="lg"
-                  magnetic
-                  className="h-auto min-h-12 w-full justify-center py-3 text-center whitespace-normal sm:w-auto"
-                  analytics={{ target: "sandbox_access", location: "hero" }}
-                >
-                  {t("ctaPrimary")}
-                </ButtonLink>
-                <ArrowLink
-                  href="#how-it-works"
-                  analytics={{ target: "how_it_works", location: "hero" }}
-                >
-                  {t("ctaSecondary")}
-                </ArrowLink>
-              </div>
+              {/*
+                ── One call to action ──
 
+                It points at `#how-it-works`, not at `#access`. Owner direction,
+                and it is the right ask for this screen: a first-time reader has
+                just been told the product is quieter and more controllable than
+                what they know, and the honest next step is to show them the
+                mechanism rather than to ask for their email in the same breath.
+
+                The route to `#access` is not lost — the header CTA carries it at
+                every scroll position, all three pricing tiers end in it, and
+                `#access` closes the page. Nothing that used to be reachable from
+                the hero has become unreachable.
+
+                The secondary arrow link that used to sit beside this button said
+                exactly this button's new label, so it went with the change: one
+                screen, one ask.
+
+                The two-label `sm:hidden` / `hidden sm:inline` pair went with it
+                too, and this is why it can: the old label ("Получить доступ к
+                песочнице") needed 246px inside a 208px text box at 390px, which
+                is what the split was working around. "Посмотреть как работает"
+                measures ~187px in the same box, so one label fits at every width
+                and there is no second wording to keep in step.
+              */}
+              <ButtonLink
+                href="#how-it-works"
+                size="lg"
+                magnetic
+                // `wrapperClassName` is what makes the `w-full` below real —
+                // see the note on that prop in ui/button-link.tsx.
+                wrapperClassName="block w-full sm:inline-block sm:w-auto"
+                // `px-6` below `sm`, against `size="lg"`'s own `px-8`. Measured
+                // at 390px: the button is 272px wide and the RU label sets at
+                // ~209px, which clears 64px of padding by 1px and therefore
+                // does not — so the page's primary control opened on a
+                // two-line, letter-spaced label. 48px of padding gives it 15px
+                // of room instead of −1. Desktop keeps the full `lg` padding.
+                className="h-auto min-h-12 w-full justify-center px-6 py-3 text-center whitespace-normal sm:w-auto sm:px-8"
+                analytics={{ target: "how_it_works", location: "hero" }}
+              >
+                {t("ctaPrimary")}
+              </ButtonLink>
             </div>
 
             {/* ── Right: the instrument ──
@@ -142,82 +230,9 @@ export async function HeroSection({ locale }: { locale: string }) {
                 `mx-auto` + max-width do the centring. */}
             <div className="min-w-0">
               <PointerTilt>
-                <QAperture
-                  labels={[t("apertureRule"), t("apertureIn"), t("apertureOut")]}
-                />
+                <QAperture />
               </PointerTilt>
             </div>
-
-            {/*
-                ── The system envelope ──
-
-                Three facts about how the operator is configured, on one line
-                across the panel's foot.
-
-                ── Why it spans both columns ──
-
-                It began under the calls to action, inside the left column, and
-                that was wrong twice over. The column is ~510px at `lg`, so three
-                mono items wrapped to two lines — and the wrap put the panel 54px
-                past the fold on a 900px viewport, breaking the one thing the
-                hero is for, which is making the argument in one screen. It also
-                left the panel's lower *right* — under the aperture — as the one
-                genuinely empty region, which is the emptiness this row was added
-                to answer in the first place.
-
-                Full width fits all three on one line at every breakpoint from
-                `sm` up, fills the foot rather than one corner of it, and gives
-                the panel a base to sit on.
-
-                Read the removal note at the foot of this panel before touching
-                this. A five-item proof strip and a three-figure <dl> were cut
-                from exactly here, and this is deliberately not a reinstatement
-                of either: it is a later owner direction to fill the panel's
-                lower-left, and it is held to the terms that made the old strip
-                wrong in the first place.
-
-                What that means concretely, and what any future addition here
-                has to satisfy:
-
-                  • **No results, and no figures at all.** Not a win rate, profit
-                    factor, sample size, Sharpe, equity curve or return, under
-                    any caption. Each item is a *capability or a constraint* —
-                    which venues are wired, when risk is evaluated, whether a
-                    human can intervene — and none of them is a number.
-                  • **Three, not five.** The old strip's failure was quantity as
-                    much as content: it made the hero argue four things at once.
-                  • **Nothing duplicated from the eyebrow.** Closed testing,
-                    MOEX and sandbox-by-default are stated 200px above; repeating
-                    them here is what turned the old strip into furniture.
-                  • **Every claim is load-bearing elsewhere.** Risk limits before
-                    the order and manual confirmation are both stated at full
-                    weight in `#safety` and in the belief-gate node of
-                    `#how-it-works`; the venue pair is in the subline directly
-                    above. Nothing here is the only place a reader can learn it.
-
-                Presentation is a mono row on the panel's own ground, with no
-                fill, no border and no rule above it. The strip that was removed
-                had a fill and a border, which is what made it read as a second
-                UI inside the panel — and a hairline over it is worse still on
-                this page specifically: it would span the left column only,
-                stopping mid-panel with nothing to join, which is precisely the
-                "line hanging in space" artefact this whole pass exists to
-                remove. The grid's own `gap` is the separation.
-              */}
-            <ul className="flex flex-wrap items-center gap-x-7 gap-y-2 lg:col-span-2">
-              {SYSTEM_FACTS.map((key) => (
-                <li
-                  key={key}
-                  className="flex items-center gap-2 font-mono text-[length:var(--text-label)] tracking-[var(--text-label--letter-spacing)] text-[color:var(--color-text-tertiary)] uppercase"
-                >
-                  <span
-                    aria-hidden="true"
-                    className="size-1 shrink-0 rounded-[var(--radius-full)] bg-[color:var(--color-text-quaternary)]"
-                  />
-                  {t(key)}
-                </li>
-              ))}
-            </ul>
           </div>
 
           {/*
@@ -230,9 +245,7 @@ export async function HeroSection({ locale }: { locale: string }) {
 
             All three are gone on owner direction: the hero should make one
             argument, and a five-item meta row plus three numeric readouts plus
-            a disclaimer is four. The eyebrow above the headline still carries
-            the closed-testing / MOEX / sandbox framing, which is the part that
-            actually qualified the claim.
+            a disclaimer is four.
 
             ── This does not weaken the honesty guarantee ──
 
@@ -241,8 +254,12 @@ export async function HeroSection({ locale }: { locale: string }) {
             statements survive elsewhere in full:
 
               • the risk limits are stated in `#safety` and in the belief-gate
-                node of `#how-it-works`, both with their labels attached
-              • "sandbox by default" is in the hero eyebrow and in `#safety`
+                node of `#how-it-works`, both with their labels attached, and
+                "risk is checked before the order" is in the subline above
+              • "sandbox by default" is in `#safety`, and the sandbox is the
+                first pricing tier and the only free one
+              • closed testing is the hero's status pill, the footer chip and
+                the access form's own copy
               • the aperture is orbits — no chart, no series, no counter — so
                 there is nothing left for a "this is not performance" caption to
                 disclaim

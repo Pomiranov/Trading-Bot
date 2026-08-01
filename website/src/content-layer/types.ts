@@ -24,7 +24,15 @@ export interface PipelineStage {
   plain: string;
   /** Step name in the flow: Observe / Context / Strategy / Confidence / … */
   stepLabel: string;
-  /** e.g. "IndicatorEngine.latest()" — shown as a small mono caption. */
+  /**
+   * e.g. "IndicatorEngine.latest()" — the symbol in `bot/` this stage is.
+   *
+   * Internal provenance, not rendered: the pipeline cards used to close on it
+   * and no longer do (see the note in how-it-works/pipeline-spine.tsx). It is
+   * kept parsed and typed so the origin of a stage stays traceable in the
+   * content files, and so re-exposing it for a technical audience is a one-line
+   * change rather than a content migration.
+   */
   sourceRef?: string;
 }
 
@@ -50,10 +58,14 @@ export interface PhilosophyBlock {
   heading: string;
   body: ReactNode;
   /**
-   * Small technical note pinned to the foot of the card — the symbol or
-   * constant in `bot/` that makes the principle checkable rather than a claim.
-   * Optional: a principle with nothing concrete to point at shows no note
-   * rather than an invented one.
+   * The symbol or constant in `bot/` that makes the principle checkable rather
+   * than a claim.
+   *
+   * Internal provenance, not rendered — same standing as `PipelineStage.
+   * sourceRef`, and removed from the card for the same reason (see the note in
+   * sections/foundation/foundation-section.tsx). The figures it cited are
+   * stated in the body copy of the principles themselves, so nothing a reader
+   * can act on depends on this being visible.
    */
   sourceRef?: string;
 }

@@ -69,8 +69,20 @@ import { cn } from "@/lib/utils";
  */
 const SENTINEL_GAP = 600;
 
-/** Sentinel index above which the header is allowed to retract at all. */
-const RETRACT_AFTER = 1;
+/**
+ * Sentinel count above which the header is allowed to retract at all.
+ *
+ * 0, so the first downward crossing — 600px, which is the hero's own foot on a
+ * 900px viewport — is enough. It was 1, meaning the pill held its compact glass
+ * state for the first 1 200px of the page: measured, that parked it over the
+ * top of `#audience` and, at 1440, over the first row of `#how-it-works`. The
+ * complaint it was changed on is exactly that — the header colliding with the
+ * first big block under the hero — and one sentinel earlier is the whole fix.
+ *
+ * It cannot fire *on* the hero: retraction needs a downward crossing, and the
+ * first sentinel is below the fold at every viewport this page supports.
+ */
+const RETRACT_AFTER = 0;
 
 /**
  * Keeps the last sentinel this far above the end of the scrollable range.

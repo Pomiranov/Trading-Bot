@@ -14,6 +14,18 @@ interface ButtonLinkProps
   analytics?: { target: CtaTarget; location: string };
   /** Desktop magnetic hover. Off by default — earn it. */
   magnetic?: boolean;
+  /**
+   * Classes for the `Magnetic` wrapper, and the only way to make a magnetic
+   * button full-width.
+   *
+   * `Magnetic` renders an `inline-block` span, which is shrink-to-fit — so
+   * `className="w-full"` on the anchor resolves against the wrapper's *content*
+   * width and silently does nothing. The hero's primary CTA carried `w-full` for
+   * exactly that reason and was never full-width; it merely looked like it while
+   * its label happened to be long enough to fill the row. Ignored when
+   * `magnetic` is false, where `w-full` on the anchor already works.
+   */
+  wrapperClassName?: string;
 }
 
 /**
@@ -36,6 +48,7 @@ export function ButtonLink({
   analytics,
   magnetic = false,
   className,
+  wrapperClassName,
   children,
   ...props
 }: ButtonLinkProps) {
@@ -50,5 +63,5 @@ export function ButtonLink({
     </a>
   );
 
-  return magnetic ? <Magnetic>{anchor}</Magnetic> : anchor;
+  return magnetic ? <Magnetic className={wrapperClassName}>{anchor}</Magnetic> : anchor;
 }

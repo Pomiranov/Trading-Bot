@@ -51,13 +51,21 @@
   --text-section-heading--line-height: 1.06;
   --text-section-heading--letter-spacing: -0.028em;
 
-  /* 6b. Hero — 40px → 72px fluid.
+  /* 6b. Hero — 38px → 72px fluid. Consumed by the hero <h1> and nothing else.
      Raised from clamp(2.25rem, 3.8vw, 3.75rem), which rendered 54.72px at 1440
      against a 640px-wide visual: the instrument won the composition and the
      headline read as a caption to it. At 66px the headline dominates again,
      which is what the reference shows. Re-checked in RU, where the longer
-     words set the 3-line break. */
-  --text-hero: clamp(2.5rem, 4.6vw, 4.5rem);
+     words set the break.
+
+     The floor came back down 40px → 38px, and it is a measurement rather than
+     a preference. At 375px the headline column is 267px and "Меньше шума." sets
+     at 268px at 40px type — one pixel over, so the first line of a two-line
+     headline broke mid-phrase into "Меньше / шума." on the single most common
+     small-phone width. 38px sets it at 255px, which clears with room the next
+     Cyrillic string will not eat. Only viewports below ~826px see the change
+     at all: above that the 4.6vw term is already larger than either floor. */
+  --text-hero: clamp(2.375rem, 4.6vw, 4.5rem);
   --text-hero--line-height: 1.08;
   --text-hero--letter-spacing: -0.03em;
 

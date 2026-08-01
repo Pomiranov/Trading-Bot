@@ -52,7 +52,26 @@ export async function SafetySection({ locale }: { locale: string }) {
       {/* ── Guarantees ── */}
       <div className="mt-[var(--space-header-to-body)] flex flex-col gap-5">
         <MonoLabel>{t("guaranteesHeading")}</MonoLabel>
-        <ul className="grid gap-[var(--space-card-gap)] sm:grid-cols-2 lg:grid-cols-4">
+        {/*
+          Two columns at every width from `sm`, not four at `lg`.
+
+          The four-up row equalised to its tallest card, and these four bodies are
+          not the same length: `item5` carries the encryption claim plus its
+          master-key qualifier — roughly three times `item3`'s copy. Measured at
+          1440 the row was 414px tall and the slack at the foot of each card ran
+          108 / 161 / **187** / 29px, so three of the four guarantees on the page's
+          most important section ended in a third of a card of empty panel.
+
+          Two columns fixes it from both ends: the longest body gets 591px of
+          measure instead of 283px, so it is roughly half as tall to begin with,
+          and it now equalises against `item3` alone rather than setting the height
+          of all four. Worst-case slack drops to ~106px.
+
+          It also agrees with the audience grid, which stops at two columns for the
+          same reason and says so — a 4-up at `lg` puts Russian bodies back into
+          ~300px columns.
+        */}
+        <ul className="grid gap-[var(--space-card-gap)] sm:grid-cols-2">
           {GUARANTEES.map((item, i) => (
             <li key={item} className="flex">
               <Reveal index={i} className="flex w-full">

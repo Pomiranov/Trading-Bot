@@ -38,6 +38,7 @@ const IDENTICAL_OK = new Set([
   "Explore",
   "Sandbox",
   "Live",
+  "Premium",
   "FAQ",
   "EN",
   "RU",

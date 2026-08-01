@@ -80,16 +80,26 @@ function StageCard({
           {stage.description}
         </div>
         {/*
-          sourceRef demoted to an inline trailing line rather than the card's
-          visual floor. It is genuine provenance and stays, but at 11px
-          monospace with `break-all` it was the last thing every card said, in
-          a section whose argument is the plain sentence at the top.
+          ── Removed: the sourceRef line ──
+
+          Every card used to close on an 11px mono symbol from the Python
+          codebase — `loader.get_candles()`, `RulesEngine.evaluate()`,
+          `TinkoffClient.place_market_order()` and so on.
+
+          Owner direction, and the argument is register rather than accuracy:
+          they are real symbols and they still resolve, but a landing page that
+          ends each step on an internal call signature is showing the reader the
+          workshop instead of the product. In a section whose whole design is
+          "plain sentence first, technical name second", a third, smaller,
+          dimmer line was one layer past where a first-time reader stops.
+
+          Nothing is lost. The `sourceRef` frontmatter stays in
+          `content/{ru,en}/engine-pipeline/*.mdx` and stays typed and parsed, as
+          internal provenance — the same standing `PipelineStage.id` and
+          `DataSource` already have (see content-layer/types.ts). Rendering it
+          again is a one-line change if a technical audience ever needs it, and
+          the docs are where it belongs meanwhile.
         */}
-        {stage.sourceRef ? (
-          <code className="font-mono text-[length:var(--text-label)] break-all text-[color:var(--color-text-quaternary)]">
-            {stage.sourceRef}
-          </code>
-        ) : null}
       </div>
 
       {extra}
@@ -121,9 +131,28 @@ export function PipelineSpine({
         `left` tracks the node column: 1.25rem (the centre of the 2.5rem rail)
         below lg, dead centre at lg where the grid becomes three columns.
       */}
-      <span aria-hidden="true" className="pipeline-rail left-[1.25rem] lg:left-1/2" />
+      <span aria-hidden="true" className="pipeline-rail left-[1rem] lg:left-1/2" />
 
-      <ol className="grid grid-cols-[2.5rem_minmax(0,1fr)] gap-x-4 gap-y-6 lg:grid-cols-[minmax(0,1fr)_4.5rem_minmax(0,1fr)] lg:gap-y-10">
+      {/*
+        ── The rail column is narrower below `lg` ──
+
+        It was `2.5rem` plus a `1rem` gap: 56px of the 328px available at 390px,
+        which left the card 272px and its 13px description an ~28-character
+        measure — under the 35 the guidelines put as the floor for body text on a
+        phone, and visibly cramped beside the same card at `lg`.
+
+        32px node in a 2rem column with a `0.75rem` gap gives the card 284px back
+        without the node losing legibility — it holds an 11px two-digit number,
+        and 32px is still four times its cap height.
+
+        That is +12px, not a fix. The honest accounting is that the spine costs
+        the card about 13% of a 390px viewport, and it buys the one thing the two
+        previous versions of this section lost: the cards read as a *sequence*.
+        Reclaiming the rest would mean dropping the rail on mobile, which is that
+        same mistake again. `left` on the rail above tracks this column's centre —
+        change both together or the hairline stops running through the nodes.
+      */}
+      <ol className="grid grid-cols-[2rem_minmax(0,1fr)] gap-x-3 gap-y-6 lg:grid-cols-[minmax(0,1fr)_4.5rem_minmax(0,1fr)] lg:gap-x-4 lg:gap-y-10">
       {stages.map((stage, i) => {
         // Alternate sides at lg. Odd stages left, even stages right — the
         // reference's rhythm, and it keeps the eye moving down the spine
@@ -150,7 +179,7 @@ export function PipelineSpine({
             >
               <span
                 aria-hidden="true"
-                className="flex size-10 items-center justify-center rounded-[var(--radius-full)] border border-[color:var(--color-border-strong)] bg-[color:var(--color-bg)] font-mono text-[length:var(--text-label)] tabular-nums text-[color:var(--color-text-secondary)]"
+                className="flex size-8 items-center justify-center rounded-[var(--radius-full)] border border-[color:var(--color-border-strong)] bg-[color:var(--color-bg)] font-mono text-[length:var(--text-label)] tabular-nums text-[color:var(--color-text-secondary)] lg:size-10"
                 style={{ boxShadow: "var(--glow-signal-sm)" }}
               >
                 {String(stage.order).padStart(2, "0")}

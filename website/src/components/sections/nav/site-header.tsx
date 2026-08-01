@@ -41,13 +41,28 @@ export async function SiteHeader({ locale }: { locale: string }) {
 
   return (
     <HeaderShell>
+      {/*
+        ── Two fixes, one element, and they fix each other ──
+
+        The wordmark was hidden below `sm` and the link was therefore 20×20: the
+        smallest target on the page, and the brand reduced to a bare glyph on the
+        one device where the header has nothing else in it. Measured at 390px the
+        pill held a 20px mark and a 44px hamburger inside 320px — roughly 250px of
+        empty glass, which is most of why the mobile header read as unfinished.
+
+        Showing the wordmark at every width fills that space with the thing the
+        space is for, and it takes the link to ~90px wide at the same stroke. The
+        height is stated as a `min-h-11` floor rather than left to the mark's own
+        20px, so the target clears 44 without the pill growing — `-my-*` is not
+        needed because the pill is already 62px tall and this sits inside it.
+      */}
       <a
         href="#hero"
         aria-label={t("brand")}
-        className="flex shrink-0 items-center gap-2.5 rounded-[var(--radius-sm)] no-underline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[color:var(--color-accent)]"
+        className="flex min-h-11 shrink-0 items-center gap-2.5 rounded-[var(--radius-sm)] no-underline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[color:var(--color-accent)]"
       >
         <BrandMark size="sm" className="text-[color:var(--color-text-primary)]" />
-        <span className="hidden font-mono text-[length:var(--text-caption)] tracking-[0.12em] text-[color:var(--color-text-primary)] uppercase sm:block">
+        <span className="font-mono text-[length:var(--text-caption)] tracking-[0.12em] text-[color:var(--color-text-primary)] uppercase">
           {t("brand")}
         </span>
       </a>

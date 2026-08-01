@@ -98,12 +98,27 @@ export async function HowItWorksSection({ locale }: { locale: string }) {
       the pipeline rail below it carry the entrance, which is a better one: the
       reader arrives at content rather than at a boundary.
     */
-    <Section
-      id="how-it-works"
-      rhythm="major"
-      divider
-      className="flex flex-col gap-[var(--space-header-to-body)]"
-    >
+    /*
+      ── The section-level `flex flex-col gap-[…]` this used to carry did
+         nothing, and the symptom was visible ──
+
+      `Section`'s `className` lands on the <section> element, but every child
+      passed to it is rendered inside one `max-w` container div. So the flex
+      column had exactly one item, the gap had nothing to sit between, and the
+      spine's top edge measured at y=342.117 against the heading block's bottom
+      edge at y=342.117 — zero.
+
+      That is why the first card appeared welded to "Путь от свечи до заявки",
+      and why hovering it looked like a collision rather than a lift: the card
+      primitive's hover is `translateY(-6px)`, straight into the H2's descender
+      line.
+
+      The fix is to space the body against the header the way every other
+      section on the page already does — `mt-[var(--space-header-to-body)]` on
+      the block itself, which is 48–72px — rather than to reach for a gap on a
+      container that has one child. Do not put the flex/gap back.
+    */
+    <Section id="how-it-works" rhythm="major" divider>
       {/*
         Heading only — no lead, no note.
 
@@ -127,7 +142,9 @@ export async function HowItWorksSection({ locale }: { locale: string }) {
       */}
       <SectionHeader id="how-it-works" eyebrow={t("eyebrow")} heading={t("heading")} />
 
-      <PipelineSpine stages={stages} techLabel={techLabel} extras={extras} />
+      <div className="mt-[var(--space-header-to-body)]">
+        <PipelineSpine stages={stages} techLabel={techLabel} extras={extras} />
+      </div>
     </Section>
   );
 }

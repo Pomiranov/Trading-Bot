@@ -37,7 +37,10 @@ import { ScrollAnalytics } from "@/components/analytics/scroll-analytics";
  *   • "live execution is T-Invest only today" — `#pricing`, in the Live tier's
  *     own feature list ("Маршрут T-Invest"), which is the place a visitor is
  *     deciding whether the route they need exists.
- *   • "sandbox by default" — the hero eyebrow and `#safety`.
+ *   • "sandbox by default" — `#safety`, and the free Sandbox tier in
+ *     `#pricing`. It used to be the third clause of the hero eyebrow; that
+ *     eyebrow is now a two-word status pill (see the polish note in
+ *     sections/hero/hero-section.tsx), so `#safety` carries it alone.
  *   • "frozen strategies are published alongside working ones" — `#audience`,
  *     cards 2 and 4, in both locales.
  *   • "no metrics are published for any strategy" — `#audience` card 4, which is

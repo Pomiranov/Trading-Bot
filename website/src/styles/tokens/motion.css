@@ -8,6 +8,17 @@
 @theme {
   --duration-micro: 150ms; /* colour / opacity on hover */
   --duration-base: 300ms; /* card state change */
+  /**
+   * Disclosure open/close — the FAQ rows.
+   *
+   * Its own step because neither neighbour fits: `--duration-base` (300ms) is a
+   * state change on something already on screen and reads as a snap when it is
+   * moving 200px of answer, and `--duration-reveal` (800ms) is a scroll
+   * entrance the reader did not ask for, which is far too slow for a control
+   * they just clicked. 420ms is the band where an expansion reads as material
+   * moving rather than as a panel appearing.
+   */
+  --duration-disclosure: 420ms;
   --duration-reveal: 800ms; /* scroll entrance — the reference's 0.8s */
   --duration-count-up: 700ms;
 

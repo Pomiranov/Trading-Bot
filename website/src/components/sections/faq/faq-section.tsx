@@ -17,10 +17,21 @@ const QUESTIONS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10] as const;
  * gives keyboard support, screen-reader semantics and find-in-page for free,
  * ships zero JavaScript, and cannot hydration-mismatch.
  *
- * The trade is height animation, which native disclosure cannot do portably.
- * That is an acceptable loss: an instant, crisp expand reads more like an
- * instrument than an easing panel, and Ctrl+F finding text inside a collapsed
- * answer is worth more than the ease-out.
+ * The height animation this used to trade away is back, and it cost none of
+ * that: `::details-content` is a stylable UA box, so the expansion is pure CSS
+ * on unmodified markup. See `.faq-row` in globals.css for the mechanism and for
+ * what a browser without it falls back to.
+ *
+ * ── aria-expanded / aria-controls are deliberately absent ──
+ *
+ * Not an oversight. <details> exposes its own expanded state to assistive
+ * technology, and the summary is its own control — the ARIA disclosure pattern
+ * exists to *simulate* what this element already is. Hand-written attributes
+ * here would be strictly worse: with no JavaScript to keep them in sync,
+ * `aria-expanded="false"` would go on lying the moment a reader opened a row,
+ * and a static value that contradicts the element's real state is a defect a
+ * screen-reader user actually hits. If a future change moves this to JS-driven
+ * open state, they come back at the same time as the code that updates them.
  *
  * ── What changed ──
  *
@@ -43,7 +54,22 @@ export async function FaqSection({ locale }: { locale: string }) {
       and a hairline across the top of it directly under that blend gives the
       join two competing horizontal edges. The tone change is the separator.
     */
-    <Section id="faq" rhythm="default" width="prose">
+    /*
+      `width="content"`, not `prose`.
+
+      The card fixed the "bare text floating in a 1280 field" problem noted below,
+      but it kept the 68ch column — and `prose` centres it. Measured at 1440 that
+      put the FAQ's left edge at x=358 while every other section on the page
+      starts at x=116, so the block still stepped out of the grid at the one point
+      where a reader is scanning for a specific line. A centred island is exactly
+      as much of a different site as an uncontained one; the containment just made
+      it look deliberate.
+
+      The reading measure is preserved where it is actually needed — on the
+      answers, which are the only long-form text here — rather than by narrowing
+      the whole component. Questions are one line each and want the full row.
+    */
+    <Section id="faq" rhythm="default">
       {/*
         No eyebrow.
 
@@ -67,7 +93,10 @@ export async function FaqSection({ locale }: { locale: string }) {
           {QUESTIONS.map((q) => (
             <details
               key={q}
-              className="group border-t border-[color:var(--color-border)] first:border-t-0"
+              // `faq-row` carries the disclosure motion; `group` is what the
+              // marker's open state below reads. Both on the <details> itself,
+              // so `[open]` and `group-open:` resolve against the same element.
+              className="faq-row group border-t border-[color:var(--color-border)] first:border-t-0"
             >
               <summary className="flex cursor-pointer list-none items-start justify-between gap-6 px-6 py-5 text-[length:var(--text-lead)] leading-[var(--text-lead--line-height)] text-[color:var(--color-text-primary)] transition-colors duration-[var(--duration-micro)] marker:hidden hover:bg-[color:var(--color-highlight-bg)] focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[color:var(--color-accent)] [&::-webkit-details-marker]:hidden">
                 {t(`q${q}`)}
@@ -125,9 +154,22 @@ export async function FaqSection({ locale }: { locale: string }) {
                   </svg>
                 </span>
               </summary>
-              <p className="px-6 pb-6 text-[length:var(--text-body)] leading-[var(--text-body--line-height)] text-[color:var(--color-text-secondary)]">
-                {t(`a${q}`)}
-              </p>
+              {/*
+                The answer needs its own element between `::details-content` and
+                the text: the content box is the grid whose row collapses, and
+                this is the item inside it that gets crushed. Putting the
+                padding on the <p> rather than on the row is what keeps the
+                closed state at exactly zero height — padding on the animated
+                box itself would leave 48px of empty card showing under every
+                closed question.
+              */}
+              <div className="faq-answer">
+                {/* The measure the section used to get from `width="prose"`, now
+                    applied to the only text that needs it. */}
+                <p className="max-w-[var(--space-prose-max)] px-6 pb-6 text-[length:var(--text-body)] leading-[var(--text-body--line-height)] text-[color:var(--color-text-secondary)]">
+                  {t(`a${q}`)}
+                </p>
+              </div>
             </details>
           ))}
         </Surface>

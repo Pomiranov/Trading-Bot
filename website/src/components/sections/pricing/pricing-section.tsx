@@ -6,55 +6,62 @@ import { PaperField } from "@/components/ui/paper-field";
 import { Reveal } from "@/components/motion/reveal";
 
 const PLANS = [1, 2, 3] as const;
-const FEATS = [1, 2, 3, 4] as const;
+/** Five per tier, in all three. An uneven row is a comparison table with a hole
+ *  in it — if a tier genuinely has less to say, say it in fewer words, not in
+ *  fewer lines. */
+const FEATS = [1, 2, 3, 4, 5] as const;
 
 /**
- * Three tiers, one CTA.
+ * Three tiers: Sandbox, Live, Premium.
  *
  * ── Prices ──
  *
- * `Бесплатно / Планируется / Планируется`, and they stay that way. The
- * reference shows $10 / $30 / $50 with the middle card emphasised; copying
- * those would be fabricating a commercial offer. There is no payment code
- * anywhere in the repository — grep for stripe|billing|checkout returns a
- * Permissions-Policy header and nothing else. The *composition* is taken from
- * the reference; the numbers are not.
+ * Sandbox is free for 7 days, Live is 5 000 ₽/month, Premium is 10 000 ₽/month.
+ * Owner-set, and the message catalogue is the pricing config — a currency is
+ * never assembled at render time.
  *
- * ── The focal card ──
+ * The EN catalogue carries "≈ $55" / "≈ $110", and the approximation marker is
+ * load-bearing rather than decorative: billing is in roubles, there is no FX
+ * feed anywhere in this repository, and a bare "$55" would be asserting a rate
+ * the page cannot honour. The section lead says so in words in EN. If a real
+ * rate ever exists, it belongs in a locale pricing config with a timestamp, not
+ * in a string that quietly ages.
  *
- * The reference needs one card to carry focus, and the previous version
- * deliberately had none — reasonably, since highlighting an unpriced,
- * unavailable tier is a conversion pattern with nothing behind it.
+ * ── What this replaces ──
  *
- * The resolution is to emphasise the tier that is *actually available*, which is
- * Explore. That satisfies the composition and is more honest than the
- * reference's own arrangement, because the card drawing the eye is the one a
- * visitor can act on today. `PricingCard` derives emphasis from `available`
- * rather than taking it as a flag, so the arrangement self-corrects when
- * billing ships instead of relying on someone to remember.
+ * `Explore / Sandbox / Live` at `Бесплатно / Планируется / Планируется`, where
+ * two of three tiers were placeholders with no CTA and the composition had to
+ * work around them: the free tier carried the `featured` surface so that
+ * *something* in the row was actionable, and a five-item Live-gate checklist sat
+ * underneath. All of that scaffolding is gone with the thing it was propping up.
  *
- * ── The dark-card defect ──
+ * ── What has not changed ──
  *
- * The focal card used the `featured` Surface variant, whose `.glass-premium-*`
- * classes hard-code a dark translucent fill and a white gradient border. On this
- * paper band that rendered the one actionable tier as a near-black panel with
- * `.section-paper`'s dark body text on top of it — unreadable, and the single
- * worst thing on the page. Fixed at the surface, in globals.css, rather than by
- * threading a `tone` prop through the card: see the note there for why that is
- * the prescribed repair.
+ * There is still no payment code in the repository — grep for
+ * stripe|billing|checkout returns a Permissions-Policy header and nothing else
+ * — so every CTA goes to `#access`, which is a request form, and the lead says
+ * in both locales that the programme is in closed testing and access is opened
+ * by hand. Stating a price is a commitment about what a subscription costs; it
+ * is not a claim that a card can be charged today, and the copy must keep those
+ * apart.
+ *
+ * The claim floor is unchanged too. `plan3Feat5` says Bybit and Finam are
+ * *planned*, because that is what `#faq` q9 says and what the adapters support:
+ * Bybit reads balances and positions, Finam is not implemented. Live is the
+ * T-Invest route and says so. No tier promises a return, and no tier carries a
+ * figure that is not a price or a document count.
  */
 export async function PricingSection({ locale }: { locale: string }) {
   const t = await getTranslations({ locale, namespace: "pricing" });
 
-  // Explore is the only tier that exists today. Availability is read from the
-  // product's real state, never set to steer the eye.
   const plans = PLANS.map((p) => ({
     id: p,
     tier: t(`plan${p}Title`),
     price: t(`plan${p}Price`),
-    available: p === 1,
+    period: t(`plan${p}Period`),
     body: t(`plan${p}Body`),
     features: FEATS.map((f) => t(`plan${p}Feat${f}`)),
+    cta: t(`plan${p}Cta`),
   }));
 
   return (
@@ -83,10 +90,9 @@ export async function PricingSection({ locale }: { locale: string }) {
         lead={t("lead")}
       />
 
-      {/* The focal card is first in DOM order, so on mobile — where the grid
-          collapses to one column — the actionable tier is the one a visitor
-          reaches first rather than the one they scroll past two placeholders
-          to find.
+      {/* Ascending order, and on mobile — where the grid collapses to one
+          column — that puts the free tier first, which is the one a visitor can
+          start on without deciding anything.
 
           `on-paper-graphite`, the same treatment `#foundation` uses, so the
           page's two paper bands are one composition rather than two: dark
@@ -99,10 +105,10 @@ export async function PricingSection({ locale }: { locale: string }) {
               <PricingCard
                 tier={plan.tier}
                 price={plan.price}
-                available={plan.available}
+                period={plan.period}
                 body={plan.body}
                 features={plan.features}
-                cta={plan.available ? { href: "#access", label: t("cta") } : undefined}
+                cta={{ href: "#access", label: plan.cta }}
               />
             </Reveal>
           </li>
@@ -127,14 +133,10 @@ export async function PricingSection({ locale }: { locale: string }) {
             guarantees and limits, at more weight than they had here
           • a live broker key and explicit consent → the Live card in `#access`,
             which is where a visitor actually asks for live access
-          • "nothing here is currently billed" → the section lead already says
-            payment is not connected and that this is a planned structure
+          • the conditions Live opens under → `#faq` q10, in one sentence
 
-        The honesty position is unchanged: Explore is the only tier with a price
-        and the only one with a CTA, and the two planned tiers say "Планируется"
-        rather than a number. `PricingCard` derives that from `available`, so it
-        self-corrects when billing ships instead of relying on someone to
-        remember.
+        Nothing goes back below the cards. The section is a heading, a lead and
+        three tiers, and the next thing after it should be the next section.
       */}
     </Section>
   );

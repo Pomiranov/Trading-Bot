@@ -194,9 +194,15 @@ export function SignalCard() {
                 the Skip button still forced the label onto three lines, which
                 made a 96px-tall button beside a 36px one. Stacked, each takes a
                 line or two at full width.
+
+                `min-h-11`, not `min-h-9`: these are the only two controls a
+                visitor is invited to press inside the demo card, and at 36px both
+                sat under the 44px touch floor. The floor is a minimum, so a label
+                that needs two lines still grows past it — which is the same
+                reason `h-auto` is here.
               */}
               <Button
-                className="h-auto min-h-9 w-full py-2 whitespace-normal sm:w-auto sm:flex-1"
+                className="h-auto min-h-11 w-full py-2 whitespace-normal sm:w-auto sm:flex-1"
                 size="sm"
                 onClick={() => setState("accepted")}
               >
@@ -205,7 +211,7 @@ export function SignalCard() {
               <Button
                 variant="outline"
                 size="sm"
-                className="w-full sm:w-auto"
+                className="h-auto min-h-11 w-full sm:w-auto"
                 onClick={() => setState("skipped")}
               >
                 {t("cardDismiss")}

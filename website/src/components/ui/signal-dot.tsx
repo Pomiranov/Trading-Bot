@@ -5,12 +5,12 @@ import { cn } from "@/lib/utils";
  *
  * ── Where it is used, and why it is one component ──
  *
- * "Closed testing" is stated in two visually unrelated places — the hero eyebrow
- * (as the first clause of a mono metadata line) and the footer status chip (as a
- * `StatusChip` label). They had two different treatments: the hero had no mark
- * at all, and the footer had the `muted` tone's flat grey dot. Owner direction is
- * that every one of them carries the same softly lit cold dot, so the geometry
- * lives here rather than being written twice and drifting.
+ * "Closed testing" is stated in two visually unrelated places — the hero's
+ * status pill and the footer status chip (as a `StatusChip` label). They had two
+ * different treatments: the hero had no mark at all, and the footer had the
+ * `muted` tone's flat grey dot. Owner direction is that every one of them
+ * carries the same softly lit cold dot, so the geometry lives here rather than
+ * being written twice and drifting.
  *
  * ── This is not the live dot, and the distinction is deliberate ──
  *

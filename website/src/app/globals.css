@@ -153,57 +153,32 @@ body::before {
 }
 
 /* ─── Hero instrument motion ───────────────────────────────────────────────
-   The hero aperture's motion vocabulary. Four loops, all deliberately slow
-   enough (6–14s) that no single one is ever the thing you are looking at — the
-   panel should read as an instrument that is *powered on*, not as an animation
-   playing.
+   The hero aperture's motion vocabulary. Two loops — the orbit spin and the
+   core breathe, both declared at the foot of this file with the rest of the
+   aperture — deliberately slow enough (8–61s) that neither is ever the thing
+   you are looking at. The panel should read as an instrument that is *powered
+   on*, not as an animation playing.
 
    Rules every keyframe here obeys:
 
-     • Compositor-only. `opacity`, `transform` and `stroke-dashoffset` exclusively
-       — nothing that triggers layout, so this cannot shift the hero or cost LCP.
+     • Compositor-only. `opacity` and `transform` exclusively — nothing that
+       triggers layout, so this cannot shift the hero or cost LCP.
      • The *base* style is the resting state, and no keyframe uses
        `animation-fill-mode`. Under `prefers-reduced-motion` the global reset
        collapses duration to 0.01ms and iteration count to 1; with fill-mode
        `none` the element then simply reverts to its base style. That is the
        whole reduced-motion story for the hero — a still, correct instrument —
        and it is why base styles must never be mid-animation values.
-     • No keyframe ends on `opacity: 0` for anything load-bearing. The ping is
-       decorative and may vanish; the rings and the vector may not. */
+     • No keyframe ends on `opacity: 0` for anything load-bearing.
 
-/* Rings inhale. Opacity only — scaling a stroked circle also scales its stroke
-   width, which reads as a pulse rather than a breath. */
-@keyframes qf-ring-breathe {
-  0%, 100% { opacity: 0.55; }
-  50% { opacity: 1; }
-}
+   ── What used to be here ──
 
-/* `qf-vector-flow` and `qf-node-ping` used to live here, driving a dashed exit
-   vector and a sonar ping on the hero aperture. Both were removed with the
-   vector itself — see the note in sections/hero/q-aperture.tsx. `.hero-node-ping`
-   was already dead before that: nothing had referenced it since the aperture was
-   rebuilt. */
-
-/* A single faint horizontal trace crossing the aperture. The one element that
-   genuinely moves across the panel, and it is nearly invisible by design. */
-@keyframes qf-scan {
-  0%, 12% { transform: translateY(-46px); opacity: 0; }
-  30% { opacity: 1; }
-  70% { opacity: 1; }
-  88%, 100% { transform: translateY(46px); opacity: 0; }
-}
-
-.hero-ring {
-  animation: qf-ring-breathe 9s var(--ease-out-quart, ease-in-out) infinite;
-  transform-origin: center;
-}
-/* Desynced so the three rings never line up into one throb. */
-.hero-ring:nth-of-type(2) { animation-duration: 11s; animation-delay: -3s; }
-.hero-ring:nth-of-type(3) { animation-duration: 13s; animation-delay: -6s; }
-
-.hero-scan {
-  animation: qf-scan 14s var(--ease-out-quart, ease-in-out) infinite;
-}
+   `qf-vector-flow` and `qf-node-ping` drove a dashed exit vector and a sonar
+   ping; `qf-ring-breathe`/`.hero-ring` and `qf-scan`/`.hero-scan` drove the
+   three white measurement rings and the horizontal scan trace. All of them were
+   removed with the geometry they animated — see the notes in
+   sections/hero/q-aperture.tsx. Nothing references them; do not resurrect a
+   keyframe here without the element that needs it. */
 
 /* ─── Pointer parallax ───
    Driven by two custom properties set on the wrapper by `pointer-tilt.tsx`.
@@ -216,6 +191,40 @@ body::before {
   transform: translate3d(calc(var(--tilt-x) * 7px), calc(var(--tilt-y) * 7px), 0);
   transition: transform 500ms var(--ease-out-quart, cubic-bezier(0.25, 1, 0.5, 1));
   will-change: transform;
+}
+
+/* ─── The aperture stops when it leaves ───
+   `data-qf-offscreen` is set on `.hero-tilt` by the observer in
+   sections/hero/pointer-tilt.tsx — see the note there for why eight infinite
+   animations running behind 12 900px of scrolled page is worth an attribute.
+
+   `paused`, not `none`: the loops hold their phase and resume where they were,
+   so scrolling back to the hero finds the instrument mid-orbit rather than
+   snapping every keyframe back to 0%. Descendants because every animation lives
+   on a child — the SVG's groups, circles and sweep line — and the attribute is on
+   their common wrapper.
+
+   `will-change: transform` above stays: the wrapper's own tilt transition is not
+   an animation and is unaffected by this.
+
+   ── Why the attribute is repeated ──
+
+   Not a typo and not superstition. Every loop is declared with the `animation`
+   shorthand, which resets `animation-play-state` to `running` as one of its
+   longhands — so a single-attribute selector (0,1,0) only wins against a
+   single-class one (0,1,0) when it comes later in the file. The aperture's four
+   most expensive loops — three orbits and the core pulse — are declared at the
+   *bottom* of this file, 1 200 lines below here, and measured off-screen with the
+   first version: four paused, four still running, which is half a fix and reads
+   as none.
+
+   Doubling the attribute takes this to (0,2,0) so it beats any single-class
+   `animation` shorthand wherever it sits. That matters more than tidiness here:
+   the next decorative loop someone adds will land at the bottom of the file too,
+   and it should be paused by this rule without anyone remembering it exists. */
+[data-qf-offscreen][data-qf-offscreen],
+[data-qf-offscreen][data-qf-offscreen] * {
+  animation-play-state: paused;
 }
 
 /* ─── Section depth ───────────────────────────────────────────────────────
@@ -1024,6 +1033,54 @@ section[id][data-rhythm="tight"] {
   padding-bottom: var(--space-section-y-tight);
 }
 
+/* ── The same gap, on every other seam ──
+
+   The rule above closed the paper→blend edge. Measured at 1440 after it landed,
+   every seam the blend does *not* touch was still paying twice:
+
+     audience → how-it-works   404px of nothing
+     faq      → access         440px
+     dashboard → telegram      391px
+     telegram → safety         308px
+     how-it-works → blend      245px *before* 352px of ramp
+
+   Because two sections meeting each other each contribute a full vertical
+   rhythm — a `default` bottom (158px at 1440) under a `major` top (216px) — and
+   nothing in the middle belongs to either of them. The reader crosses a third of
+   a viewport of black between two paragraphs that are meant to be consecutive.
+
+   The fix is asymmetric on purpose: the *following* section keeps its top
+   rhythm untouched, because that is the deliberate signal — `major` opens a new
+   movement, `tight` binds. Only the *preceding* section gives up its bottom,
+   down to `--space-block`. So a seam now measures "the next section's own
+   rhythm, plus a hairline's worth of clearance" rather than the sum of two
+   unrelated numbers, and it reads as one interval instead of a void.
+
+   Bottom padding rather than top is the load-bearing choice. Top padding is
+   what the `scroll-margin-top` rules above subtract from `--anchor-clearance`,
+   so changing it silently breaks every deep link into that section — the exact
+   defect documented at `.band-blend + section[id][data-rhythm]`. Bottom padding
+   is invisible to anchor landing, so this needs no matching rule and cannot
+   drift out of sync with one.
+
+   Not zero: the next section's `divider` hairline is drawn on its own top edge,
+   and at 0 it lands on the pixel row under the previous card. `--space-block`
+   (32px on a phone, 48px at 1440) is the smallest value that still reads as
+   clearance rather than as a collision.
+
+   The hero is excluded. It is the one section that sizes itself (`min-h-dvh`
+   plus header clearance plus its own `pb-12`), so its bottom edge is part of
+   that calculation rather than part of the page rhythm.
+
+   Excluded by `#hero` and not by `[data-rhythm="hero"]`: the hero does not go
+   through `ui/section.tsx` at all, so it carries no `data-rhythm` attribute and
+   a `:not([data-rhythm="hero"])` guard silently matches it — which is what it
+   did, quietly replacing the hero's own `pb-12` with 32px on a phone. */
+main > section:not(.section-paper):not(#hero):has(+ section),
+main > section:not(.section-paper):not(#hero):has(+ .band-blend) {
+  padding-bottom: var(--space-block);
+}
+
 /* A blend is already a separator, and the section on the dark side of one
    carries `divider` for the case where it follows an ordinary section. Two
    separators stacked on the same edge is the seam artefact the glows were
@@ -1359,6 +1416,82 @@ section[id][data-rhythm="tight"] {
   .signal-beacon {
     animation: qf-beacon-breathe 3.6s var(--ease-out-quart) infinite;
   }
+}
+
+/* ─── FAQ disclosure motion ────────────────────────────────────────────────
+   Smooth open and close on `#faq`'s rows, with the native <details>/<summary>
+   left completely intact.
+
+   ── Why this is CSS and not an accordion component ──
+
+   The section shipped as native disclosure on purpose: keyboard support,
+   screen-reader semantics, `Ctrl+F` finding text inside a collapsed answer, and
+   zero JavaScript, none of which a hand-rolled accordion gets for free — the
+   one this replaced set `outline: none` on its trigger and was simultaneously
+   the heaviest and least accessible block on the page. The only thing it gave
+   up was the height animation, which was recorded as an acceptable loss.
+
+   `::details-content` is what makes that loss unnecessary. It is the UA-
+   generated box around everything after the <summary>, it is stylable, and
+   styling it changes nothing about the element's semantics or behaviour. So the
+   markup is still `<details><summary>` and the reader still gets all four
+   properties above — the panel just moves now.
+
+   ── Why `grid-template-rows: 0fr → 1fr` rather than a height ──
+
+   Animating to `height: auto` needs `interpolate-size: allow-keywords`, which
+   Chromium has and Gecko does not. The `fr` interpolation is the portable form
+   of the same idea and needs no opt-in: the content sits in a single grid row
+   whose track is crushed to zero and released to its natural size, and the
+   parent clips. `.faq-answer` carries `min-block-size: 0` because a grid item's
+   automatic minimum size would otherwise hold the "collapsed" track open at the
+   content's full height, which is the one way this trick silently does nothing.
+
+   ── content-visibility, and why it is in the transition list ──
+
+   The UA sets `content-visibility: hidden` on a closed `::details-content`.
+   Without `allow-discrete` that flips the instant the `open` attribute is
+   removed, so the row would animate open smoothly and vanish on close — half an
+   effect, which reads worse than none. Listed with `allow-discrete`, the box
+   stays rendered for the length of the collapse and switches at the end.
+
+   ── Degradation ──
+
+   A browser without `::details-content` applies none of this and gets exactly
+   the instant open/close the section had before: correct, just not animated.
+   Nothing here is load-bearing for legibility.
+
+   Reduced motion is handled by the global reset at the foot of this file, which
+   collapses `transition-duration` to 0.01ms. The end states are the *open*
+   states, so a reduced-motion reader gets an instant, fully-expanded answer —
+   the correct outcome, not a frozen keyframe. */
+.faq-row::details-content {
+  display: grid;
+  grid-template-rows: 0fr;
+  overflow: hidden;
+  opacity: 0;
+  transition:
+    grid-template-rows var(--duration-disclosure) var(--ease-out-expo),
+    opacity var(--duration-base) var(--ease-out-expo),
+    content-visibility var(--duration-disclosure) allow-discrete;
+}
+
+.faq-row[open]::details-content {
+  grid-template-rows: 1fr;
+  opacity: 1;
+}
+
+/* The grid item. `min-block-size: 0` is the load-bearing line — see above. The
+   translate is the answer text settling into place rather than the panel simply
+   getting taller; 6px, so it registers as arrival and never as a slide. */
+.faq-answer {
+  min-block-size: 0;
+  transform: translateY(-6px);
+  transition: transform var(--duration-disclosure) var(--ease-out-expo);
+}
+
+.faq-row[open] .faq-answer {
+  transform: translateY(0);
 }
 
 /* ─── FAQ disclosure marker ────────────────────────────────────────────────

@@ -58,6 +58,10 @@ from universe import FORWARD_TICKERS, FORWARD_TICKERS_VERSION  # noqa: E402
 # run_forward_d1, который потянул бы pandas и весь learning-стек. Конвенция
 # «закрытый бар» обязана быть у сторожа и у прогона ОДНА.
 from market_time import MSK, session_date  # noqa: E402
+# Модулем, а не только именами: приписка о прошлых недоставках берётся через
+# notify.pending_notice(), и состояние накопителя обязано читаться В МОМЕНТ
+# вызова, а не защёлкиваться на импорте.
+import notify  # noqa: E402
 from notify import credentials_ready, escape, first_line, send  # noqa: E402
 # Слоты, льготный интервал и путь журнала — ОДНО место на проект (долг №46).
 # Своей копии «00:15» у сторожа нет: две копии одного факта разъехались бы при
@@ -98,6 +102,17 @@ DB_RETRY_SEC = 10
 DB_CONNECT_TIMEOUT = 10
 
 FORWARD_LOG = ROOT / "logs" / "forward_d1.log"
+
+# ── Коды возврата ────────────────────────────────────────────────────────────
+#
+# Раздельные, потому что 02.08 код 1 означал сразу два разных события:
+# «сторож посчитал верно, но доставка не удалась» и «сторож упал». Различить их
+# по LastTaskResult было нельзя, а действия они требуют противоположные —
+# в первом случае чинят канал, во втором сторожа.
+EXIT_OK = 0
+EXIT_NOT_DELIVERED = 1        # значение СОХРАНЕНО: человек уже знает этот код
+EXIT_NO_CREDENTIALS = 3       # как и раньше
+EXIT_CRASHED = 4              # новое: сторож упал, вердикта нет вовсе
 
 # Память между запусками: чем было last_candle_time в прошлый раз. Нужна для
 # проверки разрыва (A3) — прыжок состояния через даты свечей иначе не увидеть,
@@ -794,12 +809,24 @@ def build_message(snap: Snapshot, prev: dict[str, date] | None,
 
 # ── Точка входа ──────────────────────────────────────────────────────────
 
+def _with_pending_notice(text: str) -> str:
+    """Приписать сверху список ВСЕХ прошлых недоставок, если они были.
+
+    Сверху, а не снизу: сообщение сторожа длинное, и строка о том, что вчера
+    человек чего-то НЕ ПОЛУЧИЛ, обязана попасться на глаза раньше вердикта.
+    Отдельной функцией — чтобы её можно было проверить тестом, не поднимая ни
+    БД, ни планировщик.
+    """
+    notice = notify.pending_notice()
+    return f"{notice}\n{text}" if notice else text
+
+
 def main() -> int:
     _setup_logging()
 
     # Слать некуда — проверять нечего: код 3, как и раньше.
     if not credentials_ready():
-        return 3
+        return EXIT_NO_CREDENTIALS
 
     prev, prev_note, saved_at = read_saved_state()
     if prev_note:
@@ -813,14 +840,17 @@ def main() -> int:
         # случившийся за это время, должен обнаружиться в следующий раз.
         reason = first_line(exc)
         logger.error("БД недоступна: %s", reason)
-        text = (
+        text = _with_pending_notice(
             "⚠️ <b>БД недоступна, форвард не проверить</b>\n"
             f"{STRATEGY_ID} — проверка пропущена\n"
             f"Ошибка: {escape(reason)}"
         )
-        return 0 if send(text) else 1
+        if send(text):
+            notify.clear_pending()
+            return EXIT_OK
+        return EXIT_NOT_DELIVERED
 
-    text = build_message(snap, prev, prev_note)
+    text = _with_pending_notice(build_message(snap, prev, prev_note))
     logger.info("Вердикт:\n%s", text)
     delivered = send(text)
 
@@ -833,7 +863,13 @@ def main() -> int:
         except Exception as exc:
             logger.error("Состояние сторожа не сохранено: %s", first_line(exc))
 
-    return 0 if delivered else 1
+    # Накопитель чистит ТОТ, КТО ПОКАЗАЛ приписку человеку, и только после
+    # подтверждённой доставки. Тот же довод, что у save_state выше: пока
+    # сообщение не дошло, «прочитано и забыто» недопустимо.
+    if delivered:
+        notify.clear_pending()
+
+    return EXIT_OK if delivered else EXIT_NOT_DELIVERED
 
 
 if __name__ == "__main__":
@@ -841,4 +877,4 @@ if __name__ == "__main__":
         sys.exit(main())
     except Exception as exc:      # последний барьер: без трейсбека наружу
         logger.error("Сторож упал: %s", first_line(exc))
-        sys.exit(1)
+        sys.exit(EXIT_CRASHED)

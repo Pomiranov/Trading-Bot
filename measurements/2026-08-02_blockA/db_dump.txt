@@ -1,0 +1,79 @@
+﻿Снято: 2026-08-02 19:33:11 МСК. docker exec trading_db psql -U trader -d trading_bot. ТОЛЬКО SELECT.
+Стратегия: osc_range_moex_d1_fwd. Ручных запусков сторожа и прогона НЕ БЫЛО.
+
+-- forward_state — построчно
+-- SQL: SELECT ticker, last_candle_time, (last_candle_time AT TIME ZONE 'Europe/Moscow')::date AS msk_session FROM forward_state WHERE strategy_id='osc_range_moex_d1_fwd' ORDER BY ticker;
+ ticker |    last_candle_time    | msk_session 
+--------+------------------------+-------------
+ AFLT   | 2026-07-30 21:00:00+00 | 2026-07-31
+ ALRS   | 2026-07-30 21:00:00+00 | 2026-07-31
+ CHMF   | 2026-07-30 21:00:00+00 | 2026-07-31
+ FLOT   | 2026-07-30 21:00:00+00 | 2026-07-31
+ GAZP   | 2026-07-30 21:00:00+00 | 2026-07-31
+ LKOH   | 2026-07-30 21:00:00+00 | 2026-07-31
+ MGNT   | 2026-07-30 21:00:00+00 | 2026-07-31
+ MOEX   | 2026-07-30 21:00:00+00 | 2026-07-31
+ MTLR   | 2026-07-30 21:00:00+00 | 2026-07-31
+ MTSS   | 2026-07-30 21:00:00+00 | 2026-07-31
+ NVTK   | 2026-07-30 21:00:00+00 | 2026-07-31
+ OZON   | 2026-07-30 21:00:00+00 | 2026-07-31
+ PHOR   | 2026-07-30 21:00:00+00 | 2026-07-31
+ PLZL   | 2026-07-30 21:00:00+00 | 2026-07-31
+ ROSN   | 2026-07-30 21:00:00+00 | 2026-07-31
+ SBER   | 2026-07-30 21:00:00+00 | 2026-07-31
+ SMLT   | 2026-07-30 21:00:00+00 | 2026-07-31
+ SNGS   | 2026-07-30 21:00:00+00 | 2026-07-31
+ TATN   | 2026-07-30 21:00:00+00 | 2026-07-31
+ VKCO   | 2026-07-30 21:00:00+00 | 2026-07-31
+(20 rows)
+
+
+-- forward_state — сводка по московским сессиям
+-- SQL: SELECT (last_candle_time AT TIME ZONE 'Europe/Moscow')::date AS msk_session, count(*) AS tickers FROM forward_state WHERE strategy_id='osc_range_moex_d1_fwd' GROUP BY 1 ORDER BY 1;
+ msk_session | tickers 
+-------------+---------
+ 2026-07-31  |      20
+(1 row)
+
+
+-- forward_catchup_log — число строк
+-- SQL: SELECT count(*) AS rows FROM forward_catchup_log;
+ rows 
+------
+    0
+(1 row)
+
+
+-- forward_catchup_log — по стратегии
+-- SQL: SELECT strategy_id, count(*) FROM forward_catchup_log GROUP BY 1;
+ strategy_id | count 
+-------------+-------
+(0 rows)
+
+
+-- skipped_signals — число строк
+-- SQL: SELECT count(*) AS rows FROM skipped_signals;
+ rows 
+------
+    3
+(1 row)
+
+
+-- skipped_signals — содержимое
+-- SQL: SELECT * FROM skipped_signals ORDER BY 1 LIMIT 20;
+               skip_id                |          skipped_at           |      strategy_id      | ticker | timeframe | direction |     skip_reason      |                                                   details                                                   | is_sandbox 
+--------------------------------------+-------------------------------+-----------------------+--------+-----------+-----------+----------------------+-------------------------------------------------------------------------------------------------------------+------------
+ 3c66a96a-12c6-475c-84ea-2752144aef65 | 2026-08-01 08:38:54.567815+00 | osc_range_moex_d1_fwd | TATN   | D1        | BUY       | structural_downtrend | {"sma_long": 200, "sma_short": 50, "last_close": 525.9, "lower_low_window": 20, "lower_low_lookback": 120}  | t
+ 445020b5-1bd6-4db8-9938-97fc2123ae54 | 2026-07-12 14:57:13.806419+00 | osc_range_moex_d1     | GAZP   | D1        | BUY       | structural_downtrend | {"sma_long": 200, "sma_short": 50, "last_close": 92.71, "lower_low_window": 20, "lower_low_lookback": 120}  | t
+ f1da7ffc-9b84-4a61-bef7-2f99b38f4166 | 2026-07-30 13:40:41.48976+00  | osc_range_moex_d1_fwd | PHOR   | D1        | BUY       | structural_downtrend | {"sma_long": 200, "sma_short": 50, "last_close": 5754.0, "lower_low_window": 20, "lower_low_lookback": 120} | t
+(3 rows)
+
+
+-- trades — число строк
+-- SQL: SELECT count(*) AS rows FROM trades;
+ rows 
+------
+ 7532
+(1 row)
+
+

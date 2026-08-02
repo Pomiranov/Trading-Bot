@@ -1,0 +1,73 @@
+﻿Снято: 2026-08-02 19:33:33 МСК. docker exec trading_db psql. ТОЛЬКО SELECT. Набор — 20 бумаг FORWARD_TICKERS.
+КАНОН метки D1 (bot/market_time.py): московская полночь сессии = 21:00 UTC предыдущих суток.
+Поэтому 'UTC-час = 21' есть канон, а любой другой час — отклонение.
+
+-- max московская сессия ПО КАЖДОМУ тикеру
+-- SQL: SELECT ticker, max(time) AS max_time_utc, (max(time) AT TIME ZONE 'Europe/Moscow')::date AS max_msk_session FROM candles WHERE timeframe='1d' AND ticker IN ('AFLT','ALRS','CHMF','FLOT','GAZP','LKOH','MGNT','MOEX','MTLR','MTSS','NVTK','OZON','PHOR','PLZL','ROSN','SBER','SMLT','SNGS','TATN','VKCO') GROUP BY ticker ORDER BY ticker;
+ ticker |      max_time_utc      | max_msk_session 
+--------+------------------------+-----------------
+ AFLT   | 2026-07-30 21:00:00+00 | 2026-07-31
+ ALRS   | 2026-07-30 21:00:00+00 | 2026-07-31
+ CHMF   | 2026-07-30 21:00:00+00 | 2026-07-31
+ FLOT   | 2026-07-30 21:00:00+00 | 2026-07-31
+ GAZP   | 2026-07-30 21:00:00+00 | 2026-07-31
+ LKOH   | 2026-07-30 21:00:00+00 | 2026-07-31
+ MGNT   | 2026-07-30 21:00:00+00 | 2026-07-31
+ MOEX   | 2026-07-30 21:00:00+00 | 2026-07-31
+ MTLR   | 2026-07-30 21:00:00+00 | 2026-07-31
+ MTSS   | 2026-07-30 21:00:00+00 | 2026-07-31
+ NVTK   | 2026-07-30 21:00:00+00 | 2026-07-31
+ OZON   | 2026-07-30 21:00:00+00 | 2026-07-31
+ PHOR   | 2026-07-30 21:00:00+00 | 2026-07-31
+ PLZL   | 2026-07-30 21:00:00+00 | 2026-07-31
+ ROSN   | 2026-07-30 21:00:00+00 | 2026-07-31
+ SBER   | 2026-07-30 21:00:00+00 | 2026-07-31
+ SMLT   | 2026-07-30 21:00:00+00 | 2026-07-31
+ SNGS   | 2026-07-30 21:00:00+00 | 2026-07-31
+ TATN   | 2026-07-30 21:00:00+00 | 2026-07-31
+ VKCO   | 2026-07-30 21:00:00+00 | 2026-07-31
+(20 rows)
+
+
+-- дубли: несколько баров на одну московскую сессию
+-- SQL: SELECT count(*) AS dup_groups, COALESCE(sum(n-1),0) AS extra_rows FROM (SELECT ticker,(time AT TIME ZONE 'Europe/Moscow')::date d,count(*) n FROM candles WHERE timeframe='1d' AND ticker IN ('AFLT','ALRS','CHMF','FLOT','GAZP','LKOH','MGNT','MOEX','MTLR','MTSS','NVTK','OZON','PHOR','PLZL','ROSN','SBER','SMLT','SNGS','TATN','VKCO') GROUP BY 1,2 HAVING count(*)>1) x;
+ dup_groups | extra_rows 
+------------+------------
+          0 |          0
+(1 row)
+
+
+-- дубли: перечень (пусто = дублей нет)
+-- SQL: SELECT ticker,(time AT TIME ZONE 'Europe/Moscow')::date AS msk_session, count(*) FROM candles WHERE timeframe='1d' AND ticker IN ('AFLT','ALRS','CHMF','FLOT','GAZP','LKOH','MGNT','MOEX','MTLR','MTSS','NVTK','OZON','PHOR','PLZL','ROSN','SBER','SMLT','SNGS','TATN','VKCO') GROUP BY 1,2 HAVING count(*)>1 ORDER BY 1,2;
+ ticker | msk_session | count 
+--------+-------------+-------
+(0 rows)
+
+
+-- распределение UTC-часа (канон = 21)
+-- SQL: SELECT EXTRACT(hour FROM time AT TIME ZONE 'UTC') AS utc_hour, count(*) FROM candles WHERE timeframe='1d' AND ticker IN ('AFLT','ALRS','CHMF','FLOT','GAZP','LKOH','MGNT','MOEX','MTLR','MTSS','NVTK','OZON','PHOR','PLZL','ROSN','SBER','SMLT','SNGS','TATN','VKCO') GROUP BY 1 ORDER BY 1;
+ utc_hour | count 
+----------+-------
+       21 | 18182
+(1 row)
+
+
+-- строки 1d с UTC-часом <> 21 (пусто = отклонений нет)
+-- SQL: SELECT ticker, time, EXTRACT(hour FROM time AT TIME ZONE 'UTC') AS utc_hour FROM candles WHERE timeframe='1d' AND ticker IN ('AFLT','ALRS','CHMF','FLOT','GAZP','LKOH','MGNT','MOEX','MTLR','MTSS','NVTK','OZON','PHOR','PLZL','ROSN','SBER','SMLT','SNGS','TATN','VKCO') AND EXTRACT(hour FROM time AT TIME ZONE 'UTC') <> 21 ORDER BY ticker, time LIMIT 50;
+ ticker | time | utc_hour 
+--------+------+----------
+(0 rows)
+
+
+-- последние 5 московских сессий по набору
+-- SQL: SELECT (time AT TIME ZONE 'Europe/Moscow')::date AS msk_session, count(DISTINCT ticker) AS tickers FROM candles WHERE timeframe='1d' AND ticker IN ('AFLT','ALRS','CHMF','FLOT','GAZP','LKOH','MGNT','MOEX','MTLR','MTSS','NVTK','OZON','PHOR','PLZL','ROSN','SBER','SMLT','SNGS','TATN','VKCO') GROUP BY 1 ORDER BY 1 DESC LIMIT 5;
+ msk_session | tickers 
+-------------+---------
+ 2026-07-31  |      20
+ 2026-07-30  |      20
+ 2026-07-29  |      20
+ 2026-07-28  |      20
+ 2026-07-27  |      20
+(5 rows)
+
+

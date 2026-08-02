@@ -1,0 +1,1259 @@
+2026-07-12 18:31:12 [INFO] signals.rules_engine: Загружено правил: основных=6, фильтров=0, выходов=2, тикерных=0, макро=0
+2026-07-12 18:31:12 [INFO] data.loader: [SBER] Запрос к MOEX ISS…
+2026-07-12 18:31:13 [INFO] data.loader: Загружено 11 свечей для SBER
+2026-07-12 18:31:13 [INFO] data.loader: [SBER] Удалено 11 старых строк
+2026-07-12 18:31:13 [INFO] data.loader: [SBER] Сохранено 11 свечей  (2026-07-02 → 2026-07-12)
+2026-07-12 18:31:13 [INFO] data.loader: [GAZP] Запрос к MOEX ISS…
+2026-07-12 18:31:13 [INFO] data.loader: Загружено 11 свечей для GAZP
+2026-07-12 18:31:13 [INFO] data.loader: [GAZP] Удалено 11 старых строк
+2026-07-12 18:31:13 [INFO] data.loader: [GAZP] Сохранено 11 свечей  (2026-07-02 → 2026-07-12)
+2026-07-12 18:31:13 [INFO] data.loader: [LKOH] Запрос к MOEX ISS…
+2026-07-12 18:31:13 [INFO] data.loader: Загружено 11 свечей для LKOH
+2026-07-12 18:31:13 [INFO] data.loader: [LKOH] Удалено 11 старых строк
+2026-07-12 18:31:13 [INFO] data.loader: [LKOH] Сохранено 11 свечей  (2026-07-02 → 2026-07-12)
+2026-07-12 18:31:13 [INFO] data.loader: [NVTK] Запрос к MOEX ISS…
+2026-07-12 18:31:13 [INFO] data.loader: Загружено 11 свечей для NVTK
+2026-07-12 18:31:13 [INFO] data.loader: [NVTK] Удалено 11 старых строк
+2026-07-12 18:31:13 [INFO] data.loader: [NVTK] Сохранено 11 свечей  (2026-07-02 → 2026-07-12)
+2026-07-12 18:31:13 [INFO] data.loader: [ROSN] Запрос к MOEX ISS…
+2026-07-12 18:31:13 [INFO] data.loader: Загружено 11 свечей для ROSN
+2026-07-12 18:31:13 [INFO] data.loader: [ROSN] Удалено 11 старых строк
+2026-07-12 18:31:13 [INFO] data.loader: [ROSN] Сохранено 11 свечей  (2026-07-02 → 2026-07-12)
+2026-07-12 18:31:13 [INFO] data.loader: [TATN] Запрос к MOEX ISS…
+2026-07-12 18:31:13 [INFO] data.loader: Загружено 11 свечей для TATN
+2026-07-12 18:31:13 [INFO] data.loader: [TATN] Удалено 11 старых строк
+2026-07-12 18:31:13 [INFO] data.loader: [TATN] Сохранено 11 свечей  (2026-07-02 → 2026-07-12)
+2026-07-12 18:31:13 [INFO] data.loader: [MGNT] Запрос к MOEX ISS…
+2026-07-12 18:31:13 [INFO] data.loader: Загружено 11 свечей для MGNT
+2026-07-12 18:31:13 [INFO] data.loader: [MGNT] Удалено 11 старых строк
+2026-07-12 18:31:13 [INFO] data.loader: [MGNT] Сохранено 11 свечей  (2026-07-02 → 2026-07-12)
+2026-07-12 18:31:13 [INFO] data.loader: [MOEX] Запрос к MOEX ISS…
+2026-07-12 18:31:13 [INFO] data.loader: Загружено 11 свечей для MOEX
+2026-07-12 18:31:13 [INFO] data.loader: [MOEX] Удалено 11 старых строк
+2026-07-12 18:31:13 [INFO] data.loader: [MOEX] Сохранено 11 свечей  (2026-07-02 → 2026-07-12)
+2026-07-12 18:31:13 [INFO] data.loader: [PLZL] Запрос к MOEX ISS…
+2026-07-12 18:31:13 [INFO] data.loader: Загружено 11 свечей для PLZL
+2026-07-12 18:31:13 [INFO] data.loader: [PLZL] Удалено 11 старых строк
+2026-07-12 18:31:13 [INFO] data.loader: [PLZL] Сохранено 11 свечей  (2026-07-02 → 2026-07-12)
+2026-07-12 18:31:13 [INFO] data.loader: [CHMF] Запрос к MOEX ISS…
+2026-07-12 18:31:13 [INFO] data.loader: Загружено 11 свечей для CHMF
+2026-07-12 18:31:13 [INFO] data.loader: [CHMF] Удалено 11 старых строк
+2026-07-12 18:31:13 [INFO] data.loader: [CHMF] Сохранено 11 свечей  (2026-07-02 → 2026-07-12)
+2026-07-12 18:31:13 [INFO] data.loader: [ALRS] Запрос к MOEX ISS…
+2026-07-12 18:31:13 [INFO] data.loader: Загружено 11 свечей для ALRS
+2026-07-12 18:31:13 [INFO] data.loader: [ALRS] Удалено 11 старых строк
+2026-07-12 18:31:13 [INFO] data.loader: [ALRS] Сохранено 11 свечей  (2026-07-02 → 2026-07-12)
+2026-07-12 18:31:13 [INFO] data.loader: [SNGS] Запрос к MOEX ISS…
+2026-07-12 18:31:13 [INFO] data.loader: Загружено 11 свечей для SNGS
+2026-07-12 18:31:13 [INFO] data.loader: [SNGS] Удалено 11 старых строк
+2026-07-12 18:31:13 [INFO] data.loader: [SNGS] Сохранено 11 свечей  (2026-07-02 → 2026-07-12)
+2026-07-12 18:31:13 [INFO] quantflow.forward: Догрузка свечей: 132 строк
+2026-07-12 18:31:13 [INFO] quantflow.memory: MemoryWriter: подключение к БД установлено
+2026-07-12 18:31:13 [INFO] quantflow.evaluator: DecisionEvaluator: подключение к БД установлено
+2026-07-12 18:31:13 [INFO] quantflow.belief: BeliefUpdater: подключение к БД установлено
+2026-07-12 18:31:14 [INFO] quantflow.hypothesis: HypothesisEngine: подключение к БД установлено
+2026-07-12 18:31:14 [INFO] quantflow.orchestrator: TradingOrchestrator: все модули подключены
+2026-07-12 18:31:14 [INFO] quantflow.forward: Открытых позиций: 0 | свободный капитал: 1,000,000
+2026-07-12 18:31:14 [INFO] quantflow.forward: [SBER] Свежих свечей нет (последняя 2026-07-12) — пропуск
+2026-07-12 18:31:14 [INFO] quantflow.forward: [GAZP] Свежих свечей нет (последняя 2026-07-12) — пропуск
+2026-07-12 18:31:14 [INFO] quantflow.forward: [LKOH] Свежих свечей нет (последняя 2026-07-12) — пропуск
+2026-07-12 18:31:14 [INFO] quantflow.forward: [NVTK] Свежих свечей нет (последняя 2026-07-12) — пропуск
+2026-07-12 18:31:14 [INFO] quantflow.forward: [ROSN] Свежих свечей нет (последняя 2026-07-12) — пропуск
+2026-07-12 18:31:14 [INFO] quantflow.forward: [TATN] Свежих свечей нет (последняя 2026-07-12) — пропуск
+2026-07-12 18:31:14 [INFO] quantflow.forward: [MGNT] Свежих свечей нет (последняя 2026-07-12) — пропуск
+2026-07-12 18:31:14 [INFO] quantflow.forward: [MOEX] Свежих свечей нет (последняя 2026-07-12) — пропуск
+2026-07-12 18:31:14 [INFO] quantflow.forward: [PLZL] Свежих свечей нет (последняя 2026-07-12) — пропуск
+2026-07-12 18:31:14 [INFO] quantflow.forward: [CHMF] Свежих свечей нет (последняя 2026-07-12) — пропуск
+2026-07-12 18:31:14 [INFO] quantflow.forward: [ALRS] Свежих свечей нет (последняя 2026-07-12) — пропуск
+2026-07-12 18:31:14 [INFO] quantflow.forward: [SNGS] Свежих свечей нет (последняя 2026-07-12) — пропуск
+2026-07-12 18:31:14 [INFO] quantflow.memory: MemoryWriter: подключение закрыто
+
+════════════════════════════════════════════════════════════════
+  Форвард D1 2026-07-12: позиций 0, свободно 1,000,000 руб., событий 0
+════════════════════════════════════════════════════════════════
+2026-07-12 18:31:41 [INFO] signals.rules_engine: Загружено правил: основных=6, фильтров=0, выходов=2, тикерных=0, макро=0
+2026-07-12 18:31:41 [INFO] data.loader: [SBER] Запрос к MOEX ISS…
+2026-07-12 18:31:41 [INFO] data.loader: Загружено 11 свечей для SBER
+2026-07-12 18:31:41 [INFO] data.loader: [SBER] Удалено 11 старых строк
+2026-07-12 18:31:41 [INFO] data.loader: [SBER] Сохранено 11 свечей  (2026-07-02 → 2026-07-12)
+2026-07-12 18:31:41 [INFO] data.loader: [GAZP] Запрос к MOEX ISS…
+2026-07-12 18:31:41 [INFO] data.loader: Загружено 11 свечей для GAZP
+2026-07-12 18:31:41 [INFO] data.loader: [GAZP] Удалено 11 старых строк
+2026-07-12 18:31:41 [INFO] data.loader: [GAZP] Сохранено 11 свечей  (2026-07-02 → 2026-07-12)
+2026-07-12 18:31:41 [INFO] data.loader: [LKOH] Запрос к MOEX ISS…
+2026-07-12 18:31:42 [INFO] data.loader: Загружено 11 свечей для LKOH
+2026-07-12 18:31:42 [INFO] data.loader: [LKOH] Удалено 11 старых строк
+2026-07-12 18:31:42 [INFO] data.loader: [LKOH] Сохранено 11 свечей  (2026-07-02 → 2026-07-12)
+2026-07-12 18:31:42 [INFO] data.loader: [NVTK] Запрос к MOEX ISS…
+2026-07-12 18:31:42 [INFO] data.loader: Загружено 11 свечей для NVTK
+2026-07-12 18:31:42 [INFO] data.loader: [NVTK] Удалено 11 старых строк
+2026-07-12 18:31:42 [INFO] data.loader: [NVTK] Сохранено 11 свечей  (2026-07-02 → 2026-07-12)
+2026-07-12 18:31:42 [INFO] data.loader: [ROSN] Запрос к MOEX ISS…
+2026-07-12 18:31:42 [INFO] data.loader: Загружено 11 свечей для ROSN
+2026-07-12 18:31:42 [INFO] data.loader: [ROSN] Удалено 11 старых строк
+2026-07-12 18:31:42 [INFO] data.loader: [ROSN] Сохранено 11 свечей  (2026-07-02 → 2026-07-12)
+2026-07-12 18:31:42 [INFO] data.loader: [TATN] Запрос к MOEX ISS…
+2026-07-12 18:31:42 [INFO] data.loader: Загружено 11 свечей для TATN
+2026-07-12 18:31:42 [INFO] data.loader: [TATN] Удалено 11 старых строк
+2026-07-12 18:31:42 [INFO] data.loader: [TATN] Сохранено 11 свечей  (2026-07-02 → 2026-07-12)
+2026-07-12 18:31:42 [INFO] data.loader: [MGNT] Запрос к MOEX ISS…
+2026-07-12 18:31:42 [INFO] data.loader: Загружено 11 свечей для MGNT
+2026-07-12 18:31:42 [INFO] data.loader: [MGNT] Удалено 11 старых строк
+2026-07-12 18:31:42 [INFO] data.loader: [MGNT] Сохранено 11 свечей  (2026-07-02 → 2026-07-12)
+2026-07-12 18:31:42 [INFO] data.loader: [MOEX] Запрос к MOEX ISS…
+2026-07-12 18:31:42 [INFO] data.loader: Загружено 11 свечей для MOEX
+2026-07-12 18:31:42 [INFO] data.loader: [MOEX] Удалено 11 старых строк
+2026-07-12 18:31:42 [INFO] data.loader: [MOEX] Сохранено 11 свечей  (2026-07-02 → 2026-07-12)
+2026-07-12 18:31:42 [INFO] data.loader: [PLZL] Запрос к MOEX ISS…
+2026-07-12 18:31:42 [INFO] data.loader: Загружено 11 свечей для PLZL
+2026-07-12 18:31:42 [INFO] data.loader: [PLZL] Удалено 11 старых строк
+2026-07-12 18:31:42 [INFO] data.loader: [PLZL] Сохранено 11 свечей  (2026-07-02 → 2026-07-12)
+2026-07-12 18:31:42 [INFO] data.loader: [CHMF] Запрос к MOEX ISS…
+2026-07-12 18:31:42 [INFO] data.loader: Загружено 11 свечей для CHMF
+2026-07-12 18:31:42 [INFO] data.loader: [CHMF] Удалено 11 старых строк
+2026-07-12 18:31:42 [INFO] data.loader: [CHMF] Сохранено 11 свечей  (2026-07-02 → 2026-07-12)
+2026-07-12 18:31:42 [INFO] data.loader: [ALRS] Запрос к MOEX ISS…
+2026-07-12 18:31:42 [INFO] data.loader: Загружено 11 свечей для ALRS
+2026-07-12 18:31:42 [INFO] data.loader: [ALRS] Удалено 11 старых строк
+2026-07-12 18:31:42 [INFO] data.loader: [ALRS] Сохранено 11 свечей  (2026-07-02 → 2026-07-12)
+2026-07-12 18:31:42 [INFO] data.loader: [SNGS] Запрос к MOEX ISS…
+2026-07-12 18:31:42 [INFO] data.loader: Загружено 11 свечей для SNGS
+2026-07-12 18:31:42 [INFO] data.loader: [SNGS] Удалено 11 старых строк
+2026-07-12 18:31:42 [INFO] data.loader: [SNGS] Сохранено 11 свечей  (2026-07-02 → 2026-07-12)
+2026-07-12 18:31:42 [INFO] quantflow.forward: Догрузка свечей: 132 строк
+2026-07-12 18:31:42 [INFO] quantflow.memory: MemoryWriter: подключение к БД установлено
+2026-07-12 18:31:42 [INFO] quantflow.evaluator: DecisionEvaluator: подключение к БД установлено
+2026-07-12 18:31:42 [INFO] quantflow.belief: BeliefUpdater: подключение к БД установлено
+2026-07-12 18:31:42 [INFO] quantflow.hypothesis: HypothesisEngine: подключение к БД установлено
+2026-07-12 18:31:42 [INFO] quantflow.orchestrator: TradingOrchestrator: все модули подключены
+2026-07-12 18:31:42 [INFO] quantflow.forward: Открытых позиций: 0 | свободный капитал: 1,000,000
+2026-07-12 18:31:42 [INFO] quantflow.forward: [SBER] Свежих свечей нет (последняя 2026-07-12) — пропуск
+2026-07-12 18:31:42 [INFO] quantflow.forward: [GAZP] Свежих свечей нет (последняя 2026-07-12) — пропуск
+2026-07-12 18:31:42 [INFO] quantflow.forward: [LKOH] Свежих свечей нет (последняя 2026-07-12) — пропуск
+2026-07-12 18:31:42 [INFO] quantflow.forward: [NVTK] Свежих свечей нет (последняя 2026-07-12) — пропуск
+2026-07-12 18:31:42 [INFO] quantflow.forward: [ROSN] Свежих свечей нет (последняя 2026-07-12) — пропуск
+2026-07-12 18:31:43 [INFO] quantflow.forward: [TATN] Свежих свечей нет (последняя 2026-07-12) — пропуск
+2026-07-12 18:31:43 [INFO] quantflow.forward: [MGNT] Свежих свечей нет (последняя 2026-07-12) — пропуск
+2026-07-12 18:31:43 [INFO] quantflow.forward: [MOEX] Свежих свечей нет (последняя 2026-07-12) — пропуск
+2026-07-12 18:31:43 [INFO] quantflow.forward: [PLZL] Свежих свечей нет (последняя 2026-07-12) — пропуск
+2026-07-12 18:31:43 [INFO] quantflow.forward: [CHMF] Свежих свечей нет (последняя 2026-07-12) — пропуск
+2026-07-12 18:31:43 [INFO] quantflow.forward: [ALRS] Свежих свечей нет (последняя 2026-07-12) — пропуск
+2026-07-12 18:31:43 [INFO] quantflow.forward: [SNGS] Свежих свечей нет (последняя 2026-07-12) — пропуск
+2026-07-12 18:31:43 [INFO] quantflow.memory: MemoryWriter: подключение закрыто
+
+════════════════════════════════════════════════════════════════
+  Форвард D1 2026-07-12: позиций 0, свободно 1,000,000 руб., событий 0
+════════════════════════════════════════════════════════════════
+2026-07-13 00:15:05 [INFO] signals.rules_engine: Загружено правил: основных=6, фильтров=0, выходов=2, тикерных=0, макро=0
+2026-07-13 00:15:06 [INFO] data.loader: [SBER] Запрос к MOEX ISS…
+2026-07-13 00:15:06 [INFO] data.loader: Загружено 10 свечей для SBER
+2026-07-13 00:15:06 [INFO] data.loader: [SBER] Удалено 10 старых строк
+2026-07-13 00:15:06 [INFO] data.loader: [SBER] Сохранено 10 свечей  (2026-07-03 → 2026-07-12)
+2026-07-13 00:15:06 [INFO] data.loader: [GAZP] Запрос к MOEX ISS…
+2026-07-13 00:15:06 [INFO] data.loader: Загружено 10 свечей для GAZP
+2026-07-13 00:15:06 [INFO] data.loader: [GAZP] Удалено 10 старых строк
+2026-07-13 00:15:06 [INFO] data.loader: [GAZP] Сохранено 10 свечей  (2026-07-03 → 2026-07-12)
+2026-07-13 00:15:06 [INFO] data.loader: [LKOH] Запрос к MOEX ISS…
+2026-07-13 00:15:06 [INFO] data.loader: Загружено 10 свечей для LKOH
+2026-07-13 00:15:06 [INFO] data.loader: [LKOH] Удалено 10 старых строк
+2026-07-13 00:15:06 [INFO] data.loader: [LKOH] Сохранено 10 свечей  (2026-07-03 → 2026-07-12)
+2026-07-13 00:15:06 [INFO] data.loader: [NVTK] Запрос к MOEX ISS…
+2026-07-13 00:15:06 [INFO] data.loader: Загружено 10 свечей для NVTK
+2026-07-13 00:15:06 [INFO] data.loader: [NVTK] Удалено 10 старых строк
+2026-07-13 00:15:06 [INFO] data.loader: [NVTK] Сохранено 10 свечей  (2026-07-03 → 2026-07-12)
+2026-07-13 00:15:06 [INFO] data.loader: [ROSN] Запрос к MOEX ISS…
+2026-07-13 00:15:06 [INFO] data.loader: Загружено 10 свечей для ROSN
+2026-07-13 00:15:06 [INFO] data.loader: [ROSN] Удалено 10 старых строк
+2026-07-13 00:15:06 [INFO] data.loader: [ROSN] Сохранено 10 свечей  (2026-07-03 → 2026-07-12)
+2026-07-13 00:15:06 [INFO] data.loader: [TATN] Запрос к MOEX ISS…
+2026-07-13 00:15:06 [INFO] data.loader: Загружено 10 свечей для TATN
+2026-07-13 00:15:06 [INFO] data.loader: [TATN] Удалено 10 старых строк
+2026-07-13 00:15:06 [INFO] data.loader: [TATN] Сохранено 10 свечей  (2026-07-03 → 2026-07-12)
+2026-07-13 00:15:06 [INFO] data.loader: [MGNT] Запрос к MOEX ISS…
+2026-07-13 00:15:06 [INFO] data.loader: Загружено 10 свечей для MGNT
+2026-07-13 00:15:06 [INFO] data.loader: [MGNT] Удалено 10 старых строк
+2026-07-13 00:15:06 [INFO] data.loader: [MGNT] Сохранено 10 свечей  (2026-07-03 → 2026-07-12)
+2026-07-13 00:15:06 [INFO] data.loader: [MOEX] Запрос к MOEX ISS…
+2026-07-13 00:15:06 [INFO] data.loader: Загружено 10 свечей для MOEX
+2026-07-13 00:15:06 [INFO] data.loader: [MOEX] Удалено 10 старых строк
+2026-07-13 00:15:06 [INFO] data.loader: [MOEX] Сохранено 10 свечей  (2026-07-03 → 2026-07-12)
+2026-07-13 00:15:06 [INFO] data.loader: [PLZL] Запрос к MOEX ISS…
+2026-07-13 00:15:06 [INFO] data.loader: Загружено 10 свечей для PLZL
+2026-07-13 00:15:06 [INFO] data.loader: [PLZL] Удалено 10 старых строк
+2026-07-13 00:15:06 [INFO] data.loader: [PLZL] Сохранено 10 свечей  (2026-07-03 → 2026-07-12)
+2026-07-13 00:15:06 [INFO] data.loader: [CHMF] Запрос к MOEX ISS…
+2026-07-13 00:15:06 [INFO] data.loader: Загружено 10 свечей для CHMF
+2026-07-13 00:15:06 [INFO] data.loader: [CHMF] Удалено 10 старых строк
+2026-07-13 00:15:06 [INFO] data.loader: [CHMF] Сохранено 10 свечей  (2026-07-03 → 2026-07-12)
+2026-07-13 00:15:06 [INFO] data.loader: [ALRS] Запрос к MOEX ISS…
+2026-07-13 00:15:06 [INFO] data.loader: Загружено 10 свечей для ALRS
+2026-07-13 00:15:06 [INFO] data.loader: [ALRS] Удалено 10 старых строк
+2026-07-13 00:15:06 [INFO] data.loader: [ALRS] Сохранено 10 свечей  (2026-07-03 → 2026-07-12)
+2026-07-13 00:15:06 [INFO] data.loader: [SNGS] Запрос к MOEX ISS…
+2026-07-13 00:15:06 [INFO] data.loader: Загружено 10 свечей для SNGS
+2026-07-13 00:15:06 [INFO] data.loader: [SNGS] Удалено 10 старых строк
+2026-07-13 00:15:06 [INFO] data.loader: [SNGS] Сохранено 10 свечей  (2026-07-03 → 2026-07-12)
+2026-07-13 00:15:06 [INFO] quantflow.forward: Догрузка свечей: 120 строк
+2026-07-13 00:15:06 [INFO] quantflow.memory: MemoryWriter: подключение к БД установлено
+2026-07-13 00:15:06 [INFO] quantflow.evaluator: DecisionEvaluator: подключение к БД установлено
+2026-07-13 00:15:07 [INFO] quantflow.belief: BeliefUpdater: подключение к БД установлено
+2026-07-13 00:15:07 [INFO] quantflow.hypothesis: HypothesisEngine: подключение к БД установлено
+2026-07-13 00:15:07 [INFO] quantflow.orchestrator: TradingOrchestrator: все модули подключены
+2026-07-13 00:15:07 [INFO] quantflow.forward: Открытых позиций: 0 | свободный капитал: 1,000,000
+2026-07-13 00:15:07 [INFO] quantflow.forward: [SBER] Свежих свечей нет (последняя 2026-07-12) — пропуск
+2026-07-13 00:15:07 [INFO] quantflow.forward: [GAZP] Свежих свечей нет (последняя 2026-07-12) — пропуск
+2026-07-13 00:15:07 [INFO] quantflow.forward: [LKOH] Свежих свечей нет (последняя 2026-07-12) — пропуск
+2026-07-13 00:15:07 [INFO] quantflow.forward: [NVTK] Свежих свечей нет (последняя 2026-07-12) — пропуск
+2026-07-13 00:15:07 [INFO] quantflow.forward: [ROSN] Свежих свечей нет (последняя 2026-07-12) — пропуск
+2026-07-13 00:15:07 [INFO] quantflow.forward: [TATN] Свежих свечей нет (последняя 2026-07-12) — пропуск
+2026-07-13 00:15:07 [INFO] quantflow.forward: [MGNT] Свежих свечей нет (последняя 2026-07-12) — пропуск
+2026-07-13 00:15:07 [INFO] quantflow.forward: [MOEX] Свежих свечей нет (последняя 2026-07-12) — пропуск
+2026-07-13 00:15:07 [INFO] quantflow.forward: [PLZL] Свежих свечей нет (последняя 2026-07-12) — пропуск
+2026-07-13 00:15:07 [INFO] quantflow.forward: [CHMF] Свежих свечей нет (последняя 2026-07-12) — пропуск
+2026-07-13 00:15:07 [INFO] quantflow.forward: [ALRS] Свежих свечей нет (последняя 2026-07-12) — пропуск
+2026-07-13 00:15:07 [INFO] quantflow.forward: [SNGS] Свежих свечей нет (последняя 2026-07-12) — пропуск
+2026-07-13 00:15:07 [INFO] quantflow.memory: MemoryWriter: подключение закрыто
+
+════════════════════════════════════════════════════════════════
+  Форвард D1 2026-07-12: позиций 0, свободно 1,000,000 руб., событий 0
+════════════════════════════════════════════════════════════════
+^C2026-07-15 00:15:06 [INFO] signals.rules_engine: Загружено правил: основных=6, фильтров=0, выходов=2, тикерных=0, макро=0
+2026-07-15 00:15:08 [INFO] quantflow.forward: ⚠ Догрузка свечей с MOEX ISS не удалась: connection to server at "localhost" (::1), port 5432 failed: Permission denied (0x0000271D/10013)
+	Is the server running on that host and accepting TCP/IP connections?
+connection to server at "localhost" (127.0.0.1), port 5432 failed: Connection refused (0x0000274D/10061)
+	Is the server running on that host and accepting TCP/IP connections?
+
+Traceback (most recent call last):
+  File "D:\Trading-Bot-Nik\run_forward_d1.py", line 448, in <module>
+    main()
+    ~~~~^^
+  File "D:\Trading-Bot-Nik\run_forward_d1.py", line 444, in main
+    asyncio.run(ForwardRunner().run())
+    ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python314\Lib\asyncio\runners.py", line 205, in run
+    return runner.run(main)
+           ~~~~~~~~~~^^^^^^
+  File "C:\Python314\Lib\asyncio\runners.py", line 128, in run
+    return self._loop.run_until_complete(task)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^
+  File "C:\Python314\Lib\asyncio\base_events.py", line 719, in run_until_complete
+    return future.result()
+           ~~~~~~~~~~~~~^^
+  File "D:\Trading-Bot-Nik\run_forward_d1.py", line 406, in run
+    await self.orch.connect()
+  File "D:\Trading-Bot-Nik\learning\trading_orchestrator.py", line 122, in connect
+    self._pool = await asyncpg.create_pool(self._dsn, min_size=1, max_size=5)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python314\Lib\site-packages\asyncpg\pool.py", line 439, in _async__init__
+    await self._initialize()
+  File "C:\Python314\Lib\site-packages\asyncpg\pool.py", line 466, in _initialize
+    await first_ch.connect()
+  File "C:\Python314\Lib\site-packages\asyncpg\pool.py", line 153, in connect
+    self._con = await self._pool._get_new_connection()
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python314\Lib\site-packages\asyncpg\pool.py", line 538, in _get_new_connection
+    con = await self._connect(
+          ^^^^^^^^^^^^^^^^^^^^
+    ...<5 lines>...
+    )
+    ^
+  File "C:\Python314\Lib\site-packages\asyncpg\connection.py", line 2443, in connect
+    return await connect_utils._connect(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<22 lines>...
+    )
+    ^
+  File "C:\Python314\Lib\site-packages\asyncpg\connect_utils.py", line 1249, in _connect
+    raise last_error or exceptions.TargetServerAttributeNotMatched(
+    ...<2 lines>...
+    )
+  File "C:\Python314\Lib\site-packages\asyncpg\connect_utils.py", line 1218, in _connect
+    conn = await _connect_addr(
+           ^^^^^^^^^^^^^^^^^^^^
+    ...<6 lines>...
+    )
+    ^
+  File "C:\Python314\Lib\site-packages\asyncpg\connect_utils.py", line 1054, in _connect_addr
+    return await __connect_addr(params, True, *args)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python314\Lib\site-packages\asyncpg\connect_utils.py", line 1099, in __connect_addr
+    tr, pr = await connector
+             ^^^^^^^^^^^^^^^
+  File "C:\Python314\Lib\site-packages\asyncpg\connect_utils.py", line 969, in _create_ssl_connection
+    tr, pr = await loop.create_connection(
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<2 lines>...
+        host, port)
+        ^^^^^^^^^^^
+  File "C:\Python314\Lib\asyncio\base_events.py", line 1176, in create_connection
+    raise OSError('Multiple exceptions: {}'.format(
+        ', '.join(str(exc) for exc in exceptions)))
+OSError: Multiple exceptions: [WinError 5] Отказано в доступе, [WinError 1225] Удаленный компьютер отклонил это сетевое подключение
+2026-07-16 00:15:06 [INFO] signals.rules_engine: Загружено правил: основных=6, фильтров=0, выходов=2, тикерных=0, макро=0
+2026-07-16 00:15:08 [INFO] quantflow.forward: ⚠ Догрузка свечей с MOEX ISS не удалась: connection to server at "localhost" (::1), port 5432 failed: Permission denied (0x0000271D/10013)
+	Is the server running on that host and accepting TCP/IP connections?
+connection to server at "localhost" (127.0.0.1), port 5432 failed: Connection refused (0x0000274D/10061)
+	Is the server running on that host and accepting TCP/IP connections?
+
+Traceback (most recent call last):
+  File "D:\Trading-Bot-Nik\run_forward_d1.py", line 448, in <module>
+    main()
+    ~~~~^^
+  File "D:\Trading-Bot-Nik\run_forward_d1.py", line 444, in main
+    asyncio.run(ForwardRunner().run())
+    ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python314\Lib\asyncio\runners.py", line 205, in run
+    return runner.run(main)
+           ~~~~~~~~~~^^^^^^
+  File "C:\Python314\Lib\asyncio\runners.py", line 128, in run
+    return self._loop.run_until_complete(task)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^
+  File "C:\Python314\Lib\asyncio\base_events.py", line 719, in run_until_complete
+    return future.result()
+           ~~~~~~~~~~~~~^^
+  File "D:\Trading-Bot-Nik\run_forward_d1.py", line 406, in run
+    await self.orch.connect()
+  File "D:\Trading-Bot-Nik\learning\trading_orchestrator.py", line 122, in connect
+    self._pool = await asyncpg.create_pool(self._dsn, min_size=1, max_size=5)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python314\Lib\site-packages\asyncpg\pool.py", line 439, in _async__init__
+    await self._initialize()
+  File "C:\Python314\Lib\site-packages\asyncpg\pool.py", line 466, in _initialize
+    await first_ch.connect()
+  File "C:\Python314\Lib\site-packages\asyncpg\pool.py", line 153, in connect
+    self._con = await self._pool._get_new_connection()
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python314\Lib\site-packages\asyncpg\pool.py", line 538, in _get_new_connection
+    con = await self._connect(
+          ^^^^^^^^^^^^^^^^^^^^
+    ...<5 lines>...
+    )
+    ^
+  File "C:\Python314\Lib\site-packages\asyncpg\connection.py", line 2443, in connect
+    return await connect_utils._connect(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<22 lines>...
+    )
+    ^
+  File "C:\Python314\Lib\site-packages\asyncpg\connect_utils.py", line 1249, in _connect
+    raise last_error or exceptions.TargetServerAttributeNotMatched(
+    ...<2 lines>...
+    )
+  File "C:\Python314\Lib\site-packages\asyncpg\connect_utils.py", line 1218, in _connect
+    conn = await _connect_addr(
+           ^^^^^^^^^^^^^^^^^^^^
+    ...<6 lines>...
+    )
+    ^
+  File "C:\Python314\Lib\site-packages\asyncpg\connect_utils.py", line 1054, in _connect_addr
+    return await __connect_addr(params, True, *args)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python314\Lib\site-packages\asyncpg\connect_utils.py", line 1099, in __connect_addr
+    tr, pr = await connector
+             ^^^^^^^^^^^^^^^
+  File "C:\Python314\Lib\site-packages\asyncpg\connect_utils.py", line 969, in _create_ssl_connection
+    tr, pr = await loop.create_connection(
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<2 lines>...
+        host, port)
+        ^^^^^^^^^^^
+  File "C:\Python314\Lib\asyncio\base_events.py", line 1176, in create_connection
+    raise OSError('Multiple exceptions: {}'.format(
+        ', '.join(str(exc) for exc in exceptions)))
+OSError: Multiple exceptions: [WinError 5] Отказано в доступе, [WinError 1225] Удаленный компьютер отклонил это сетевое подключение
+2026-07-17 00:15:06 [INFO] signals.rules_engine: Загружено правил: основных=6, фильтров=0, выходов=2, тикерных=0, макро=0
+2026-07-17 00:15:08 [INFO] quantflow.forward: ⚠ Догрузка свечей с MOEX ISS не удалась: connection to server at "localhost" (::1), port 5432 failed: Permission denied (0x0000271D/10013)
+	Is the server running on that host and accepting TCP/IP connections?
+connection to server at "localhost" (127.0.0.1), port 5432 failed: Connection refused (0x0000274D/10061)
+	Is the server running on that host and accepting TCP/IP connections?
+
+Traceback (most recent call last):
+  File "D:\Trading-Bot-Nik\run_forward_d1.py", line 448, in <module>
+    main()
+    ~~~~^^
+  File "D:\Trading-Bot-Nik\run_forward_d1.py", line 444, in main
+    asyncio.run(ForwardRunner().run())
+    ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python314\Lib\asyncio\runners.py", line 205, in run
+    return runner.run(main)
+           ~~~~~~~~~~^^^^^^
+  File "C:\Python314\Lib\asyncio\runners.py", line 128, in run
+    return self._loop.run_until_complete(task)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^
+  File "C:\Python314\Lib\asyncio\base_events.py", line 719, in run_until_complete
+    return future.result()
+           ~~~~~~~~~~~~~^^
+  File "D:\Trading-Bot-Nik\run_forward_d1.py", line 406, in run
+    await self.orch.connect()
+  File "D:\Trading-Bot-Nik\learning\trading_orchestrator.py", line 122, in connect
+    self._pool = await asyncpg.create_pool(self._dsn, min_size=1, max_size=5)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python314\Lib\site-packages\asyncpg\pool.py", line 439, in _async__init__
+    await self._initialize()
+  File "C:\Python314\Lib\site-packages\asyncpg\pool.py", line 466, in _initialize
+    await first_ch.connect()
+  File "C:\Python314\Lib\site-packages\asyncpg\pool.py", line 153, in connect
+    self._con = await self._pool._get_new_connection()
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python314\Lib\site-packages\asyncpg\pool.py", line 538, in _get_new_connection
+    con = await self._connect(
+          ^^^^^^^^^^^^^^^^^^^^
+    ...<5 lines>...
+    )
+    ^
+  File "C:\Python314\Lib\site-packages\asyncpg\connection.py", line 2443, in connect
+    return await connect_utils._connect(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<22 lines>...
+    )
+    ^
+  File "C:\Python314\Lib\site-packages\asyncpg\connect_utils.py", line 1249, in _connect
+    raise last_error or exceptions.TargetServerAttributeNotMatched(
+    ...<2 lines>...
+    )
+  File "C:\Python314\Lib\site-packages\asyncpg\connect_utils.py", line 1218, in _connect
+    conn = await _connect_addr(
+           ^^^^^^^^^^^^^^^^^^^^
+    ...<6 lines>...
+    )
+    ^
+  File "C:\Python314\Lib\site-packages\asyncpg\connect_utils.py", line 1054, in _connect_addr
+    return await __connect_addr(params, True, *args)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python314\Lib\site-packages\asyncpg\connect_utils.py", line 1099, in __connect_addr
+    tr, pr = await connector
+             ^^^^^^^^^^^^^^^
+  File "C:\Python314\Lib\site-packages\asyncpg\connect_utils.py", line 969, in _create_ssl_connection
+    tr, pr = await loop.create_connection(
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<2 lines>...
+        host, port)
+        ^^^^^^^^^^^
+  File "C:\Python314\Lib\asyncio\base_events.py", line 1176, in create_connection
+    raise OSError('Multiple exceptions: {}'.format(
+        ', '.join(str(exc) for exc in exceptions)))
+OSError: Multiple exceptions: [WinError 5] Отказано в доступе, [WinError 1225] Удаленный компьютер отклонил это сетевое подключение
+2026-07-18 00:15:06 [INFO] signals.rules_engine: Загружено правил: основных=6, фильтров=0, выходов=2, тикерных=0, макро=0
+2026-07-18 00:15:08 [INFO] quantflow.forward: ⚠ Догрузка свечей с MOEX ISS не удалась: connection to server at "localhost" (::1), port 5432 failed: Permission denied (0x0000271D/10013)
+	Is the server running on that host and accepting TCP/IP connections?
+connection to server at "localhost" (127.0.0.1), port 5432 failed: Connection refused (0x0000274D/10061)
+	Is the server running on that host and accepting TCP/IP connections?
+
+Traceback (most recent call last):
+  File "D:\Trading-Bot-Nik\run_forward_d1.py", line 448, in <module>
+    main()
+    ~~~~^^
+  File "D:\Trading-Bot-Nik\run_forward_d1.py", line 444, in main
+    asyncio.run(ForwardRunner().run())
+    ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python314\Lib\asyncio\runners.py", line 205, in run
+    return runner.run(main)
+           ~~~~~~~~~~^^^^^^
+  File "C:\Python314\Lib\asyncio\runners.py", line 128, in run
+    return self._loop.run_until_complete(task)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^
+  File "C:\Python314\Lib\asyncio\base_events.py", line 719, in run_until_complete
+    return future.result()
+           ~~~~~~~~~~~~~^^
+  File "D:\Trading-Bot-Nik\run_forward_d1.py", line 406, in run
+    await self.orch.connect()
+  File "D:\Trading-Bot-Nik\learning\trading_orchestrator.py", line 122, in connect
+    self._pool = await asyncpg.create_pool(self._dsn, min_size=1, max_size=5)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python314\Lib\site-packages\asyncpg\pool.py", line 439, in _async__init__
+    await self._initialize()
+  File "C:\Python314\Lib\site-packages\asyncpg\pool.py", line 466, in _initialize
+    await first_ch.connect()
+  File "C:\Python314\Lib\site-packages\asyncpg\pool.py", line 153, in connect
+    self._con = await self._pool._get_new_connection()
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python314\Lib\site-packages\asyncpg\pool.py", line 538, in _get_new_connection
+    con = await self._connect(
+          ^^^^^^^^^^^^^^^^^^^^
+    ...<5 lines>...
+    )
+    ^
+  File "C:\Python314\Lib\site-packages\asyncpg\connection.py", line 2443, in connect
+    return await connect_utils._connect(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<22 lines>...
+    )
+    ^
+  File "C:\Python314\Lib\site-packages\asyncpg\connect_utils.py", line 1249, in _connect
+    raise last_error or exceptions.TargetServerAttributeNotMatched(
+    ...<2 lines>...
+    )
+  File "C:\Python314\Lib\site-packages\asyncpg\connect_utils.py", line 1218, in _connect
+    conn = await _connect_addr(
+           ^^^^^^^^^^^^^^^^^^^^
+    ...<6 lines>...
+    )
+    ^
+  File "C:\Python314\Lib\site-packages\asyncpg\connect_utils.py", line 1054, in _connect_addr
+    return await __connect_addr(params, True, *args)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python314\Lib\site-packages\asyncpg\connect_utils.py", line 1099, in __connect_addr
+    tr, pr = await connector
+             ^^^^^^^^^^^^^^^
+  File "C:\Python314\Lib\site-packages\asyncpg\connect_utils.py", line 969, in _create_ssl_connection
+    tr, pr = await loop.create_connection(
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<2 lines>...
+        host, port)
+        ^^^^^^^^^^^
+  File "C:\Python314\Lib\asyncio\base_events.py", line 1176, in create_connection
+    raise OSError('Multiple exceptions: {}'.format(
+        ', '.join(str(exc) for exc in exceptions)))
+OSError: Multiple exceptions: [WinError 5] Отказано в доступе, [WinError 1225] Удаленный компьютер отклонил это сетевое подключение
+2026-07-20 00:15:06 [INFO] signals.rules_engine: Загружено правил: основных=6, фильтров=0, выходов=2, тикерных=0, макро=0
+2026-07-20 00:15:09 [INFO] quantflow.forward: ⚠ Догрузка свечей с MOEX ISS не удалась: connection to server at "localhost" (::1), port 5432 failed: Permission denied (0x0000271D/10013)
+	Is the server running on that host and accepting TCP/IP connections?
+connection to server at "localhost" (127.0.0.1), port 5432 failed: Connection refused (0x0000274D/10061)
+	Is the server running on that host and accepting TCP/IP connections?
+
+Traceback (most recent call last):
+  File "D:\Trading-Bot-Nik\run_forward_d1.py", line 448, in <module>
+    main()
+    ~~~~^^
+  File "D:\Trading-Bot-Nik\run_forward_d1.py", line 444, in main
+    asyncio.run(ForwardRunner().run())
+    ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python314\Lib\asyncio\runners.py", line 205, in run
+    return runner.run(main)
+           ~~~~~~~~~~^^^^^^
+  File "C:\Python314\Lib\asyncio\runners.py", line 128, in run
+    return self._loop.run_until_complete(task)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^
+  File "C:\Python314\Lib\asyncio\base_events.py", line 719, in run_until_complete
+    return future.result()
+           ~~~~~~~~~~~~~^^
+  File "D:\Trading-Bot-Nik\run_forward_d1.py", line 406, in run
+    await self.orch.connect()
+  File "D:\Trading-Bot-Nik\learning\trading_orchestrator.py", line 122, in connect
+    self._pool = await asyncpg.create_pool(self._dsn, min_size=1, max_size=5)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python314\Lib\site-packages\asyncpg\pool.py", line 439, in _async__init__
+    await self._initialize()
+  File "C:\Python314\Lib\site-packages\asyncpg\pool.py", line 466, in _initialize
+    await first_ch.connect()
+  File "C:\Python314\Lib\site-packages\asyncpg\pool.py", line 153, in connect
+    self._con = await self._pool._get_new_connection()
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python314\Lib\site-packages\asyncpg\pool.py", line 538, in _get_new_connection
+    con = await self._connect(
+          ^^^^^^^^^^^^^^^^^^^^
+    ...<5 lines>...
+    )
+    ^
+  File "C:\Python314\Lib\site-packages\asyncpg\connection.py", line 2443, in connect
+    return await connect_utils._connect(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<22 lines>...
+    )
+    ^
+  File "C:\Python314\Lib\site-packages\asyncpg\connect_utils.py", line 1249, in _connect
+    raise last_error or exceptions.TargetServerAttributeNotMatched(
+    ...<2 lines>...
+    )
+  File "C:\Python314\Lib\site-packages\asyncpg\connect_utils.py", line 1218, in _connect
+    conn = await _connect_addr(
+           ^^^^^^^^^^^^^^^^^^^^
+    ...<6 lines>...
+    )
+    ^
+  File "C:\Python314\Lib\site-packages\asyncpg\connect_utils.py", line 1054, in _connect_addr
+    return await __connect_addr(params, True, *args)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python314\Lib\site-packages\asyncpg\connect_utils.py", line 1099, in __connect_addr
+    tr, pr = await connector
+             ^^^^^^^^^^^^^^^
+  File "C:\Python314\Lib\site-packages\asyncpg\connect_utils.py", line 969, in _create_ssl_connection
+    tr, pr = await loop.create_connection(
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<2 lines>...
+        host, port)
+        ^^^^^^^^^^^
+  File "C:\Python314\Lib\asyncio\base_events.py", line 1176, in create_connection
+    raise OSError('Multiple exceptions: {}'.format(
+        ', '.join(str(exc) for exc in exceptions)))
+OSError: Multiple exceptions: [WinError 5] Отказано в доступе, [WinError 1225] Удаленный компьютер отклонил это сетевое подключение
+C:\Python314\python.exe: can't open file 'D:\\Trading-Bot-Nik\\run_forward_d1.py': [Errno 2] No such file or directory
+C:\Python314\python.exe: can't open file 'D:\\Trading-Bot-Nik\\run_forward_d1.py': [Errno 2] No such file or directory
+C:\Python314\python.exe: can't open file 'D:\\Trading-Bot-Nik\\run_forward_d1.py': [Errno 2] No such file or directory
+ Container trading_adminer Running 
+ Container trading_db Running 
+2026-07-27 00:15:08 [INFO] signals.rules_engine: Загружено правил: основных=6, фильтров=0, выходов=2, тикерных=0, макро=0
+2026-07-27 00:15:08 [INFO] data.loader: [SBER] Запрос к MOEX ISS…
+2026-07-27 00:15:08 [INFO] data.loader: Загружено 10 свечей для SBER
+2026-07-27 00:15:08 [INFO] data.loader: [SBER] Удалено 9 старых строк
+2026-07-27 00:15:08 [INFO] data.loader: [SBER] Сохранено 10 свечей (2026-07-17 → 2026-07-26)
+2026-07-27 00:15:08 [INFO] data.loader: [GAZP] Запрос к MOEX ISS…
+2026-07-27 00:15:08 [INFO] data.loader: Загружено 10 свечей для GAZP
+2026-07-27 00:15:08 [INFO] data.loader: [GAZP] Удалено 9 старых строк
+2026-07-27 00:15:08 [INFO] data.loader: [GAZP] Сохранено 10 свечей (2026-07-17 → 2026-07-26)
+2026-07-27 00:15:08 [INFO] data.loader: [LKOH] Запрос к MOEX ISS…
+2026-07-27 00:15:09 [INFO] data.loader: Загружено 10 свечей для LKOH
+2026-07-27 00:15:09 [INFO] data.loader: [LKOH] Удалено 9 старых строк
+2026-07-27 00:15:09 [INFO] data.loader: [LKOH] Сохранено 10 свечей (2026-07-17 → 2026-07-26)
+2026-07-27 00:15:09 [INFO] data.loader: [NVTK] Запрос к MOEX ISS…
+2026-07-27 00:15:09 [INFO] data.loader: Загружено 10 свечей для NVTK
+2026-07-27 00:15:09 [INFO] data.loader: [NVTK] Удалено 9 старых строк
+2026-07-27 00:15:09 [INFO] data.loader: [NVTK] Сохранено 10 свечей (2026-07-17 → 2026-07-26)
+2026-07-27 00:15:09 [INFO] data.loader: [ROSN] Запрос к MOEX ISS…
+2026-07-27 00:15:09 [INFO] data.loader: Загружено 10 свечей для ROSN
+2026-07-27 00:15:09 [INFO] data.loader: [ROSN] Удалено 9 старых строк
+2026-07-27 00:15:09 [INFO] data.loader: [ROSN] Сохранено 10 свечей (2026-07-17 → 2026-07-26)
+2026-07-27 00:15:09 [INFO] data.loader: [TATN] Запрос к MOEX ISS…
+2026-07-27 00:15:09 [INFO] data.loader: Загружено 10 свечей для TATN
+2026-07-27 00:15:09 [INFO] data.loader: [TATN] Удалено 9 старых строк
+2026-07-27 00:15:09 [INFO] data.loader: [TATN] Сохранено 10 свечей (2026-07-17 → 2026-07-26)
+2026-07-27 00:15:09 [INFO] data.loader: [MGNT] Запрос к MOEX ISS…
+2026-07-27 00:15:09 [INFO] data.loader: Загружено 10 свечей для MGNT
+2026-07-27 00:15:09 [INFO] data.loader: [MGNT] Удалено 9 старых строк
+2026-07-27 00:15:09 [INFO] data.loader: [MGNT] Сохранено 10 свечей (2026-07-17 → 2026-07-26)
+2026-07-27 00:15:09 [INFO] data.loader: [MOEX] Запрос к MOEX ISS…
+2026-07-27 00:15:09 [INFO] data.loader: Загружено 10 свечей для MOEX
+2026-07-27 00:15:09 [INFO] data.loader: [MOEX] Удалено 9 старых строк
+2026-07-27 00:15:09 [INFO] data.loader: [MOEX] Сохранено 10 свечей (2026-07-17 → 2026-07-26)
+2026-07-27 00:15:09 [INFO] data.loader: [PLZL] Запрос к MOEX ISS…
+2026-07-27 00:15:09 [INFO] data.loader: Загружено 10 свечей для PLZL
+2026-07-27 00:15:09 [INFO] data.loader: [PLZL] Удалено 9 старых строк
+2026-07-27 00:15:09 [INFO] data.loader: [PLZL] Сохранено 10 свечей (2026-07-17 → 2026-07-26)
+2026-07-27 00:15:09 [INFO] data.loader: [CHMF] Запрос к MOEX ISS…
+2026-07-27 00:15:09 [INFO] data.loader: Загружено 10 свечей для CHMF
+2026-07-27 00:15:09 [INFO] data.loader: [CHMF] Удалено 9 старых строк
+2026-07-27 00:15:09 [INFO] data.loader: [CHMF] Сохранено 10 свечей (2026-07-17 → 2026-07-26)
+2026-07-27 00:15:09 [INFO] data.loader: [ALRS] Запрос к MOEX ISS…
+2026-07-27 00:15:09 [INFO] data.loader: Загружено 10 свечей для ALRS
+2026-07-27 00:15:09 [INFO] data.loader: [ALRS] Удалено 9 старых строк
+2026-07-27 00:15:09 [INFO] data.loader: [ALRS] Сохранено 10 свечей (2026-07-17 → 2026-07-26)
+2026-07-27 00:15:09 [INFO] data.loader: [SNGS] Запрос к MOEX ISS…
+2026-07-27 00:15:09 [INFO] data.loader: Загружено 10 свечей для SNGS
+2026-07-27 00:15:09 [INFO] data.loader: [SNGS] Удалено 9 старых строк
+2026-07-27 00:15:09 [INFO] data.loader: [SNGS] Сохранено 10 свечей (2026-07-17 → 2026-07-26)
+2026-07-27 00:15:09 [INFO] quantflow.forward: Догрузка свечей: 120 строк
+2026-07-27 00:15:09 [INFO] quantflow.memory: MemoryWriter: подключение к БД установлено
+2026-07-27 00:15:09 [INFO] quantflow.evaluator: DecisionEvaluator: подключение к БД установлено
+2026-07-27 00:15:09 [INFO] quantflow.belief: BeliefUpdater: подключение к БД установлено
+2026-07-27 00:15:09 [INFO] quantflow.hypothesis: HypothesisEngine: подключение к БД установлено
+2026-07-27 00:15:09 [INFO] quantflow.orchestrator: TradingOrchestrator: все модули подключены
+2026-07-27 00:15:09 [INFO] quantflow.forward: Открытых позиций: 0 | свободный капитал: 1,000,000
+2026-07-27 00:15:10 [INFO] quantflow.memory: MemoryWriter: подключение закрыто
+
+════════════════════════════════════════════════════════════════
+  Форвард D1 2026-07-26: позиций 0, свободно 1,000,000 руб., событий 0
+════════════════════════════════════════════════════════════════
+ Container trading_db Running 
+ Container trading_adminer Running 
+2026-07-28 00:15:07 [INFO] signals.rules_engine: Загружено правил: основных=6, фильтров=0, выходов=2, тикерных=0, макро=0
+2026-07-28 00:15:08 [INFO] data.loader: [SBER] Запрос к MOEX ISS…
+2026-07-28 00:15:08 [INFO] data.loader: Загружено 10 свечей для SBER
+2026-07-28 00:15:08 [INFO] data.loader: [SBER] Удалено 9 старых строк
+2026-07-28 00:15:08 [INFO] data.loader: [SBER] Сохранено 10 свечей (2026-07-18 → 2026-07-27)
+2026-07-28 00:15:08 [INFO] data.loader: [GAZP] Запрос к MOEX ISS…
+2026-07-28 00:15:08 [INFO] data.loader: Загружено 10 свечей для GAZP
+2026-07-28 00:15:08 [INFO] data.loader: [GAZP] Удалено 9 старых строк
+2026-07-28 00:15:08 [INFO] data.loader: [GAZP] Сохранено 10 свечей (2026-07-18 → 2026-07-27)
+2026-07-28 00:15:08 [INFO] data.loader: [LKOH] Запрос к MOEX ISS…
+2026-07-28 00:15:08 [INFO] data.loader: Загружено 10 свечей для LKOH
+2026-07-28 00:15:08 [INFO] data.loader: [LKOH] Удалено 9 старых строк
+2026-07-28 00:15:08 [INFO] data.loader: [LKOH] Сохранено 10 свечей (2026-07-18 → 2026-07-27)
+2026-07-28 00:15:08 [INFO] data.loader: [NVTK] Запрос к MOEX ISS…
+2026-07-28 00:15:08 [INFO] data.loader: Загружено 10 свечей для NVTK
+2026-07-28 00:15:08 [INFO] data.loader: [NVTK] Удалено 9 старых строк
+2026-07-28 00:15:08 [INFO] data.loader: [NVTK] Сохранено 10 свечей (2026-07-18 → 2026-07-27)
+2026-07-28 00:15:08 [INFO] data.loader: [ROSN] Запрос к MOEX ISS…
+2026-07-28 00:15:08 [INFO] data.loader: Загружено 10 свечей для ROSN
+2026-07-28 00:15:08 [INFO] data.loader: [ROSN] Удалено 9 старых строк
+2026-07-28 00:15:08 [INFO] data.loader: [ROSN] Сохранено 10 свечей (2026-07-18 → 2026-07-27)
+2026-07-28 00:15:08 [INFO] data.loader: [TATN] Запрос к MOEX ISS…
+2026-07-28 00:15:08 [INFO] data.loader: Загружено 10 свечей для TATN
+2026-07-28 00:15:08 [INFO] data.loader: [TATN] Удалено 9 старых строк
+2026-07-28 00:15:08 [INFO] data.loader: [TATN] Сохранено 10 свечей (2026-07-18 → 2026-07-27)
+2026-07-28 00:15:08 [INFO] data.loader: [MGNT] Запрос к MOEX ISS…
+2026-07-28 00:15:08 [INFO] data.loader: Загружено 10 свечей для MGNT
+2026-07-28 00:15:08 [INFO] data.loader: [MGNT] Удалено 9 старых строк
+2026-07-28 00:15:08 [INFO] data.loader: [MGNT] Сохранено 10 свечей (2026-07-18 → 2026-07-27)
+2026-07-28 00:15:08 [INFO] data.loader: [MOEX] Запрос к MOEX ISS…
+2026-07-28 00:15:08 [INFO] data.loader: Загружено 10 свечей для MOEX
+2026-07-28 00:15:08 [INFO] data.loader: [MOEX] Удалено 9 старых строк
+2026-07-28 00:15:08 [INFO] data.loader: [MOEX] Сохранено 10 свечей (2026-07-18 → 2026-07-27)
+2026-07-28 00:15:08 [INFO] data.loader: [PLZL] Запрос к MOEX ISS…
+2026-07-28 00:15:08 [INFO] data.loader: Загружено 10 свечей для PLZL
+2026-07-28 00:15:08 [INFO] data.loader: [PLZL] Удалено 9 старых строк
+2026-07-28 00:15:08 [INFO] data.loader: [PLZL] Сохранено 10 свечей (2026-07-18 → 2026-07-27)
+2026-07-28 00:15:08 [INFO] data.loader: [CHMF] Запрос к MOEX ISS…
+2026-07-28 00:15:08 [INFO] data.loader: Загружено 10 свечей для CHMF
+2026-07-28 00:15:08 [INFO] data.loader: [CHMF] Удалено 9 старых строк
+2026-07-28 00:15:08 [INFO] data.loader: [CHMF] Сохранено 10 свечей (2026-07-18 → 2026-07-27)
+2026-07-28 00:15:08 [INFO] data.loader: [ALRS] Запрос к MOEX ISS…
+2026-07-28 00:15:08 [INFO] data.loader: Загружено 10 свечей для ALRS
+2026-07-28 00:15:08 [INFO] data.loader: [ALRS] Удалено 9 старых строк
+2026-07-28 00:15:08 [INFO] data.loader: [ALRS] Сохранено 10 свечей (2026-07-18 → 2026-07-27)
+2026-07-28 00:15:08 [INFO] data.loader: [SNGS] Запрос к MOEX ISS…
+2026-07-28 00:15:08 [INFO] data.loader: Загружено 10 свечей для SNGS
+2026-07-28 00:15:08 [INFO] data.loader: [SNGS] Удалено 9 старых строк
+2026-07-28 00:15:08 [INFO] data.loader: [SNGS] Сохранено 10 свечей (2026-07-18 → 2026-07-27)
+2026-07-28 00:15:08 [INFO] quantflow.forward: Догрузка свечей: 120 строк
+2026-07-28 00:15:08 [INFO] quantflow.memory: MemoryWriter: подключение к БД установлено
+2026-07-28 00:15:08 [INFO] quantflow.evaluator: DecisionEvaluator: подключение к БД установлено
+2026-07-28 00:15:08 [INFO] quantflow.belief: BeliefUpdater: подключение к БД установлено
+2026-07-28 00:15:09 [INFO] quantflow.hypothesis: HypothesisEngine: подключение к БД установлено
+2026-07-28 00:15:09 [INFO] quantflow.orchestrator: TradingOrchestrator: все модули подключены
+2026-07-28 00:15:09 [INFO] quantflow.forward: Открытых позиций: 0 | свободный капитал: 1,000,000
+2026-07-28 00:15:09 [INFO] quantflow.memory: MemoryWriter: подключение закрыто
+
+════════════════════════════════════════════════════════════════
+  Форвард D1 2026-07-27: позиций 0, свободно 1,000,000 руб., событий 0
+════════════════════════════════════════════════════════════════
+ Container trading_db Running 
+ Container trading_adminer Running 
+2026-07-29 00:15:13 [INFO] signals.rules_engine: Загружено правил: основных=6, фильтров=0, выходов=2, тикерных=0, макро=0
+2026-07-29 00:15:14 [INFO] data.loader: [ALRS] Запрос к MOEX ISS…
+2026-07-29 00:15:14 [INFO] data.loader: Загружено 10 свечей для ALRS
+2026-07-29 00:15:14 [INFO] data.loader: [ALRS] Удалено 10 старых строк
+2026-07-29 00:15:15 [INFO] data.loader: [ALRS] Сохранено 10 свечей (2026-07-19 → 2026-07-28)
+2026-07-29 00:15:15 [INFO] data.loader: [CHMF] Запрос к MOEX ISS…
+2026-07-29 00:15:15 [INFO] data.loader: Загружено 10 свечей для CHMF
+2026-07-29 00:15:15 [INFO] data.loader: [CHMF] Удалено 10 старых строк
+2026-07-29 00:15:15 [INFO] data.loader: [CHMF] Сохранено 10 свечей (2026-07-19 → 2026-07-28)
+2026-07-29 00:15:15 [INFO] data.loader: [GAZP] Запрос к MOEX ISS…
+2026-07-29 00:15:16 [INFO] data.loader: Загружено 10 свечей для GAZP
+2026-07-29 00:15:16 [INFO] data.loader: [GAZP] Удалено 10 старых строк
+2026-07-29 00:15:16 [INFO] data.loader: [GAZP] Сохранено 10 свечей (2026-07-19 → 2026-07-28)
+2026-07-29 00:15:16 [INFO] data.loader: [LKOH] Запрос к MOEX ISS…
+2026-07-29 00:15:17 [INFO] data.loader: Загружено 10 свечей для LKOH
+2026-07-29 00:15:17 [INFO] data.loader: [LKOH] Удалено 10 старых строк
+2026-07-29 00:15:17 [INFO] data.loader: [LKOH] Сохранено 10 свечей (2026-07-19 → 2026-07-28)
+2026-07-29 00:15:17 [INFO] data.loader: [MGNT] Запрос к MOEX ISS…
+2026-07-29 00:15:17 [INFO] data.loader: Загружено 10 свечей для MGNT
+2026-07-29 00:15:17 [INFO] data.loader: [MGNT] Удалено 10 старых строк
+2026-07-29 00:15:17 [INFO] data.loader: [MGNT] Сохранено 10 свечей (2026-07-19 → 2026-07-28)
+2026-07-29 00:15:17 [INFO] data.loader: [MOEX] Запрос к MOEX ISS…
+2026-07-29 00:15:17 [INFO] data.loader: Загружено 10 свечей для MOEX
+2026-07-29 00:15:17 [INFO] data.loader: [MOEX] Удалено 10 старых строк
+2026-07-29 00:15:17 [INFO] data.loader: [MOEX] Сохранено 10 свечей (2026-07-19 → 2026-07-28)
+2026-07-29 00:15:17 [INFO] data.loader: [NVTK] Запрос к MOEX ISS…
+2026-07-29 00:15:17 [INFO] data.loader: Загружено 10 свечей для NVTK
+2026-07-29 00:15:17 [INFO] data.loader: [NVTK] Удалено 10 старых строк
+2026-07-29 00:15:17 [INFO] data.loader: [NVTK] Сохранено 10 свечей (2026-07-19 → 2026-07-28)
+2026-07-29 00:15:17 [INFO] data.loader: [PLZL] Запрос к MOEX ISS…
+2026-07-29 00:15:17 [INFO] data.loader: Загружено 10 свечей для PLZL
+2026-07-29 00:15:17 [INFO] data.loader: [PLZL] Удалено 10 старых строк
+2026-07-29 00:15:17 [INFO] data.loader: [PLZL] Сохранено 10 свечей (2026-07-19 → 2026-07-28)
+2026-07-29 00:15:17 [INFO] data.loader: [ROSN] Запрос к MOEX ISS…
+2026-07-29 00:15:17 [INFO] data.loader: Загружено 10 свечей для ROSN
+2026-07-29 00:15:17 [INFO] data.loader: [ROSN] Удалено 10 старых строк
+2026-07-29 00:15:17 [INFO] data.loader: [ROSN] Сохранено 10 свечей (2026-07-19 → 2026-07-28)
+2026-07-29 00:15:17 [INFO] data.loader: [SBER] Запрос к MOEX ISS…
+2026-07-29 00:15:18 [INFO] data.loader: Загружено 10 свечей для SBER
+2026-07-29 00:15:18 [INFO] data.loader: [SBER] Удалено 10 старых строк
+2026-07-29 00:15:18 [INFO] data.loader: [SBER] Сохранено 10 свечей (2026-07-19 → 2026-07-28)
+2026-07-29 00:15:18 [INFO] data.loader: [SNGS] Запрос к MOEX ISS…
+2026-07-29 00:15:18 [INFO] data.loader: Загружено 10 свечей для SNGS
+2026-07-29 00:15:18 [INFO] data.loader: [SNGS] Удалено 10 старых строк
+2026-07-29 00:15:18 [INFO] data.loader: [SNGS] Сохранено 10 свечей (2026-07-19 → 2026-07-28)
+2026-07-29 00:15:18 [INFO] data.loader: [TATN] Запрос к MOEX ISS…
+2026-07-29 00:15:18 [INFO] data.loader: Загружено 10 свечей для TATN
+2026-07-29 00:15:18 [INFO] data.loader: [TATN] Удалено 10 старых строк
+2026-07-29 00:15:18 [INFO] data.loader: [TATN] Сохранено 10 свечей (2026-07-19 → 2026-07-28)
+2026-07-29 00:15:18 [INFO] quantflow.forward: Догрузка свечей: 120 строк
+2026-07-29 00:15:18 [INFO] quantflow.memory: MemoryWriter: подключение к БД установлено
+2026-07-29 00:15:18 [INFO] quantflow.evaluator: DecisionEvaluator: подключение к БД установлено
+2026-07-29 00:15:18 [INFO] quantflow.belief: BeliefUpdater: подключение к БД установлено
+2026-07-29 00:15:18 [INFO] quantflow.hypothesis: HypothesisEngine: подключение к БД установлено
+2026-07-29 00:15:18 [INFO] quantflow.orchestrator: TradingOrchestrator: все модули подключены
+2026-07-29 00:15:19 [INFO] quantflow.forward: Открытых позиций: 0 | режим капитала: потикерный | ALRS=1,000,000, CHMF=1,000,000, GAZP=1,000,000, LKOH=1,000,000, MGNT=1,000,000, MOEX=1,000,000, NVTK=1,000,000, PLZL=1,000,000, ROSN=1,000,000, SBER=1,000,000, SNGS=1,000,000, TATN=1,000,000
+2026-07-29 00:15:20 [INFO] quantflow.forward: ФАЗА 1: исторические бары (только выходы)
+2026-07-29 00:15:20 [INFO] quantflow.forward: ФАЗА 2: свежий бар (выходы и входы)
+2026-07-29 00:15:20 [INFO] quantflow.forward: Бюджеты потикерно: ALRS=1,000,000, CHMF=1,000,000, GAZP=1,000,000, LKOH=1,000,000, MGNT=1,000,000, MOEX=1,000,000, NVTK=1,000,000, PLZL=1,000,000, ROSN=1,000,000, SBER=1,000,000, SNGS=1,000,000, TATN=1,000,000
+2026-07-29 00:15:20 [INFO] quantflow.memory: MemoryWriter: подключение закрыто
+
+════════════════════════════════════════════════════════════════
+  Форвард D1 2026-07-29: позиций 0, бюджеты потикерно (база 1,000,000 руб. × 12), занято 0, догнано баров 0, событий 0
+════════════════════════════════════════════════════════════════
+ Container trading_adminer Running 
+ Container trading_db Running 
+2026-07-30 00:15:10 [INFO] signals.rules_engine: Загружено правил: основных=6, фильтров=0, выходов=2, тикерных=0, макро=0
+2026-07-30 00:15:11 [INFO] data.loader: [ALRS] Запрос к MOEX ISS…
+2026-07-30 00:15:11 [INFO] data.loader: Загружено 10 свечей для ALRS
+2026-07-30 00:15:11 [INFO] data.loader: [ALRS] Удалено 9 старых строк
+2026-07-30 00:15:11 [INFO] data.loader: [ALRS] Сохранено 10 свечей (2026-07-20 → 2026-07-29)
+2026-07-30 00:15:11 [INFO] data.loader: [CHMF] Запрос к MOEX ISS…
+2026-07-30 00:15:11 [INFO] data.loader: Загружено 10 свечей для CHMF
+2026-07-30 00:15:11 [INFO] data.loader: [CHMF] Удалено 9 старых строк
+2026-07-30 00:15:11 [INFO] data.loader: [CHMF] Сохранено 10 свечей (2026-07-20 → 2026-07-29)
+2026-07-30 00:15:11 [INFO] data.loader: [GAZP] Запрос к MOEX ISS…
+2026-07-30 00:15:11 [INFO] data.loader: Загружено 10 свечей для GAZP
+2026-07-30 00:15:11 [INFO] data.loader: [GAZP] Удалено 9 старых строк
+2026-07-30 00:15:11 [INFO] data.loader: [GAZP] Сохранено 10 свечей (2026-07-20 → 2026-07-29)
+2026-07-30 00:15:11 [INFO] data.loader: [LKOH] Запрос к MOEX ISS…
+2026-07-30 00:15:11 [INFO] data.loader: Загружено 10 свечей для LKOH
+2026-07-30 00:15:11 [INFO] data.loader: [LKOH] Удалено 9 старых строк
+2026-07-30 00:15:11 [INFO] data.loader: [LKOH] Сохранено 10 свечей (2026-07-20 → 2026-07-29)
+2026-07-30 00:15:11 [INFO] data.loader: [MGNT] Запрос к MOEX ISS…
+2026-07-30 00:15:11 [INFO] data.loader: Загружено 10 свечей для MGNT
+2026-07-30 00:15:11 [INFO] data.loader: [MGNT] Удалено 9 старых строк
+2026-07-30 00:15:11 [INFO] data.loader: [MGNT] Сохранено 10 свечей (2026-07-20 → 2026-07-29)
+2026-07-30 00:15:11 [INFO] data.loader: [MOEX] Запрос к MOEX ISS…
+2026-07-30 00:15:11 [INFO] data.loader: Загружено 10 свечей для MOEX
+2026-07-30 00:15:11 [INFO] data.loader: [MOEX] Удалено 9 старых строк
+2026-07-30 00:15:11 [INFO] data.loader: [MOEX] Сохранено 10 свечей (2026-07-20 → 2026-07-29)
+2026-07-30 00:15:11 [INFO] data.loader: [NVTK] Запрос к MOEX ISS…
+2026-07-30 00:15:11 [INFO] data.loader: Загружено 10 свечей для NVTK
+2026-07-30 00:15:11 [INFO] data.loader: [NVTK] Удалено 9 старых строк
+2026-07-30 00:15:11 [INFO] data.loader: [NVTK] Сохранено 10 свечей (2026-07-20 → 2026-07-29)
+2026-07-30 00:15:11 [INFO] data.loader: [PLZL] Запрос к MOEX ISS…
+2026-07-30 00:15:11 [INFO] data.loader: Загружено 10 свечей для PLZL
+2026-07-30 00:15:11 [INFO] data.loader: [PLZL] Удалено 9 старых строк
+2026-07-30 00:15:11 [INFO] data.loader: [PLZL] Сохранено 10 свечей (2026-07-20 → 2026-07-29)
+2026-07-30 00:15:11 [INFO] data.loader: [ROSN] Запрос к MOEX ISS…
+2026-07-30 00:15:11 [INFO] data.loader: Загружено 10 свечей для ROSN
+2026-07-30 00:15:11 [INFO] data.loader: [ROSN] Удалено 9 старых строк
+2026-07-30 00:15:11 [INFO] data.loader: [ROSN] Сохранено 10 свечей (2026-07-20 → 2026-07-29)
+2026-07-30 00:15:11 [INFO] data.loader: [SBER] Запрос к MOEX ISS…
+2026-07-30 00:15:11 [INFO] data.loader: Загружено 10 свечей для SBER
+2026-07-30 00:15:11 [INFO] data.loader: [SBER] Удалено 9 старых строк
+2026-07-30 00:15:11 [INFO] data.loader: [SBER] Сохранено 10 свечей (2026-07-20 → 2026-07-29)
+2026-07-30 00:15:11 [INFO] data.loader: [SNGS] Запрос к MOEX ISS…
+2026-07-30 00:15:11 [INFO] data.loader: Загружено 10 свечей для SNGS
+2026-07-30 00:15:11 [INFO] data.loader: [SNGS] Удалено 9 старых строк
+2026-07-30 00:15:11 [INFO] data.loader: [SNGS] Сохранено 10 свечей (2026-07-20 → 2026-07-29)
+2026-07-30 00:15:11 [INFO] data.loader: [TATN] Запрос к MOEX ISS…
+2026-07-30 00:15:11 [INFO] data.loader: Загружено 10 свечей для TATN
+2026-07-30 00:15:11 [INFO] data.loader: [TATN] Удалено 9 старых строк
+2026-07-30 00:15:11 [INFO] data.loader: [TATN] Сохранено 10 свечей (2026-07-20 → 2026-07-29)
+2026-07-30 00:15:11 [INFO] quantflow.forward: Догрузка свечей: 120 строк
+2026-07-30 00:15:11 [INFO] quantflow.memory: MemoryWriter: подключение к БД установлено
+2026-07-30 00:15:12 [INFO] quantflow.evaluator: DecisionEvaluator: подключение к БД установлено
+2026-07-30 00:15:12 [INFO] quantflow.belief: BeliefUpdater: подключение к БД установлено
+2026-07-30 00:15:12 [INFO] quantflow.hypothesis: HypothesisEngine: подключение к БД установлено
+2026-07-30 00:15:12 [INFO] quantflow.orchestrator: TradingOrchestrator: все модули подключены
+2026-07-30 00:15:12 [INFO] quantflow.forward: Открытых позиций: 0 | режим капитала: потикерный | ALRS=1,000,000, CHMF=1,000,000, GAZP=1,000,000, LKOH=1,000,000, MGNT=1,000,000, MOEX=1,000,000, NVTK=1,000,000, PLZL=1,000,000, ROSN=1,000,000, SBER=1,000,000, SNGS=1,000,000, TATN=1,000,000
+2026-07-30 00:15:12 [INFO] quantflow.forward: ФАЗА 1: исторические бары (только выходы)
+2026-07-30 00:15:12 [INFO] quantflow.forward: ФАЗА 2: свежий бар (выходы и входы)
+2026-07-30 00:15:12 [INFO] quantflow.forward: Бюджеты потикерно: ALRS=1,000,000, CHMF=1,000,000, GAZP=1,000,000, LKOH=1,000,000, MGNT=1,000,000, MOEX=1,000,000, NVTK=1,000,000, PLZL=1,000,000, ROSN=1,000,000, SBER=1,000,000, SNGS=1,000,000, TATN=1,000,000
+2026-07-30 00:15:12 [INFO] quantflow.memory: MemoryWriter: подключение закрыто
+
+════════════════════════════════════════════════════════════════
+  Форвард D1 2026-07-30: позиций 0, бюджеты потикерно (база 1,000,000 руб. × 12), занято 0, догнано баров 0, событий 0
+════════════════════════════════════════════════════════════════
+ Container trading_adminer Running 
+ Container trading_db Running 
+D:\Trading-Bot-Nik\.venv\Scripts\python.exe: can't open file 'D:\\Trading-Bot-Nik\\bot\\db_wait.py': [Errno 2] No such file or directory
+D:\Trading-Bot-Nik\.venv\Scripts\python.exe: can't open file 'D:\\Trading-Bot-Nik\\bot\\forward_start_alert.py': [Errno 2] No such file or directory
+ Container trading_adminer Running 
+ Container trading_db Running 
+D:\Trading-Bot-Nik\.venv\Scripts\python.exe: can't open file 'D:\\Trading-Bot-Nik\\bot\\db_wait.py': [Errno 2] No such file or directory
+D:\Trading-Bot-Nik\.venv\Scripts\python.exe: can't open file 'D:\\Trading-Bot-Nik\\bot\\forward_start_alert.py': [Errno 2] No such file or directory
+ Container trading_adminer Running 
+ Container trading_db Running 
+D:\Trading-Bot-Nik\.venv\Scripts\python.exe: can't open file 'D:\\Trading-Bot-Nik\\bot\\db_wait.py': [Errno 2] No such file or directory
+D:\Trading-Bot-Nik\.venv\Scripts\python.exe: can't open file 'D:\\Trading-Bot-Nik\\bot\\forward_start_alert.py': [Errno 2] No such file or directory
+ Container trading_adminer Running 
+ Container trading_db Running 
+[2026-07-30 15:20:24] БД готова: localhost:5432/trading_bot за 0.2 с, попыток: 1
+2026-07-30 15:20:27 [INFO] signals.rules_engine: Загружено правил: основных=6, фильтров=0, выходов=2, тикерных=0, макро=0
+2026-07-30 15:20:27 [INFO] data.loader: [ALRS] Запрос к MOEX ISS…
+2026-07-30 15:20:28 [INFO] data.loader: Загружено 11 свечей для ALRS
+2026-07-30 15:20:28 [INFO] data.loader: [ALRS] Удалено 10 старых строк
+2026-07-30 15:20:28 [INFO] data.loader: [ALRS] Сохранено 11 свечей (2026-07-20 → 2026-07-30)
+2026-07-30 15:20:28 [INFO] data.loader: [CHMF] Запрос к MOEX ISS…
+2026-07-30 15:20:28 [INFO] data.loader: Загружено 11 свечей для CHMF
+2026-07-30 15:20:28 [INFO] data.loader: [CHMF] Удалено 10 старых строк
+2026-07-30 15:20:28 [INFO] data.loader: [CHMF] Сохранено 11 свечей (2026-07-20 → 2026-07-30)
+2026-07-30 15:20:28 [INFO] data.loader: [GAZP] Запрос к MOEX ISS…
+2026-07-30 15:20:28 [INFO] data.loader: Загружено 11 свечей для GAZP
+2026-07-30 15:20:28 [INFO] data.loader: [GAZP] Удалено 10 старых строк
+2026-07-30 15:20:28 [INFO] data.loader: [GAZP] Сохранено 11 свечей (2026-07-20 → 2026-07-30)
+2026-07-30 15:20:28 [INFO] data.loader: [LKOH] Запрос к MOEX ISS…
+2026-07-30 15:20:28 [INFO] data.loader: Загружено 11 свечей для LKOH
+2026-07-30 15:20:28 [INFO] data.loader: [LKOH] Удалено 10 старых строк
+2026-07-30 15:20:28 [INFO] data.loader: [LKOH] Сохранено 11 свечей (2026-07-20 → 2026-07-30)
+2026-07-30 15:20:28 [INFO] data.loader: [MGNT] Запрос к MOEX ISS…
+2026-07-30 15:20:28 [INFO] data.loader: Загружено 11 свечей для MGNT
+2026-07-30 15:20:28 [INFO] data.loader: [MGNT] Удалено 10 старых строк
+2026-07-30 15:20:28 [INFO] data.loader: [MGNT] Сохранено 11 свечей (2026-07-20 → 2026-07-30)
+2026-07-30 15:20:28 [INFO] data.loader: [MOEX] Запрос к MOEX ISS…
+2026-07-30 15:20:28 [INFO] data.loader: Загружено 11 свечей для MOEX
+2026-07-30 15:20:28 [INFO] data.loader: [MOEX] Удалено 10 старых строк
+2026-07-30 15:20:28 [INFO] data.loader: [MOEX] Сохранено 11 свечей (2026-07-20 → 2026-07-30)
+2026-07-30 15:20:28 [INFO] data.loader: [NVTK] Запрос к MOEX ISS…
+2026-07-30 15:20:28 [INFO] data.loader: Загружено 11 свечей для NVTK
+2026-07-30 15:20:28 [INFO] data.loader: [NVTK] Удалено 10 старых строк
+2026-07-30 15:20:28 [INFO] data.loader: [NVTK] Сохранено 11 свечей (2026-07-20 → 2026-07-30)
+2026-07-30 15:20:28 [INFO] data.loader: [PLZL] Запрос к MOEX ISS…
+2026-07-30 15:20:28 [INFO] data.loader: Загружено 11 свечей для PLZL
+2026-07-30 15:20:28 [INFO] data.loader: [PLZL] Удалено 10 старых строк
+2026-07-30 15:20:29 [INFO] data.loader: [PLZL] Сохранено 11 свечей (2026-07-20 → 2026-07-30)
+2026-07-30 15:20:29 [INFO] data.loader: [ROSN] Запрос к MOEX ISS…
+2026-07-30 15:20:29 [INFO] data.loader: Загружено 11 свечей для ROSN
+2026-07-30 15:20:29 [INFO] data.loader: [ROSN] Удалено 10 старых строк
+2026-07-30 15:20:29 [INFO] data.loader: [ROSN] Сохранено 11 свечей (2026-07-20 → 2026-07-30)
+2026-07-30 15:20:29 [INFO] data.loader: [SBER] Запрос к MOEX ISS…
+2026-07-30 15:20:29 [INFO] data.loader: Загружено 11 свечей для SBER
+2026-07-30 15:20:29 [INFO] data.loader: [SBER] Удалено 10 старых строк
+2026-07-30 15:20:29 [INFO] data.loader: [SBER] Сохранено 11 свечей (2026-07-20 → 2026-07-30)
+2026-07-30 15:20:29 [INFO] data.loader: [SNGS] Запрос к MOEX ISS…
+2026-07-30 15:20:29 [INFO] data.loader: Загружено 11 свечей для SNGS
+2026-07-30 15:20:29 [INFO] data.loader: [SNGS] Удалено 10 старых строк
+2026-07-30 15:20:29 [INFO] data.loader: [SNGS] Сохранено 11 свечей (2026-07-20 → 2026-07-30)
+2026-07-30 15:20:29 [INFO] data.loader: [TATN] Запрос к MOEX ISS…
+2026-07-30 15:20:29 [INFO] data.loader: Загружено 11 свечей для TATN
+2026-07-30 15:20:29 [INFO] data.loader: [TATN] Удалено 10 старых строк
+2026-07-30 15:20:29 [INFO] data.loader: [TATN] Сохранено 11 свечей (2026-07-20 → 2026-07-30)
+2026-07-30 15:20:29 [INFO] quantflow.forward: Догрузка свечей: 132 строк
+2026-07-30 15:20:29 [INFO] quantflow.memory: MemoryWriter: подключение к БД установлено
+2026-07-30 15:20:29 [INFO] quantflow.evaluator: DecisionEvaluator: подключение к БД установлено
+2026-07-30 15:20:29 [INFO] quantflow.belief: BeliefUpdater: подключение к БД установлено
+2026-07-30 15:20:29 [INFO] quantflow.hypothesis: HypothesisEngine: подключение к БД установлено
+2026-07-30 15:20:29 [INFO] quantflow.orchestrator: TradingOrchestrator: все модули подключены
+2026-07-30 15:20:29 [INFO] quantflow.forward: Открытых позиций: 0 | режим капитала: потикерный | ALRS=1,000,000, CHMF=1,000,000, GAZP=1,000,000, LKOH=1,000,000, MGNT=1,000,000, MOEX=1,000,000, NVTK=1,000,000, PLZL=1,000,000, ROSN=1,000,000, SBER=1,000,000, SNGS=1,000,000, TATN=1,000,000
+2026-07-30 15:20:29 [INFO] quantflow.forward: [ALRS] Свежих свечей нет (последняя 2026-07-29) — пропуск
+2026-07-30 15:20:29 [INFO] quantflow.forward: [CHMF] Свежих свечей нет (последняя 2026-07-29) — пропуск
+2026-07-30 15:20:29 [INFO] quantflow.forward: [GAZP] Свежих свечей нет (последняя 2026-07-29) — пропуск
+2026-07-30 15:20:29 [INFO] quantflow.forward: [LKOH] Свежих свечей нет (последняя 2026-07-29) — пропуск
+2026-07-30 15:20:29 [INFO] quantflow.forward: [MGNT] Свежих свечей нет (последняя 2026-07-29) — пропуск
+2026-07-30 15:20:29 [INFO] quantflow.forward: [MOEX] Свежих свечей нет (последняя 2026-07-29) — пропуск
+2026-07-30 15:20:30 [INFO] quantflow.forward: [NVTK] Свежих свечей нет (последняя 2026-07-29) — пропуск
+2026-07-30 15:20:30 [INFO] quantflow.forward: [PLZL] Свежих свечей нет (последняя 2026-07-29) — пропуск
+2026-07-30 15:20:30 [INFO] quantflow.forward: [ROSN] Свежих свечей нет (последняя 2026-07-29) — пропуск
+2026-07-30 15:20:30 [INFO] quantflow.forward: [SBER] Свежих свечей нет (последняя 2026-07-29) — пропуск
+2026-07-30 15:20:30 [INFO] quantflow.forward: [SNGS] Свежих свечей нет (последняя 2026-07-29) — пропуск
+2026-07-30 15:20:30 [INFO] quantflow.forward: [TATN] Свежих свечей нет (последняя 2026-07-29) — пропуск
+2026-07-30 15:20:30 [INFO] quantflow.forward: ФАЗА 1: исторические бары (только выходы)
+2026-07-30 15:20:30 [INFO] quantflow.forward: ФАЗА 2: свежий бар (выходы и входы)
+2026-07-30 15:20:30 [INFO] quantflow.forward: Бюджеты потикерно: ALRS=1,000,000, CHMF=1,000,000, GAZP=1,000,000, LKOH=1,000,000, MGNT=1,000,000, MOEX=1,000,000, NVTK=1,000,000, PLZL=1,000,000, ROSN=1,000,000, SBER=1,000,000, SNGS=1,000,000, TATN=1,000,000
+2026-07-30 15:20:30 [INFO] quantflow.memory: MemoryWriter: подключение закрыто
+
+════════════════════════════════════════════════════════════════
+  Форвард D1 2026-07-30: позиций 0, бюджеты потикерно (база 1,000,000 руб. × 12), занято 0, догнано баров 0, событий 0
+════════════════════════════════════════════════════════════════
+ Container trading_adminer Running 
+ Container trading_db Running 
+[2026-07-31 00:15:04] БД готова: localhost:5432/trading_bot за 0.0 с, попыток: 1
+2026-07-31 00:15:06 [INFO] signals.rules_engine: Загружено правил: основных=6, фильтров=0, выходов=2, тикерных=0, макро=0
+2026-07-31 00:15:06 [INFO] data.loader: [AFLT] Запрос к MOEX ISS…
+2026-07-31 00:15:06 [INFO] data.loader: Загружено 10 свечей для AFLT
+2026-07-31 00:15:06 [INFO] data.loader: [AFLT] Удалено 10 старых строк
+2026-07-31 00:15:06 [INFO] data.loader: [AFLT] Сохранено 10 свечей (2026-07-21 → 2026-07-30)
+2026-07-31 00:15:06 [INFO] data.loader: [ALRS] Запрос к MOEX ISS…
+2026-07-31 00:15:06 [INFO] data.loader: Загружено 10 свечей для ALRS
+2026-07-31 00:15:06 [INFO] data.loader: [ALRS] Удалено 10 старых строк
+2026-07-31 00:15:06 [INFO] data.loader: [ALRS] Сохранено 10 свечей (2026-07-21 → 2026-07-30)
+2026-07-31 00:15:06 [INFO] data.loader: [CHMF] Запрос к MOEX ISS…
+2026-07-31 00:15:06 [INFO] data.loader: Загружено 10 свечей для CHMF
+2026-07-31 00:15:06 [INFO] data.loader: [CHMF] Удалено 10 старых строк
+2026-07-31 00:15:06 [INFO] data.loader: [CHMF] Сохранено 10 свечей (2026-07-21 → 2026-07-30)
+2026-07-31 00:15:06 [INFO] data.loader: [FLOT] Запрос к MOEX ISS…
+2026-07-31 00:15:06 [INFO] data.loader: Загружено 10 свечей для FLOT
+2026-07-31 00:15:06 [INFO] data.loader: [FLOT] Удалено 10 старых строк
+2026-07-31 00:15:06 [INFO] data.loader: [FLOT] Сохранено 10 свечей (2026-07-21 → 2026-07-30)
+2026-07-31 00:15:06 [INFO] data.loader: [GAZP] Запрос к MOEX ISS…
+2026-07-31 00:15:06 [INFO] data.loader: Загружено 10 свечей для GAZP
+2026-07-31 00:15:06 [INFO] data.loader: [GAZP] Удалено 10 старых строк
+2026-07-31 00:15:06 [INFO] data.loader: [GAZP] Сохранено 10 свечей (2026-07-21 → 2026-07-30)
+2026-07-31 00:15:06 [INFO] data.loader: [LKOH] Запрос к MOEX ISS…
+2026-07-31 00:15:07 [INFO] data.loader: Загружено 10 свечей для LKOH
+2026-07-31 00:15:07 [INFO] data.loader: [LKOH] Удалено 10 старых строк
+2026-07-31 00:15:07 [INFO] data.loader: [LKOH] Сохранено 10 свечей (2026-07-21 → 2026-07-30)
+2026-07-31 00:15:07 [INFO] data.loader: [MGNT] Запрос к MOEX ISS…
+2026-07-31 00:15:07 [INFO] data.loader: Загружено 10 свечей для MGNT
+2026-07-31 00:15:07 [INFO] data.loader: [MGNT] Удалено 10 старых строк
+2026-07-31 00:15:07 [INFO] data.loader: [MGNT] Сохранено 10 свечей (2026-07-21 → 2026-07-30)
+2026-07-31 00:15:07 [INFO] data.loader: [MOEX] Запрос к MOEX ISS…
+2026-07-31 00:15:07 [INFO] data.loader: Загружено 10 свечей для MOEX
+2026-07-31 00:15:07 [INFO] data.loader: [MOEX] Удалено 10 старых строк
+2026-07-31 00:15:07 [INFO] data.loader: [MOEX] Сохранено 10 свечей (2026-07-21 → 2026-07-30)
+2026-07-31 00:15:07 [INFO] data.loader: [MTLR] Запрос к MOEX ISS…
+2026-07-31 00:15:07 [INFO] data.loader: Загружено 10 свечей для MTLR
+2026-07-31 00:15:07 [INFO] data.loader: [MTLR] Удалено 10 старых строк
+2026-07-31 00:15:07 [INFO] data.loader: [MTLR] Сохранено 10 свечей (2026-07-21 → 2026-07-30)
+2026-07-31 00:15:07 [INFO] data.loader: [MTSS] Запрос к MOEX ISS…
+2026-07-31 00:15:07 [INFO] data.loader: Загружено 10 свечей для MTSS
+2026-07-31 00:15:07 [INFO] data.loader: [MTSS] Удалено 10 старых строк
+2026-07-31 00:15:07 [INFO] data.loader: [MTSS] Сохранено 10 свечей (2026-07-21 → 2026-07-30)
+2026-07-31 00:15:07 [INFO] data.loader: [NVTK] Запрос к MOEX ISS…
+2026-07-31 00:15:07 [INFO] data.loader: Загружено 10 свечей для NVTK
+2026-07-31 00:15:07 [INFO] data.loader: [NVTK] Удалено 10 старых строк
+2026-07-31 00:15:07 [INFO] data.loader: [NVTK] Сохранено 10 свечей (2026-07-21 → 2026-07-30)
+2026-07-31 00:15:07 [INFO] data.loader: [OZON] Запрос к MOEX ISS…
+2026-07-31 00:15:07 [INFO] data.loader: Загружено 10 свечей для OZON
+2026-07-31 00:15:07 [INFO] data.loader: [OZON] Удалено 10 старых строк
+2026-07-31 00:15:07 [INFO] data.loader: [OZON] Сохранено 10 свечей (2026-07-21 → 2026-07-30)
+2026-07-31 00:15:07 [INFO] data.loader: [PHOR] Запрос к MOEX ISS…
+2026-07-31 00:15:07 [INFO] data.loader: Загружено 10 свечей для PHOR
+2026-07-31 00:15:07 [INFO] data.loader: [PHOR] Удалено 10 старых строк
+2026-07-31 00:15:07 [INFO] data.loader: [PHOR] Сохранено 10 свечей (2026-07-21 → 2026-07-30)
+2026-07-31 00:15:07 [INFO] data.loader: [PLZL] Запрос к MOEX ISS…
+2026-07-31 00:15:07 [INFO] data.loader: Загружено 10 свечей для PLZL
+2026-07-31 00:15:07 [INFO] data.loader: [PLZL] Удалено 10 старых строк
+2026-07-31 00:15:07 [INFO] data.loader: [PLZL] Сохранено 10 свечей (2026-07-21 → 2026-07-30)
+2026-07-31 00:15:07 [INFO] data.loader: [ROSN] Запрос к MOEX ISS…
+2026-07-31 00:15:07 [INFO] data.loader: Загружено 10 свечей для ROSN
+2026-07-31 00:15:07 [INFO] data.loader: [ROSN] Удалено 10 старых строк
+2026-07-31 00:15:07 [INFO] data.loader: [ROSN] Сохранено 10 свечей (2026-07-21 → 2026-07-30)
+2026-07-31 00:15:07 [INFO] data.loader: [SBER] Запрос к MOEX ISS…
+2026-07-31 00:15:07 [INFO] data.loader: Загружено 10 свечей для SBER
+2026-07-31 00:15:07 [INFO] data.loader: [SBER] Удалено 10 старых строк
+2026-07-31 00:15:07 [INFO] data.loader: [SBER] Сохранено 10 свечей (2026-07-21 → 2026-07-30)
+2026-07-31 00:15:07 [INFO] data.loader: [SMLT] Запрос к MOEX ISS…
+2026-07-31 00:15:07 [INFO] data.loader: Загружено 10 свечей для SMLT
+2026-07-31 00:15:07 [INFO] data.loader: [SMLT] Удалено 10 старых строк
+2026-07-31 00:15:07 [INFO] data.loader: [SMLT] Сохранено 10 свечей (2026-07-21 → 2026-07-30)
+2026-07-31 00:15:07 [INFO] data.loader: [SNGS] Запрос к MOEX ISS…
+2026-07-31 00:15:07 [INFO] data.loader: Загружено 10 свечей для SNGS
+2026-07-31 00:15:07 [INFO] data.loader: [SNGS] Удалено 10 старых строк
+2026-07-31 00:15:07 [INFO] data.loader: [SNGS] Сохранено 10 свечей (2026-07-21 → 2026-07-30)
+2026-07-31 00:15:07 [INFO] data.loader: [TATN] Запрос к MOEX ISS…
+2026-07-31 00:15:07 [INFO] data.loader: Загружено 10 свечей для TATN
+2026-07-31 00:15:07 [INFO] data.loader: [TATN] Удалено 10 старых строк
+2026-07-31 00:15:07 [INFO] data.loader: [TATN] Сохранено 10 свечей (2026-07-21 → 2026-07-30)
+2026-07-31 00:15:07 [INFO] data.loader: [VKCO] Запрос к MOEX ISS…
+2026-07-31 00:15:07 [INFO] data.loader: Загружено 10 свечей для VKCO
+2026-07-31 00:15:07 [INFO] data.loader: [VKCO] Удалено 10 старых строк
+2026-07-31 00:15:07 [INFO] data.loader: [VKCO] Сохранено 10 свечей (2026-07-21 → 2026-07-30)
+2026-07-31 00:15:07 [INFO] quantflow.forward: Догрузка свечей: 200 строк
+2026-07-31 00:15:07 [INFO] quantflow.memory: MemoryWriter: подключение к БД установлено
+2026-07-31 00:15:07 [INFO] quantflow.evaluator: DecisionEvaluator: подключение к БД установлено
+2026-07-31 00:15:07 [INFO] quantflow.belief: BeliefUpdater: подключение к БД установлено
+2026-07-31 00:15:07 [INFO] quantflow.hypothesis: HypothesisEngine: подключение к БД установлено
+2026-07-31 00:15:07 [INFO] quantflow.orchestrator: TradingOrchestrator: все модули подключены
+2026-07-31 00:15:07 [INFO] quantflow.forward: Открытых позиций: 0 | режим капитала: потикерный | AFLT=1,000,000, ALRS=1,000,000, CHMF=1,000,000, FLOT=1,000,000, GAZP=1,000,000, LKOH=1,000,000, MGNT=1,000,000, MOEX=1,000,000, MTLR=1,000,000, MTSS=1,000,000, NVTK=1,000,000, OZON=1,000,000, PHOR=1,000,000, PLZL=1,000,000, ROSN=1,000,000, SBER=1,000,000, SMLT=1,000,000, SNGS=1,000,000, TATN=1,000,000, VKCO=1,000,000
+2026-07-31 00:15:08 [INFO] quantflow.forward: ФАЗА 1: исторические бары (только выходы)
+2026-07-31 00:15:08 [INFO] quantflow.forward: ФАЗА 2: свежий бар (выходы и входы)
+2026-07-31 00:15:09 [INFO] quantflow.forward: Бюджеты потикерно: AFLT=1,000,000, ALRS=1,000,000, CHMF=1,000,000, FLOT=1,000,000, GAZP=1,000,000, LKOH=1,000,000, MGNT=1,000,000, MOEX=1,000,000, MTLR=1,000,000, MTSS=1,000,000, NVTK=1,000,000, OZON=1,000,000, PHOR=1,000,000, PLZL=1,000,000, ROSN=1,000,000, SBER=1,000,000, SMLT=1,000,000, SNGS=1,000,000, TATN=1,000,000, VKCO=1,000,000
+2026-07-31 00:15:09 [INFO] quantflow.memory: MemoryWriter: подключение закрыто
+
+════════════════════════════════════════════════════════════════
+  Форвард D1 2026-07-31: позиций 0, бюджеты потикерно (база 1,000,000 руб. × 20), занято 0, догнано баров 0, событий 0
+════════════════════════════════════════════════════════════════
+ Container trading_db Running 
+ Container trading_adminer Running 
+[2026-08-01 11:38:44] БД готова: localhost:5432/trading_bot за 0.2 с, попыток: 1
+2026-08-01 11:38:51 [INFO] signals.rules_engine: Загружено правил: основных=6, фильтров=0, выходов=2, тикерных=0, макро=0
+2026-08-01 11:38:51 [INFO] data.loader: [AFLT] Запрос к MOEX ISS…
+2026-08-01 11:38:52 [INFO] data.loader: Загружено 10 свечей для AFLT
+2026-08-01 11:38:52 [INFO] data.loader: [AFLT] Удалено 9 старых строк
+2026-08-01 11:38:52 [INFO] data.loader: [AFLT] Сохранено 10 свечей (2026-07-22 → 2026-07-31)
+2026-08-01 11:38:52 [INFO] data.loader: [ALRS] Запрос к MOEX ISS…
+2026-08-01 11:38:52 [INFO] data.loader: Загружено 10 свечей для ALRS
+2026-08-01 11:38:52 [INFO] data.loader: [ALRS] Удалено 9 старых строк
+2026-08-01 11:38:52 [INFO] data.loader: [ALRS] Сохранено 10 свечей (2026-07-22 → 2026-07-31)
+2026-08-01 11:38:52 [INFO] data.loader: [CHMF] Запрос к MOEX ISS…
+2026-08-01 11:38:52 [INFO] data.loader: Загружено 10 свечей для CHMF
+2026-08-01 11:38:52 [INFO] data.loader: [CHMF] Удалено 9 старых строк
+2026-08-01 11:38:52 [INFO] data.loader: [CHMF] Сохранено 10 свечей (2026-07-22 → 2026-07-31)
+2026-08-01 11:38:52 [INFO] data.loader: [FLOT] Запрос к MOEX ISS…
+2026-08-01 11:38:52 [INFO] data.loader: Загружено 10 свечей для FLOT
+2026-08-01 11:38:52 [INFO] data.loader: [FLOT] Удалено 9 старых строк
+2026-08-01 11:38:52 [INFO] data.loader: [FLOT] Сохранено 10 свечей (2026-07-22 → 2026-07-31)
+2026-08-01 11:38:52 [INFO] data.loader: [GAZP] Запрос к MOEX ISS…
+2026-08-01 11:38:52 [INFO] data.loader: Загружено 10 свечей для GAZP
+2026-08-01 11:38:52 [INFO] data.loader: [GAZP] Удалено 9 старых строк
+2026-08-01 11:38:52 [INFO] data.loader: [GAZP] Сохранено 10 свечей (2026-07-22 → 2026-07-31)
+2026-08-01 11:38:52 [INFO] data.loader: [LKOH] Запрос к MOEX ISS…
+2026-08-01 11:38:52 [INFO] data.loader: Загружено 10 свечей для LKOH
+2026-08-01 11:38:52 [INFO] data.loader: [LKOH] Удалено 9 старых строк
+2026-08-01 11:38:52 [INFO] data.loader: [LKOH] Сохранено 10 свечей (2026-07-22 → 2026-07-31)
+2026-08-01 11:38:52 [INFO] data.loader: [MGNT] Запрос к MOEX ISS…
+2026-08-01 11:38:52 [INFO] data.loader: Загружено 10 свечей для MGNT
+2026-08-01 11:38:52 [INFO] data.loader: [MGNT] Удалено 9 старых строк
+2026-08-01 11:38:52 [INFO] data.loader: [MGNT] Сохранено 10 свечей (2026-07-22 → 2026-07-31)
+2026-08-01 11:38:52 [INFO] data.loader: [MOEX] Запрос к MOEX ISS…
+2026-08-01 11:38:52 [INFO] data.loader: Загружено 10 свечей для MOEX
+2026-08-01 11:38:52 [INFO] data.loader: [MOEX] Удалено 9 старых строк
+2026-08-01 11:38:52 [INFO] data.loader: [MOEX] Сохранено 10 свечей (2026-07-22 → 2026-07-31)
+2026-08-01 11:38:52 [INFO] data.loader: [MTLR] Запрос к MOEX ISS…
+2026-08-01 11:38:52 [INFO] data.loader: Загружено 10 свечей для MTLR
+2026-08-01 11:38:52 [INFO] data.loader: [MTLR] Удалено 9 старых строк
+2026-08-01 11:38:52 [INFO] data.loader: [MTLR] Сохранено 10 свечей (2026-07-22 → 2026-07-31)
+2026-08-01 11:38:52 [INFO] data.loader: [MTSS] Запрос к MOEX ISS…
+2026-08-01 11:38:52 [INFO] data.loader: Загружено 10 свечей для MTSS
+2026-08-01 11:38:52 [INFO] data.loader: [MTSS] Удалено 9 старых строк
+2026-08-01 11:38:52 [INFO] data.loader: [MTSS] Сохранено 10 свечей (2026-07-22 → 2026-07-31)
+2026-08-01 11:38:52 [INFO] data.loader: [NVTK] Запрос к MOEX ISS…
+2026-08-01 11:38:52 [INFO] data.loader: Загружено 10 свечей для NVTK
+2026-08-01 11:38:52 [INFO] data.loader: [NVTK] Удалено 9 старых строк
+2026-08-01 11:38:52 [INFO] data.loader: [NVTK] Сохранено 10 свечей (2026-07-22 → 2026-07-31)
+2026-08-01 11:38:52 [INFO] data.loader: [OZON] Запрос к MOEX ISS…
+2026-08-01 11:38:52 [INFO] data.loader: Загружено 10 свечей для OZON
+2026-08-01 11:38:52 [INFO] data.loader: [OZON] Удалено 9 старых строк
+2026-08-01 11:38:52 [INFO] data.loader: [OZON] Сохранено 10 свечей (2026-07-22 → 2026-07-31)
+2026-08-01 11:38:52 [INFO] data.loader: [PHOR] Запрос к MOEX ISS…
+2026-08-01 11:38:52 [INFO] data.loader: Загружено 10 свечей для PHOR
+2026-08-01 11:38:52 [INFO] data.loader: [PHOR] Удалено 9 старых строк
+2026-08-01 11:38:52 [INFO] data.loader: [PHOR] Сохранено 10 свечей (2026-07-22 → 2026-07-31)
+2026-08-01 11:38:52 [INFO] data.loader: [PLZL] Запрос к MOEX ISS…
+2026-08-01 11:38:52 [INFO] data.loader: Загружено 10 свечей для PLZL
+2026-08-01 11:38:52 [INFO] data.loader: [PLZL] Удалено 9 старых строк
+2026-08-01 11:38:52 [INFO] data.loader: [PLZL] Сохранено 10 свечей (2026-07-22 → 2026-07-31)
+2026-08-01 11:38:52 [INFO] data.loader: [ROSN] Запрос к MOEX ISS…
+2026-08-01 11:38:52 [INFO] data.loader: Загружено 10 свечей для ROSN
+2026-08-01 11:38:52 [INFO] data.loader: [ROSN] Удалено 9 старых строк
+2026-08-01 11:38:52 [INFO] data.loader: [ROSN] Сохранено 10 свечей (2026-07-22 → 2026-07-31)
+2026-08-01 11:38:52 [INFO] data.loader: [SBER] Запрос к MOEX ISS…
+2026-08-01 11:38:52 [INFO] data.loader: Загружено 10 свечей для SBER
+2026-08-01 11:38:52 [INFO] data.loader: [SBER] Удалено 9 старых строк
+2026-08-01 11:38:52 [INFO] data.loader: [SBER] Сохранено 10 свечей (2026-07-22 → 2026-07-31)
+2026-08-01 11:38:52 [INFO] data.loader: [SMLT] Запрос к MOEX ISS…
+2026-08-01 11:38:52 [INFO] data.loader: Загружено 10 свечей для SMLT
+2026-08-01 11:38:52 [INFO] data.loader: [SMLT] Удалено 9 старых строк
+2026-08-01 11:38:52 [INFO] data.loader: [SMLT] Сохранено 10 свечей (2026-07-22 → 2026-07-31)
+2026-08-01 11:38:52 [INFO] data.loader: [SNGS] Запрос к MOEX ISS…
+2026-08-01 11:38:52 [INFO] data.loader: Загружено 10 свечей для SNGS
+2026-08-01 11:38:52 [INFO] data.loader: [SNGS] Удалено 9 старых строк
+2026-08-01 11:38:52 [INFO] data.loader: [SNGS] Сохранено 10 свечей (2026-07-22 → 2026-07-31)
+2026-08-01 11:38:52 [INFO] data.loader: [TATN] Запрос к MOEX ISS…
+2026-08-01 11:38:52 [INFO] data.loader: Загружено 10 свечей для TATN
+2026-08-01 11:38:52 [INFO] data.loader: [TATN] Удалено 9 старых строк
+2026-08-01 11:38:52 [INFO] data.loader: [TATN] Сохранено 10 свечей (2026-07-22 → 2026-07-31)
+2026-08-01 11:38:52 [INFO] data.loader: [VKCO] Запрос к MOEX ISS…
+2026-08-01 11:38:52 [INFO] data.loader: Загружено 10 свечей для VKCO
+2026-08-01 11:38:52 [INFO] data.loader: [VKCO] Удалено 9 старых строк
+2026-08-01 11:38:52 [INFO] data.loader: [VKCO] Сохранено 10 свечей (2026-07-22 → 2026-07-31)
+2026-08-01 11:38:52 [INFO] quantflow.forward: Догрузка свечей: 200 строк
+2026-08-01 11:38:52 [INFO] quantflow.memory: MemoryWriter: подключение к БД установлено
+2026-08-01 11:38:53 [INFO] quantflow.evaluator: DecisionEvaluator: подключение к БД установлено
+2026-08-01 11:38:53 [INFO] quantflow.belief: BeliefUpdater: подключение к БД установлено
+2026-08-01 11:38:53 [INFO] quantflow.hypothesis: HypothesisEngine: подключение к БД установлено
+2026-08-01 11:38:53 [INFO] quantflow.orchestrator: TradingOrchestrator: все модули подключены
+2026-08-01 11:38:53 [INFO] quantflow.forward: Открытых позиций: 0 | режим капитала: потикерный | AFLT=1,000,000, ALRS=1,000,000, CHMF=1,000,000, FLOT=1,000,000, GAZP=1,000,000, LKOH=1,000,000, MGNT=1,000,000, MOEX=1,000,000, MTLR=1,000,000, MTSS=1,000,000, NVTK=1,000,000, OZON=1,000,000, PHOR=1,000,000, PLZL=1,000,000, ROSN=1,000,000, SBER=1,000,000, SMLT=1,000,000, SNGS=1,000,000, TATN=1,000,000, VKCO=1,000,000
+2026-08-01 11:38:54 [INFO] quantflow.forward: ФАЗА 1: исторические бары (только выходы)
+2026-08-01 11:38:54 [INFO] quantflow.forward: ФАЗА 2: свежий бар (выходы и входы)
+2026-08-01 11:38:54 [INFO] quantflow.evaluator: Сигнал отклонён: osc_range_moex_d1_fwd TATN — structural_downtrend
+2026-08-01 11:38:54 [INFO] quantflow.forward: ⛔ TATN: BUY-сигнал отклонён — Структурный даунтренд TATN (D1): лонги запрещены фильтром
+2026-08-01 11:38:54 [INFO] quantflow.forward: Бюджеты потикерно: AFLT=1,000,000, ALRS=1,000,000, CHMF=1,000,000, FLOT=1,000,000, GAZP=1,000,000, LKOH=1,000,000, MGNT=1,000,000, MOEX=1,000,000, MTLR=1,000,000, MTSS=1,000,000, NVTK=1,000,000, OZON=1,000,000, PHOR=1,000,000, PLZL=1,000,000, ROSN=1,000,000, SBER=1,000,000, SMLT=1,000,000, SNGS=1,000,000, TATN=1,000,000, VKCO=1,000,000
+2026-08-01 11:38:55 [INFO] learning.feedback: Схема БД проверена/создана
+2026-08-01 11:38:55 [INFO] signals.rules_engine: Загружено правил: основных=12, фильтров=3, выходов=3, тикерных=4, макро=3
+2026-08-01 11:38:56 [INFO] httpx: HTTP Request: POST https://api.telegram.org/bot<TELEGRAM_TOKEN ВЫРЕЗАН 2026-08-03>/getMe "HTTP/1.1 200 OK"
+2026-08-01 11:38:56 [INFO] httpx: HTTP Request: POST https://api.telegram.org/bot<TELEGRAM_TOKEN ВЫРЕЗАН 2026-08-03>/sendMessage "HTTP/1.1 200 OK"
+2026-08-01 11:38:56 [INFO] quantflow.memory: MemoryWriter: подключение закрыто
+
+════════════════════════════════════════════════════════════════
+  Форвард D1 2026-08-01: позиций 0, бюджеты потикерно (база 1,000,000 руб. × 20), занято 0, догнано баров 0, событий 1
+  ⛔ TATN: BUY-сигнал отклонён — Структурный даунтренд TATN (D1): лонги запрещены фильтром
+════════════════════════════════════════════════════════════════
+[02.08.2026  0:15:01,49] run_forward_d1.bat started
+Журнал прогонов: start → D:\Trading-Bot-Nik\logs\forward_runs.jsonl
+ Container trading_db Running 
+ Container trading_adminer Running 
+[2026-08-02 00:15:05] БД готова: localhost:5432/trading_bot за 0.0 с, попыток: 1
+2026-08-02 00:15:08 [INFO] signals.rules_engine: Загружено правил: основных=6, фильтров=0, выходов=2, тикерных=0, макро=0
+2026-08-02 00:15:08 [INFO] data.loader: [AFLT] Запрос к MOEX ISS…
+2026-08-02 00:15:09 [INFO] data.loader: Загружено 9 свечей для AFLT
+2026-08-02 00:15:09 [INFO] data.loader: [AFLT] Удалено 9 старых строк
+2026-08-02 00:15:09 [INFO] data.loader: [AFLT] Сохранено 9 свечей (2026-07-23 → 2026-07-31)
+2026-08-02 00:15:09 [INFO] data.loader: [ALRS] Запрос к MOEX ISS…
+2026-08-02 00:15:09 [INFO] data.loader: Загружено 9 свечей для ALRS
+2026-08-02 00:15:09 [INFO] data.loader: [ALRS] Удалено 9 старых строк
+2026-08-02 00:15:09 [INFO] data.loader: [ALRS] Сохранено 9 свечей (2026-07-23 → 2026-07-31)
+2026-08-02 00:15:09 [INFO] data.loader: [CHMF] Запрос к MOEX ISS…
+2026-08-02 00:15:09 [INFO] data.loader: Загружено 9 свечей для CHMF
+2026-08-02 00:15:09 [INFO] data.loader: [CHMF] Удалено 9 старых строк
+2026-08-02 00:15:09 [INFO] data.loader: [CHMF] Сохранено 9 свечей (2026-07-23 → 2026-07-31)
+2026-08-02 00:15:09 [INFO] data.loader: [FLOT] Запрос к MOEX ISS…
+2026-08-02 00:15:09 [INFO] data.loader: Загружено 9 свечей для FLOT
+2026-08-02 00:15:09 [INFO] data.loader: [FLOT] Удалено 9 старых строк
+2026-08-02 00:15:09 [INFO] data.loader: [FLOT] Сохранено 9 свечей (2026-07-23 → 2026-07-31)
+2026-08-02 00:15:09 [INFO] data.loader: [GAZP] Запрос к MOEX ISS…
+2026-08-02 00:15:09 [INFO] data.loader: Загружено 9 свечей для GAZP
+2026-08-02 00:15:09 [INFO] data.loader: [GAZP] Удалено 9 старых строк
+2026-08-02 00:15:09 [INFO] data.loader: [GAZP] Сохранено 9 свечей (2026-07-23 → 2026-07-31)
+2026-08-02 00:15:09 [INFO] data.loader: [LKOH] Запрос к MOEX ISS…
+2026-08-02 00:15:09 [INFO] data.loader: Загружено 9 свечей для LKOH
+2026-08-02 00:15:09 [INFO] data.loader: [LKOH] Удалено 9 старых строк
+2026-08-02 00:15:09 [INFO] data.loader: [LKOH] Сохранено 9 свечей (2026-07-23 → 2026-07-31)
+2026-08-02 00:15:09 [INFO] data.loader: [MGNT] Запрос к MOEX ISS…
+2026-08-02 00:15:09 [INFO] data.loader: Загружено 9 свечей для MGNT
+2026-08-02 00:15:09 [INFO] data.loader: [MGNT] Удалено 9 старых строк
+2026-08-02 00:15:09 [INFO] data.loader: [MGNT] Сохранено 9 свечей (2026-07-23 → 2026-07-31)
+2026-08-02 00:15:09 [INFO] data.loader: [MOEX] Запрос к MOEX ISS…
+2026-08-02 00:15:09 [INFO] data.loader: Загружено 9 свечей для MOEX
+2026-08-02 00:15:09 [INFO] data.loader: [MOEX] Удалено 9 старых строк
+2026-08-02 00:15:09 [INFO] data.loader: [MOEX] Сохранено 9 свечей (2026-07-23 → 2026-07-31)
+2026-08-02 00:15:09 [INFO] data.loader: [MTLR] Запрос к MOEX ISS…
+2026-08-02 00:15:09 [INFO] data.loader: Загружено 9 свечей для MTLR
+2026-08-02 00:15:09 [INFO] data.loader: [MTLR] Удалено 9 старых строк
+2026-08-02 00:15:09 [INFO] data.loader: [MTLR] Сохранено 9 свечей (2026-07-23 → 2026-07-31)
+2026-08-02 00:15:09 [INFO] data.loader: [MTSS] Запрос к MOEX ISS…
+2026-08-02 00:15:09 [INFO] data.loader: Загружено 9 свечей для MTSS
+2026-08-02 00:15:09 [INFO] data.loader: [MTSS] Удалено 9 старых строк
+2026-08-02 00:15:09 [INFO] data.loader: [MTSS] Сохранено 9 свечей (2026-07-23 → 2026-07-31)
+2026-08-02 00:15:09 [INFO] data.loader: [NVTK] Запрос к MOEX ISS…
+2026-08-02 00:15:09 [INFO] data.loader: Загружено 9 свечей для NVTK
+2026-08-02 00:15:09 [INFO] data.loader: [NVTK] Удалено 9 старых строк
+2026-08-02 00:15:09 [INFO] data.loader: [NVTK] Сохранено 9 свечей (2026-07-23 → 2026-07-31)
+2026-08-02 00:15:09 [INFO] data.loader: [OZON] Запрос к MOEX ISS…
+2026-08-02 00:15:09 [INFO] data.loader: Загружено 9 свечей для OZON
+2026-08-02 00:15:09 [INFO] data.loader: [OZON] Удалено 9 старых строк
+2026-08-02 00:15:09 [INFO] data.loader: [OZON] Сохранено 9 свечей (2026-07-23 → 2026-07-31)
+2026-08-02 00:15:09 [INFO] data.loader: [PHOR] Запрос к MOEX ISS…
+2026-08-02 00:15:09 [INFO] data.loader: Загружено 9 свечей для PHOR
+2026-08-02 00:15:09 [INFO] data.loader: [PHOR] Удалено 9 старых строк
+2026-08-02 00:15:09 [INFO] data.loader: [PHOR] Сохранено 9 свечей (2026-07-23 → 2026-07-31)
+2026-08-02 00:15:09 [INFO] data.loader: [PLZL] Запрос к MOEX ISS…
+2026-08-02 00:15:09 [INFO] data.loader: Загружено 9 свечей для PLZL
+2026-08-02 00:15:09 [INFO] data.loader: [PLZL] Удалено 9 старых строк
+2026-08-02 00:15:09 [INFO] data.loader: [PLZL] Сохранено 9 свечей (2026-07-23 → 2026-07-31)
+2026-08-02 00:15:09 [INFO] data.loader: [ROSN] Запрос к MOEX ISS…
+2026-08-02 00:15:09 [INFO] data.loader: Загружено 9 свечей для ROSN
+2026-08-02 00:15:09 [INFO] data.loader: [ROSN] Удалено 9 старых строк
+2026-08-02 00:15:09 [INFO] data.loader: [ROSN] Сохранено 9 свечей (2026-07-23 → 2026-07-31)
+2026-08-02 00:15:09 [INFO] data.loader: [SBER] Запрос к MOEX ISS…
+2026-08-02 00:15:09 [INFO] data.loader: Загружено 9 свечей для SBER
+2026-08-02 00:15:09 [INFO] data.loader: [SBER] Удалено 9 старых строк
+2026-08-02 00:15:09 [INFO] data.loader: [SBER] Сохранено 9 свечей (2026-07-23 → 2026-07-31)
+2026-08-02 00:15:09 [INFO] data.loader: [SMLT] Запрос к MOEX ISS…
+2026-08-02 00:15:09 [INFO] data.loader: Загружено 9 свечей для SMLT
+2026-08-02 00:15:09 [INFO] data.loader: [SMLT] Удалено 9 старых строк
+2026-08-02 00:15:09 [INFO] data.loader: [SMLT] Сохранено 9 свечей (2026-07-23 → 2026-07-31)
+2026-08-02 00:15:09 [INFO] data.loader: [SNGS] Запрос к MOEX ISS…
+2026-08-02 00:15:09 [INFO] data.loader: Загружено 9 свечей для SNGS
+2026-08-02 00:15:09 [INFO] data.loader: [SNGS] Удалено 9 старых строк
+2026-08-02 00:15:09 [INFO] data.loader: [SNGS] Сохранено 9 свечей (2026-07-23 → 2026-07-31)
+2026-08-02 00:15:09 [INFO] data.loader: [TATN] Запрос к MOEX ISS…
+2026-08-02 00:15:10 [INFO] data.loader: Загружено 9 свечей для TATN
+2026-08-02 00:15:10 [INFO] data.loader: [TATN] Удалено 9 старых строк
+2026-08-02 00:15:10 [INFO] data.loader: [TATN] Сохранено 9 свечей (2026-07-23 → 2026-07-31)
+2026-08-02 00:15:10 [INFO] data.loader: [VKCO] Запрос к MOEX ISS…
+2026-08-02 00:15:10 [INFO] data.loader: Загружено 9 свечей для VKCO
+2026-08-02 00:15:10 [INFO] data.loader: [VKCO] Удалено 9 старых строк
+2026-08-02 00:15:10 [INFO] data.loader: [VKCO] Сохранено 9 свечей (2026-07-23 → 2026-07-31)
+2026-08-02 00:15:10 [INFO] quantflow.forward: Догрузка свечей: 180 строк
+2026-08-02 00:15:10 [INFO] quantflow.memory: MemoryWriter: подключение к БД установлено
+2026-08-02 00:15:10 [INFO] quantflow.evaluator: DecisionEvaluator: подключение к БД установлено
+2026-08-02 00:15:10 [INFO] quantflow.belief: BeliefUpdater: подключение к БД установлено
+2026-08-02 00:15:10 [INFO] quantflow.hypothesis: HypothesisEngine: подключение к БД установлено
+2026-08-02 00:15:10 [INFO] quantflow.orchestrator: TradingOrchestrator: все модули подключены
+2026-08-02 00:15:10 [INFO] quantflow.forward: Открытых позиций: 0 | режим капитала: потикерный | AFLT=1,000,000, ALRS=1,000,000, CHMF=1,000,000, FLOT=1,000,000, GAZP=1,000,000, LKOH=1,000,000, MGNT=1,000,000, MOEX=1,000,000, MTLR=1,000,000, MTSS=1,000,000, NVTK=1,000,000, OZON=1,000,000, PHOR=1,000,000, PLZL=1,000,000, ROSN=1,000,000, SBER=1,000,000, SMLT=1,000,000, SNGS=1,000,000, TATN=1,000,000, VKCO=1,000,000
+2026-08-02 00:15:10 [INFO] quantflow.forward: [AFLT] Свежих свечей нет (последняя 2026-07-31) — пропуск
+2026-08-02 00:15:10 [INFO] quantflow.forward: [ALRS] Свежих свечей нет (последняя 2026-07-31) — пропуск
+2026-08-02 00:15:10 [INFO] quantflow.forward: [CHMF] Свежих свечей нет (последняя 2026-07-31) — пропуск
+2026-08-02 00:15:10 [INFO] quantflow.forward: [FLOT] Свежих свечей нет (последняя 2026-07-31) — пропуск
+2026-08-02 00:15:10 [INFO] quantflow.forward: [GAZP] Свежих свечей нет (последняя 2026-07-31) — пропуск
+2026-08-02 00:15:10 [INFO] quantflow.forward: [LKOH] Свежих свечей нет (последняя 2026-07-31) — пропуск
+2026-08-02 00:15:10 [INFO] quantflow.forward: [MGNT] Свежих свечей нет (последняя 2026-07-31) — пропуск
+2026-08-02 00:15:10 [INFO] quantflow.forward: [MOEX] Свежих свечей нет (последняя 2026-07-31) — пропуск
+2026-08-02 00:15:10 [INFO] quantflow.forward: [MTLR] Свежих свечей нет (последняя 2026-07-31) — пропуск
+2026-08-02 00:15:10 [INFO] quantflow.forward: [MTSS] Свежих свечей нет (последняя 2026-07-31) — пропуск
+2026-08-02 00:15:10 [INFO] quantflow.forward: [NVTK] Свежих свечей нет (последняя 2026-07-31) — пропуск
+2026-08-02 00:15:10 [INFO] quantflow.forward: [OZON] Свежих свечей нет (последняя 2026-07-31) — пропуск
+2026-08-02 00:15:10 [INFO] quantflow.forward: [PHOR] Свежих свечей нет (последняя 2026-07-31) — пропуск
+2026-08-02 00:15:10 [INFO] quantflow.forward: [PLZL] Свежих свечей нет (последняя 2026-07-31) — пропуск
+2026-08-02 00:15:10 [INFO] quantflow.forward: [ROSN] Свежих свечей нет (последняя 2026-07-31) — пропуск
+2026-08-02 00:15:10 [INFO] quantflow.forward: [SBER] Свежих свечей нет (последняя 2026-07-31) — пропуск
+2026-08-02 00:15:10 [INFO] quantflow.forward: [SMLT] Свежих свечей нет (последняя 2026-07-31) — пропуск
+2026-08-02 00:15:10 [INFO] quantflow.forward: [SNGS] Свежих свечей нет (последняя 2026-07-31) — пропуск
+2026-08-02 00:15:10 [INFO] quantflow.forward: [TATN] Свежих свечей нет (последняя 2026-07-31) — пропуск
+2026-08-02 00:15:10 [INFO] quantflow.forward: [VKCO] Свежих свечей нет (последняя 2026-07-31) — пропуск
+2026-08-02 00:15:10 [INFO] quantflow.forward: ФАЗА 1: исторические бары (только выходы)
+2026-08-02 00:15:10 [INFO] quantflow.forward: ФАЗА 2: свежий бар (выходы и входы)
+2026-08-02 00:15:10 [ERROR] quantflow.forward: Журнал прогонов: обработанной сессии нет ни у одного тикера — сессия не записана
+2026-08-02 00:15:10 [INFO] quantflow.forward: Бюджеты потикерно: AFLT=1,000,000, ALRS=1,000,000, CHMF=1,000,000, FLOT=1,000,000, GAZP=1,000,000, LKOH=1,000,000, MGNT=1,000,000, MOEX=1,000,000, MTLR=1,000,000, MTSS=1,000,000, NVTK=1,000,000, OZON=1,000,000, PHOR=1,000,000, PLZL=1,000,000, ROSN=1,000,000, SBER=1,000,000, SMLT=1,000,000, SNGS=1,000,000, TATN=1,000,000, VKCO=1,000,000
+2026-08-02 00:15:10 [INFO] quantflow.memory: MemoryWriter: подключение закрыто
+
+════════════════════════════════════════════════════════════════
+  Форвард D1 2026-08-02: позиций 0, бюджеты потикерно (база 1,000,000 руб. × 20), занято 0, догнано баров 0, событий 0
+════════════════════════════════════════════════════════════════
+Журнал прогонов: finish → D:\Trading-Bot-Nik\logs\forward_runs.jsonl

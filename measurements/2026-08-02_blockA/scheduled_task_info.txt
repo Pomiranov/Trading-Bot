@@ -1,0 +1,88 @@
+﻿Снято: 2026-08-02 19:32:51 МСК, Get-ScheduledTaskInfo / Get-ScheduledTask, только чтение.
+Часовой пояс машины: Russian Standard Time
+ВАЖНО: LastRunTime и LastTaskResult затираются следующим прогоном (03.08 00:15 и 09:00).
+
+================ QuantFlow Forward D1 ================
+LastRunTime        : 02.08.2026 0:15:15
+LastTaskResult     : 0
+NextRunTime        : 03.08.2026 0:15:15
+NumberOfMissedRuns : 0
+TaskName           : QuantFlow Forward D1
+TaskPath           : 
+PSComputerName     :
+---- Actions ----
+Execute          : D:\Trading-Bot-Nik\run_forward_d1.bat
+Arguments        : 
+WorkingDirectory :
+---- Triggers ----
+Enabled            : True
+EndBoundary        : 
+ExecutionTimeLimit : 
+Id                 : 
+Repetition         : MSFT_TaskRepetitionPattern
+StartBoundary      : 2026-07-12T00:15:00
+DaysInterval       : 1
+RandomDelay        : 
+PSComputerName     :
+---- Settings (ключевые) ----
+StartWhenAvailable         : True
+WakeToRun                  : True
+DisallowStartIfOnBatteries : False
+StopIfGoingOnBatteries     : False
+ExecutionTimeLimit         : PT1H
+RestartCount / Interval    : 0 / 
+---- Principal ----
+DisplayName         : 
+GroupId             : 
+Id                  : Author
+LogonType           : Interactive
+RunLevel            : Limited
+UserId              : User
+ProcessTokenSidType : Default
+RequiredPrivilege   : 
+PSComputerName      :
+
+================ QuantFlow Forward Healthcheck ================
+LastRunTime        : 02.08.2026 16:24:24
+LastTaskResult     : 1
+NextRunTime        : 03.08.2026 9:00:00
+NumberOfMissedRuns : 0
+TaskName           : QuantFlow Forward Healthcheck
+TaskPath           : 
+PSComputerName     :
+---- Actions ----
+Execute          : D:\Trading-Bot-Nik\.venv\Scripts\python.exe
+Arguments        : bot\forward_healthcheck.py
+WorkingDirectory : D:\Trading-Bot-Nik
+---- Triggers ----
+Enabled            : True
+EndBoundary        : 
+ExecutionTimeLimit : 
+Id                 : 
+Repetition         : MSFT_TaskRepetitionPattern
+StartBoundary      : 2026-07-26T09:00:00+03:00
+DaysInterval       : 1
+RandomDelay        : 
+PSComputerName     :
+---- Settings (ключевые) ----
+StartWhenAvailable         : True
+WakeToRun                  : True
+DisallowStartIfOnBatteries : False
+StopIfGoingOnBatteries     : False
+ExecutionTimeLimit         : PT1H
+RestartCount / Interval    : 0 / 
+---- Principal ----
+DisplayName         : 
+GroupId             : 
+Id                  : Author
+LogonType           : Interactive
+RunLevel            : Limited
+UserId              : User
+ProcessTokenSidType : Default
+RequiredPrivilege   : 
+PSComputerName      :
+
+================ Журнал планировщика ================
+Microsoft-Windows-TaskScheduler/Operational  IsEnabled = False
+СЛЕДСТВИЕ: независимой истории запусков задач НЕТ. Единственные свидетельства о
+прогоне — logs/forward_runs.jsonl (наш журнал) и LastRunTime/LastTaskResult (затираются).

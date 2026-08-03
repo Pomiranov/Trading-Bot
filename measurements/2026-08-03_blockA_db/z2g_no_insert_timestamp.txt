@@ -1,0 +1,45 @@
+Pager usage is off.
+З2(г): устанавливается ли из данных число строк, добавленных за сутки.
+Три проверки. Ни одна не даёт времени вставки СТРОКИ.
+
+-- (1) пользовательские колонки candles: отметки вставки среди них нет
+-- SQL: SELECT column_name, data_type FROM information_schema.columns WHERE table_name = 'candles' ORDER BY ordinal_position;
+ column_name |        data_type         
+-------------+--------------------------
+ time        | timestamp with time zone
+ ticker      | character varying
+ timeframe   | character varying
+ open        | numeric
+ high        | numeric
+ low         | numeric
+ close       | numeric
+ volume      | bigint
+(8 rows)
+
+-- (2) системные колонки: только xid/cid/tid, времени в них нет
+-- SQL: SELECT attname, atttypid::regtype AS type, attnum FROM pg_attribute WHERE attrelid = 'candles'::regclass AND attnum < 0 ORDER BY attnum;
+ attname  | type | attnum 
+----------+------+--------
+ tableoid | oid  |     -6
+ cmax     | cid  |     -5
+ xmax     | xid  |     -4
+ cmin     | cid  |     -3
+ xmin     | xid  |     -2
+ ctid     | tid  |     -1
+(6 rows)
+
+-- (3) xmin -> время только при track_commit_timestamp = on
+-- SQL: SHOW track_commit_timestamp;
+ track_commit_timestamp 
+------------------------
+ off
+(1 row)
+
+-- (4) candles НЕ гипертаблица, значит chunk_creation_time тоже недоступен
+-- SQL: SELECT hypertable_name, num_chunks FROM timescaledb_information.hypertables WHERE hypertable_name = 'candles';
+ hypertable_name | num_chunks 
+-----------------+------------
+(0 rows)
+
+
+ВЫВОД: НЕ УСТАНАВЛИВАЕТСЯ. Оценки не даётся.

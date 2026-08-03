@@ -1,0 +1,154 @@
+Pager usage is off.
+======================================================================
+Z1. forward_state
+======================================================================
+
+-- Z1.1 число строк ВСЕЙ таблицы (без фильтра по strategy_id)
+-- SQL: SELECT count(*) AS rows_total, count(DISTINCT ticker) AS tickers, count(DISTINCT strategy_id) AS strategies FROM forward_state;
+ rows_total | tickers | strategies 
+------------+---------+------------
+         20 |      20 |          1
+(1 row)
+
+-- Z1.2 разбивка по стратегиям
+-- SQL: SELECT strategy_id, count(*) AS rows FROM forward_state GROUP BY 1 ORDER BY 1;
+      strategy_id      | rows 
+-----------------------+------
+ osc_range_moex_d1_fwd |   20
+(1 row)
+
+-- Z1.3 построчно: метка последней обработанной сессии у каждого тикера
+-- last_candle_time = ВНУТРЕННЯЯ МЕТКА БАРА (UTC); msk_session = МОСКОВСКАЯ ТОРГОВАЯ СЕССИЯ этого бара
+-- updated_at = момент записи строки прогоном
+-- SQL: SELECT strategy_id, ticker, last_candle_time, (last_candle_time AT TIME ZONE 'Europe/Moscow')::date AS msk_session, updated_at FROM forward_state ORDER BY strategy_id, ticker;
+      strategy_id      | ticker |    last_candle_time    | msk_session |          updated_at           
+-----------------------+--------+------------------------+-------------+-------------------------------
+ osc_range_moex_d1_fwd | AFLT   | 2026-07-30 21:00:00+00 | 2026-07-31  | 2026-08-01 08:38:54.338986+00
+ osc_range_moex_d1_fwd | ALRS   | 2026-07-30 21:00:00+00 | 2026-07-31  | 2026-08-01 08:38:54.348834+00
+ osc_range_moex_d1_fwd | CHMF   | 2026-07-30 21:00:00+00 | 2026-07-31  | 2026-08-01 08:38:54.355769+00
+ osc_range_moex_d1_fwd | FLOT   | 2026-07-30 21:00:00+00 | 2026-07-31  | 2026-08-01 08:38:54.362347+00
+ osc_range_moex_d1_fwd | GAZP   | 2026-07-30 21:00:00+00 | 2026-07-31  | 2026-08-01 08:38:54.369325+00
+ osc_range_moex_d1_fwd | LKOH   | 2026-07-30 21:00:00+00 | 2026-07-31  | 2026-08-01 08:38:54.376114+00
+ osc_range_moex_d1_fwd | MGNT   | 2026-07-30 21:00:00+00 | 2026-07-31  | 2026-08-01 08:38:54.383095+00
+ osc_range_moex_d1_fwd | MOEX   | 2026-07-30 21:00:00+00 | 2026-07-31  | 2026-08-01 08:38:54.389782+00
+ osc_range_moex_d1_fwd | MTLR   | 2026-07-30 21:00:00+00 | 2026-07-31  | 2026-08-01 08:38:54.396548+00
+ osc_range_moex_d1_fwd | MTSS   | 2026-07-30 21:00:00+00 | 2026-07-31  | 2026-08-01 08:38:54.403195+00
+ osc_range_moex_d1_fwd | NVTK   | 2026-07-30 21:00:00+00 | 2026-07-31  | 2026-08-01 08:38:54.409956+00
+ osc_range_moex_d1_fwd | OZON   | 2026-07-30 21:00:00+00 | 2026-07-31  | 2026-08-01 08:38:54.417311+00
+ osc_range_moex_d1_fwd | PHOR   | 2026-07-30 21:00:00+00 | 2026-07-31  | 2026-08-01 08:38:54.424244+00
+ osc_range_moex_d1_fwd | PLZL   | 2026-07-30 21:00:00+00 | 2026-07-31  | 2026-08-01 08:38:54.431996+00
+ osc_range_moex_d1_fwd | ROSN   | 2026-07-30 21:00:00+00 | 2026-07-31  | 2026-08-01 08:38:54.438734+00
+ osc_range_moex_d1_fwd | SBER   | 2026-07-30 21:00:00+00 | 2026-07-31  | 2026-08-01 08:38:54.445552+00
+ osc_range_moex_d1_fwd | SMLT   | 2026-07-30 21:00:00+00 | 2026-07-31  | 2026-08-01 08:38:54.452668+00
+ osc_range_moex_d1_fwd | SNGS   | 2026-07-30 21:00:00+00 | 2026-07-31  | 2026-08-01 08:38:54.459072+00
+ osc_range_moex_d1_fwd | TATN   | 2026-07-30 21:00:00+00 | 2026-07-31  | 2026-08-01 08:38:54.579134+00
+ osc_range_moex_d1_fwd | VKCO   | 2026-07-30 21:00:00+00 | 2026-07-31  | 2026-08-01 08:38:54.585467+00
+(20 rows)
+
+-- Z1.4 сводка: сколько тикеров на каждой метке
+-- SQL: SELECT last_candle_time, (last_candle_time AT TIME ZONE 'Europe/Moscow')::date AS msk_session, count(*) AS tickers FROM forward_state GROUP BY 1,2 ORDER BY 1;
+    last_candle_time    | msk_session | tickers 
+------------------------+-------------+---------
+ 2026-07-30 21:00:00+00 | 2026-07-31  |      20
+(1 row)
+
+
+======================================================================
+Z2. candles, timeframe=1d, ПРЕДИКАТ ПО ВСЕЙ ТАБЛИЦЕ (без списка тикеров)
+Область: WHERE timeframe = '1d'  — и ничего больше.
+======================================================================
+
+-- Z2.0 объём области предиката
+-- SQL: SELECT count(*) AS rows_1d, count(DISTINCT ticker) AS tickers_1d, min(time) AS min_time, max(time) AS max_time FROM candles WHERE timeframe = '1d';
+ rows_1d | tickers_1d |        min_time        |        max_time        
+---------+------------+------------------------+------------------------
+   18182 |         20 | 2023-04-16 21:00:00+00 | 2026-07-30 21:00:00+00
+(1 row)
+
+-- Z2a МАКСИМАЛЬНАЯ МЕТКА БАРА по всей области
+-- SQL: SELECT max(time) AS max_bar_label_utc, (max(time) AT TIME ZONE 'Europe/Moscow')::date AS max_msk_session FROM candles WHERE timeframe = '1d';
+   max_bar_label_utc    | max_msk_session 
+------------------------+-----------------
+ 2026-07-30 21:00:00+00 | 2026-07-31
+(1 row)
+
+-- Z2a(доп) распределение per-ticker максимумов: сколько тикеров стоит на какой метке
+-- SQL: SELECT mt AS max_bar_label_utc, (mt AT TIME ZONE 'Europe/Moscow')::date AS max_msk_session, count(*) AS tickers FROM (SELECT ticker, max(time) AS mt FROM candles WHERE timeframe = '1d' GROUP BY ticker) x GROUP BY 1,2 ORDER BY 1;
+   max_bar_label_utc    | max_msk_session | tickers 
+------------------------+-----------------+---------
+ 2026-07-30 21:00:00+00 | 2026-07-31      |      20
+(1 row)
+
+-- Z2b число строк с UTC-часом <> 21 (канон метки D1: 21:00 UTC = московская полночь сессии)
+-- SQL: SELECT count(*) AS rows_hour_ne_21 FROM candles WHERE timeframe = '1d' AND EXTRACT(hour FROM time AT TIME ZONE 'UTC') <> 21;
+ rows_hour_ne_21 
+-----------------
+               0
+(1 row)
+
+-- Z2b(доп) полное распределение UTC-часа по области
+-- SQL: SELECT EXTRACT(hour FROM time AT TIME ZONE 'UTC') AS utc_hour, count(*) AS rows FROM candles WHERE timeframe = '1d' GROUP BY 1 ORDER BY 1;
+ utc_hour | rows  
+----------+-------
+       21 | 18182
+(1 row)
+
+-- Z2c дубли по паре (тикер, московская сессия)
+-- SQL: SELECT count(*) AS dup_groups, COALESCE(sum(n-1),0) AS extra_rows FROM (SELECT ticker,(time AT TIME ZONE 'Europe/Moscow')::date d, count(*) n FROM candles WHERE timeframe = '1d' GROUP BY 1,2 HAVING count(*) > 1) x;
+ dup_groups | extra_rows 
+------------+------------
+          0 |          0
+(1 row)
+
+-- Z2c(доп) перечень дублей (пусто = дублей нет)
+-- SQL: SELECT ticker,(time AT TIME ZONE 'Europe/Moscow')::date AS msk_session, count(*) AS n FROM candles WHERE timeframe = '1d' GROUP BY 1,2 HAVING count(*) > 1 ORDER BY 1,2;
+ ticker | msk_session | n 
+--------+-------------+---
+(0 rows)
+
+-- Z2d колонки candles: ЕСТЬ ЛИ отметка времени вставки строки
+-- SQL: SELECT column_name, data_type FROM information_schema.columns WHERE table_name = 'candles' ORDER BY ordinal_position;
+ column_name |        data_type         
+-------------+--------------------------
+ time        | timestamp with time zone
+ ticker      | character varying
+ timeframe   | character varying
+ open        | numeric
+ high        | numeric
+ low         | numeric
+ close       | numeric
+ volume      | bigint
+(8 rows)
+
+-- Z2(доп) хвост московских сессий области: что есть за последние дни
+-- SQL: SELECT (time AT TIME ZONE 'Europe/Moscow')::date AS msk_session, min(time) AS bar_label_utc, count(*) AS rows, count(DISTINCT ticker) AS tickers FROM candles WHERE timeframe = '1d' AND time >= '2026-07-23 00:00:00+00' GROUP BY 1 ORDER BY 1;
+ msk_session |     bar_label_utc      | rows | tickers 
+-------------+------------------------+------+---------
+ 2026-07-24  | 2026-07-23 21:00:00+00 |   20 |      20
+ 2026-07-25  | 2026-07-24 21:00:00+00 |   20 |      20
+ 2026-07-26  | 2026-07-25 21:00:00+00 |   20 |      20
+ 2026-07-27  | 2026-07-26 21:00:00+00 |   20 |      20
+ 2026-07-28  | 2026-07-27 21:00:00+00 |   20 |      20
+ 2026-07-29  | 2026-07-28 21:00:00+00 |   20 |      20
+ 2026-07-30  | 2026-07-29 21:00:00+00 |   20 |      20
+ 2026-07-31  | 2026-07-30 21:00:00+00 |   20 |      20
+(8 rows)
+
+
+======================================================================
+Z3. forward_catchup_log
+======================================================================
+
+-- Z3.1 число строк
+-- SQL: SELECT count(*) AS rows FROM forward_catchup_log;
+ rows 
+------
+    0
+(1 row)
+
+-- Z3.2 все строки целиком (пусто = строк нет)
+-- SQL: SELECT * FROM forward_catchup_log ORDER BY log_id;
+Expanded display is on.
+(0 rows)
+
+Expanded display is off.

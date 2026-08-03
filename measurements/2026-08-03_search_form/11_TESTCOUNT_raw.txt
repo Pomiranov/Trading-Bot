@@ -1,0 +1,26 @@
+=== 1. ЧЕМ Я МЕРИЛ 268: точная команда ===
+    .venv/Scripts/python.exe -m pytest tests/ -q   (из D:/Trading-Bot-Nik)
+    сейчас собирается: 268 tests collected in 1.65s
+
+=== 2. РАЗБИВКА ПО ПОДКАТАЛОГАМ tests/ ===
+    tests/__pycache__/           ?
+    tests/forward_tests/         210
+    tests/platform_tests/        39
+    tests/security_tests/        19
+    tests/ верхний уровень (без подкаталогов): 58 tests collected in 1.27s
+
+=== 3. БЕЗ пути: что соберёт голый pytest ===
+    268 tests collected in 1.85s
+    testpaths в конфиге:
+
+=== 4. ВТОРОЕ ДЕРЕВО: сколько там ===
+    D:/worktrees/qf-notify-p2p1: 288 tests collected in 2.65s
+
+=== 5. РОСЛО ЛИ ЧИСЛО: коммиты, менявшие tests/, за 02-03.08 ===
+    96e3f54 вторая сверка улик: машина ВЫКЛЮЧАЛАСЬ, а не спала. §10(а) отозван, долг №47
+    b3ddc86 долг №46: сторож кричит о непроизошедшем прогоне; проглоченный порог исправлен
+    файлов в tests/ сейчас: 18
+
+=== 6. СТАТИЧЕСКИЙ ПЕРЕСЧЁТ как независимая форма ===
+    строк 'def test_' в tests/: 268
+    из них в подклассах unittest (методы): 267

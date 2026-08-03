@@ -1,0 +1,21 @@
+=== 7 объектов, которых НЕТ в области --all: типы, размеры, без содержимого ===
+003652e2ef31e74edce0f72f7677058457b67140 blob 110935
+006e4b703a60b48a2323f74b62cb5b031ac4d778 blob 7588
+0be982bf5e67eb1e35c34143247e81bcd3d62b9f blob 9093
+2d2a4aacf6d56b9392940fc4604c2b3fe1916a46 tree 690
+36110ea215301ea0cac837216a28ce95afde7a2b blob 20199
+90d52b218290cccdac6c7d9bac1ee88d20ad95d0 tree 919
+a554de23f7e137a30df0514a6661bb569e6a5d54 blob 788155
+
+=== то же с --all --reflog (обязано быть столько же) ===
+вне --all --reflog: 7
+
+=== git fsck: что он говорит про недостижимое ===
+unreachable blob 0be982bf5e67eb1e35c34143247e81bcd3d62b9f
+unreachable tree 2d2a4aacf6d56b9392940fc4604c2b3fe1916a46
+unreachable blob 006e4b703a60b48a2323f74b62cb5b031ac4d778
+unreachable blob 36110ea215301ea0cac837216a28ce95afde7a2b
+unreachable blob a554de23f7e137a30df0514a6661bb569e6a5d54
+unreachable tree 90d52b218290cccdac6c7d9bac1ee88d20ad95d0
+unreachable blob 003652e2ef31e74edce0f72f7677058457b67140
+[строк fsck: 7]

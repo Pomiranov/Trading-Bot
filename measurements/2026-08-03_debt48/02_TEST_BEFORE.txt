@@ -1,0 +1,50 @@
+============================= test session starts =============================
+platform win32 -- Python 3.14.6, pytest-9.1.1, pluggy-1.6.0 -- D:\Trading-Bot-Nik\.venv\Scripts\python.exe
+cachedir: .pytest_cache
+rootdir: D:\Trading-Bot-Nik
+plugins: anyio-4.14.2, asyncio-1.4.0
+asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collecting ... collected 5 items
+
+tests/forward_tests/test_downtrend_filter_boundary.py::DowntrendFilterBoundary::test_bar_of_a_forming_session_cannot_cancel_the_filter FAILED [ 20%]
+tests/forward_tests/test_downtrend_filter_boundary.py::DowntrendFilterBoundary::test_decision_bar_is_in_downtrend_and_next_bar_is_not PASSED [ 40%]
+tests/forward_tests/test_downtrend_filter_boundary.py::DowntrendFilterBoundary::test_last_close_is_the_decision_bar_not_the_last_row FAILED [ 60%]
+tests/forward_tests/test_downtrend_filter_boundary.py::DowntrendFilterBoundary::test_live_caller_without_boundary_still_excludes_forming_session PASSED [ 80%]
+tests/forward_tests/test_downtrend_filter_boundary.py::DowntrendFilterBoundary::test_night_case_unchanged PASSED [100%]
+
+================================== FAILURES ===================================
+_ DowntrendFilterBoundary.test_bar_of_a_forming_session_cannot_cancel_the_filter _
+
+self = <tests.forward_tests.test_downtrend_filter_boundary.DowntrendFilterBoundary testMethod=test_bar_of_a_forming_session_cannot_cancel_the_filter>
+
+    def test_bar_of_a_forming_session_cannot_cancel_the_filter(self):
+        """Прогон C, НЕСУЩИЙ: сегодня дефект открывает сделку, которой быть не должно.
+    
+        Синтетический бар `close 700` уводит цену выше SMA200; фильтр по `.iloc[-1]`
+        говорит «даунтренда нет» и вход разрешается — хотя на баре решения даунтренд
+        есть. После правки отказ обязан состояться.
+        """
+        reason, skips = _run(NEXT_CLOSE_C, pass_boundary=True)
+>       self.assertIsNotNone(reason, "формирующийся бар отменил фильтр — вход разрешён")
+E       AssertionError: unexpectedly None : формирующийся бар отменил фильтр — вход разрешён
+
+tests\forward_tests\test_downtrend_filter_boundary.py:161: AssertionError
+_ DowntrendFilterBoundary.test_last_close_is_the_decision_bar_not_the_last_row _
+
+self = <tests.forward_tests.test_downtrend_filter_boundary.DowntrendFilterBoundary testMethod=test_last_close_is_the_decision_bar_not_the_last_row>
+
+    def test_last_close_is_the_decision_bar_not_the_last_row(self):
+        """Прогон B: `last_close` обязан быть 525.90, а не 526.50."""
+        reason, skips = _run(NEXT_CLOSE_B, pass_boundary=True)
+        self.assertIsNotNone(reason, "отказ обязан состояться: даунтренд есть")
+        self.assertEqual(len(skips), 1)
+>       self.assertAlmostEqual(skips[0]["details"]["last_close"], DECISION_CLOSE, places=2,
+                               msg="фильтр посчитан по последней строке выборки, "
+                                   "а не по бару решения")
+E       AssertionError: 526.5 != 525.9 within 2 places (0.6000000000000227 difference) : фильтр посчитан по последней строке выборки, а не по бару решения
+
+tests\forward_tests\test_downtrend_filter_boundary.py:149: AssertionError
+=========================== short test summary info ===========================
+FAILED tests/forward_tests/test_downtrend_filter_boundary.py::DowntrendFilterBoundary::test_bar_of_a_forming_session_cannot_cancel_the_filter
+FAILED tests/forward_tests/test_downtrend_filter_boundary.py::DowntrendFilterBoundary::test_last_close_is_the_decision_bar_not_the_last_row
+========================= 2 failed, 3 passed in 1.04s =========================

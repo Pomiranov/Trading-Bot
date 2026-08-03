@@ -89,6 +89,9 @@ from universe import FORWARD_TICKERS, FORWARD_TICKERS_VERSION
 from costs import COMMISSION_PCT
 from data.loader import save_candles_to_db
 from market_time import MSK, last_closed_index, session_date
+# Границы окна выборки — ОДНА копия выражения на проект (долг №48, форма II):
+# правый край полуоткрыт, обоснование в самом модуле. Своего выражения здесь нет.
+from backtest.candles import window_bounds
 # Журнал прогонов: одна копия писателя на .bat и на прогон (долг №46).
 # Импорт-бюджет самого модуля — stdlib + run_schedule + market_time.
 import run_journal
@@ -718,6 +721,21 @@ class ForwardRunner:
         features = {k: v for k, v in features.items() if v is not None}
         regime = classify_regime(_feat("adx"))
 
+        # ДОЛГ №48, ФОРМА II. Границу выборки фильтра задаёт БАР РЕШЕНИЯ, а не
+        # now(): здесь бар известен (`dt`), значит передаём границу явно и не
+        # полагаемся на запасной путь оркестратора. Под FWD_REPLAY now() к данным
+        # не относится вовсе (см. `_replay_mode` выше), и без явной границы
+        # отрицательный контроль был бы бессмысленным.
+        #
+        # Сессия бара решения УЖЕ ЗАКРЫТА (входы разрешены только в ФАЗЕ 2, на
+        # свежем закрытом баре), поэтому фильтр обязан видеть её включительно ⇒
+        # граница = правый край окна этой сессии. Выражение НЕ переписывается:
+        # берётся `window_bounds` из backtest/candles.py, где и объяснено, почему
+        # правый край полуоткрыт, а не `<= end`. Копий выражения уже две
+        # (candles.py:94, loader.py:248) — третью не заводим.
+        session = session_date(dt)
+        _, filter_until = window_bounds(session, session)
+
         decision = await self.orch.check_signal({
             "strategy_id":     STRATEGY_ID,
             "ticker":          ticker,
@@ -726,6 +744,7 @@ class ForwardRunner:
             "market_regime":   regime,
             "market_features": features,
             "is_sandbox":      True,
+            "filter_until":    filter_until,
         })
         if not decision["approved"]:
             self._event(f"⛔ {ticker}: BUY-сигнал отклонён — {decision['reason']}")

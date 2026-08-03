@@ -1,0 +1,5 @@
+2026-08-03 14:09:53 [INFO] learning.feedback: Схема БД проверена/создана
+2026-08-03 14:09:54 [INFO] signals.rules_engine: Загружено правил: основных=12, фильтров=3, выходов=3, тикерных=4, макро=3
+2026-08-03 14:09:54 [INFO] httpx: HTTP Request: POST https://api.telegram.org/bot<ТОКЕН-ВЫРЕЗАН-sha256:16=0ff78dc0aa43e2d0>/getMe "HTTP/1.1 200 OK"
+2026-08-03 14:09:54 [INFO] httpx: HTTP Request: POST https://api.telegram.org/bot<ТОКЕН-ВЫРЕЗАН-sha256:16=0ff78dc0aa43e2d0>/sendMessage "HTTP/1.1 200 OK"
+отправка завершена

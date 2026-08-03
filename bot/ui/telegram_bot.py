@@ -35,6 +35,36 @@ from tg.middlewares.auth import require_auth
 
 logger = logging.getLogger(__name__)
 
+# ── Утечка TELEGRAM_TOKEN в лог через httpx: ЕДИНСТВЕННОЕ место глушения ──────
+#
+# ЗАМЕР 03.08, а не предположение: прогон этого модуля с тем же
+# `basicConfig(level=INFO)`, что в `run_forward_d1.py::main()`, оставляет в выводе
+# ДВА вхождения значения токена — `httpx` пишет полный URL запроса на уровне INFO:
+#     [INFO] httpx: HTTP Request: POST https://api.telegram.org/bot<ТОКЕН>/getMe
+#     [INFO] httpx: HTTP Request: POST .../bot<ТОКЕН>/sendMessage
+# Так в `logs/forward_d1.log` и попали строки 1129-1130. Маскировка `notify.py`
+# здесь не работает: она правит текст исключения, а httpx логирует сам, минуя
+# вызывающего.
+#
+# ПОЧЕМУ ЗДЕСЬ, А НЕ В `security/logging_config.py`. Тот модуль объявлен
+# центральной настройкой логирования, но `configure_logging()` зовётся ТОЛЬКО из
+# `security/bootstrap.py`, то есть только из `main.py`. `run_forward_d1.py` ставит
+# себе `logging.basicConfig` сам и до bootstrap не доходит — правка в
+# `logging_config.py` НЕ закрыла бы утечку в forward_d1.log. Это ровно тот класс,
+# который отзывался 03.08: верное требование, реализованное механизмом, который на
+# нужном пути не исполняется.
+#
+# Здесь правка стоит в модуле, ВЛАДЕЮЩЕМ протекающей зависимостью
+# (python-telegram-bot → httpx). Утечка невозможна без импорта этого модуля,
+# поэтому одно место покрывает все точки входа, какой бы logging они себе ни
+# ставили. Уровень поднимается ДО первого запроса: импорт предшествует отправке.
+#
+# ⚠ Долг НЕ закрыт: форма тест-предиката («ни один файл под logs/ и measurements/
+# не содержит значений TELEGRAM_TOKEN и DB_PASSWORD») остаётся открытой. Уровень
+# логирования кто-нибудь вернёт, предикат — нет.
+for _noisy in ("httpx", "httpcore"):
+    logging.getLogger(_noisy).setLevel(logging.WARNING)
+
 # ── Module-level state ────────────────────────────────────────────────────────
 
 _bot_running: bool = False

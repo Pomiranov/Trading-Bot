@@ -1,0 +1,104 @@
+=== ЧАСТЬ 3. ОПИСЬ СЕМИ НЕДОСТИЖИМЫХ ОБЪЕКТОВ. Содержимое не печатается ===
+
+-- НЕДОСТИЖИМЫЕ ДЕРЕВЬЯ: они и дают ИМЕНА --
+  дерево 2d2a4aacf6d56b9392940fc4604c2b3fe1916a46 (690 байт), записей: 20
+    tree 661694ec43f0  auth
+    tree cefdd1abfa4b  backtest
+    tree a53cc1faed90  broker
+    blob 30fea5e248c6  config.py
+    tree 813b430fb2de  data
+    tree ac24cf2f0e5e  engine
+    tree 2e9d993354cb  gateway
+    tree f29cb57907e1  learning
+    blob 36110ea21530  main.py
+    tree 1b81c15bae5a  market
+    tree 01e83f129f66  qf_platform
+    tree e1535c2472c3  realtime
+    blob 3e512425647b  reliability.py
+    tree b5f7930b9740  risk
+    blob edb86115228c  run_forward_d1.py
+    tree 3e4fe6447d77  security
+    tree a9991c2d8983  services
+    tree dfc71073b82c  signals
+    tree e7450e8d27df  tg
+    tree ef18cf0de057  ui
+  дерево 90d52b218290cccdac6c7d9bac1ee88d20ad95d0 (919 байт), записей: 24
+    blob 05401dc515aa  .context-handoff.json
+    blob b4bf364c399c  .env.example
+    blob dfe0770424b2  .gitattributes
+    blob aa271d3e62ce  .gitignore
+    blob a6e1bcd3bb78  CLAUDE.md
+    blob bb9e1acf29fb  README.md
+    blob 39f6d6cff925  Trading
+    tree 24be1d668248  backtest
+    tree 2d2a4aacf6d5  bot
+    tree 34efb94ed7fe  data
+    tree 4bc62191bf02  design
+    blob aec5c65723ac  docker-compose.yml
+    tree d17871e7bf1c  docs
+    tree 84d5dd7af50c  infra
+    tree 600cfa4a99e8  knowledge
+    blob 6247960bb767  quantflow_schema.sql
+    blob fc422a397464  requirements.txt
+    blob 1e71b871e24b  run_forward_d1.bat
+    tree 19146c8f43ef  scripts
+    blob c4eb332bac3b  start.bat
+    blob 5b0590d0ca9d  start.ps1
+    blob a9a66b6538cd  start.sh
+    tree 20f9dfadd00b  tests
+    tree f4a0c4c90f18  website
+
+-- ПОИМЕННО --
+── 003652e2ef31e74edce0f72f7677058457b67140  тип blob, 110935 байт
+   имя из недостижимых деревьев : <нет>
+   тот же блоб в индексе сейчас : <нет>
+   строк: 1259
+fatal: unable to stream 003652e2ef31e74edce0f72f7677058457b67140 to stdout
+   первая строка (до 88 симв.) : 2026-07-12 18:31:12 [INFO] signals.rules_engine: Загружено правил: осн
+   секреты: старый=2 новый=0 db_password=0
+── 006e4b703a60b48a2323f74b62cb5b031ac4d778  тип blob, 7588 байт
+   имя из недостижимых деревьев : <нет>
+   тот же блоб в индексе сейчас : <нет>
+   строк: 133
+   первая строка (до 88 симв.) : # ─── Secrets & Environment ──────────────────
+   секреты: старый=0 новый=0 db_password=0
+── 0be982bf5e67eb1e35c34143247e81bcd3d62b9f  тип blob, 9093 байт
+   имя из недостижимых деревьев : <нет>
+   тот же блоб в индексе сейчас : <нет>
+   строк: 122
+   первая строка (до 88 симв.) : # Заморозка улики блока A — прогон 02.08.2026
+   секреты: старый=0 новый=0 db_password=0
+── 2d2a4aacf6d56b9392940fc4604c2b3fe1916a46  тип tree, 690 байт
+   имя из недостижимых деревьев : bot 
+   тот же блоб в индексе сейчас : <нет>
+── 36110ea215301ea0cac837216a28ce95afde7a2b  тип blob, 20199 байт
+   имя из недостижимых деревьев : main.py 
+   тот же блоб в индексе сейчас : <нет>
+   строк: 479
+   первая строка (до 88 симв.) : """Main entry point — trading loop + Telegram bot."""
+   секреты: старый=0 новый=0 db_password=0
+── 90d52b218290cccdac6c7d9bac1ee88d20ad95d0  тип tree, 919 байт
+   имя из недостижимых деревьев : <нет>
+   тот же блоб в индексе сейчас : <нет>
+── a554de23f7e137a30df0514a6661bb569e6a5d54  тип blob, 788155 байт
+   имя из недостижимых деревьев : <нет>
+   тот же блоб в индексе сейчас : <нет>
+   строк: 8607
+fatal: unable to stream a554de23f7e137a30df0514a6661bb569e6a5d54 to stdout
+   первая строка (до 88 симв.) : # QuantFlow — состояние проекта
+   секреты: старый=0 новый=0 db_password=0
+
+-- 'garbage: 5': осиротевшие файлы пакетов --
+       60044  multi-pack-index
+       59816  pack-34118e2bb9bb9a5f7d10fdefac0aaedf10a765c4.idx
+     8623676  pack-34118e2bb9bb9a5f7d10fdefac0aaedf10a765c4.pack
+        8444  pack-34118e2bb9bb9a5f7d10fdefac0aaedf10a765c4.rev
+       30276  pack-38b5c84ce5d6c6936d9dddb56691c1859447261d.idx
+       12832  pack-3f797418e5a5b8f317e2eb2cc971a940439989f4.idx
+        1156  pack-5e5bd1c3cd69d52a3898cf19dc99a3b0386ed29a.idx
+          64  pack-5e5bd1c3cd69d52a3898cf19dc99a3b0386ed29a.mtimes
+        7926  pack-5e5bd1c3cd69d52a3898cf19dc99a3b0386ed29a.pack
+          64  pack-5e5bd1c3cd69d52a3898cf19dc99a3b0386ed29a.rev
+         236  pack-cb0f39e9e6168848dd271b30d9befa7d73cac96f.mtimes
+         236  pack-cb0f39e9e6168848dd271b30d9befa7d73cac96f.rev
+       19440  pack-f5651cb4d773f09844969c11fb45ea64cc6d74f7.idx

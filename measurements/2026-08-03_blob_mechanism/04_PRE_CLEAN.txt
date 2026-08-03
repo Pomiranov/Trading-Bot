@@ -1,0 +1,23 @@
+=== ЧАСТЬ 4, ПРЕДПРОВЕРКИ ПЕРЕД ЧИСТКОЙ ===
+-- 1. нет параллельных git-операций --
+  локов нет
+  процессов git.exe: 0
+0
+-- 2. оба дерева и их состояние --
+  D:/Trading-Bot-Nik                                 48166f1 [merge-learning-nik]
+  D:/Trading-Bot-Nik/.claude/worktrees/debt-25-37-28 1a5f7b7 [records-2026-07-31]
+  D:/worktrees/qf-notify-p2p1                        efa930c [worktree-notify-p2p1]
+  status главного дерева: 0 строк
+  status второго дерева : 0 строк
+-- 3. целевой объект действительно ничем не держится --
+  fsck говорит: unreachable blob 003652e2ef31e74edce0f72f7677058457b67140
+  в индексе: 0   (обязано 0)
+  в недостижимых деревьях: 0   (обязано 0)
+  в rev-list --objects --all --reflog: 0   (обязано 0)
+  loose-файл: .git/objects/00/3652e2ef31e74edce0f72f7677058457b67140 — ЕСТЬ
+
+=== СНИМОК ДО (для сверки после) ===
+  HEAD: 48166f128ce1c4b3c26f3c21f34a12c75b05e002
+  ветки: main=e65b941 merge-learning-nik=48166f1 quantflow-nik=0c33dad records-2026-07-31=1a5f7b7 worktree-debt-25-37-28=b53f1ed worktree-notify-p2p1=efa930c 
+  объектов в базе: 2254
+  недостижимых: 7

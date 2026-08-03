@@ -1,0 +1,45 @@
+=== ЧАСТЬ 2. СРОК ГОДНОСТИ УЛИКИ. Только чтение ===
+
+-- настройки сборки мусора (пусто = не задано, действует дефолт git) --
+  gc.pruneExpire                   <не задано>
+  gc.auto                          <не задано>
+  gc.autoPackLimit                 <не задано>
+  gc.reflogExpire                  <не задано>
+  gc.reflogExpireUnreachable       <не задано>
+  дефолты git 2.54: gc.pruneExpire = 2.weeks.ago; gc.auto = 6700 loose;
+                    gc.autoPackLimit = 50 packs; gc.reflogExpire = 90 days
+
+-- сколько объектов и какого рода --
+warning: no corresponding .pack: .git/objects/pack/pack-38b5c84ce5d6c6936d9dddb56691c1859447261d.idx
+warning: no corresponding .pack: .git/objects/pack/pack-3f797418e5a5b8f317e2eb2cc971a940439989f4.idx
+warning: no corresponding .idx or .pack: .git/objects/pack/pack-cb0f39e9e6168848dd271b30d9befa7d73cac96f.mtimes
+warning: no corresponding .idx or .pack: .git/objects/pack/pack-cb0f39e9e6168848dd271b30d9befa7d73cac96f.rev
+warning: no corresponding .pack: .git/objects/pack/pack-f5651cb4d773f09844969c11fb45ea64cc6d74f7.idx
+  count: 153
+  size: 3315
+  in-pack: 2101
+  packs: 2
+  size-pack: 8488
+  prune-packable: 0
+  garbage: 5
+  size-garbage: 61
+
+-- ЦЕЛЕВОЙ БЛОБ: loose или упакован? --
+  loose-файл ЕСТЬ: .git/objects/00/3652e2ef31e74edce0f72f7677058457b67140
+  размер на диске: 8966 байт (сжатый)
+  mtime:           2026-08-03 01:24:44
+  возраст:         14 часов
+
+-- все ли 7 недостижимых лежат loose --
+  003652e2ef31 blob   loose, mtime 2026-08-03 01:24
+  006e4b703a60 blob   loose, mtime 2026-08-03 01:23
+  0be982bf5e67 blob   loose, mtime 2026-08-03 01:25
+  2d2a4aacf6d5 tree   УПАКОВАН
+  36110ea21530 blob   УПАКОВАН
+  90d52b218290 tree   УПАКОВАН
+  a554de23f7e1 blob   loose, mtime 2026-08-03 01:25
+
+-- параллельные git-операции? (для части 4) --
+  локов .git/index.lock и .git/HEAD.lock нет
+  процессов git в системе: 0
+0

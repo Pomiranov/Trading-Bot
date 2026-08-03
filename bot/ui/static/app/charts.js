@@ -38,6 +38,10 @@ class Chart {
     this.width = 0;
     this.height = 0;
     this.disposed = false;
+    /** Index of the point under the cursor, or -1. */
+    this.cursorIndex = -1;
+    this.readout = null;
+    this.pointerHandlers = null;
 
     this.observer = new ResizeObserver((entries) => {
       for (const entry of entries) {
@@ -69,12 +73,102 @@ class Chart {
     return svg('svg', { viewBox: `0 0 ${this.width} ${this.height}` });
   }
 
+  /**
+   * Attach a value readout driven by pointer *and* arrow keys.
+   *
+   * A chart whose exact numbers can only be obtained by eyeballing a line against
+   * an axis is a picture, not an instrument. Hover alone would leave the values
+   * unreachable from the keyboard, so the container becomes a single tab stop and
+   * ←/→ walk the series; Home/End jump to the ends, Escape clears.
+   *
+   * @param {(index:number)=>string|null} describe formats the readout for a point
+   */
+  enableReadout(describe) {
+    if (!this.container || this.pointerHandlers) return;
+
+    this.readout = document.createElement('div');
+    this.readout.className = 'qf-chart-readout';
+    this.readout.hidden = true;
+    // `aria-live` so a keyboard user hears the value change as they walk the series.
+    this.readout.setAttribute('role', 'status');
+    this.readout.setAttribute('aria-live', 'polite');
+    this.container.appendChild(this.readout);
+
+    this.container.setAttribute('tabindex', '0');
+    this.container.setAttribute(
+      'aria-label',
+      `${this.options.ariaLabel || 'График'} — стрелками влево и вправо по точкам`,
+    );
+
+    const count = () => (Array.isArray(this.data) ? this.data.length : 0);
+
+    const show = (index) => {
+      const total = count();
+      if (!total) return;
+      this.cursorIndex = Math.max(0, Math.min(total - 1, index));
+      const text = describe(this.cursorIndex);
+      if (text === null || text === undefined) return;
+      this.readout.textContent = text;
+      this.readout.hidden = false;
+      this.draw();
+    };
+
+    const clear = () => {
+      this.cursorIndex = -1;
+      this.readout.hidden = true;
+      this.draw();
+    };
+
+    const fromPointer = (event) => {
+      const total = count();
+      if (!total) return;
+      const box = this.container.getBoundingClientRect();
+      const fraction = (event.clientX - box.left) / Math.max(1, box.width);
+      show(Math.round(fraction * (total - 1)));
+    };
+
+    const onKeydown = (event) => {
+      const total = count();
+      if (!total) return;
+      const start = this.cursorIndex === -1 ? total - 1 : this.cursorIndex;
+      switch (event.key) {
+        case 'ArrowRight': event.preventDefault(); show(start + 1); break;
+        case 'ArrowLeft': event.preventDefault(); show(start - 1); break;
+        case 'Home': event.preventDefault(); show(0); break;
+        case 'End': event.preventDefault(); show(total - 1); break;
+        case 'Escape': clear(); break;
+        default: break;
+      }
+    };
+
+    this.pointerHandlers = {
+      pointermove: fromPointer,
+      pointerleave: clear,
+      keydown: onKeydown,
+      blur: clear,
+      // Show the last point on focus so a keyboard user starts somewhere real.
+      focus: () => show(count() - 1),
+    };
+    for (const [event, handler] of Object.entries(this.pointerHandlers)) {
+      this.container.addEventListener(event, handler);
+    }
+  }
+
   dispose() {
     this.disposed = true;
     if (this.observer) {
       this.observer.disconnect();
       this.observer = null;
     }
+    // Listeners must go with the chart: a handler surviving its container is the
+    // leak this whole architecture exists to avoid.
+    if (this.container && this.pointerHandlers) {
+      for (const [event, handler] of Object.entries(this.pointerHandlers)) {
+        this.container.removeEventListener(event, handler);
+      }
+    }
+    this.pointerHandlers = null;
+    this.readout = null;
     if (this.container) this.container.replaceChildren();
     this.container = null;
   }

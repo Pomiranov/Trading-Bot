@@ -181,7 +181,14 @@ button:disabled { cursor: not-allowed; }
   top: var(--qf-space-2);
   left: var(--qf-space-2);
   z-index: var(--qf-z-toast);
-  padding: var(--qf-space-2) var(--qf-space-3);
+  /* Measured at 375px it came out 41px tall — under the 44px touch floor. The
+     skip link is the *first* target in the tab order and the one a
+     switch-control or keyboard user hits first, so it has no business being the
+     one element below the minimum. */
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--qf-touch-target);
+  padding: var(--qf-space-2) var(--qf-space-4);
   background: var(--qf-panel-raised);
   color: var(--qf-text-primary);
   border: 1px solid var(--qf-border-strong);

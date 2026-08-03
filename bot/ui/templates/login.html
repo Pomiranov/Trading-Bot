@@ -74,8 +74,23 @@
           </div>
           <div class="qf-field">
             <label class="qf-field-label" for="qf-password">Пароль</label>
-            <input class="qf-input" id="qf-password" name="password" type="password"
-                   autocomplete="current-password" required />
+            {# Show/hide is not a convenience on an operator terminal: the password
+               is long, typed on a keyboard the operator may not own, and a silent
+               typo costs a rate-limit slot. The button reports its own state via
+               aria-pressed rather than only changing an icon. #}
+            <div class="qf-input-group">
+              <input class="qf-input" id="qf-password" name="password" type="password"
+                     autocomplete="current-password" required />
+              <button class="qf-btn qf-btn--ghost" id="qf-password-toggle" type="button"
+                      aria-pressed="false" aria-controls="qf-password"
+                      aria-label="Показать пароль">
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor"
+                     stroke-width="1.5" aria-hidden="true" focusable="false">
+                  <path d="M1 8s2.5-4.5 7-4.5S15 8 15 8s-2.5 4.5-7 4.5S1 8 1 8z" />
+                  <circle cx="8" cy="8" r="1.75" />
+                </svg>
+              </button>
+            </div>
           </div>
 
           {# One generic message for every failure kind. Distinguishing "no such
@@ -151,6 +166,21 @@
           submit.removeAttribute('aria-busy');
         });
       });
+
+      var toggle = document.getElementById('qf-password-toggle');
+      if (toggle) {
+        toggle.addEventListener('click', function () {
+          var field = document.getElementById('qf-password');
+          var shown = field.type === 'text';
+          field.type = shown ? 'password' : 'text';
+          toggle.setAttribute('aria-pressed', shown ? 'false' : 'true');
+          toggle.setAttribute('aria-label', shown ? 'Показать пароль' : 'Скрыть пароль');
+          // Keep the caret where it was, so toggling mid-typing is not disruptive.
+          var at = field.value.length;
+          field.focus();
+          try { field.setSelectionRange(at, at); } catch (e) { /* type change resets it */ }
+        });
+      }
 
       document.getElementById('qf-username').focus();
     })();

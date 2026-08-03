@@ -858,6 +858,63 @@
 
 .qf-field { display: flex; flex-direction: column; gap: var(--qf-space-1); min-width: 0; }
 
+/* An input with a trailing control (password show/hide). The button sits inside
+   the field's border rather than beside it, so the pair reads as one control. */
+.qf-input-group {
+  display: flex;
+  align-items: stretch;
+  gap: var(--qf-space-1);
+  min-width: 0;
+}
+
+.qf-input-group .qf-input { flex: 1 1 auto; min-width: 0; }
+
+.qf-input-group .qf-btn {
+  flex: 0 0 auto;
+  width: var(--qf-control-lg);
+  border-color: var(--qf-border-strong);
+}
+
+/* ─── Chart value readout ────────────────────────────────────────────────────
+   A crosshair plus an exact value. A chart whose numbers are only obtainable by
+   eyeballing a line against an axis is a picture, not an instrument. Driven by
+   both pointer and arrow keys, so it is not hover-only. */
+
+.qf-chart-cursor {
+  stroke: var(--qf-border-strong);
+  stroke-width: 1;
+  stroke-dasharray: 2 3;
+  pointer-events: none;
+}
+
+.qf-chart-cursor-dot {
+  fill: var(--qf-text-primary);
+  pointer-events: none;
+}
+
+.qf-chart-readout {
+  position: absolute;
+  top: var(--qf-space-1);
+  left: var(--qf-space-1);
+  padding: 2px var(--qf-space-2);
+  background: var(--qf-glass);
+  border: 1px solid var(--qf-glass-border);
+  border-radius: var(--qf-radius-xs);
+  font-family: var(--qf-font-mono);
+  font-size: var(--qf-label-size);
+  color: var(--qf-text-primary);
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.qf-chart-readout[hidden] { display: none; }
+
+/* The chart is a single tab stop; arrow keys walk the series. */
+.qf-chart[tabindex]:focus-visible {
+  outline: 2px solid var(--qf-accent);
+  outline-offset: -2px;
+}
+
 .qf-field-label { font-size: var(--qf-caption-size); color: var(--qf-text-tertiary); }
 
 .qf-field-error { font-size: var(--qf-caption-size); color: var(--qf-danger); }

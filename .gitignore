@@ -73,3 +73,11 @@ Thumbs.db
 *.bak
 *.swp
 *~
+
+# ─── Raw generated video sources (local prototypes only) ──────────────────────
+# Root-level only; website/public/media is governed by website/.gitignore.
+# See website/docs/VIDEO_ASSET_GUIDE.md.
+/*.mp4
+
+# ─── Playwright MCP scratch output ────────────────────────────────────────────
+.playwright-mcp/

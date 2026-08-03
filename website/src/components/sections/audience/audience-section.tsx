@@ -116,10 +116,15 @@ export async function AudienceSection({ locale }: { locale: string }) {
         {cards.map((card, i) => (
           <li key={card.title} className="flex">
             <Reveal index={i} className="flex w-full">
+              {/* Un-padded, matching the pipeline's numbering: the spine dropped
+                  its zero-padding on owner direction, with the argument that
+                  padding is wrong for any set that will never exceed nine —
+                  which applies with more force to a set of four. Two numbering
+                  conventions for one page is one too many. */}
               <InteractiveCard
                 href={card.href}
                 label={card.link}
-                eyebrow={String(i + 1).padStart(2, "0")}
+                eyebrow={String(i + 1)}
                 analytics={{ target: card.target, location: card.where }}
               >
                 <h3 className="text-[length:var(--text-h3)] leading-[var(--text-h3--line-height)] font-medium tracking-[var(--text-h3--letter-spacing)] text-[color:var(--color-text-primary)]">

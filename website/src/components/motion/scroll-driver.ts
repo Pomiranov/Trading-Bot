@@ -183,6 +183,12 @@ export function initScrollDriver(): () => void {
     window.clearTimeout(resizeTimer);
     resizeTimer = window.setTimeout(() => {
       lenisInstance?.resize();
+      // A resize that reflows the document also moves the offset Lenis
+      // believes it holds — a mobile toolbar collapse or an orientation flip
+      // otherwise leaves it animating from a stale origin on the next wheel
+      // tick. Same call onLoad makes, for the same reason, and the debounce
+      // above is what keeps it from stuttering an in-flight animation.
+      resync();
     }, 150);
   }
   window.addEventListener("resize", onResize);

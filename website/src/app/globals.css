@@ -1659,10 +1659,7 @@ main > section:not(.section-paper):not(#hero):has(+ .band-blend) {
   .panel-bloom:hover {
     border-color: var(--color-highlight-border);
     background-color: var(--color-panel-raised);
-    box-shadow:
-      0 28px 72px -28px rgba(0, 0, 0, 0.85),
-      0 0 0 1px rgba(255, 255, 255, 0.08),
-      0 0 56px -16px rgba(255, 255, 255, 0.1);
+    box-shadow: var(--shadow-panel-bloom-hover);
   }
 }
 
@@ -1670,10 +1667,7 @@ main > section:not(.section-paper):not(#hero):has(+ .band-blend) {
    moving into it gets the same acknowledgement a pointer user gets. */
 .panel-bloom:focus-within {
   border-color: var(--color-highlight-border);
-  box-shadow:
-    0 28px 72px -28px rgba(0, 0, 0, 0.85),
-    0 0 0 1px rgba(255, 255, 255, 0.08),
-    0 0 56px -16px rgba(255, 255, 255, 0.1);
+  box-shadow: var(--shadow-panel-bloom-hover);
 }
 
 /* ── The terminal, once the rim exists ────────────────────────────────────────
@@ -2331,28 +2325,28 @@ main > section:not(.section-paper):not(#hero):has(+ .band-blend) {
   }
 }
 
-/* ── The node highlights its own card, and the card highlights its node ──
+/* ── The card highlights its node; the node lights only itself ──
 
-   Hovering or keyboard-focusing anywhere in a stage row lifts the pair. `:has()`
-   and `:focus-within` on the `display: contents` <li> that owns both — the row is
-   the only element that contains them, and a contents-box is still a valid
-   selector target.
+   Stated precisely, because an earlier version of this comment claimed the row
+   "lights both halves from either half" and that is not what ships. The <li> is
+   `display: contents`, so `.pipeline-stage:hover` fires from either half — and
+   the rule above points it at the *node*. The card's own state is plain
+   `.card-premium:hover`, which fires only over the card. Net behaviour: hover
+   the card and the pair lights; hover the 40px node and the node alone lights.
 
-   ── What this used to be, and why it is one rule now ──
+   Deliberately left asymmetric rather than patched with
+   `:has(.signal-node:hover) .card-premium { … }`: the card hover is a two-path
+   state (mask rim vs fallback) plus a background, a shadow and a lift, and a
+   hand-copied second trigger for all of that is a fork that will drift. The
+   asymmetry costs one edge case — a pointer parked precisely on a 40px marker —
+   and buys one hover dialect for every card on the page.
 
-   There were four rules here: an inset-only hover for the stage card (because
-   `.stage-collapse__track`'s `overflow: hidden` clipped `.card-premium`'s 6px
-   lift and its bloom, and a clipped lift shows as a gap opening at the card's
-   foot), plus a `:has(.signal-node:hover)` pair to light the card from the node.
+   ── What this used to be ──
 
-   The collapse is gone, so the clip is gone, so the reason for the inset-only
-   variant is gone with it: the stage cards now use the page's ordinary card hover
-   like every other card, which is one fewer dialect. And the node→card direction
-   collapsed into the row-level `:hover` in the node block above, which lights
-   both halves from either half.
-
-   Nothing is left to declare here — the row hover is `.pipeline-stage:hover
-   .signal-node` above, and the card half is `.card-premium` unmodified. */
+   Four rules: an inset-only hover for the stage card (the old collapse's
+   `overflow: hidden` clipped `.card-premium`'s lift) plus a
+   `:has(.signal-node:hover)` pair. The collapse is gone, so the stage cards use
+   the page's ordinary card hover like every other card — one fewer dialect. */
 
 /* ─── Q-aperture ───────────────────────────────────────────────────────────
    Orbit rotation for the hero instrument. Transform-only, so it composites and

@@ -30,9 +30,9 @@
  */
 
 @theme {
-  --radius-xs: 4px; /* chips, dots, inline code */
-  --radius-sm: 8px; /* buttons, inputs, small controls */
-  --radius-md: 12px; /* nested panels, terminal rows */
+  --radius-xs: 4px; /* reserved bottom step — no consumers today */
+  --radius-sm: 8px; /* focus-ring rounding on text links, nav items */
+  --radius-md: 12px; /* buttons, inputs, nested panels, terminal rows */
   --radius-lg: 16px; /* cards — was 8px */
   --radius-xl: 20px; /* large panels, terminal frame */
   --radius-2xl: 24px; /* hero panel, final-CTA panel */

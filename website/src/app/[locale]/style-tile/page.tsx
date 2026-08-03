@@ -52,7 +52,7 @@ const rhythm = [
 const motionTokens = [
   { token: "--duration-micro", value: "150ms" },
   { token: "--duration-base", value: "300ms" },
-  { token: "--duration-reveal", value: "600ms" },
+  { token: "--duration-reveal", value: "700ms" },
   { token: "--ease-out-expo", value: "cubic-bezier(0.16, 1, 0.3, 1)" },
   { token: "--ease-out-quart", value: "cubic-bezier(0.25, 1, 0.5, 1)" },
 ];

@@ -93,7 +93,6 @@
      Contrast moves the right way: the label is `--color-bg` on this fill, so a
      lighter hover fill raises its ratio rather than lowering it. */
   --color-accent-hover: rgba(255, 255, 255, 0.94);
-  --color-accent-glow: rgba(255, 255, 255, 0.1);
 
   /* ─── Highlight — the hover/lift language for cards and panels ─── */
   --color-highlight-border: rgba(255, 255, 255, 0.28);
@@ -529,11 +528,11 @@
      enough to read as a highlight. */
   --fill-node: radial-gradient(circle at 50% 26%, #17191d 0%, #0b0c0e 54%, #060608 100%);
 
-  /* Glow sizes, not colours: `sm` is an edge, `md` is a node, `lg` is the
-     ambient pool behind the hero aperture. */
+  /* Glow sizes, not colours: `sm` is an edge, `md` is a node. The `lg` step
+     (a 120px ambient pool) was removed as dead — the aperture's pool is the
+     `--glow-aperture` radial below, and nothing ever read the shadow form. */
   --glow-signal-sm: 0 0 16px rgba(124, 200, 255, 0.18);
   --glow-signal-md: 0 0 40px rgba(124, 200, 255, 0.16);
-  --glow-signal-lg: 0 0 120px rgba(124, 200, 255, 0.12);
   --glow-aperture: radial-gradient(
     circle at 50% 45%,
     rgba(124, 200, 255, 0.2) 0%,
@@ -545,6 +544,15 @@
      The two contained panels sit on the page rather than in it: one large,
      very soft drop, no spread, no second ring. */
   --shadow-panel: 0 24px 80px -32px rgba(0, 0, 0, 0.9);
+
+  /* The panel hover for the no-mask fallback path (`.panel-bloom` pre-rim):
+     deep drop, white hairline, soft white bloom. Was written out twice as
+     literals — :hover and :focus-within — unlike every other hover shadow on
+     the page, which lives here. Where masks are supported the rim path uses
+     `--shadow-card-hover-rim` instead and this never paints. */
+  --shadow-panel-bloom-hover:
+    0 28px 72px -28px rgba(0, 0, 0, 0.85), 0 0 0 1px rgba(255, 255, 255, 0.08),
+    0 0 56px -16px rgba(255, 255, 255, 0.1);
 
   /* Card hover on paper. A white glow is invisible on #f4f2ec, so the inverted
      equivalent is a soft dark drop — the card lifts *off* the paper. */

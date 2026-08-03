@@ -19,12 +19,13 @@
    * moving rather than as a panel appearing.
    */
   --duration-disclosure: 420ms;
-  --duration-reveal: 800ms; /* scroll entrance — the reference's 0.8s */
-  --duration-count-up: 700ms;
+  /* Scroll entrance. 700ms is the number that actually ships — motion/reveal.tsx
+     runs 0.7s — and the token now matches it instead of the 800ms it drifted to;
+     the header's retraction reads this too, so the two entrances share a clock. */
+  --duration-reveal: 700ms;
 
   --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
   --ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);
-  --ease-lenis: cubic-bezier(0.32, 0, 0.15, 1);
 }
 
 /**
@@ -72,8 +73,9 @@
   --duration-orbit-a: 32s;
   --duration-orbit-b: 46s;
   --duration-orbit-c: 61s;
-
-  /* The reference's "quint". Already the literal inside motion/reveal.tsx —
-     named here so the CSS and the Framer transitions read as one system. */
-  --ease-out-quint: cubic-bezier(0.22, 1, 0.36, 1);
 }
+
+/* Removed as dead: `--duration-count-up` and `--ease-lenis` (no consumers
+   anywhere), and `--ease-out-quint` — the quint curve lives as the literal
+   inside motion/reveal.tsx, which is the only place it is used; a token
+   nothing reads is documentation pretending to be a knob. */

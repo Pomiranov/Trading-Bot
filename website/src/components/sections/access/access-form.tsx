@@ -200,7 +200,7 @@ export function AccessForm({
               script's hint string became a font-size and took the dev server to
               a 500. It would also re-trip the grep gate from the comment alone.
             */
-            className="h-12 w-full min-w-0 rounded-[var(--radius-md)] border border-[color:var(--color-border-strong)] bg-[color:var(--color-fill-subtle)] px-4 font-mono text-[length:var(--text-caption)] text-[color:var(--color-text-primary)] outline-none transition-[border-color,background-color,box-shadow] duration-[var(--duration-base)] ease-[var(--ease-out-expo)] placeholder:text-[color:var(--color-text-quaternary)] hover:bg-[color:var(--color-highlight-bg)] hover:shadow-[var(--glow-signal-sm)] focus-visible:border-[color:var(--color-accent)] focus-visible:shadow-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--color-accent)]"
+            className="h-12 w-full min-w-0 rounded-[var(--radius-md)] border border-[color:var(--color-border-strong)] bg-[color:var(--color-fill-subtle)] px-4 font-mono text-[length:var(--text-caption)] text-[color:var(--color-text-primary)] outline-none transition-[border-color,background-color,box-shadow] duration-[var(--duration-base)] ease-[var(--ease-out-expo)] placeholder:text-[color:var(--color-text-quaternary)] hover:bg-[color:var(--color-highlight-bg)] hover:shadow-[var(--btn-glow-hover)] focus-visible:border-[color:var(--color-accent)] focus-visible:shadow-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--color-accent)]"
             {...register("email")}
           />
 

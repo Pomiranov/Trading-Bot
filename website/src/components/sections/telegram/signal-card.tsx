@@ -167,10 +167,13 @@ export function SignalCard() {
                 </p>
               </div>
 
+              {/* `min-h-11` for the same reason the two controls below carry it:
+                  at `size="sm"`'s own h-9 this sat at 36px, and it was the last
+                  control on the page under the 44px touch floor. */}
               <Button
                 variant="ghost"
                 size="sm"
-                className="self-start"
+                className="min-h-11 self-start"
                 onClick={() => setState("idle")}
               >
                 {t("cardReset")}

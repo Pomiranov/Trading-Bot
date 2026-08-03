@@ -36,6 +36,34 @@
   --duration-panel: 500ms; /* tab / panel swap */
 
   /**
+   * ─── The interaction layer ───
+   *
+   * Two steps for the rim and the buttons, both deliberately *faster* than
+   * `--duration-base`.
+   *
+   * 300ms is tuned for a card changing state — background, border and a 6px
+   * lift, which is a lot of pixels moving and wants time. An *edge* lighting up
+   * is the opposite case: it is the page acknowledging the pointer, and at 300ms
+   * the acknowledgement arrives after the reader has already registered that
+   * they are hovering, which reads as lag rather than as ease. Measured against
+   * the reference clips, the light on the rim resolves in ~1/4s.
+   *
+   * `--motion-fast` is the press. An active state has value only if it lands in
+   * the same frame as the finger, so this is the smallest step that is still a
+   * transition rather than a jump.
+   */
+  --motion-fast: 120ms; /* press / release */
+  --motion-soft: 240ms; /* rim, button hover — inside the 180–280ms band */
+
+  /**
+   * One full turn of a button's rim arc. Slow enough that it reads as light
+   * travelling rather than as a spinner, and it only ever runs while a single
+   * button is hovered — see the note on `.btn-lens` in globals.css for why the
+   * cards deliberately do *not* animate theirs.
+   */
+  --duration-rim-sweep: 4.5s;
+
+  /**
    * Q-aperture orbit periods. Three coprime values, so the rings never resync
    * into a single visible beat — the panel should read as powered on, never as
    * an animation playing. If these ever share a common factor the aperture

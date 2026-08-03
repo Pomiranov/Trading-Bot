@@ -3,7 +3,9 @@
 import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence, useReducedMotion } from "motion/react";
 import { getLenis } from "@/components/motion/scroll-driver";
+import { buttonVariants } from "@/components/ui/button";
 import { track } from "@/lib/analytics/events";
+import { cn } from "@/lib/utils";
 
 interface NavLink {
   key: string;
@@ -230,13 +232,32 @@ export function MobileNav({
                 >
                   {localeSwitchLabel}
                 </a>
+                {/*
+                  ── Was the last hand-rolled button on the page ──
+
+                  This anchor re-declared the `default` variant's look by hand —
+                  white fill, mono uppercase, semibold, 0.1em — and therefore got
+                  none of its behaviour: no depth, no resting or hover shadow, no
+                  press, no hover state at all. On a phone, where this is the only
+                  CTA in the navigation, the page's primary action was the one
+                  control that did not respond to being touched.
+
+                  `buttonVariants()` rather than `ButtonLink`, because this needs an
+                  `onClick` that also closes the panel and `ButtonLink` deliberately
+                  owns that handler for its analytics call. Same class string,
+                  same system, one import.
+
+                  `size="default"` (h-11) rather than the old `py-2.5`: that
+                  computed to ~40px, under the 44px touch floor, on the one target
+                  a phone visitor is most likely to aim for.
+                */}
                 <a
                   href="#access"
                   onClick={() => {
                     track({ name: "cta_clicked", props: { target: "sandbox_access", location: "mobile_nav" } });
                     close();
                   }}
-                  className="rounded-[var(--radius-md)] bg-[color:var(--color-accent)] px-5 py-2.5 font-mono text-[length:var(--text-caption)] font-semibold tracking-[0.1em] text-[color:var(--color-bg)] uppercase no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--color-accent)]"
+                  className={cn(buttonVariants({ size: "default" }), "no-underline")}
                 >
                   {ctaLabel}
                 </a>

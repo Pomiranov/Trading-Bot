@@ -48,11 +48,16 @@ interface InteractiveCardProps {
  *
  * ── Hover ──
  *
- * The shared `.card-premium` state (lift, border, background, shadow) *plus*
- * `.card-route`'s cold-blue edge and glow. Route cards are the one place on the
- * page where a card means "go here" rather than "read this", and they should
- * not feel identical to a safety fact. The blue is a 1px edge and a shadow —
- * decorative geometry, never ink. See the doctrine in tokens/color.css.
+ * The shared `.card-premium` state — lift, cold hairline, background, shadow and
+ * the masked-conic rim — at `.card-route`'s hotter intensity. Route cards are the
+ * one place on the page where a card means "go here" rather than "read this", and
+ * they should not feel identical to a safety fact.
+ *
+ * That difference used to be a *mechanism*: route cards were the only cards with a
+ * cold edge at all. Every card carries one now, so the distinction is intensity —
+ * a hotter rim scale and a wider bloom, no extra layer. The blue is still a 1px
+ * edge and a shadow, decorative geometry and never ink; see the doctrine in
+ * tokens/color.css and the rim block in globals.css.
  */
 export function InteractiveCard({
   href,

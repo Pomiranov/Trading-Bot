@@ -74,8 +74,25 @@
      is now pure white so a filled CTA is white-on-black and an emphasised label
      simply resolves to the primary text colour. Never reintroduce a hue here. */
   --color-accent: #ffffff; /* 20.4:1 — and bg-on-accent is also 20.4:1 */
-  /* A white fill cannot be brightened on hover, so it darkens instead. */
-  --color-accent-hover: rgba(255, 255, 255, 0.88);
+  /* ── A white fill cannot be brightened on hover, so it darkens instead ──
+     0.88 → 0.94, and the reason is that the fill is no longer the only thing
+     carrying the hover.
+
+     Measured on the hero CTA at 0.88: the face went 255 → 228 at the top and
+     226 → 200 at the bottom once the depth veil is composited over it. A 200-level
+     bottom edge does not read as a white button being hovered, it reads as a grey
+     button — the fill was doing all the work and had to shout to be noticed.
+
+     The button now also gains a 1px cold hairline and a tight bloom on hover
+     (`--shadow-cta-hover`, measured at B−R +21 just outside the edge) plus a 1px
+     lift, which is where the reference puts the whole state change: the rim lights
+     and the face stays put. So the fill only has to register, not announce. At
+     0.94 the top sits at ~240 — fifteen levels, plainly perceptible against 255,
+     and still unambiguously white.
+
+     Contrast moves the right way: the label is `--color-bg` on this fill, so a
+     lighter hover fill raises its ratio rather than lowering it. */
+  --color-accent-hover: rgba(255, 255, 255, 0.94);
   --color-accent-glow: rgba(255, 255, 255, 0.1);
 
   /* ─── Highlight — the hover/lift language for cards and panels ─── */
@@ -83,8 +100,25 @@
   --color-highlight-bg: rgba(255, 255, 255, 0.045);
   /* Barely-there fill for outline controls and inputs at rest. */
   --color-fill-subtle: rgba(255, 255, 255, 0.03);
+  /* ── The white CTA's own rim ──
+     The `default` variant is a white fill, so it cannot carry the cold ring the
+     dark-faced buttons draw inside their edge — see the note on `.btn-lens-dark`
+     in globals.css. It gets the same edge read from *outside* the fill instead: a
+     1px cold hairline hugging the white, and a tight bloom beyond it.
+
+     That is the one place on this page where the reference's rim lands on a light
+     object, and it works because the ground is #030303 — the hairline is cold
+     light on black, not a tint on white. `box-shadow` is the permitted use, and
+     both cyan alphas are inside the 0.28 ceiling.
+
+     The white bloom is unchanged in kind and one step tighter in spread: the cold
+     hairline now carries the definition, so the white layer no longer has to
+     strain for it. Rest keeps no cold at all — a control that is glowing before
+     it is touched has nothing left to say when it is. */
   --shadow-cta-rest: 0 4px 20px rgba(255, 255, 255, 0.1);
-  --shadow-cta-hover: 0 8px 30px -6px rgba(255, 255, 255, 0.18);
+  --shadow-cta-hover:
+    0 8px 30px -6px rgba(255, 255, 255, 0.18), 0 0 0 1px rgba(124, 200, 255, 0.22),
+    0 0 18px -7px rgba(124, 200, 255, 0.26);
   /* ── Card hover: the light around a card is cold, the card itself is not ──
      Owner direction: the white bloom this used to carry read as a lamp behind
      the card — `0 0 32px -8px rgba(255,255,255,0.09)` over a #030303 page is a
@@ -295,6 +329,160 @@
   --lens-node-rim-hot-hover: rgba(240, 249, 255, 0.98);
   --lens-node-rim-warm-hover: rgba(124, 200, 255, 0.52);
   --lens-node-rim-cool-hover: rgba(124, 200, 255, 0.14);
+
+  /* ─── The rim ──────────────────────────────────────────────────────────────
+     The rectangular sibling of the lens above, and the page's one interaction
+     edge for cards, panels and buttons. Read the lens block first: this is the
+     same object — a ring of light, brightest where the source is, dimming around
+     the back — drawn on a rounded rectangle instead of a circle.
+
+     ── Why a masked conic and not a border ──
+
+     `border-color` can only be one colour at a time, so a border can say "this
+     card is hovered" but it cannot say *where the light is coming from*. That
+     single arc is the whole signature of the reference the timeline nodes are
+     drawn from, and it is what separates an instrument panel from a highlighted
+     div. The technique is `.glass-premium-featured::before`'s — a gradient
+     clipped to a 1px frame by `mask-composite: exclude` — with the featured
+     card's static 135° linear swapped for the lens's conic, so the bright arc
+     lands at an angle rather than along an edge.
+
+     Guarded by `@supports` in globals.css, and the guard is load-bearing: with
+     no mask support the gradient fills the entire card. The fallback is the
+     white hairline hover the page already had.
+
+     ── Three scales, and they are not the same numbers ──
+
+     Ring brightness has to fall as perimeter grows or a large panel reads as a
+     lit sign. The same reasoning the node block above records for 8px vs 40px
+     applies with more force here: the Telegram panel's perimeter is roughly
+     twenty times a guarantee card's.
+
+       • card  — the default. Guarantee cards, stage cards, pricing tiers.
+       • route — cards that navigate (audience, the Access "live" card). Hotter,
+                 because choosing a route should not feel like reading a fact.
+       • panel — the large surfaces: the Telegram block, the operator terminal.
+                 Quietest, so a 700px object acknowledges the pointer without
+                 competing with the hero.
+
+     Every saturated-cyan stop is at or under the 0.28 the doctrine allows. The
+     `hot` stops are a pale blue-*white* rather than cyan, exactly as
+     `--lens-rim-hot` is — that is what keeps the arc reading as light on the
+     edge instead of as a coloured border, and it is why its alpha may exceed the
+     cyan ceiling without breaking the rule. */
+  --rim-width: 1px;
+
+  /* ── Where the bright arc sits, and why it is not the lens's angle ──
+
+     The lens rests at -108deg. Copied onto a rectangle that angle is wrong, and
+     measurably so: a conic gradient's stops map to *angles from the centre*, so on
+     a 592×278 card -108deg puts the hot stop on the short **left** edge, which is
+     ~8% of the visible contour. Sampled across the perimeter of a hovered audience
+     card, the left edge came back at rgb(120,134,145) — the arc, clearly lit — and
+     the entire top and bottom edges, which are the two long runs a reader actually
+     sees, were within one level of neutral.
+
+     The same angle produces a different result on the two shapes because a circle
+     distributes angle evenly around its edge and a rectangle does not. What has to
+     be shared is the *light direction*, not the number.
+
+     -40deg is above and slightly left. On that same card the top edge spans 295°
+     through 65°, so the hot stop sits just inside the upper-left corner and the
+     bright half of the falloff runs the length of the top edge, fading down both
+     sides to the dim quarter at the bottom. That is one raking light from above
+     left — the read Button.mp4 shows, and the same source the lens's own arc and
+     the assistant orb's specular are lit from. */
+  --rim-sweep-rest: -40deg;
+
+  /* The hairline the rim's dim quarter sits over. Cold, so the whole edge reads as
+     one cold bevel — a 1px cool border with a lit inner face — rather than as a
+     cyan arc laid over a white line. `border-*` is the permitted use of the signal
+     colour and this is the alpha ceiling exactly.
+
+     Re-pointed inside a paper band, where cold light is forbidden — see the rim
+     suppression in globals.css. */
+  --rim-edge: var(--color-signal-line);
+
+  /* ── All three scales are named, including the default ──
+
+     `--rim-hot/warm/cool` are the *active* trio the rim reads; the `-card`,
+     `-route` and `-panel` families below are the values a class picks from.
+
+     The default trio must have a named source because custom properties inherit,
+     and a scale set on a container would otherwise leak into every card inside
+     it. That is not hypothetical: the Telegram block is a large panel holding an
+     ordinary signal card, and with only the container declaring a scale the inner
+     card measured `--rim-hot: 0.38` — the panel value — which inverted the
+     hierarchy the two are supposed to have. `.card-premium` re-declares the card
+     trio on every card, so nesting resets rather than accumulates. */
+  --rim-hot-card: rgba(214, 236, 255, 0.55);
+  --rim-warm-card: rgba(124, 200, 255, 0.2);
+  --rim-cool-card: rgba(124, 200, 255, 0.05);
+
+  --rim-hot: var(--rim-hot-card);
+  --rim-warm: var(--rim-warm-card);
+  --rim-cool: var(--rim-cool-card);
+
+  --rim-hot-route: rgba(224, 242, 255, 0.66);
+  --rim-warm-route: rgba(124, 200, 255, 0.26);
+  --rim-cool-route: rgba(124, 200, 255, 0.07);
+
+  --rim-hot-panel: rgba(206, 232, 255, 0.38);
+  --rim-warm-panel: rgba(124, 200, 255, 0.14);
+  --rim-cool-panel: rgba(124, 200, 255, 0.035);
+
+  /* ── The hover shadow, with the ring removed ──
+     `--shadow-card-hover` carries `0 0 0 1px rgba(124,200,255,0.16)` — a cold
+     edge drawn as a shadow, which was the only way to get one before the rim
+     existed. Keeping both would double the edge and read as a halo seam: the
+     exact defect the node block above records when a shadow-ring sat behind a
+     geometric one.
+
+     So this is the same stack minus that layer — dark drop plus cold bloom — and
+     it is what `.card-premium:hover` uses wherever the rim is actually drawn.
+     `--shadow-card-hover` stays as it is for the no-mask fallback, where the
+     shadow-ring is still the only edge available.
+
+     The bloom is one step tighter than the ring-bearing version (0.26 → 0.22):
+     the rim now carries the definition the bloom was compensating for, which is
+     the same trade the node made when it went 18px/0.26 → 13px/0.17. */
+  --shadow-card-hover-rim:
+    0 18px 48px -12px rgba(0, 0, 0, 0.78), 0 0 24px -10px rgba(124, 200, 255, 0.22);
+
+  /* Route cards sat one step above the ordinary card and should stay there. A
+     wider, slightly warmer bloom rather than a second mechanism — the old
+     `--glow-signal-sm` on top of a cold border was two edges saying one thing. */
+  --shadow-card-hover-route:
+    0 18px 48px -12px rgba(0, 0, 0, 0.78), 0 0 30px -10px rgba(124, 200, 255, 0.26);
+
+  /* ─── The button ───────────────────────────────────────────────────────────
+     Drawn from ~/Downloads/Button.mp4 and ~/Downloads/Button1.mp4. Read the note
+     above `.btn-lens` in globals.css for what the frames establish and for the
+     two things deliberately not copied.
+
+     The depth pair is the reference's strongest cue and it is monochrome: a
+     specular along the top inner edge, a contact shade along the bottom inner
+     edge. That is what makes a flat rectangle read as a body with a lit face,
+     and it works on a white fill and a near-black one alike — which matters,
+     because this page's primary CTA is white on black and inverts to black on
+     paper. Neither the cold rim nor the arc can survive that inversion; the
+     depth pair can, so it is the part every variant shares. */
+  --btn-specular: rgba(255, 255, 255, 0.16);
+  --btn-shade: rgba(0, 0, 0, 0.28);
+
+  /* The dark-glass variants — `outline` and `secondary` — are the ones that can
+     carry the reference's cold rim, because they have a dark face for light to
+     sit on. Held below the card's own rim: a button is a small object and the
+     eye reads its edge at much higher angular density than a card's. */
+  --btn-rim-hot: rgba(224, 243, 255, 0.72);
+  --btn-rim-warm: rgba(124, 200, 255, 0.24);
+  --btn-rim-cool: rgba(124, 200, 255, 0.06);
+
+  /* Two layers, and the tightness is the point. Button1.mp4's ambient bloom is
+     roughly the button's own height in every direction, which over this page's
+     black would be the crypto-neon the doctrine exists to prevent. This is a
+     3px cold shelf on the edge plus a 16px bloom — a lit control, not a lamp. */
+  --btn-glow-hover: 0 0 0 3px rgba(124, 200, 255, 0.05), 0 0 16px -6px rgba(124, 200, 255, 0.26);
 
   /* ─── The node aura ──────────────────────────────────────────────────────
      The outer half of the lens — layer 3 of the three above — for the 32/40px

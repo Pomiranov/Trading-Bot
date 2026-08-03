@@ -293,6 +293,12 @@ body::before {
   --color-panel-raised: var(--color-paper-surface);
   --shadow-card-hover: var(--shadow-card-hover-on-paper);
   --shadow-card-rest: 0 1px 2px rgba(0, 0, 0, 0.05);
+  /* The rim variants collapse onto the paper hover. Cold light has nothing to
+     bloom into on #ebe8e0 — the same reason route cards drop their cold edge and
+     the lens inverts inside a band — so the rim itself is suppressed further down
+     and these must not leave a cyan bloom behind after it goes. */
+  --shadow-card-hover-rim: var(--shadow-card-hover-on-paper);
+  --shadow-card-hover-route: var(--shadow-card-hover-on-paper);
 
   /* The white CTA cannot survive on paper: white-on-white. Inside a paper band
      the primary action inverts to black-on-paper, which is the same 17.4:1 and
@@ -311,10 +317,22 @@ body::before {
   color: var(--color-on-paper);
 }
 
-/* The CTA's own liquid-glass sheen is a white gradient. On a black CTA sitting
-   on paper it reads as a grey smear, so it is removed rather than re-tinted. */
-.section-paper .btn-liquid-glass::before,
-.section-paper .btn-liquid-glass::after {
+/* ── The CTA inside a paper band ──
+   This used to remove both of the button's layers. It was correct for what they
+   were: a 135° white veil and a white sheen bar sweeping across the face, both
+   of which read as a grey smear on a black CTA sitting on paper.
+
+   Only the cold rim goes now. `::after` is no longer a white veil — it is the
+   depth pair, white at the top and black at the bottom, and on this band's
+   *black* fill it is the top specular that makes the button read as a body rather
+   than as a filled rectangle. Removing it here would leave the paper bands with
+   the one flat CTA on the page.
+
+   `::before` is suppressed because cold light on #ebe8e0 reads as a print
+   registration error — the same reason the lens inverts and the card rim is
+   switched off inside a band. Defensive rather than load-bearing: the rim is
+   scoped to `.btn-lens-dark`, and every CTA in both paper bands is `default`. */
+.section-paper .btn-lens-dark::before {
   display: none;
 }
 
@@ -667,6 +685,19 @@ section[id][data-rhythm="tight"] {
 .card-premium {
   --card-bg: var(--color-surface);
   --card-bg-hover: var(--color-panel);
+  /* The rim scale, re-declared on every card so nesting resets it. A container
+     that sets the panel scale (`.card-premium--panel`, `.panel-bloom`) would
+     otherwise have it inherited by the ordinary cards inside — which is measurably
+     what happened to the Telegram signal card. See the `--rim-*` block in
+     tokens/color.css. */
+  --rim-hot: var(--rim-hot-card);
+  --rim-warm: var(--rim-warm-card);
+  --rim-cool: var(--rim-cool-card);
+  /* The rim's containing block. Every card that already positions something
+     against itself sets this too (`InteractiveCard`'s stretched anchor depends on
+     it), so declaring it here is a no-op for layout and removes the requirement
+     that a caller remember it. */
+  position: relative;
   background-color: var(--card-bg);
   box-shadow: var(--shadow-card-rest);
   transition:
@@ -689,6 +720,192 @@ section[id][data-rhythm="tight"] {
   border-color: var(--color-highlight-border);
   background-color: var(--card-bg-hover);
   box-shadow: var(--shadow-card-hover);
+}
+
+/* ─── The rim ──────────────────────────────────────────────────────────────
+   The interaction edge, and the one addition this pass makes to the card
+   primitive. Read the `--rim-*` block in tokens/color.css for the palette and
+   for why the three scales carry different numbers.
+
+   It is the lens, unrolled onto a rectangle. `.signal-lens::before` masks a
+   conic gradient to a 1px *annulus* with a radial mask; a rounded rectangle has
+   no single radius to mask against, so the frame is cut by the two-layer
+   `mask-composite: exclude` trick `.glass-premium-featured::before` already uses
+   here — one mask clipped to the content box, one to the border box, and the
+   difference is a `--rim-width` frame that follows any `border-radius`.
+
+   ── `inset: 0`, not `-1px` ──
+
+   `-1px` would land the ring exactly on the border band, which is where it
+   optically belongs. It is wrong anyway: `.panel-bloom`'s operator terminal
+   carries `overflow-hidden`, and an absolutely positioned child clips to the
+   *padding* box — so a negative inset puts the entire ring outside the clip and
+   the largest panel on the page silently gets no rim at all.
+
+   At `inset: 0` the ring sits immediately inside the card's own hairline, and
+   the pair reads as one bevelled edge with light collecting on its inner face —
+   which is what the reference's rim actually looks like up close. Both work with
+   `overflow: hidden`, and only one of them works everywhere.
+
+   ── The cards do not animate their arc, and that is deliberate ──
+
+   `--rim-sweep` is registered below so it *can* be animated, and the buttons do.
+   A card does not: interpolating an angle repaints the gradient every frame, and
+   the sections this lands on put up to eight cards in one viewport. Eight
+   repainting rings to decorate a hover is the "costs a repaint per frame" trade
+   the lens block already refuses at 8px, in the other direction. The static arc
+   is the whole effect the brief asks for — one brighter stretch of contour — and
+   it costs nothing.
+
+   ── The guard is load-bearing ──
+
+   With no `mask-composite` the gradient is not clipped to a frame and fills the
+   entire card: a flat cyan panel with the copy on top of it. Everything is
+   therefore inside `@supports`, and the fallback is the white-hairline hover the
+   page had before this block — `border-color` plus `--shadow-card-hover`, which
+   still carries its own 1px cold shadow-ring for exactly this case. */
+/* `initial-value` is what the rim actually resolves to — the property is
+   registered `inherits: false`, so an element that never declares it gets this
+   rather than falling through to the `var()` fallback. It must therefore stay in
+   step with `--rim-sweep-rest`; read the derivation of the angle in the `--rim-*`
+   block in tokens/color.css before changing either. */
+@property --rim-sweep {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: -40deg;
+}
+
+@supports ((mask-composite: exclude) or (-webkit-mask-composite: xor)) {
+  /* `.panel-bloom` shares the geometry but is not a `.card-premium` — the
+     operator terminal opts out of the card primitive entirely (`interactive:
+     false`) because it must not translate. It still needs the edge: the brief
+     asks for the terminal frame to light on hover, and without this it would be
+     the one large surface on the page with a white bloom and no rim. Its own
+     colour scale and hover shadow are set further down, next to its other
+     rules, so they can win on source order. */
+  .card-premium::after,
+  .panel-bloom::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    padding: var(--rim-width);
+    /* Same resting angle as the lens, so a card edge and a pipeline node are lit
+       from the same direction. The six stops mirror the lens's exactly: hot at
+       the source, warm either side, and a dim back half where the card's own
+       hairline shows through — which is what makes the ring read as *lit* rather
+       than as drawn. */
+    background: conic-gradient(
+      from var(--rim-sweep, -40deg),
+      var(--rim-hot) 0deg,
+      var(--rim-warm) 58deg,
+      var(--rim-cool) 148deg,
+      var(--rim-cool) 212deg,
+      var(--rim-warm) 302deg,
+      var(--rim-hot) 360deg
+    );
+    mask-image: linear-gradient(#000 0 0), linear-gradient(#000 0 0);
+    mask-clip: content-box, border-box;
+    mask-composite: exclude;
+    -webkit-mask-image: linear-gradient(#000 0 0), linear-gradient(#000 0 0);
+    -webkit-mask-clip: content-box, border-box;
+    -webkit-mask-composite: xor;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity var(--motion-soft) var(--ease-out-expo);
+  }
+
+  /* With a real ring on the edge, the 1px cold shadow-ring inside
+     `--shadow-card-hover` becomes a second edge one pixel out from the first —
+     the halo seam the node block records when a shadow-ring sat behind a
+     geometric one. `--shadow-card-hover-rim` is the same stack without it. */
+  /* ── The hairline goes cold with the rim ──
+
+     Measured on a hovered audience card before this rule: the two long edges read
+     rgb(83,83,83) — dead neutral. That is `--color-highlight-border` (white 0.28)
+     on the border row, with the cold ring one pixel inside it. Two hairlines of
+     different temperature a pixel apart do not read as a lens rim; they read as a
+     white border with a blue fringe, which is the "белая подсветка" this pass is
+     explicitly not supposed to produce.
+
+     `--rim-edge` is the same 0.28 alpha in the signal colour, so the edge keeps
+     its structural weight and changes only temperature. The result is one cold
+     bevel — a cool hairline with a lit inner face, brightest at the arc — instead
+     of two lines arguing.
+
+     A token rather than a literal because `.section-paper` re-points it: inside a
+     band the hairline must stay `--color-highlight-border`, since the rim is
+     suppressed there and a lone cyan border on paper is the print-registration
+     artefact the doctrine rules out. */
+  @media (hover: hover) and (pointer: fine) {
+    .card-premium:hover {
+      border-color: var(--rim-edge);
+      box-shadow: var(--shadow-card-hover-rim);
+    }
+
+    .card-premium:hover::after {
+      opacity: 1;
+    }
+  }
+
+  .card-premium:focus-visible,
+  .card-premium:focus-within {
+    border-color: var(--rim-edge);
+    box-shadow: var(--shadow-card-hover-rim);
+  }
+
+  /* Keyboard parity. `:focus-within` so a card whose only focusable child is a
+     link still lights — the same reason the base state above uses it. */
+  .card-premium:focus-visible::after,
+  .card-premium:focus-within::after {
+    opacity: 1;
+  }
+
+  /* ── Large panels are quieter ──
+     The Telegram block and the operator terminal, whose perimeters are an order
+     of magnitude longer than a guarantee card's. At the card scale they read as
+     a lit sign rather than as a panel acknowledging the pointer, which is the
+     "не должны светиться как рекламный баннер" constraint stated in the brief. */
+  .panel-bloom,
+  .card-premium--panel {
+    --rim-hot: var(--rim-hot-panel);
+    --rim-warm: var(--rim-warm-panel);
+    --rim-cool: var(--rim-cool-panel);
+  }
+
+  /* ── Paper bands get no rim at all ──
+     Cold light on #ebe8e0 reads as a print registration error, which is why the
+     lens inverts and route cards drop their cold edge inside a band. There is no
+     inverted rim to substitute: a dark ring with a *bright arc* needs somewhere
+     for the light to be, and on paper there is nowhere. Cards there keep the
+     dark-drop lift, which is how every other paper object is emphasised.
+
+     `.on-paper-graphite` is inside `.section-paper`, so this covers both. */
+  .section-paper .card-premium::after {
+    display: none;
+  }
+
+  /* With no rim to sit under, the hairline goes back to the band's own strong
+     border. A cold border alone on paper is the print-registration artefact.
+
+     ── Both selectors are required, and the second one is not redundant ──
+
+     A custom property is substituted at computed-value time *on the element that
+     declares it*, and descendants inherit the already-resolved value. So
+     `--rim-edge: var(--color-highlight-border)` on `.section-paper` resolves once,
+     against the band's own `rgba(0,0,0,0.3)`, and every card below it inherits
+     that literal — including the graphite panels, which re-point
+     `--color-highlight-border` to white 0.28 precisely because they are dark
+     objects sitting on light paper.
+
+     Measured without the second rule: the Foundation cards computed `--rim-edge:
+     rgba(0,0,0,0.3)` — a black hairline on a #131313 card, i.e. no visible hover
+     border at all, where before this pass they had a white one. Re-declaring it
+     inside the graphite scope makes the `var()` resolve again in that context. */
+  .section-paper,
+  .on-paper-graphite {
+    --rim-edge: var(--color-highlight-border);
+  }
 }
 
 /* The lift is the one part that must yield to prefers-reduced-motion; the
@@ -714,9 +931,14 @@ section[id][data-rhythm="tight"] {
        exists to fix is four cards that contain a link and still compute
        `cursor: default`
      • a 1px cold-blue edge plus a soft glow, so choosing a route feels
-       different from reading a fact. This is the only interactive use of the
-       signal colour on the page, and it is an edge and a shadow — decorative
-       geometry, never ink. */
+       different from reading a fact. An edge and a shadow — decorative geometry,
+       never ink.
+
+   This used to be "the only interactive use of the signal colour on the page".
+   It no longer is: the rim gave every card a cold interaction edge, so a route
+   card is now the *hottest* member of a shared family rather than the sole one.
+   The rules below are the pre-rim treatment and stay as the no-mask fallback;
+   the `@supports` block after them is what runs where the rim is drawn. */
 .card-route {
   cursor: pointer;
 }
@@ -731,6 +953,39 @@ section[id][data-rhythm="tight"] {
 .card-route:focus-within {
   border-color: var(--color-signal-line);
   box-shadow: var(--shadow-card-hover), var(--glow-signal-sm);
+}
+
+/* ── The route card, once the rim exists ──
+   The two rules above are the pre-rim treatment and stay as the no-mask
+   fallback: a cold `border-color` plus `--glow-signal-sm` was the only way to
+   give a navigating card its own edge before there was a ring to brighten.
+
+   With the rim drawn, `--glow-signal-sm` on top of `--shadow-card-hover` is two
+   bloom layers plus the shadow-ring — three things saying one thing, which is the
+   doubling `--shadow-card-hover-rim` exists to undo.
+
+   So inside the guard a route card differentiates by *intensity* and nothing else:
+   the hotter rim scale and one slightly wider bloom. The cold hairline needs no
+   special case here — every card gets `--rim-edge` now, which is the value this
+   rule used to be the only place on the page to set. That is the change this pass
+   makes: the cold interaction edge went from a route-card affordance to the page's
+   shared interaction language. */
+@supports ((mask-composite: exclude) or (-webkit-mask-composite: xor)) {
+  .card-route {
+    --rim-hot: var(--rim-hot-route);
+    --rim-warm: var(--rim-warm-route);
+    --rim-cool: var(--rim-cool-route);
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    .card-route:hover {
+      box-shadow: var(--shadow-card-hover-route);
+    }
+  }
+
+  .card-route:focus-within {
+    box-shadow: var(--shadow-card-hover-route);
+  }
 }
 
 /* On paper the cold edge would be invisible against white, and a blue glow on
@@ -1341,6 +1596,11 @@ main > section:not(.section-paper):not(#hero):has(+ .band-blend) {
   --shadow-card-hover:
     0 24px 56px -20px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.14),
     0 0 44px -12px rgba(255, 255, 255, 0.12);
+  /* Graphite panels sit inside a paper band, so they inherit the band's ban on
+     cold light — see the note in `.section-paper`. Both rim variants collapse
+     onto the white-glow hover this block already defines. */
+  --shadow-card-hover-rim: var(--shadow-card-hover);
+  --shadow-card-hover-route: var(--shadow-card-hover);
 
   color: var(--color-text-primary);
 }
@@ -1425,6 +1685,10 @@ main > section:not(.section-paper):not(#hero):has(+ .band-blend) {
    other hover on the page is: on a touch screen a `:hover` rule sticks after a
    tap and reads as a stuck selected state. */
 .panel-bloom {
+  /* The rim's containing block. The one absolutely positioned descendant in this
+     panel — the selected-tab rail — hangs off its own `relative` button, so this
+     cannot capture it. */
+  position: relative;
   transition:
     border-color var(--duration-base) var(--ease-out-expo),
     background-color var(--duration-base) var(--ease-out-expo),
@@ -1450,6 +1714,49 @@ main > section:not(.section-paper):not(#hero):has(+ .band-blend) {
     0 28px 72px -28px rgba(0, 0, 0, 0.85),
     0 0 0 1px rgba(255, 255, 255, 0.08),
     0 0 56px -16px rgba(255, 255, 255, 0.1);
+}
+
+/* ── The terminal, once the rim exists ────────────────────────────────────────
+   The three rules above are the pre-rim treatment and stay as the no-mask
+   fallback. Where the rim is drawn, this panel joins the page's shared
+   interaction language instead of keeping its own dialect.
+
+   Two things change, and the second is the reason the brief asks for this block.
+
+   The 56px white bloom at 0.1 alpha over #030303 is a grey smear with no findable
+   edge — the same defect the note on `--shadow-card-hover` records for the cards,
+   still in place here because before the rim there was nothing else a panel this
+   size could safely do. It is replaced by the panel rim scale: a 1px cold ring,
+   the quietest of the three (`--rim-*-panel`, roughly two-thirds of a card's), and
+   a tight cold bloom. Structure instead of brightness, which is the trade the lens
+   block documents.
+
+   What does *not* change: this panel never translates. A 1200px object sliding
+   under the cursor reads as the page wobbling and would drag six tab targets
+   mid-aim. `.panel-bloom` is deliberately not a `.card-premium`, and that stays.
+
+   Placed after the rules it overrides rather than merged into them, so the
+   fallback path is still readable as one block. */
+@supports ((mask-composite: exclude) or (-webkit-mask-composite: xor)) {
+  @media (hover: hover) and (pointer: fine) {
+    .panel-bloom:hover {
+      border-color: var(--rim-edge);
+      box-shadow: var(--shadow-card-hover-rim);
+    }
+
+    .panel-bloom:hover::after {
+      opacity: 1;
+    }
+  }
+
+  .panel-bloom:focus-within {
+    border-color: var(--rim-edge);
+    box-shadow: var(--shadow-card-hover-rim);
+  }
+
+  .panel-bloom:focus-within::after {
+    opacity: 1;
+  }
 }
 
 /* ─── The lens ─────────────────────────────────────────────────────────────
@@ -2621,44 +2928,194 @@ main > section:not(.section-paper):not(#hero):has(+ .band-blend) {
   color: var(--color-text-primary);
 }
 
-/* ─── Liquid Glass Button base ─── */
+/* ─── The button lens ──────────────────────────────────────────────────────
+   Every button and CTA anchor on the page. `ui/button.tsx` owns the fill, the
+   type and the box; this owns the material — the depth that makes a rectangle
+   read as a body, and the cold rim on the variants that have a dark face for
+   light to sit on.
+
+   ── Drawn from ~/Downloads/Button.mp4 and ~/Downloads/Button1.mp4 ──
+
+   Frames extracted with AVFoundation at 720×900 (there is no ffmpeg on this
+   machine; `scratchpad/extract.swift` in the session directory is the four-line
+   AVAssetImageGenerator that produced them).
+
+   `Button.mp4` — 5.4s, a near-black pill on a dark card. Its resting state is
+   almost nothing: a very slightly lighter outer edge and a soft drop beneath.
+   The effect is one bright, tight streak of light *on the rim*, brightest at a
+   moving point and fading along the edge either side of it, which travels from
+   the top edge to the bottom over the clip. Two things carry the whole look, and
+   neither is brightness: the light is **on the edge, not around the object**, and
+   the face stays dark enough that white text sits on it at full contrast.
+
+   `Button1.mp4` — a rounded rectangle with a 1px cold cyan rim, brighter along
+   the top and right, over a blue glass fill.
+
+   ── What was taken, and what was not ──
+
+   Taken: the dark lens face, the 1px cold rim, the single travelling bright arc,
+   the soft drop that makes the control sit *on* the page, and the tactile press.
+
+   Not taken, deliberately:
+
+     • `Button.mp4`'s streak runs violet→white→blue. Purple is a budget-0 rule in
+       check-design-tokens.mjs and the palette has no second hue; the arc is drawn
+       in the same pale blue-white as the lens's rim instead.
+     • `Button1.mp4`'s saturated blue *fill* and its ambient bloom, which is
+       roughly the button's own height in every direction. On this page a filled
+       cold CTA is forbidden outright — cold blue is light, never ink, and never a
+       CTA fill (see the doctrine in tokens/color.css) — and a bloom that size
+       over #030303 is precisely the crypto-neon that doctrine exists to prevent.
+       The glow here is a 3px shelf plus a 16px bloom: a lit control, not a lamp.
+
+   ── Why `::after` is the depth and one gradient serves both polarities ──
+
+   This page's primary CTA is a *white* fill on black, and inside a paper band the
+   same button inverts to black on warm paper. So the depth cue has to work on a
+   near-white face and a near-black one, and the reference's top-specular /
+   bottom-shade pair does: white at the top and black at the bottom, each
+   invisible against the face it cannot affect. On white the gradient reads as a
+   bottom contact shade; on black, as a top specular. One declaration, both
+   polarities, no per-context token.
+
+   ── The travelling arc runs here and not on the cards ──
+
+   Interpolating `--rim-sweep` repaints the ring every frame. Exactly one button
+   can be hovered at a time, so that cost is bounded — which is not true of the
+   card grids, where up to eight rings share a viewport. See the note on
+   `.card-premium::after` for the other half of this trade.
+
+   The class name is unchanged: `scripts/visual-qa.mjs` matches `.btn-liquid-glass`
+   to tell a rendered button from a bare link when it checks card affordances, and
+   `.section-paper` keys its overrides off it. */
 .btn-liquid-glass {
   position: relative;
   overflow: hidden;
+  /* Scopes the rim's blending and stacking to the button, so a CTA renders
+     identically on the page, inside a card and on a paper band. */
+  isolation: isolate;
 }
 
-.btn-liquid-glass::before {
+/* ── The depth ──
+   Both polarities, held low on purpose: this paints over the label (a
+   pseudo-element of the button paints after its inline content), so anything
+   heavier than a veil would start eating contrast on the one control the page
+   depends on. At 0.14/0.12 the effect on the label's measured ratio is under
+   0.2:1.
+
+   ── Only on variants that have a face, and that is not a detail ──
+
+   `.btn-lens-face` marks the filled variants. `ghost` and `link` are transparent
+   at rest, and shading a transparent box paints the *shading* rather than
+   modelling a surface: rendered on the style tile, the ghost button showed a
+   faint dark rectangle floating on the page, which reads as a disabled control
+   rather than as a text target. The old 135° veil had the same flaw and it was
+   equally wrong there; it was simply less visible without the bottom shade.
+
+   Two orthogonal markers, because they answer different questions:
+     • `.btn-lens-face` — does this button have a surface? → give it depth
+     • `.btn-lens-dark`  — is that surface dark? → also give it the cold rim */
+.btn-lens-face::after {
   content: "";
   position: absolute;
   inset: 0;
   background: linear-gradient(
-    135deg,
-    rgba(255, 255, 255, 0.12) 0%,
-    transparent 50%,
-    rgba(255, 255, 255, 0.04) 100%
+    to bottom,
+    rgba(255, 255, 255, 0.14) 0%,
+    rgba(255, 255, 255, 0) 45%,
+    rgba(0, 0, 0, 0.12) 100%
   );
   pointer-events: none;
 }
 
-.btn-liquid-glass::after {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: -100%;
-  width: 60%;
-  height: 100%;
-  background: linear-gradient(
-    90deg,
-    transparent,
-    rgba(255, 255, 255, 0.08),
-    transparent
-  );
-  pointer-events: none;
-  transition: left 0.5s ease;
+/* ── The rim ──
+   Only on the dark-faced variants — `outline` and `secondary` — which is what
+   `.btn-lens-dark` marks in `ui/button.tsx`. The white `default` fill cannot
+   carry an inner cold ring: at any alpha that registers against #ffffff it is a
+   grey line, and at any alpha that does not it is nothing. That variant gets its
+   cold light *outside* the fill instead, from `--shadow-cta-hover` — which on a
+   white pill over a black page is the same hairline-plus-bloom the reference
+   shows, just read from the other side of the edge.
+
+   Same construction as `.card-premium::after`: a conic gradient clipped to a
+   `--rim-width` frame by two masks and `mask-composite: exclude`. Same guard, and
+   for the same reason — without it the gradient fills the button and the label
+   sits on a cyan block. The fallback is the border-colour hover the variants
+   already declare. */
+@supports ((mask-composite: exclude) or (-webkit-mask-composite: xor)) {
+  .btn-lens-dark::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    padding: var(--rim-width);
+    background: conic-gradient(
+      from var(--rim-sweep, -40deg),
+      var(--btn-rim-hot) 0deg,
+      var(--btn-rim-warm) 58deg,
+      var(--btn-rim-cool) 148deg,
+      var(--btn-rim-cool) 212deg,
+      var(--btn-rim-warm) 302deg,
+      var(--btn-rim-hot) 360deg
+    );
+    mask-image: linear-gradient(#000 0 0), linear-gradient(#000 0 0);
+    mask-clip: content-box, border-box;
+    mask-composite: exclude;
+    -webkit-mask-image: linear-gradient(#000 0 0), linear-gradient(#000 0 0);
+    -webkit-mask-clip: content-box, border-box;
+    -webkit-mask-composite: xor;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity var(--motion-soft) var(--ease-out-expo);
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    .btn-lens-dark:hover::before {
+      opacity: 1;
+    }
+  }
+
+  .btn-lens-dark:focus-visible::before {
+    opacity: 1;
+  }
+
+  /* The arc travels only while the pointer is on the button. `infinite` with no
+     `alternate`: the light goes round the edge and keeps going, which is what the
+     reference shows — a reversing highlight reads as a slider, not as light. */
+  @media (prefers-reduced-motion: no-preference) {
+    @media (hover: hover) and (pointer: fine) {
+      .btn-lens-dark:hover::before {
+        animation: qf-rim-sweep var(--duration-rim-sweep) linear infinite;
+      }
+    }
+  }
 }
 
-.btn-liquid-glass:hover::after {
-  left: 160%;
+/* Reduced motion keeps the rim and drops the travel — the resting frame is
+   already the lit one, with the arc at the shared light source. Gated on
+   `no-preference` above rather than left to the global reset, which collapses
+   duration to 0.01ms and would pin the arc at whatever angle it reached first. */
+/* Exactly one turn from the resting angle (-40 + 360), so the loop is seamless:
+   any other endpoint would jump on repeat. Tied to `--rim-sweep-rest` — if that
+   angle moves, this must move with it. */
+@keyframes qf-rim-sweep {
+  to {
+    --rim-sweep: 320deg;
+  }
+}
+
+/* ── The press ──
+   `ui/button.tsx` carries the scale; this is the light going out under the
+   finger. A control that is being pushed *in* cannot also be glowing harder, and
+   dropping the glow is what makes the press read as displacement rather than as
+   a size change. Both properties, so it works on the white variant (outer glow)
+   and the dark ones (rim) alike. */
+.btn-liquid-glass:active {
+  box-shadow: var(--shadow-cta-rest);
+}
+
+.btn-lens-dark:active::before {
+  opacity: 0.55;
 }
 
 @media (prefers-reduced-motion: reduce) {

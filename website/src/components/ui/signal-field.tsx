@@ -101,21 +101,21 @@ export function SignalField<T extends ElementType = "div">({
     let pending: { x: number; y: number } | null = null;
 
     function onPointerMove(e: PointerEvent) {
-      const node = ref.current;
-      if (!node) return;
-      // getBoundingClientRect is read here, inside a pointer handler, which is
-      // not a scroll read — the constraint this codebase enforces is on scroll
-      // position, and `left`/`top` are viewport-relative geometry the browser
-      // has already computed for this frame's hit test.
-      const rect = node.getBoundingClientRect();
-      pending = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+      // Only the client coordinates are captured per event; the geometry read
+      // lives inside the rAF callback below. The handler used to call
+      // getBoundingClientRect per raw event, which on a 1000Hz pointer is up
+      // to ~16 forced geometry reads a frame on a full-width section — the
+      // rAF was coalescing the *writes* while the *reads* ran unthrottled.
+      // One read per painted frame is the actual budget.
+      pending = { x: e.clientX, y: e.clientY };
       if (frame) return;
       frame = requestAnimationFrame(() => {
         frame = 0;
         const n = ref.current;
         if (!n || !pending) return;
-        n.style.setProperty("--signal-x", `${pending.x.toFixed(1)}px`);
-        n.style.setProperty("--signal-y", `${pending.y.toFixed(1)}px`);
+        const rect = n.getBoundingClientRect();
+        n.style.setProperty("--signal-x", `${(pending.x - rect.left).toFixed(1)}px`);
+        n.style.setProperty("--signal-y", `${(pending.y - rect.top).toFixed(1)}px`);
         n.style.setProperty("--signal-on", "1");
       });
     }

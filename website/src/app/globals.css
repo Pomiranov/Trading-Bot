@@ -101,10 +101,31 @@ body {
   outline-offset: 3px;
 }
 
-/* ─── Premium text selection ─── */
+/* ─── Premium text selection ───
+   Token-driven, because the page inverts twice. The old literal — white text on
+   a 22% white wash — was authored for the dark base and never re-pointed inside
+   a paper band, so selecting Foundation or Pricing copy forced white-on-#eeece4
+   (~1.1:1): the selected text disappeared. `.section-paper` re-points the pair
+   to dark-on-paper, and `.on-paper-graphite` points it back for the dark cards
+   sitting inside a band. */
+:root {
+  --selection-bg: rgba(255, 255, 255, 0.22);
+  --selection-fg: #ffffff;
+}
+
 ::selection {
-  background: rgba(255, 255, 255, 0.22);
-  color: #ffffff;
+  background: var(--selection-bg);
+  color: var(--selection-fg);
+}
+
+.section-paper {
+  --selection-bg: rgba(10, 10, 10, 0.85);
+  --selection-fg: var(--color-paper);
+}
+
+.on-paper-graphite {
+  --selection-bg: rgba(255, 255, 255, 0.22);
+  --selection-fg: #ffffff;
 }
 
 /* ─── Custom scrollbar ─── */
@@ -154,16 +175,12 @@ body::before {
 /* ─── Premium keyframes ───
    `qf-pulse-glow` and `qf-blink` lived here and were removed as dead: nothing
    referenced the first, and the second was the old status-dot blink, replaced by
-   `qf-signal-ping` further down when the live dot gained its expanding ring. */
-
-/* Transform-only, deliberately. An entrance that starts at opacity: 0 with
-   fill-mode `both` makes its subtree ineligible as an LCP candidate for the
-   whole delay — which previously cost the hero visual ~150ms of LCP for no
-   visual gain. Never add an opacity ramp here. */
-@keyframes qf-hero-enter {
-  from { transform: translateY(24px); }
-  to { transform: translateY(0); }
-}
+   `qf-signal-ping` further down when the live dot gained its expanding ring.
+   `qf-hero-enter` followed them: the hero's entrance animation was removed in a
+   previous pass but the keyframe stayed behind with no consumer. Its one rule
+   worth keeping travels as doctrine instead — an entrance must be
+   transform-only, because starting at `opacity: 0` with fill-mode `both` makes
+   the subtree ineligible as an LCP candidate for the whole delay. */
 
 /* ─── Hero instrument motion ───────────────────────────────────────────────
    The hero aperture's motion vocabulary. Two loops — the orbit spin and the
@@ -202,7 +219,7 @@ body::before {
   --tilt-x: 0;
   --tilt-y: 0;
   transform: translate3d(calc(var(--tilt-x) * 7px), calc(var(--tilt-y) * 7px), 0);
-  transition: transform 500ms var(--ease-out-quart, cubic-bezier(0.25, 1, 0.5, 1));
+  transition: transform var(--duration-panel, 500ms) var(--ease-out-quart, cubic-bezier(0.25, 1, 0.5, 1));
   will-change: transform;
 }
 
@@ -311,7 +328,9 @@ body::before {
   --color-accent: var(--color-on-paper);
   --color-accent-hover: rgba(10, 10, 10, 0.86);
   --color-bg: var(--color-paper);
-  --shadow-cta-rest: 0 4px 20px rgba(0, 0, 0, 0.1);
+  /* Tightened with the other two rest shadows: a 20px 10% wash under a black
+     pill read as a smudge on the paper. A short soft drop is elevation. */
+  --shadow-cta-rest: 0 2px 10px -2px rgba(0, 0, 0, 0.18);
   --shadow-cta-hover: 0 8px 30px -6px rgba(0, 0, 0, 0.22);
 
   color: var(--color-on-paper);
@@ -348,9 +367,10 @@ body::before {
     inset 0 1px 0 var(--color-glass-highlight),
     0 4px 24px rgba(0, 0, 0, 0.35),
     0 1px 4px rgba(0, 0, 0, 0.25);
-  transition: border-color 0.4s cubic-bezier(0.16, 1, 0.3, 1),
-              box-shadow 0.4s cubic-bezier(0.16, 1, 0.3, 1),
-              transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  transition:
+    border-color var(--duration-base, 300ms) var(--ease-out-expo, cubic-bezier(0.16, 1, 0.3, 1)),
+    box-shadow var(--duration-base, 300ms) var(--ease-out-expo, cubic-bezier(0.16, 1, 0.3, 1)),
+    transform var(--duration-base, 300ms) var(--ease-out-expo, cubic-bezier(0.16, 1, 0.3, 1));
 }
 
 .glass-premium:hover {
@@ -460,6 +480,19 @@ body::before {
   transform: translateY(0) scaleY(1);
   opacity: 1;
   transition-duration: var(--duration-base);
+}
+
+/* The sensor exists to serve *hover* — an invisible strip that brings the
+   retracted header back when the pointer parks at the top edge. Its markup
+   gates it by width (`md:pointer-events-auto`), but width is the wrong axis: a
+   touch tablet at 768px+ has no hover to recover, so the strip just swallowed
+   taps aimed at content in the top 64px. Capability query wins over the width
+   class regardless of order — hence the `!important`, which is scoped to a
+   div that never carries another pointer-events rule. */
+@media not ((hover: hover) and (pointer: fine)) {
+  .nav-sensor {
+    pointer-events: none !important;
+  }
 }
 
 /* Reduced motion removes the *travel*, not the state. The header still leaves
@@ -701,10 +734,10 @@ section[id][data-rhythm="tight"] {
   background-color: var(--card-bg);
   box-shadow: var(--shadow-card-rest);
   transition:
-    border-color var(--duration-base, 0.4s) var(--ease-out-expo, cubic-bezier(0.16, 1, 0.3, 1)),
-    background-color var(--duration-base, 0.4s) var(--ease-out-expo, cubic-bezier(0.16, 1, 0.3, 1)),
-    box-shadow var(--duration-base, 0.4s) var(--ease-out-expo, cubic-bezier(0.16, 1, 0.3, 1)),
-    transform var(--duration-base, 0.4s) var(--ease-out-expo, cubic-bezier(0.16, 1, 0.3, 1));
+    border-color var(--duration-base, 300ms) var(--ease-out-expo, cubic-bezier(0.16, 1, 0.3, 1)),
+    background-color var(--duration-base, 300ms) var(--ease-out-expo, cubic-bezier(0.16, 1, 0.3, 1)),
+    box-shadow var(--duration-base, 300ms) var(--ease-out-expo, cubic-bezier(0.16, 1, 0.3, 1)),
+    transform var(--duration-base, 300ms) var(--ease-out-expo, cubic-bezier(0.16, 1, 0.3, 1));
 }
 
 @media (hover: hover) and (pointer: fine) {
@@ -955,6 +988,20 @@ section[id][data-rhythm="tight"] {
   box-shadow: var(--shadow-card-hover), var(--glow-signal-sm);
 }
 
+/* ── Keyboard focus gets a real ring ──
+   The stretched-link anchor inside a route card is `outline-none` — the ring
+   belongs on the card, and two rings read as a bug — but the `:focus-within`
+   treatment above is a 1px border step plus a soft bloom, ~2:1 against the
+   panel: fine as a hover echo, under the WCAG 2.2 non-text floor as the *only*
+   keyboard indicator. `:has(a:focus-visible)` scopes the accent ring to
+   keyboard focus alone (pointer clicks keep the quiet treatment), and where
+   `:has` is unsupported the rule drops out — the quiet edge remains, which is
+   today's behaviour, not a regression. */
+.card-route:has(a:focus-visible) {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 3px;
+}
+
 /* ── The route card, once the rim exists ──
    The two rules above are the pre-rim treatment and stay as the no-mask
    fallback: a cold `border-color` plus `--glow-signal-sm` was the only way to
@@ -1153,104 +1200,13 @@ section[id][data-rhythm="tight"] {
   }
 }
 
-/* ─── Hero signal dispersion ───────────────────────────────────────────────
-   The hero's click/tap response, driven by `sections/hero/signal-burst.tsx`.
-   Read that file for the timing and the element pool; this owns only how the
-   marks are drawn.
-
-   ── The rule that shapes all of it: it happens *in the grid* ──
-
-   The brief is "controlled signal dispersion inside a premium terminal grid",
-   and the difference between that and a click-sparkle is entirely that the
-   burst is constrained by geometry that already exists. So:
-
-     • the origin is snapped to the nearest 64px grid intersection, never to the
-       raw cursor position — the system responds *at a lattice point*
-     • every trace runs along a grid axis. No diagonals: a diagonal is not a
-       line the grid has, so it reads as something thrown over the top of the
-       page rather than as the page conducting
-     • the four traces have different lengths and durations, so the figure is a
-       dispersal and not a plus sign
-
-   ── Compositor-only, and why that is not optional here ──
-
-   Everything animated is `transform` and `opacity`. The obvious implementation
-   — animating a `mask-image` radius over a copy of the grid — repaints a
-   ~1200×750 layer every frame for the length of the effect, on the page's LCP
-   element, in response to a click. Six small absolutely-positioned elements
-   sliding on the compositor cost approximately nothing by comparison.
-
-   Nothing here lays out, and the whole layer is inside the panel's own
-   `overflow: hidden`, so the burst is bounded by the object it belongs to. */
-.hero-burst {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  /* Above the grid layers, below the panel's content — the traces light the
-     backplate, they never cross the headline or the CTA. */
-  z-index: 0;
-}
-
-/* A trace: one hairline segment, drawn pointing along +x with its tail at the
-   origin, then rotated into place by the component. `transform-origin: 0 0`
-   rather than `0 50%` so a horizontal trace occupies exactly the 1px row a grid
-   line occupies rather than straddling two at half intensity.
-
-   The head is brighter than the tail: a segment with a lit leading edge reads
-   as something travelling, where an evenly lit one reads as a line being
-   revealed. */
-.hero-burst__trace {
-  position: absolute;
-  top: 0;
-  left: 0;
-  height: 1px;
-  width: 76px;
-  transform-origin: 0 0;
-  opacity: 0;
-  background-image: linear-gradient(
-    to right,
-    rgba(124, 200, 255, 0) 0%,
-    rgba(124, 200, 255, 0.34) 58%,
-    rgba(184, 227, 255, 0.72) 100%
-  );
-  will-change: transform, opacity;
-}
-
-/* The origin. A white core in a cold halo — the same two-part construction as
-   every other lit point on the page, so a click produces a member of the
-   existing family rather than a new kind of mark. */
-.hero-burst__core {
-  position: absolute;
-  top: 0;
-  left: 0;
-  height: 6px;
-  width: 6px;
-  border-radius: var(--radius-full);
-  opacity: 0;
-  background-color: var(--color-text-primary);
-  box-shadow:
-    0 0 0 1px rgba(124, 200, 255, 0.34),
-    0 0 12px 1px rgba(124, 200, 255, 0.45);
-  will-change: transform, opacity;
-}
-
-/* The wavefront. One hairline ring, expanding once and gone in under a second.
-
-   Deliberately *not* `.status-dot-live`'s sonar ping, despite the shape: that
-   ring loops, and a looping ring on this page means "telemetry is arriving",
-   which is a claim. This one exists for exactly as long as the gesture that
-   caused it, and it is 20px across at rest. */
-.hero-burst__ring {
-  position: absolute;
-  top: 0;
-  left: 0;
-  height: 20px;
-  width: 20px;
-  border-radius: var(--radius-full);
-  border: 1px solid rgba(124, 200, 255, 0.4);
-  opacity: 0;
-  will-change: transform, opacity;
-}
+/* ─── Removed: hero signal dispersion ──────────────────────────────────────
+   The `.hero-burst` family (a four-trace click dispersal driven by
+   `sections/hero/signal-burst.tsx`) lived here. Owner direction: a press on
+   the hero grid must produce no visual reaction — no traces, no origin core,
+   no wavefront ring, on mouse and touch alike. The component and its styles
+   were removed together; the pointer-proximity grid light (`.signal-field__*`)
+   is the panel's only pointer response and is untouched. */
 
 /* ─── The band blend ───────────────────────────────────────────────────────
    The material change between the page's black base and one of its two paper
@@ -1584,7 +1540,11 @@ main > section:not(.section-paper):not(#hero):has(+ .band-blend) {
   --color-accent: #ffffff;
   --color-accent-hover: rgba(255, 255, 255, 0.88);
   --color-bg: #030303;
-  --shadow-cta-rest: 0 4px 20px rgba(255, 255, 255, 0.1);
+  /* Contact drop, not a white bloom — same reasoning as the base token in
+     tokens/color.css: a white 20px halo under a white pill on graphite was the
+     "dirty grey glow" under every tier CTA. On #131313 a dark drop still
+     reads, so rest keeps a little real elevation here. */
+  --shadow-cta-rest: 0 2px 8px -2px rgba(0, 0, 0, 0.6);
   --shadow-cta-hover: 0 8px 30px -6px rgba(255, 255, 255, 0.18);
 
   /* Resting: a soft dark drop, so the panel sits on the paper.
@@ -2006,52 +1966,53 @@ main > section:not(.section-paper):not(#hero):has(+ .band-blend) {
    two is almost entirely restraint in the outer radius: 9px of 0.3-alpha halo
    reads as a lit indicator; four times that reads as a torch pointed at the
    reader. */
-.signal-beacon {
-  /* Shelf and bloom. The ring layer this used to carry is now real geometry on
-     `.signal-lens::before`; see the note on `.status-dot-live` above. */
+/* The aura lives on a pseudo-element so the breathe can be compositor-only.
+   The first build animated the element's own `box-shadow` between two
+   two-layer stacks — a repaint per frame per beacon for the whole session,
+   which is exactly what the aperture's keyframe doctrine ("compositor-only")
+   forbids elsewhere on the page. The shadow is now painted once,静 static, on
+   `::after`, and the *pseudo's opacity* breathes: same calm swell, zero paint.
+   (`::before` is the lens rim; `::after` was free.) */
+.signal-beacon::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
   box-shadow:
     0 0 0 3px rgba(124, 200, 255, 0.045),
     0 0 9px 0 rgba(124, 200, 255, 0.3);
+  pointer-events: none;
 }
 
 /* On paper the halo has nothing to bloom into — a cold glow on #ebe8e0 reads as
    a print registration error, the same reason route cards drop their cold edge
    inside a band. `.section-paper .signal-lens` above already inverts the well and
    the rim; the aura simply goes. */
-.section-paper .signal-beacon {
-  box-shadow: none;
+.section-paper .signal-beacon::after {
+  display: none;
 }
 
 /* The breathe. Deliberately not the live dot's expanding ring: no travel, no
    second element, just the halo swelling and easing back over 3.6s. At that
    period it is never the thing you are looking at, which is the whole
-   specification — a calm pulse, no sharp flashes.
-
-   `opacity` and `box-shadow` only. Neither lays out, so this cannot move the
-   text baseline it sits on. */
+   specification — a calm pulse, no sharp flashes. */
 @keyframes qf-beacon-breathe {
   0%,
   100% {
-    opacity: 0.82;
-    box-shadow:
-      0 0 0 2px rgba(124, 200, 255, 0.025),
-      0 0 6px 0 rgba(124, 200, 255, 0.2);
+    opacity: 0.6;
   }
   50% {
     opacity: 1;
-    box-shadow:
-      0 0 0 4px rgba(124, 200, 255, 0.06),
-      0 0 11px 0 rgba(124, 200, 255, 0.36);
   }
 }
 
 /* Gated on `no-preference` rather than left to the global reduced-motion reset.
    That reset collapses duration to 0.01ms, which freezes an animation on its
    first keyframe — here the *dimmest* one — so a reduced-motion reader would
-   get a permanently faded dot rather than a steady lit one. Gating it here
+   get a permanently faded halo rather than a steady lit one. Gating it here
    means the base style is what shows, and the base style is the lit state. */
 @media (prefers-reduced-motion: no-preference) {
-  .signal-beacon {
+  .signal-beacon::after {
     animation: qf-beacon-breathe 3.6s var(--ease-out-quart) infinite;
   }
 }
@@ -2677,15 +2638,21 @@ main > section:not(.section-paper):not(#hero):has(+ .band-blend) {
   height: 2.5rem;
   border-radius: var(--radius-full);
   overflow: hidden;
-  /* The well: a dark navy sphere, darkest at the crown. This is what the flow
-     moves inside, and what makes the object read as spherical before any of the
-     light arrives. */
-  background: radial-gradient(circle at 50% 22%, #0c1526 0%, #060a13 62%, #03050a 100%);
+  /* The well: a deep *blue* sphere, not a grey one. The first build ran
+     #0c1526 → #03050a, which is blue in name only — composited under the crown
+     and the 3px blur it averaged out to a warm grey fog, and the owner read the
+     whole object as "мутный". The reference's body is unmistakably cobalt even
+     in its darkest quarter, so the well now keeps real saturation all the way
+     down (hue ~222° at every stop) and the flow layers supply luminance on top
+     of a coloured ground rather than fighting a black one. */
+  background: radial-gradient(circle at 50% 24%, #16305e 0%, #0a1734 52%, #050c1e 80%, #030713 100%);
   box-shadow:
     0 10px 28px -10px rgba(0, 0, 0, 0.95),
     0 0 20px -6px rgba(124, 200, 255, 0.22);
   pointer-events: none;
-  transition: box-shadow var(--duration-base) var(--ease-out-expo);
+  transition:
+    box-shadow var(--duration-base) var(--ease-out-expo),
+    transform var(--duration-base) var(--ease-out-expo);
 }
 
 @media (min-width: 768px) {
@@ -2710,32 +2677,61 @@ main > section:not(.section-paper):not(#hero):has(+ .band-blend) {
    version used 38%×26% blobs under a 5px blur on a 56px sphere — 9% of the
    diameter — and the result was a fogged marble with no discernible wave. 3px,
    and the ellipses flattened to roughly 3:1, is where the band re-appears. */
+/* ── Re-drawn against the reference, frame by frame ──
+
+   What t=6s of the video actually shows, and what the first build missed:
+
+     • the ribbon is *broad* — the lit band crosses nearly half the sphere's
+       diameter, where the old 19%-tall ellipses produced thin streaks that the
+       blur then dissolved into fog
+     • the ribbon's crest is bright to the point of white (#c9f2ff-class), and
+       the trough right beside it is a saturated mid-cyan — that adjacency is
+       the "liquid light" read
+     • directly *above* the bright band sits the deepest colour in the object
+       (the reference's violet crest, transposed here to deep cobalt per the
+       palette doctrine) — the dark shoulder is what gives the band a leading
+       edge, so the wave reads as a surface and not as a glow
+
+   Each layer is therefore a bright band *paired with* a deep cobalt shoulder
+   offset above it; the two travel together as the layer rotates, so the edge
+   between them survives every phase of the loop. Stops are tightened (62–68%
+   ends rather than 72–76%) and the blur is 2px: at 56px the wider geometry now
+   carries the softness, and 3px was a third of the old band's own height. */
 .assistant-orb__flow {
   position: absolute;
   inset: -55%;
   background:
-    radial-gradient(54% 19% at 37% 63%, rgba(154, 232, 255, 1) 0%, rgba(154, 232, 255, 0) 72%),
-    radial-gradient(42% 25% at 67% 39%, rgba(54, 129, 240, 0.92) 0%, rgba(54, 129, 240, 0) 74%);
-  filter: blur(3px);
+    radial-gradient(58% 27% at 37% 63%, rgba(201, 242, 255, 1) 0%, rgba(124, 208, 255, 0.72) 40%, rgba(124, 208, 255, 0) 68%),
+    radial-gradient(62% 30% at 60% 34%, rgba(34, 78, 213, 0.95) 0%, rgba(34, 78, 213, 0) 66%);
+  filter: blur(2px);
   pointer-events: none;
+  transition: opacity var(--duration-base) var(--ease-out-expo);
 }
 
 .assistant-orb__flow--b {
+  /* The secondary sliver is held two steps under the primary crest (0.78 vs
+     1.0) — at equal strength the two bands merged into one washed floor and
+     the lower hemisphere read as frost rather than as a second, deeper pass
+     of the same wave. */
   background:
-    radial-gradient(46% 17% at 63% 71%, rgba(216, 248, 255, 0.88) 0%, rgba(216, 248, 255, 0) 70%),
-    radial-gradient(35% 22% at 33% 31%, rgba(26, 70, 186, 0.9) 0%, rgba(26, 70, 186, 0) 76%);
+    radial-gradient(44% 16% at 62% 72%, rgba(196, 240, 255, 0.78) 0%, rgba(196, 240, 255, 0) 62%),
+    radial-gradient(42% 24% at 32% 32%, rgba(16, 47, 152, 0.9) 0%, rgba(16, 47, 152, 0) 70%);
   /* `screen` is what makes two overlapping fields read as one body of light
      rather than as two stacked blobs. */
   mix-blend-mode: screen;
 }
 
 @media (prefers-reduced-motion: no-preference) {
+  /* 18s / 29s — coprime, so the composition never visibly repeats. The primary
+     band was slowed to 24s in the first build and read as near-static next to
+     the reference's ~20s loop; 18s puts one full pass of the main wave inside
+     the 12–20s window the reference occupies, and B stays the slow undertow. */
   .assistant-orb__flow {
-    animation: qf-orb-flow 24s linear infinite;
+    animation: qf-orb-flow 18s linear infinite;
   }
 
   .assistant-orb__flow--b {
-    animation: qf-orb-flow 31s linear infinite reverse;
+    animation: qf-orb-flow 29s linear infinite reverse;
   }
 }
 
@@ -2782,12 +2778,15 @@ main > section:not(.section-paper):not(#hero):has(+ .band-blend) {
   border-radius: inherit;
   background:
     /* The crown. Anchored above the top edge so the darkening is strongest at the
-       top and gone by the middle. */
+       top and gone by the middle. Navy rather than the near-black of the first
+       build, and one step more transparent — a #020409 veil at 0.95 was flattening
+       the blue well underneath it into the grey the owner objected to. The crown's
+       job is to darken the top, not to desaturate it. */
     radial-gradient(
       132% 104% at 50% -16%,
-      rgba(2, 4, 9, 0.95) 0%,
-      rgba(2, 4, 9, 0.62) 34%,
-      rgba(2, 4, 9, 0.18) 54%,
+      rgba(3, 8, 22, 0.88) 0%,
+      rgba(3, 8, 22, 0.55) 34%,
+      rgba(3, 8, 22, 0.16) 54%,
       transparent 70%
     ),
     /* The limb. Without this the orb was a circle with a gradient in it — a flat
@@ -2799,25 +2798,52 @@ main > section:not(.section-paper):not(#hero):has(+ .band-blend) {
     radial-gradient(
       closest-side,
       transparent 56%,
-      rgba(2, 4, 9, 0.34) 82%,
-      rgba(2, 4, 9, 0.72) 100%
+      rgba(3, 8, 22, 0.34) 82%,
+      rgba(3, 8, 22, 0.72) 100%
     );
+  /* The rim, in the lens's language rather than in flat white: a plain
+     rgba(255,255,255,0.12) ring read as a grey pencil line around the glass.
+     The hairline is now pale blue-white — cold light on the edge, same family
+     as --lens-rim-hot — with the two lower speculars unchanged and a faint
+     cold wash along the top edge, which is where the reference's crown catches
+     its own rim light. */
   box-shadow:
-    inset 0 0 0 1px rgba(255, 255, 255, 0.12),
+    inset 0 0 0 1px rgba(196, 228, 255, 0.2),
     inset 0 -6px 10px -6px rgba(216, 248, 255, 1),
-    inset 4px -5px 13px -8px rgba(158, 220, 255, 0.85);
+    inset 4px -5px 13px -8px rgba(158, 220, 255, 0.85),
+    inset 0 8px 12px -10px rgba(124, 200, 255, 0.5);
   pointer-events: none;
+  transition: box-shadow var(--duration-base) var(--ease-out-expo);
 }
 
 /* ── Hover: the orb wakes ──
-   The halo widens by 8px and warms, and the sphere rises 2px. Nothing about the
-   flow changes speed: a decoration that accelerates under the pointer reads as a
-   loading state, and this button is not loading anything. */
+   Four small moves that all say "clearer", none that say "faster": the halo
+   widens by 8px and warms; the sphere grows 3% — inside the 2–4% band the
+   brief allows, and on the sphere rather than the button so the 44px target
+   never moves; the rim hairline strengthens; and the flow gains a step of
+   brightness via a cross-faded duplicate-free filter change. Nothing about the
+   flow changes *speed*: a decoration that accelerates under the pointer reads
+   as a loading state, and this button is not loading anything. */
 @media (hover: hover) and (pointer: fine) {
   .assistant-orb:hover .assistant-orb__sphere {
     box-shadow:
       0 14px 34px -10px rgba(0, 0, 0, 0.95),
       0 0 28px -6px rgba(124, 200, 255, 0.34);
+  }
+
+  .assistant-orb:hover .assistant-orb__glass {
+    box-shadow:
+      inset 0 0 0 1px rgba(214, 238, 255, 0.32),
+      inset 0 -6px 10px -6px rgba(216, 248, 255, 1),
+      inset 4px -5px 13px -8px rgba(158, 220, 255, 0.95),
+      inset 0 8px 12px -10px rgba(124, 200, 255, 0.6);
+  }
+
+  /* One re-rasterisation on enter and one on leave, of a 56px layer — not a
+     per-frame cost. `brightness`/`saturate` rather than opacity so the band
+     gets more luminous without the well behind it showing through. */
+  .assistant-orb:hover .assistant-orb__flow {
+    filter: blur(2px) brightness(1.12) saturate(1.06);
   }
 }
 
@@ -2826,15 +2852,21 @@ main > section:not(.section-paper):not(#hero):has(+ .band-blend) {
     .assistant-orb:hover {
       transform: translateY(-2px);
     }
+
+    .assistant-orb:hover .assistant-orb__sphere {
+      transform: scale(1.03);
+    }
   }
 }
 
 /* Pressed. `--duration-micro` and no curve worth naming — the whole value of an
    active state is that it lands in the same frame as the finger. It is on the
    button rather than the sphere so it applies on touch too, where there is no
-   hover for it to compose with. */
+   hover for it to compose with. 0.97 rather than the 0.94 it shipped with: the
+   brief's floor for the orb's press is explicit ("scale не меньше 0.97"), and
+   at 56px the 3% step still reads as tactile. */
 .assistant-orb:active {
-  transform: scale(0.94);
+  transform: scale(0.97);
   transition-duration: var(--duration-micro);
 }
 
@@ -2990,9 +3022,13 @@ main > section:not(.section-paper):not(#hero):has(+ .band-blend) {
    `.section-paper` keys its overrides off it. */
 .btn-liquid-glass {
   position: relative;
-  overflow: hidden;
   /* Scopes the rim's blending and stacking to the button, so a CTA renders
-     identically on the page, inside a card and on a paper band. */
+     identically on the page, inside a card and on a paper band.
+
+     No `overflow: hidden` any more: the light variant's travelling arc sits
+     *outside* the fill (see `.btn-lens-light::before`), and a clip here would
+     amputate it. Every inner layer rounds itself with `border-radius: inherit`
+     instead, so nothing needed the clip. */
   isolation: isolate;
 }
 
@@ -3019,11 +3055,17 @@ main > section:not(.section-paper):not(#hero):has(+ .band-blend) {
   content: "";
   position: absolute;
   inset: 0;
+  /* Rounds itself now that the button no longer clips — see .btn-liquid-glass. */
+  border-radius: inherit;
+  /* Through the tokens rather than as literals: the pair is declared in
+     tokens/color.css as the button's depth cue, and the shipped 0.14/0.12
+     values now live there — an implementation that disagrees with its own
+     token is a knob that silently does nothing. */
   background: linear-gradient(
     to bottom,
-    rgba(255, 255, 255, 0.14) 0%,
+    var(--btn-specular) 0%,
     rgba(255, 255, 255, 0) 45%,
-    rgba(0, 0, 0, 0.12) 100%
+    var(--btn-shade) 100%
   );
   pointer-events: none;
 }
@@ -3104,13 +3146,168 @@ main > section:not(.section-paper):not(#hero):has(+ .band-blend) {
   }
 }
 
+/* ── The light variant's travelling arc ──
+   `Button.mp4`'s signature on the one face that could not carry it inside:
+   a white fill has no room for an interior cold ring (grey line or nothing —
+   see `.btn-lens-dark`'s note), so the arc is drawn *outside* the fill, flush
+   against the edge, where the ground is #030303 and cold light registers. Same
+   masked-conic construction as the dark rim, on a box grown 2px in every
+   direction; the radius grows with it so the ring stays concentric.
+
+   The gradient is one narrow head with a short ice tail — the reference's
+   streak reads as a single specular travelling the perimeter, not as a ring
+   that is half lit. Violet→white→blue in the source; cold white → ice blue
+   here, per the palette doctrine.
+
+   Idle is dark: opacity 0, no animation — the reference's button at rest is
+   inert, and a row of CTAs each running its own perimeter light is the RGB
+   read the brief rules out. Hover starts the travel; keyboard focus lights the
+   arc without the travel (plus the page's standard outline, which remains the
+   accessible indicator). */
+@supports ((mask-composite: exclude) or (-webkit-mask-composite: xor)) {
+  .btn-lens-light::before {
+    content: "";
+    position: absolute;
+    /* One pixel of ground between the fill and the ring. Flush against the
+       white edge the arc's own white head vanished into the pill; the dark
+       seam is what lets a light read as *beside* the button, the same role
+       the reference's visible border plays under its streak. */
+    inset: -4px;
+    border-radius: calc(var(--radius-md) + 4px);
+    padding: 2px;
+    background: conic-gradient(
+      from var(--rim-sweep, -40deg),
+      rgba(255, 255, 255, 1) 0deg,
+      rgba(196, 232, 255, 0.72) 30deg,
+      rgba(124, 200, 255, 0.28) 72deg,
+      transparent 120deg,
+      transparent 316deg,
+      rgba(255, 255, 255, 0.46) 360deg
+    );
+    mask-image: linear-gradient(#000 0 0), linear-gradient(#000 0 0);
+    mask-clip: content-box, border-box;
+    mask-composite: exclude;
+    -webkit-mask-image: linear-gradient(#000 0 0), linear-gradient(#000 0 0);
+    -webkit-mask-clip: content-box, border-box;
+    -webkit-mask-composite: xor;
+    /* The bloom around the streak. `drop-shadow` follows the *masked* shape —
+       a box-shadow here would halo the rectangle, not the arc. Rasterised per
+       frame while the sweep runs, on one ~300×54 layer, on exactly one hovered
+       button; measured class of cost the dark rim already pays for its own
+       gradient interpolation. */
+    filter: drop-shadow(0 0 5px rgba(164, 220, 255, 0.7));
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity var(--motion-soft) var(--ease-out-expo);
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    .btn-lens-light:hover::before {
+      opacity: 1;
+    }
+  }
+
+  .btn-lens-light:focus-visible::before {
+    opacity: 1;
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    @media (hover: hover) and (pointer: fine) {
+      .btn-lens-light:hover::before {
+        animation: qf-rim-sweep var(--duration-rim-sweep) linear infinite;
+      }
+    }
+  }
+
+  /* Inside a paper band the default CTA inverts to a black pill on #ebe8e0,
+     and cold light on paper is the print-registration error the band already
+     bans for cards and lenses. Off — unless the button sits in a graphite
+     subtree, where the ground is #131313 again and the arc reads exactly as it
+     does on the page. */
+  .section-paper .btn-lens-light::before {
+    display: none;
+  }
+
+  .on-paper-graphite .btn-lens-light::before {
+    display: block;
+  }
+}
+
+/* ── The tier CTA — Button1.mp4, translated ──
+   The reference is a luminous glass slab: a saturated blue fill whose interior
+   light-mass slowly drifts, under a bloom the size of the button. Copied
+   literally that is both a forbidden cold fill and crypto-neon, so what is
+   kept is the *behaviour* — an interior light that moves, a lit edge, a halo —
+   and what changes is the budget: the face stays the system's white, the
+   moving mass is a pale ice sheen over it, the halo is a 1px cold hairline
+   plus a bloom that ends 14px out, at cyan alphas ≤ 0.28.
+
+   Hover-driven, like everything else on the page: three of these sit side by
+   side in the pricing row, and three idle-shimmering slabs would be a casino.
+   The sheen's origin is animated (registered <percentage>, compositor-cheap at
+   one 300×44 layer, and only ever one — a pointer hovers one button at a
+   time), so under the cursor the light-mass wanders the way the reference's
+   does. Reduced motion keeps the lit state and drops the wander. */
+@property --tier-x {
+  syntax: "<percentage>";
+  inherits: false;
+  initial-value: 24%;
+}
+
+.btn-tier:hover,
+.btn-tier:focus-visible {
+  background-image: radial-gradient(
+    150% 260% at var(--tier-x, 24%) 24%,
+    rgba(198, 233, 255, 0.75) 0%,
+    rgba(148, 214, 255, 0.28) 38%,
+    rgba(124, 200, 255, 0) 68%
+  );
+}
+
+/* The halo. Overrides the graphite band's white-bloom hover on this one
+   control: the tier CTA is the page's Button1 site, and its edge light is
+   cold by direction — a hairline and a tight shelf, not a wash. Dark drop
+   first, so the lift stays elevation rather than illumination. */
+.on-paper-graphite .btn-tier {
+  /* The hairline is a pale blue-white, which the rim doctrine allows above the
+     cyan ceiling (same clause as --lens-rim-hot); the bloom is saturated cyan
+     and sits at the 0.28 ceiling exactly, spent within 14px. */
+  --shadow-cta-hover:
+    0 8px 22px -8px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(186, 227, 255, 0.5),
+    0 0 14px -4px rgba(124, 200, 255, 0.28);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  @media (hover: hover) and (pointer: fine) {
+    .btn-tier:hover {
+      animation: qf-tier-drift 4.2s ease-in-out infinite;
+    }
+  }
+}
+
+/* Wanders right and settles back — the reference's mass drifts and returns
+   rather than orbiting, so `alternate` symmetry is correct here (unlike the
+   perimeter arc, where a reversing light reads as a slider). */
+@keyframes qf-tier-drift {
+  0%,
+  100% {
+    --tier-x: 24%;
+  }
+  50% {
+    --tier-x: 76%;
+  }
+}
+
 /* ── The press ──
    `ui/button.tsx` carries the scale; this is the light going out under the
    finger. A control that is being pushed *in* cannot also be glowing harder, and
    dropping the glow is what makes the press read as displacement rather than as
-   a size change. Both properties, so it works on the white variant (outer glow)
-   and the dark ones (rim) alike. */
-.btn-liquid-glass:active {
+   a size change.
+
+   Scoped to `.btn-lens-face`: the base class carries no shadow on `ghost` and
+   `link`, and re-asserting `--shadow-cta-rest` on a faceless text button
+   flashed a shadow under it at the exact moment it was pressed. */
+.btn-lens-face:active {
   box-shadow: var(--shadow-cta-rest);
 }
 

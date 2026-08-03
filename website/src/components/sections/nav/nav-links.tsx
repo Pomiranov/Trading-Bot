@@ -5,6 +5,8 @@ import { cn } from "@/lib/utils";
 
 interface NavLinksProps {
   links: readonly { key: string; href: string; label: string }[];
+  /** Localized landmark name — was a hardcoded English "Primary". */
+  label: string;
 }
 
 /**
@@ -34,12 +36,12 @@ interface NavLinksProps {
  * English fits; Russian is the primary language and does not. Below lg the
  * hamburger carries everything, which is what it is for.
  */
-export function NavLinks({ links }: NavLinksProps) {
+export function NavLinks({ links, label }: NavLinksProps) {
   const ids = links.map((l) => l.href.slice(1));
   const active = useActiveSection(ids);
 
   return (
-    <nav aria-label="Primary" className="hidden items-center gap-7 lg:flex">
+    <nav aria-label={label} className="hidden items-center gap-7 lg:flex">
       {links.map(({ key, href, label }) => {
         const isActive = active === href.slice(1);
         return (

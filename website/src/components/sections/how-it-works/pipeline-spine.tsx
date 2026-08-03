@@ -104,10 +104,14 @@ function StageCard({
         {stage.stepLabel}
       </MonoLabel>
 
-      {/* Plain first — this is what a beginner reads. */}
-      <p className="text-[length:var(--text-h2-sub)] leading-[var(--text-h2-sub--line-height)] font-medium tracking-[var(--text-h2-sub--letter-spacing)] text-[color:var(--color-text-primary)]">
+      {/* Plain first — this is what a beginner reads. An <h3> rather than a
+          <p>: this sentence is the stage's primary statement, and without it
+          the seven stages are invisible to heading navigation — a screen-reader
+          user jumping by heading would skip from the section's H2 straight past
+          the whole pipeline. Same classes, so the type role is unchanged. */}
+      <h3 className="text-[length:var(--text-h2-sub)] leading-[var(--text-h2-sub--line-height)] font-medium tracking-[var(--text-h2-sub--letter-spacing)] text-[color:var(--color-text-primary)]">
         {stage.plain}
-      </p>
+      </h3>
 
       {/* Technical second — this is what a trader or a partner checks. */}
       <div className="mt-auto flex flex-col gap-2 border-t border-[color:var(--color-border)] pt-4">

@@ -56,18 +56,28 @@ export async function TelegramSection({ locale }: { locale: string }) {
     <Section id="telegram" rhythm="tight" divider>
       <Reveal lift={false}>
         {/*
-          `card-premium--panel` drops this block to the quietest of the three rim
-          scales. Measured at 1440 it is 1204×439 — a 3286px perimeter, almost
-          exactly twice the next largest card on the page, where every other card
-          sits in a 1290–1822px band. At the ordinary card intensity a ring that
-          long reads as a lit sign rather than as a panel acknowledging the
-          pointer, and this block must not out-shout the hero. Its own signal card
-          inside keeps the card scale, so the pair still has a hierarchy.
+          `interactive={false}` + `panel-bloom` — the operator terminal's route,
+          for the same reason it exists there. Measured at 1440 this block is
+          1204×439, a 3286px perimeter, almost exactly twice the next largest
+          card on the page, where every other card sits in a 1290–1822px band.
+          Left on the card primitive it was the page's largest hoverable object
+          *and* the only panel-sized surface still taking `.card-premium`'s -6px
+          lift — an object this size sliding under the cursor reads as the page
+          wobbling, not as elevation, which is exactly why the terminal opts out.
+
+          `.panel-bloom` keeps everything the lift is not: border highlight,
+          background step and the rim, at the panel scale (`--rim-*-panel`) —
+          the quietest of the three, the same scale `card-premium--panel`
+          selected before. At the ordinary card intensity a ring that long reads
+          as a lit sign rather than as a panel acknowledging the pointer, and
+          this block must not out-shout the hero. Its own signal card inside
+          keeps the card scale, so the pair still has a hierarchy.
         */}
         <Surface
           variant="raised"
           padding="lg"
-          className="card-premium--panel grid items-center gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,0.85fr)] lg:gap-14"
+          interactive={false}
+          className="panel-bloom grid items-center gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,0.85fr)] lg:gap-14"
         >
           <div className="flex min-w-0 flex-col gap-4">
             <MonoLabel>{t("eyebrow")}</MonoLabel>

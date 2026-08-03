@@ -117,9 +117,14 @@ export function PricingCard({
           without an ask would be the odd one out — and the reason the prop used
           to be optional (a button on a tier that cannot be bought is the same
           false affordance as a fake price) no longer applies to any of them. */}
+      {/* `btn-tier` is the Button1.mp4 treatment — an interior ice sheen that
+          wanders under the pointer, and a cold hairline-plus-shelf halo in
+          place of the graphite band's white bloom. Pricing CTAs only: three of
+          them share a row, so the effect is hover-driven and one-at-a-time by
+          construction. See the block above `@property --tier-x` in globals.css. */}
       <ButtonLink
         href={cta.href}
-        className="w-full justify-center"
+        className="btn-tier w-full justify-center"
         analytics={{ target: "sandbox_access", location: "pricing_card" }}
       >
         {cta.label}

@@ -67,7 +67,7 @@ export async function SiteHeader({ locale }: { locale: string }) {
         </span>
       </a>
 
-      <NavLinks links={links} />
+      <NavLinks links={links} label={t("primaryNavLabel")} />
 
       <div className="flex items-center gap-3">
         {/*
@@ -78,13 +78,19 @@ export async function SiteHeader({ locale }: { locale: string }) {
           hairline was an artefact rather than a designed element. One link that
           switches to the other language is smaller, quieter, and says the same
           thing. `aria-label` carries the meaning, since a bare "EN" is not a
-          self-describing control.
+          self-describing control — and it states the *action* ("Switch
+          language: …"), not just the brand and a code.
+
+          Hit area follows the footer switch's pattern: `min-h-11 min-w-11`
+          puts the ~30×35 target on the 44px floor without enlarging the label,
+          `-mx-1.5` gives the width back so the row's spacing reads unchanged.
+          No `-my-*` needed — the pill is tall enough already.
         */}
         <Link
           href="/"
           locale={otherLocale.code}
-          aria-label={`${t("brand")} — ${otherLocale.label}`}
-          className="hidden rounded-[var(--radius-sm)] px-2 py-1.5 font-mono text-[length:var(--text-label)] tracking-[var(--text-label--letter-spacing)] text-[color:var(--color-text-tertiary)] uppercase no-underline transition-colors duration-[var(--duration-micro)] hover:text-[color:var(--color-text-primary)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--color-accent)] sm:block"
+          aria-label={t("localeSwitchAction")}
+          className="-mx-1.5 hidden min-h-11 min-w-11 items-center justify-center rounded-[var(--radius-sm)] px-2 font-mono text-[length:var(--text-label)] tracking-[var(--text-label--letter-spacing)] text-[color:var(--color-text-tertiary)] uppercase no-underline transition-colors duration-[var(--duration-micro)] hover:text-[color:var(--color-text-primary)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--color-accent)] sm:inline-flex"
         >
           {otherLocale.label}
         </Link>
@@ -101,9 +107,11 @@ export async function SiteHeader({ locale }: { locale: string }) {
 
         <MobileNav
           links={links}
+          navLabel={t("mobileNavLabel")}
           ctaLabel={t("ctaShort")}
           localeSwitchLabel={otherLocale.label}
-          localeSwitchHref={`/${otherLocale.code}`}
+          localeSwitchLocale={otherLocale.code}
+          localeSwitchAriaLabel={t("localeSwitchAction")}
           openLabel={t("menuOpen")}
           closeLabel={t("menuClose")}
         />

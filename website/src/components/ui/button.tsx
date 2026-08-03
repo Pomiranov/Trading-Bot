@@ -36,10 +36,12 @@ const buttonVariants = cva(
         // already at the ceiling, so `brightness(1.08)` was a no-op.
         //
         // No `.btn-lens-dark`: a cold ring inside a white fill is either a grey
-        // line or nothing. Its rim arrives from outside the fill instead, via
-        // `--shadow-cta-hover` — see the note on that token in tokens/color.css.
+        // line or nothing. `.btn-lens-light` draws the reference's travelling
+        // arc *outside* the fill instead — a masked ring flush against the white
+        // edge, where the ground is black and cold light can register. See the
+        // block above `.btn-lens-light::before` in globals.css.
         default: [
-          "btn-lens-face",
+          "btn-lens-face btn-lens-light",
           "bg-[color:var(--color-accent)]",
           "text-[color:var(--color-bg)] font-semibold",
           "hover:bg-[color:var(--color-accent-hover)] motion-safe:hover:-translate-y-px",

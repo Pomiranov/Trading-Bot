@@ -5,7 +5,6 @@ import { SignalField } from "@/components/ui/signal-field";
 import { SignalDot } from "@/components/ui/signal-dot";
 import { QAperture } from "./q-aperture";
 import { PointerTilt } from "./pointer-tilt";
-import { HeroSignalBurst } from "./signal-burst";
 
 /**
  * The argument in one screen, inside a contained dark panel.
@@ -57,11 +56,12 @@ import { HeroSignalBurst } from "./signal-burst";
  *
  * ── LCP ──
  *
- * `qf-hero-enter` is transform-only and must stay that way. An entrance that
- * starts at `opacity: 0` with fill-mode `both` disqualifies its whole subtree
- * as an LCP candidate for the duration of the delay, which previously cost the
- * hero ~150ms for no visual gain. The <h1> is the LCP element and no ancestor
- * of it may start transparent.
+ * The hero has no entrance animation (the old `qf-hero-enter` keyframe was
+ * removed with its last consumer). If one ever returns it must be
+ * transform-only: an entrance that starts at `opacity: 0` with fill-mode
+ * `both` disqualifies its whole subtree as an LCP candidate for the duration
+ * of the delay, which previously cost the hero ~150ms for no visual gain. The
+ * <h1> is the LCP element and no ancestor of it may start transparent.
  */
 export async function HeroSection({ locale }: { locale: string }) {
   const t = await getTranslations({ locale, namespace: "hero" });
@@ -92,18 +92,14 @@ export async function HeroSection({ locale }: { locale: string }) {
               ui/grid-backplate.tsx. */}
           <GridBackplate signal mask="panel" />
 
-          {/* ── The panel answers a click ──
+          {/* ── Removed: the click-impulse burst ──
 
-              A short dispersal of signal along the grid, from the intersection
-              nearest wherever the panel was pressed. Immediately after
-              `GridBackplate` and before the content, so it lights the backplate
-              and is painted under the headline, the subline and the CTA — which
-              sit in the `relative` grid below and therefore above it.
-
-              It contributes one empty <div> to the server-rendered hero and
-              builds its six-element pool on mount; there is no path in it that
-              appends anything per click. See sections/hero/signal-burst.tsx. */}
-          <HeroSignalBurst />
+              The panel used to answer a pointerdown with a four-trace dispersal
+              along the grid (`HeroSignalBurst`). Owner direction: a click on
+              the hero must produce no decorative reaction at all — no traces,
+              no ring, no core. The quiet pointer-proximity light that
+              `SignalField` drives is the panel's entire response to the
+              pointer, and it is unchanged. */}
 
           {/*
             ── Removed: the panel's own white pool ──

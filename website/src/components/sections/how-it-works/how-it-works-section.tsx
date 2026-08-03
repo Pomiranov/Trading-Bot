@@ -3,6 +3,7 @@ import { contentSource } from "@/content-layer/source";
 import { Section } from "@/components/ui/section";
 import { SectionHeader } from "@/components/ui/section-header";
 import { MonoLabel } from "@/components/ui/mono-label";
+import { OffscreenPause } from "@/components/motion/offscreen-pause";
 import { PipelineSpine } from "./pipeline-spine";
 
 /**
@@ -62,7 +63,15 @@ export async function HowItWorksSection({ locale }: { locale: string }) {
         [beliefGate.id]: (
           <div className="flex flex-col gap-3 border-t border-[color:var(--color-border)] pt-4">
             <MonoLabel as="span">{t("constantsHeading")}</MonoLabel>
-            <dl className="grid grid-cols-3 gap-3">
+            {/*
+              Single column at base, three from 420px. At ≤375px the card
+              beside the rail leaves this <dl> ~280px, so three columns are
+              ~60px each — narrower than the RU mono uppercase labels, which
+              overflowed. `min-[420px]` rather than `sm` (640px) because the
+              three-up fits comfortably from ~420px and stacking any wider
+              than necessary would change layouts that were never broken.
+            */}
+            <dl className="grid grid-cols-1 gap-3 min-[420px]:grid-cols-3">
               {bounds.map((b) => (
                 <div key={b.label} className="flex min-w-0 flex-col gap-1">
                   <dt className="sr-only">{b.label}</dt>
@@ -71,13 +80,15 @@ export async function HowItWorksSection({ locale }: { locale: string }) {
                   </dd>
                   {/* aria-hidden: the <dt> above already carries this text for
                       assistive tech, and repeating it would read the label
-                      twice per figure. */}
-                  <p
+                      twice per figure. A <dd> rather than a <p> because a div
+                      grouping inside a <dl> may only contain dt/dd — a <p>
+                      here is invalid HTML. */}
+                  <dd
                     aria-hidden="true"
                     className="font-mono text-[length:var(--text-label)] leading-[1.3] tracking-[var(--text-label--letter-spacing)] text-[color:var(--color-text-quaternary)] uppercase"
                   >
                     {b.label}
-                  </p>
+                  </dd>
                 </div>
               ))}
             </dl>
@@ -119,6 +130,15 @@ export async function HowItWorksSection({ locale }: { locale: string }) {
       container that has one child. Do not put the flex/gap back.
     */
     <Section id="how-it-works" rhythm="major" divider>
+      {/*
+        Parks the seven pipeline nodes' 24s conic rim sweeps while the section
+        is scrolled away — the same `data-qf-offscreen` mechanism the hero's
+        aperture uses, extracted into a droppable child because this section
+        has no client shell of its own. A registered-custom-property animation
+        repaints its gradient on the main thread every frame, so seven of them
+        behind a distant viewport were the page's largest idle cost.
+      */}
+      <OffscreenPause />
       {/*
         Heading only — no lead, no note.
 

@@ -77,10 +77,16 @@ export async function Footer({ locale }: { locale: string }) {
   const buildTime = process.env.NEXT_PUBLIC_BUILD_TIME;
   // Only a real SHA is provenance. "dev" is the absence of one.
   const showBuild = Boolean(sha) && sha !== "dev";
+  // Pinned to UTC, and labelled as such below. Formatted server-side at build,
+  // this used to render in whatever timezone the build machine happened to run
+  // in, with no indicator — as provenance that is ambiguous, and it silently
+  // shifts between build environments.
   const deployDate = buildTime
-    ? new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short" }).format(
-        new Date(buildTime),
-      )
+    ? `${new Intl.DateTimeFormat(locale, {
+        dateStyle: "medium",
+        timeStyle: "short",
+        timeZone: "UTC",
+      }).format(new Date(buildTime))} UTC`
     : null;
 
   return (

@@ -49,9 +49,14 @@ export async function SafetySection({ locale }: { locale: string }) {
     <Section id="safety" rhythm="default" divider>
       <SectionHeader id="safety" eyebrow={t("eyebrow")} heading={t("heading")} lead={t("lead")} />
 
-      {/* ── Guarantees ── */}
+      {/* ── Guarantees ──
+          The two group labels are <h3>s (and the card titles <h4>s under them):
+          the guarantees/limits split *is* this section's argument, and as plain
+          <p>s it had no structure in the accessibility tree — a screen-reader
+          user could not tell where the reassurances end and the caveats begin.
+          MonoLabel's `as` keeps the visual treatment identical. */}
       <div className="mt-[var(--space-header-to-body)] flex flex-col gap-5">
-        <MonoLabel>{t("guaranteesHeading")}</MonoLabel>
+        <MonoLabel as="h3">{t("guaranteesHeading")}</MonoLabel>
         {/*
           Two columns at every width from `sm`, not four at `lg`.
 
@@ -76,9 +81,10 @@ export async function SafetySection({ locale }: { locale: string }) {
             <li key={item} className="flex">
               <Reveal index={i} className="flex w-full">
                 <Surface padding="md" className="flex w-full flex-col gap-3">
-                  <h3 className="text-[length:var(--text-h3)] leading-[var(--text-h3--line-height)] font-medium tracking-[var(--text-h3--letter-spacing)] text-[color:var(--color-text-primary)]">
+                  {/* <h4>, one level under the group's <h3> label above. */}
+                  <h4 className="text-[length:var(--text-h3)] leading-[var(--text-h3--line-height)] font-medium tracking-[var(--text-h3--letter-spacing)] text-[color:var(--color-text-primary)]">
                     {t(`${item}Title`)}
-                  </h3>
+                  </h4>
                   <p className="text-[length:var(--text-body)] leading-[var(--text-body--line-height)] text-[color:var(--color-text-secondary)]">
                     {t(`${item}Body`)}
                   </p>
@@ -93,7 +99,7 @@ export async function SafetySection({ locale }: { locale: string }) {
           Two cards spanning the width the four above occupy, raised, with more
           padding and a left rule. Heavier than the guarantees, on purpose. */}
       <div className="mt-[var(--space-block)] flex flex-col gap-5">
-        <MonoLabel>{t("limitsHeading")}</MonoLabel>
+        <MonoLabel as="h3">{t("limitsHeading")}</MonoLabel>
         <ul className="grid gap-[var(--space-card-gap)] md:grid-cols-2">
           {LIMITS.map((item, i) => (
             <li key={item} className="flex">
@@ -101,11 +107,24 @@ export async function SafetySection({ locale }: { locale: string }) {
                 <Surface
                   variant="raised"
                   padding="lg"
-                  className="flex w-full flex-col gap-3 border-l-2 border-l-[color:var(--color-text-secondary)]"
+                  className="flex w-full flex-col gap-3 border-l-2"
+                  /*
+                    The left rule's colour lives in an inline style, not a
+                    `border-l-[color:…]` utility, because the unlayered
+                    `.card-premium:hover { border-color: … }` in globals.css
+                    beats any layered utility — measured on hover the 2px rule
+                    silently went highlight-white with the other three edges.
+                    An inline longhand wins over a stylesheet shorthand at the
+                    cascade level, so the emphasis edge now survives hover and
+                    focus. The 2px width stays a utility; only the colour needs
+                    the escalation.
+                  */
+                  style={{ borderLeftColor: "var(--color-text-secondary)" }}
                 >
-                  <h3 className="text-[length:var(--text-h3)] leading-[var(--text-h3--line-height)] font-medium tracking-[var(--text-h3--letter-spacing)] text-[color:var(--color-text-primary)]">
+                  {/* <h4>, one level under the group's <h3> label above. */}
+                  <h4 className="text-[length:var(--text-h3)] leading-[var(--text-h3--line-height)] font-medium tracking-[var(--text-h3--letter-spacing)] text-[color:var(--color-text-primary)]">
                     {t(`${item}Title`)}
-                  </h3>
+                  </h4>
                   <p className="text-[length:var(--text-body)] leading-[var(--text-body--line-height)] text-[color:var(--color-text-primary)]">
                     {t(`${item}Body`)}
                   </p>

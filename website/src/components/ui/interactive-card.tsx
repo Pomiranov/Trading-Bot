@@ -34,11 +34,17 @@ interface InteractiveCardProps {
  * padding box. Consequences, all of them deliberate:
  *
  *   - one tab stop per card, not one per interactive-looking element
- *   - the focus ring lands on the *card*, because `.card-premium` already
- *     highlights on `:focus-within`
- *   - nested body text stays selectable, which wrapping the whole card in an
- *     `<a>` would destroy — and which also makes a stray `<h3>` inside an
- *     anchor invalid where the body contains block content
+ *   - the focus ring lands on the *card*: `.card-premium` highlights on
+ *     `:focus-within`, and `.card-route:has(a:focus-visible)` adds a real
+ *     accent ring for keyboard focus (see globals.css) — the anchor itself
+ *     stays `outline-none` so there are never two rings
+ *   - body text is *not* selectable — the `::after` overlay captures the
+ *     pointer across the whole surface, which is the price of the whole-card
+ *     target. Stated plainly because an earlier version of this comment
+ *     claimed otherwise: selection would require raising the text above the
+ *     overlay, which would carve dead zones out of the click target
+ *   - the markup stays valid: block content never sits inside the `<a>`, which
+ *     wrapping the whole card in an anchor would force
  *   - `cursor: pointer` covers the whole surface via `.card-route`
  *
  * The alternative — an absolutely positioned transparent `<a>` layered over the
@@ -93,7 +99,7 @@ export function InteractiveCard({
       <a
         href={href}
         onClick={analytics ? () => track({ name: "cta_clicked", props: analytics }) : undefined}
-        className="mt-auto inline-flex items-center gap-2 font-mono text-[length:var(--text-caption)] tracking-[0.08em] text-[color:var(--color-text-secondary)] uppercase no-underline transition-colors duration-[var(--duration-micro)] outline-none after:absolute after:inset-0 after:content-[''] group-hover/route:text-[color:var(--color-text-primary)] group-focus-within/route:text-[color:var(--color-text-primary)]"
+        className="mt-auto inline-flex items-center gap-2 font-mono text-[length:var(--text-caption)] tracking-[0.1em] text-[color:var(--color-text-secondary)] uppercase no-underline transition-colors duration-[var(--duration-micro)] outline-none after:absolute after:inset-0 after:content-[''] group-hover/route:text-[color:var(--color-text-primary)] group-focus-within/route:text-[color:var(--color-text-primary)]"
       >
         {label}
         <span

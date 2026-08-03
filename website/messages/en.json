@@ -16,6 +16,9 @@
     "ctaShort": "Sandbox access",
     "menuOpen": "Open menu",
     "menuClose": "Close menu",
+    "primaryNavLabel": "Primary",
+    "mobileNavLabel": "Navigation",
+    "localeSwitchAction": "Switch language: Русский",
     "foundation": "Foundation"
   },
   "common": {
@@ -169,7 +172,6 @@
     "cardStrategy": "Strategy",
     "cardExecute": "Execute in sandbox",
     "cardDismiss": "Skip",
-    "cardNote": "Example card. The execute button runs in the sandbox; going live is a separate, manual step.",
     "cardAccepted": "Order sent to the sandbox",
     "cardAcceptedDetail": "Demo mode: nothing reached a broker and no position was opened.",
     "cardSkipped": "Signal skipped",

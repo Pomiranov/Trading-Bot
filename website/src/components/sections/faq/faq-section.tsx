@@ -113,8 +113,11 @@ export async function FaqSection({ locale }: { locale: string }) {
                   Stacked with `grid` + `[grid-area:1/1]`: both children occupy
                   the same cell, so the box is exactly one glyph tall in both
                   states and the row cannot reflow when a question is opened. The
-                  transition is `opacity` + `transform` only, both compositor
-                  properties.
+                  transition lists `opacity`, `rotate` and `scale` — Tailwind v4's
+                  rotate/scale utilities set the *native* CSS rotate and scale
+                  properties, not `transform`, so naming `transform` here left
+                  the morph snapping between states while only the fade animated.
+                  All three are compositor properties.
 
                   The open state is not carried by colour: the shape itself
                   changes, and <details> exposes `open` to assistive tech
@@ -128,7 +131,7 @@ export async function FaqSection({ locale }: { locale: string }) {
                 >
                   <svg
                     viewBox="0 0 16 16"
-                    className="size-4 [grid-area:1/1] text-[color:var(--color-text-tertiary)] transition-[opacity,transform] duration-[var(--duration-base)] ease-[var(--ease-out-expo)] group-open:scale-75 group-open:rotate-180 group-open:opacity-0"
+                    className="size-4 [grid-area:1/1] text-[color:var(--color-text-tertiary)] transition-[opacity,rotate,scale] duration-[var(--duration-base)] ease-[var(--ease-out-expo)] group-open:scale-75 group-open:rotate-180 group-open:opacity-0"
                   >
                     <path
                       d="M3 6 L8 11 L13 6"
@@ -142,7 +145,7 @@ export async function FaqSection({ locale }: { locale: string }) {
 
                   <svg
                     viewBox="0 0 16 16"
-                    className="faq-marker-open size-4 scale-50 rotate-45 opacity-0 [grid-area:1/1] transition-[opacity,transform] duration-[var(--duration-base)] ease-[var(--ease-out-expo)] group-open:scale-100 group-open:rotate-0 group-open:opacity-100"
+                    className="faq-marker-open size-4 scale-50 rotate-45 opacity-0 [grid-area:1/1] transition-[opacity,rotate,scale] duration-[var(--duration-base)] ease-[var(--ease-out-expo)] group-open:scale-100 group-open:rotate-0 group-open:opacity-100"
                   >
                     <path
                       d="M8 2.5 L13.5 8 L8 13.5 L2.5 8 Z"

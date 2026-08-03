@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { motion, useReducedMotion } from "motion/react";
 import { useTranslations } from "next-intl";
 import { Surface } from "@/components/ui/surface";
@@ -45,7 +45,10 @@ export function SignalCard() {
   const [state, setState] = useState<CardState>("idle");
   const reduce = useReducedMotion();
 
-  const filled = Math.round(EXAMPLE.confidence * BARS);
+  // `floor`, not `round`: rounding paints an 8th bar for a 0.75, so the gauge
+  // would read 0.80 beside the printed 0.75. Truncating can only understate,
+  // and a confidence gauge must never overstate the number sitting next to it.
+  const filled = Math.floor(EXAMPLE.confidence * BARS);
 
   const resolved =
     state === "accepted"
@@ -54,9 +57,39 @@ export function SignalCard() {
         ? { label: t("cardSkipped"), detail: t("cardSkippedDetail"), tone: "muted" as const }
         : null;
 
+  /*
+    Focus hand-off between the two footer states.
+
+    Pressing Execute/Skip unmounts the very button the visitor's focus is on,
+    and Reset does the same in the other direction — focus fell to <body>, so
+    the next Tab restarted from the top of the document. A ref + effect rather
+    than `.focus()` inside the click handler, because the counterpart control
+    does not exist until after the state change commits.
+
+    `prevState` guards the initial mount: the effect must distinguish "the
+    state just changed" from "the card just rendered", or it would yank focus
+    to the Execute button (and scroll the page to it) on load.
+  */
+  const executeRef = useRef<HTMLButtonElement>(null);
+  const resetRef = useRef<HTMLButtonElement>(null);
+  const prevState = useRef<CardState>(state);
+
+  useEffect(() => {
+    if (prevState.current === state) return;
+    prevState.current = state;
+    if (state === "idle") {
+      executeRef.current?.focus();
+    } else {
+      resetRef.current?.focus();
+    }
+  }, [state]);
+
   return (
     <div className="flex flex-col gap-4">
-      <Surface variant="raised" className="flex flex-col gap-5 p-6">
+      {/* `padding="sm"`, not a hand-rolled `p-6` — the primitive's census note
+          exists precisely because every card picking its own padding is drift.
+          `sm` (p-5) is the nearest step for a compact nested card. */}
+      <Surface variant="raised" padding="sm" className="flex flex-col gap-5">
         <MonoLabel>{t("cardTitle")}</MonoLabel>
 
         <p className="font-mono text-[length:var(--text-h3)] font-medium text-[color:var(--color-text-primary)]">
@@ -147,7 +180,38 @@ export function SignalCard() {
           </div>
         </dl>
 
-        <div className="flex flex-col gap-3 border-t border-[color:var(--color-border)] pt-4">
+        {/*
+          ── The footer's height is reserved, so the demo cannot reflow the page ──
+
+          The idle→resolved swap trades two buttons for a chip, a caption and a
+          reset control — the taller block at every width — so each press used
+          to change the card's height and shove the whole Telegram panel around
+          mid-interaction, under the visitor's own pointer.
+
+          The `min-h` ladder is the resolved state's measured footer height
+          (RU, the longer locale; EN is lower everywhere), rounded up, at each
+          width where a line-wrap changes it: 204px at 320, 186px from 360,
+          149px from 480. From `sm` the idle buttons share one row and the
+          resolved copy fits one line each (129px) — except under `lg`'s
+          two-column grid, which narrows the card again (149px) until the
+          detail line unwraps around 1440 (129px). `min-h`, never a fixed
+          height, so a longer translation degrades to growth, not clipping.
+        */}
+        <div className="flex min-h-[204px] flex-col gap-3 border-t border-[color:var(--color-border)] pt-4 min-[360px]:min-h-[186px] min-[480px]:min-h-[149px] sm:min-h-[129px] lg:min-h-[149px] min-[1440px]:min-h-[129px]">
+          {/* The live region is mounted with the card, not with the outcome.
+              A `role="status"` element only announces *mutations inside a
+              region the accessibility tree already knows about* — the previous
+              version mounted region and content together, in one insertion,
+              which real screen readers skip more often than not (WCAG 4.1.3).
+              So an sr-only region sits here from first render and only its
+              text swaps; it is `sr-only`, and therefore out of flow, so it can
+              neither take the parent's gap nor move anything. The visible chip
+              below repeats the same words and animates freely, because it is
+              no longer the live element. */}
+          <div role="status" aria-live="polite" className="sr-only">
+            {resolved ? `${resolved.label}. ${resolved.detail}` : null}
+          </div>
+
           {resolved ? (
             <motion.div
               // Same rule as elsewhere: never branch `initial` on the
@@ -158,9 +222,7 @@ export function SignalCard() {
               transition={reduce ? { duration: 0 } : { duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
               className="flex flex-col gap-3"
             >
-              {/* aria-live so a screen reader hears the outcome of the press
-                  without the focus having to move anywhere. */}
-              <div role="status" aria-live="polite" className="flex flex-col gap-2">
+              <div className="flex flex-col gap-2">
                 <StatusChip tone={resolved.tone} label={resolved.label} />
                 <p className="text-[length:var(--text-caption)] leading-[var(--text-caption--line-height)] text-[color:var(--color-text-quaternary)]">
                   {resolved.detail}
@@ -171,6 +233,7 @@ export function SignalCard() {
                   at `size="sm"`'s own h-9 this sat at 36px, and it was the last
                   control on the page under the 44px touch floor. */}
               <Button
+                ref={resetRef}
                 variant="ghost"
                 size="sm"
                 className="min-h-11 self-start"
@@ -205,6 +268,7 @@ export function SignalCard() {
                 reason `h-auto` is here.
               */}
               <Button
+                ref={executeRef}
                 className="h-auto min-h-11 w-full py-2 whitespace-normal sm:w-auto sm:flex-1"
                 size="sm"
                 onClick={() => setState("accepted")}

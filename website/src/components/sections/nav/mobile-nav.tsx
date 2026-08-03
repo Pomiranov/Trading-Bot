@@ -4,6 +4,8 @@ import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence, useReducedMotion } from "motion/react";
 import { getLenis } from "@/components/motion/scroll-driver";
 import { buttonVariants } from "@/components/ui/button";
+import { Link } from "@/lib/i18n/navigation";
+import type { Locale } from "@/lib/i18n/routing";
 import { track } from "@/lib/analytics/events";
 import { cn } from "@/lib/utils";
 
@@ -15,16 +17,20 @@ interface NavLink {
 
 export function MobileNav({
   links,
+  navLabel,
   ctaLabel,
   localeSwitchLabel,
-  localeSwitchHref,
+  localeSwitchLocale,
+  localeSwitchAriaLabel,
   openLabel,
   closeLabel,
 }: {
   links: NavLink[];
+  navLabel: string;
   ctaLabel: string;
   localeSwitchLabel: string;
-  localeSwitchHref: string;
+  localeSwitchLocale: Locale;
+  localeSwitchAriaLabel: string;
   openLabel: string;
   closeLabel: string;
 }) {
@@ -93,6 +99,17 @@ export function MobileNav({
       }
     }
 
+    /**
+     * Crossing `lg` while open hides the panel and toggle (`lg:hidden`) but
+     * not this effect: the scrim stayed over the page and scroll stayed
+     * locked, with nothing visible left to dismiss either. Close for real
+     * when the layout switches to the desktop nav.
+     */
+    const desktop = window.matchMedia("(min-width: 1024px)");
+    function onDesktopChange(event: MediaQueryListEvent) {
+      if (event.matches) close();
+    }
+
     const lenis = getLenis();
     const root = document.documentElement;
     const previousOverflow = root.style.overflow;
@@ -100,8 +117,10 @@ export function MobileNav({
     lenis?.stop();
     root.style.overflow = "hidden";
     window.addEventListener("keydown", onKeyDown);
+    desktop.addEventListener("change", onDesktopChange);
 
     return () => {
+      desktop.removeEventListener("change", onDesktopChange);
       window.removeEventListener("keydown", onKeyDown);
       root.style.overflow = previousOverflow;
       lenis?.start();
@@ -116,6 +135,7 @@ export function MobileNav({
         type="button"
         onClick={() => (open ? close() : setOpen(true))}
         aria-expanded={open}
+        aria-controls="mobile-nav-panel"
         aria-label={open ? closeLabel : openLabel}
         className="relative flex size-11 flex-col items-center justify-center gap-[5.5px] rounded-[var(--radius-md)] border transition-colors duration-[var(--duration-base)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--color-accent)] lg:hidden"
         style={{
@@ -159,7 +179,7 @@ export function MobileNav({
             */}
             <motion.div
               key="backdrop"
-              className="fixed inset-0"
+              className="fixed inset-0 lg:hidden"
               style={{
                 zIndex: "calc(var(--z-nav) - 2)",
                 background: "var(--color-scrim)",
@@ -178,8 +198,27 @@ export function MobileNav({
             {/* Dropdown panel */}
             <motion.nav
               key="panel"
-              aria-label="Navigation"
-              className="fixed left-4 right-4 top-[var(--nav-panel-top)] lg:hidden overflow-hidden rounded-[var(--radius-xl)]"
+              id="mobile-nav-panel"
+              aria-label={navLabel}
+              /**
+               * This stays a disclosure, not a `role=dialog`, so there is no
+               * focus trap — instead, when Tab carries focus out of the panel
+               * into the scrimmed page, close it. The toggle is exempt so
+               * Shift+Tab back to it does not slam the panel shut, and a null
+               * `relatedTarget` (window blur, tap on non-focusable content) is
+               * ignored — the scrim's own click handler covers that case.
+               */
+              onBlur={(event) => {
+                const next = event.relatedTarget as Node | null;
+                if (
+                  next &&
+                  !event.currentTarget.contains(next) &&
+                  !toggleRef.current?.contains(next)
+                ) {
+                  close();
+                }
+              }}
+              className="fixed left-4 right-4 top-[var(--nav-panel-top)] lg:hidden overflow-x-hidden overflow-y-auto rounded-[var(--radius-xl)]"
               style={{
                 zIndex: "calc(var(--z-nav) - 1)",
                 background: "var(--color-glass-surface-strong)",
@@ -187,6 +226,14 @@ export function MobileNav({
                 WebkitBackdropFilter: "blur(32px)",
                 border: "1px solid var(--color-glass-border)",
                 boxShadow: "var(--shadow-nav-panel)",
+                /**
+                 * Document scroll is locked while open, so anything past the
+                 * viewport edge is unreachable — on a landscape phone (667×375)
+                 * that was the whole bottom row. Cap the panel to the space
+                 * below its top offset and let it scroll internally instead
+                 * (`overflow-y-auto` above, was `overflow-hidden`).
+                 */
+                maxHeight: "calc(100dvh - var(--nav-panel-top) - 16px)",
               }}
               initial={reduce ? false : { opacity: 0, y: -8, scale: 0.97 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -225,13 +272,24 @@ export function MobileNav({
 
               {/* Bottom row: locale switch + CTA */}
               <div className="flex items-center justify-between gap-3 p-3">
-                <a
-                  href={localeSwitchHref}
+                {/*
+                  next-intl's `Link` with `locale=`, matching the header and
+                  footer switches — the bare `<a href="/{code}">` it replaces
+                  forced a full document reload on the one surface where every
+                  other locale switch navigated client-side. `aria-label`
+                  states the action; a bare "EN" chip does not.
+                  `min-h-11` + `inline-flex items-center`: at `py-2.5` this
+                  measured ~36px, under the 44px touch floor.
+                */}
+                <Link
+                  href="/"
+                  locale={localeSwitchLocale}
                   onClick={close}
-                  className="rounded-[var(--radius-md)] border border-[color:var(--color-border-strong)] px-3 py-2.5 font-mono text-[length:var(--text-label)] tracking-[var(--text-label--letter-spacing)] text-[color:var(--color-text-secondary)] uppercase no-underline transition-colors duration-[var(--duration-micro)] hover:text-[color:var(--color-text-primary)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--color-accent)]"
+                  aria-label={localeSwitchAriaLabel}
+                  className="inline-flex min-h-11 items-center rounded-[var(--radius-md)] border border-[color:var(--color-border-strong)] px-3 py-2.5 font-mono text-[length:var(--text-label)] tracking-[var(--text-label--letter-spacing)] text-[color:var(--color-text-secondary)] uppercase no-underline transition-colors duration-[var(--duration-micro)] hover:text-[color:var(--color-text-primary)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--color-accent)]"
                 >
                   {localeSwitchLabel}
-                </a>
+                </Link>
                 {/*
                   ── Was the last hand-rolled button on the page ──
 

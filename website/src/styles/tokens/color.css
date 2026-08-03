@@ -115,7 +115,14 @@
      hairline now carries the definition, so the white layer no longer has to
      strain for it. Rest keeps no cold at all — a control that is glowing before
      it is touched has nothing left to say when it is. */
-  --shadow-cta-rest: 0 4px 20px rgba(255, 255, 255, 0.1);
+  /* ── Rest is a contact shadow, not a glow ──
+     The old value — `0 4px 20px rgba(255,255,255,0.1)` — was a white bloom
+     under the resting pill, and over #030303 a white bloom has no hue and no
+     edge: it rendered as the grey rectangular smudge the owner singled out
+     ("тяжёлый серый glow снизу"). The reference's button carries nothing at
+     rest; all of its light is in the border on hover. A resting CTA now sits
+     on a plain contact drop, and every photon it emits is earned by a pointer. */
+  --shadow-cta-rest: 0 1px 2px rgba(0, 0, 0, 0.4);
   --shadow-cta-hover:
     0 8px 30px -6px rgba(255, 255, 255, 0.18), 0 0 0 1px rgba(124, 200, 255, 0.22),
     0 0 18px -7px rgba(124, 200, 255, 0.26);
@@ -467,8 +474,11 @@
      because this page's primary CTA is white on black and inverts to black on
      paper. Neither the cold rim nor the arc can survive that inversion; the
      depth pair can, so it is the part every variant shares. */
-  --btn-specular: rgba(255, 255, 255, 0.16);
-  --btn-shade: rgba(0, 0, 0, 0.28);
+  /* Set to the values `.btn-lens-face::after` actually shipped with (0.14/0.12
+     — the declared 0.16/0.28 were never consumed), and the gradient now reads
+     these tokens, so tuning them tunes the buttons. */
+  --btn-specular: rgba(255, 255, 255, 0.14);
+  --btn-shade: rgba(0, 0, 0, 0.12);
 
   /* The dark-glass variants — `outline` and `secondary` — are the ones that can
      carry the reference's cold rim, because they have a dark face for light to

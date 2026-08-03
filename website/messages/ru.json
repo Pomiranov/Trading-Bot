@@ -16,6 +16,9 @@
     "ctaShort": "Доступ к песочнице",
     "menuOpen": "Открыть меню",
     "menuClose": "Закрыть меню",
+    "primaryNavLabel": "Основная навигация",
+    "mobileNavLabel": "Навигация",
+    "localeSwitchAction": "Переключить язык: English",
     "foundation": "Основание"
   },
   "common": {
@@ -169,7 +172,6 @@
     "cardStrategy": "Стратегия",
     "cardExecute": "Исполнить в песочнице",
     "cardDismiss": "Пропустить",
-    "cardNote": "Пример карточки. Кнопка исполнения работает в песочнице; вывод в Live — отдельный, ручной шаг.",
     "cardAccepted": "Заявка отправлена в песочницу",
     "cardAcceptedDetail": "Демо-режим: ничего не ушло брокеру и никакая сделка не открыта.",
     "cardSkipped": "Сигнал пропущен",

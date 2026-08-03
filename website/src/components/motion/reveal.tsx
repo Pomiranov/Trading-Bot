@@ -8,6 +8,16 @@ const RISE_PX = 28;
 /** Per-index delay. Small enough to read as one gesture, not a queue. */
 const STAGGER_S = 0.08;
 
+/**
+ * Ceiling on the accumulated stagger. The delay exists to desync *siblings
+ * arriving together*; an item that enters the viewport alone — the last card
+ * of a grid reached by slow scrolling, after its siblings already revealed —
+ * would otherwise still serve index × 80ms of queue for a group gesture that
+ * is not happening. Four steps is where a delay stops reading as choreography
+ * and starts reading as lag.
+ */
+const STAGGER_MAX_S = 0.32;
+
 interface RevealProps extends HTMLMotionProps<"div"> {
   /** Stagger index — desyncs siblings by 80ms each. */
   index?: number;
@@ -68,7 +78,11 @@ export function Reveal({ index = 0, lift = true, children, style, ...props }: Re
       transition={
         reduce
           ? { duration: 0 }
-          : { duration: 0.7, delay: index * STAGGER_S, ease: [0.22, 1, 0.36, 1] }
+          : {
+              duration: 0.7,
+              delay: Math.min(index * STAGGER_S, STAGGER_MAX_S),
+              ease: [0.22, 1, 0.36, 1],
+            }
       }
       style={style}
       {...props}

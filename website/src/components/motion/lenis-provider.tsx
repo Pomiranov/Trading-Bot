@@ -56,6 +56,17 @@ export function LenisProvider({ children }: { children: React.ReactNode }) {
       // Keep the URL shareable without letting the browser also jump to the
       // anchor, which would land at the wrong offset and fight the animation.
       if (history.replaceState) history.replaceState(null, "", href);
+
+      // Native fragment navigation moves the sequential focus point to the
+      // target; `preventDefault` above cancels that too, so a keyboard user
+      // activating a nav link would scroll the page while their focus stayed
+      // in the header — the next Tab would go to the wrong end of the page.
+      // Restore the native behaviour by hand. `preventScroll` because Lenis
+      // (or the fallback) owns the scroll; sections are not natively
+      // focusable, so they get the -1 tabindex a fragment target effectively
+      // has.
+      if (!el.hasAttribute("tabindex")) el.setAttribute("tabindex", "-1");
+      el.focus({ preventScroll: true });
     }
 
     document.addEventListener("click", handleAnchorClick);

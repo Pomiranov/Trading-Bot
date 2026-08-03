@@ -115,6 +115,18 @@ export default async function LocaleLayout({
   return (
     <html lang={locale} className={fontVariables} suppressHydrationWarning>
       <body className="antialiased">
+        {/*
+          No-JS safety net for the scroll reveals. Every `Reveal` wrapper is
+          server-rendered with an inline `opacity: 0` + translate (Motion
+          serialises `initial`), which only the client observer ever clears.
+          The reduced-motion reset in globals.css covers reduced-motion
+          readers, but a *normal-motion* visitor whose JS fails or is blocked
+          would get a page of invisible sections. `!important` because it has
+          to beat Motion's inline style.
+        */}
+        <noscript>
+          <style>{`[data-reveal]{opacity:1 !important;transform:none !important}`}</style>
+        </noscript>
         <NextIntlClientProvider locale={locale} messages={messages}>
           <PostHogProvider>
             <LenisProvider>{children}</LenisProvider>

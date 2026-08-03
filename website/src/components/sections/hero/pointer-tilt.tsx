@@ -46,6 +46,11 @@ export function PointerTilt({ children }: { children: ReactNode }) {
     let frame = 0;
 
     function onPointerMove(e: PointerEvent) {
+      // Checked live on each event, not captured at mount: flipping the OS
+      // preference mid-session must take effect without a reload. The sibling
+      // burst component established this pattern; a `change` listener below
+      // also clears whatever offset the panel held at the moment of the flip.
+      if (reduce.matches) return;
       if (frame) return;
       frame = requestAnimationFrame(() => {
         frame = 0;
@@ -68,15 +73,21 @@ export function PointerTilt({ children }: { children: ReactNode }) {
       node.style.setProperty("--tilt-y", "0");
     }
 
+    function onPreferenceChange() {
+      if (reduce.matches) reset();
+    }
+
     window.addEventListener("pointermove", onPointerMove, { passive: true });
     // The pointer leaving the document would otherwise freeze the panel
     // off-centre until it comes back.
     document.addEventListener("pointerleave", reset);
+    reduce.addEventListener("change", onPreferenceChange);
 
     return () => {
       if (frame) cancelAnimationFrame(frame);
       window.removeEventListener("pointermove", onPointerMove);
       document.removeEventListener("pointerleave", reset);
+      reduce.removeEventListener("change", onPreferenceChange);
       reset();
     };
   }, []);

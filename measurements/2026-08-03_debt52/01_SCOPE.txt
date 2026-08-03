@@ -1,0 +1,132 @@
+=== ШАГ 1. Все *.yaml/*.yml в проекте (обход дерева, каталоги ['.git', '.next', '.venv', '__pycache__', 'build', 'dist', 'node_modules'] исключены): 45 ===
+  .claude\worktrees\debt-25-37-28\docker-compose.yml
+  .claude\worktrees\debt-25-37-28\knowledge\queue\chapters.yaml
+  .claude\worktrees\debt-25-37-28\knowledge\rules\candidates\ch04_range_breakout.yaml
+  .claude\worktrees\debt-25-37-28\knowledge\rules\candidates\ch04_range_participation_filter.yaml
+  .claude\worktrees\debt-25-37-28\knowledge\rules\candidates\ch05_envelope_band.yaml
+  .claude\worktrees\debt-25-37-28\knowledge\rules\candidates\ch05_prev_high_low_breakout.yaml
+  .claude\worktrees\debt-25-37-28\knowledge\rules\candidates\ch06_island_reversal.yaml
+  .claude\worktrees\debt-25-37-28\knowledge\rules\candidates\ch06_reversal_day.yaml
+  .claude\worktrees\debt-25-37-28\knowledge\rules\candidates\ch06_run_day.yaml
+  .claude\worktrees\debt-25-37-28\knowledge\rules\candidates\ch06_spike.yaml
+  .claude\worktrees\debt-25-37-28\knowledge\rules\candidates\ch06_thrust_day.yaml
+  .claude\worktrees\debt-25-37-28\knowledge\rules\candidates\ch06_wide_ranging_day.yaml
+  .claude\worktrees\debt-25-37-28\knowledge\rules\candidates\ch10_demark_sequential.yaml
+  .claude\worktrees\debt-25-37-28\knowledge\rules\candidates\ch10_measured_move.yaml
+  .claude\worktrees\debt-25-37-28\knowledge\rules\candidates\ch10_rule_of_seven.yaml
+  .claude\worktrees\debt-25-37-28\knowledge\rules\candidates\ch23_drawdown_derisk.yaml
+  .claude\worktrees\debt-25-37-28\knowledge\rules\candidates\ch23_volatility_exit.yaml
+  .claude\worktrees\debt-25-37-28\knowledge\rules\candidates\ch23_wide_range_reversal.yaml
+  .claude\worktrees\debt-25-37-28\knowledge\rules\rules.yaml
+  .claude\worktrees\debt-25-37-28\knowledge\rules\rules_osc_range.yaml
+  .claude\worktrees\debt-25-37-28\knowledge\rules\rules_wrd_moex.yaml
+  .claude\worktrees\debt-25-37-28\knowledge\rules.yaml
+  docker-compose.yml
+  knowledge\queue\chapters.draft.yaml
+  knowledge\queue\chapters.yaml
+  knowledge\rules\candidates\ch04_range_breakout.yaml
+  knowledge\rules\candidates\ch04_range_participation_filter.yaml
+  knowledge\rules\candidates\ch05_envelope_band.yaml
+  knowledge\rules\candidates\ch05_prev_high_low_breakout.yaml
+  knowledge\rules\candidates\ch06_island_reversal.yaml
+  knowledge\rules\candidates\ch06_reversal_day.yaml
+  knowledge\rules\candidates\ch06_run_day.yaml
+  knowledge\rules\candidates\ch06_spike.yaml
+  knowledge\rules\candidates\ch06_thrust_day.yaml
+  knowledge\rules\candidates\ch06_wide_ranging_day.yaml
+  knowledge\rules\candidates\ch10_demark_sequential.yaml
+  knowledge\rules\candidates\ch10_measured_move.yaml
+  knowledge\rules\candidates\ch10_rule_of_seven.yaml
+  knowledge\rules\candidates\ch23_drawdown_derisk.yaml
+  knowledge\rules\candidates\ch23_volatility_exit.yaml
+  knowledge\rules\candidates\ch23_wide_range_reversal.yaml
+  knowledge\rules\rules.yaml
+  knowledge\rules\rules_osc_range.yaml
+  knowledge\rules\rules_wrd_moex.yaml
+  knowledge\rules.yaml
+
+=== ШАГ 2. Какие из них ВООБЩЕ конфигурации правил ===
+   Признак: верхний уровень — отображение и есть ключ 'rules'.
+  не правила .claude\worktrees\debt-25-37-28\docker-compose.yml   filters: —
+  не правила .claude\worktrees\debt-25-37-28\knowledge\queue\chapters.yaml filters: —
+  не правила .claude\worktrees\debt-25-37-28\knowledge\rules\candidates\ch04_range_breakout.yaml filters: —
+  не правила .claude\worktrees\debt-25-37-28\knowledge\rules\candidates\ch04_range_participation_filter.yaml filters: —
+  не правила .claude\worktrees\debt-25-37-28\knowledge\rules\candidates\ch05_envelope_band.yaml filters: —
+  не правила .claude\worktrees\debt-25-37-28\knowledge\rules\candidates\ch05_prev_high_low_breakout.yaml filters: —
+  не правила .claude\worktrees\debt-25-37-28\knowledge\rules\candidates\ch06_island_reversal.yaml filters: —
+  не правила .claude\worktrees\debt-25-37-28\knowledge\rules\candidates\ch06_reversal_day.yaml filters: —
+  не правила .claude\worktrees\debt-25-37-28\knowledge\rules\candidates\ch06_run_day.yaml filters: —
+  не правила .claude\worktrees\debt-25-37-28\knowledge\rules\candidates\ch06_spike.yaml filters: —
+  не правила .claude\worktrees\debt-25-37-28\knowledge\rules\candidates\ch06_thrust_day.yaml filters: —
+  не правила .claude\worktrees\debt-25-37-28\knowledge\rules\candidates\ch06_wide_ranging_day.yaml filters: —
+  не правила .claude\worktrees\debt-25-37-28\knowledge\rules\candidates\ch10_demark_sequential.yaml filters: —
+  не правила .claude\worktrees\debt-25-37-28\knowledge\rules\candidates\ch10_measured_move.yaml filters: —
+  не правила .claude\worktrees\debt-25-37-28\knowledge\rules\candidates\ch10_rule_of_seven.yaml filters: —
+  не правила .claude\worktrees\debt-25-37-28\knowledge\rules\candidates\ch23_drawdown_derisk.yaml filters: —
+  не правила .claude\worktrees\debt-25-37-28\knowledge\rules\candidates\ch23_volatility_exit.yaml filters: —
+  не правила .claude\worktrees\debt-25-37-28\knowledge\rules\candidates\ch23_wide_range_reversal.yaml filters: —
+  ПРАВИЛА  .claude\worktrees\debt-25-37-28\knowledge\rules\rules.yaml filters: list
+  ПРАВИЛА  .claude\worktrees\debt-25-37-28\knowledge\rules\rules_osc_range.yaml filters: dict
+  ПРАВИЛА  .claude\worktrees\debt-25-37-28\knowledge\rules\rules_wrd_moex.yaml filters: list
+  ПРАВИЛА  .claude\worktrees\debt-25-37-28\knowledge\rules.yaml filters: list
+  не правила docker-compose.yml                                   filters: —
+  не правила knowledge\queue\chapters.draft.yaml                  filters: —
+  не правила knowledge\queue\chapters.yaml                        filters: —
+  не правила knowledge\rules\candidates\ch04_range_breakout.yaml  filters: —
+  не правила knowledge\rules\candidates\ch04_range_participation_filter.yaml filters: —
+  не правила knowledge\rules\candidates\ch05_envelope_band.yaml   filters: —
+  не правила knowledge\rules\candidates\ch05_prev_high_low_breakout.yaml filters: —
+  не правила knowledge\rules\candidates\ch06_island_reversal.yaml filters: —
+  не правила knowledge\rules\candidates\ch06_reversal_day.yaml    filters: —
+  не правила knowledge\rules\candidates\ch06_run_day.yaml         filters: —
+  не правила knowledge\rules\candidates\ch06_spike.yaml           filters: —
+  не правила knowledge\rules\candidates\ch06_thrust_day.yaml      filters: —
+  не правила knowledge\rules\candidates\ch06_wide_ranging_day.yaml filters: —
+  не правила knowledge\rules\candidates\ch10_demark_sequential.yaml filters: —
+  не правила knowledge\rules\candidates\ch10_measured_move.yaml   filters: —
+  не правила knowledge\rules\candidates\ch10_rule_of_seven.yaml   filters: —
+  не правила knowledge\rules\candidates\ch23_drawdown_derisk.yaml filters: —
+  не правила knowledge\rules\candidates\ch23_volatility_exit.yaml filters: —
+  не правила knowledge\rules\candidates\ch23_wide_range_reversal.yaml filters: —
+  ПРАВИЛА  knowledge\rules\rules.yaml                           filters: list
+  ПРАВИЛА  knowledge\rules\rules_osc_range.yaml                 filters: dict
+  ПРАВИЛА  knowledge\rules\rules_wrd_moex.yaml                  filters: list
+  ПРАВИЛА  knowledge\rules.yaml                                 filters: list
+
+=== ШАГ 3. По КАЖДОЙ конфигурации правил — включён ли дневной гейт ===
+   Читается проектным RulesEngine.structural_downtrend_filter (rules_engine.py:318-324).
+   файл                                               гейт       конфиг
+   .claude\worktrees\debt-25-37-28\knowledge\rules\rules.yaml выключен   {}
+   .claude\worktrees\debt-25-37-28\knowledge\rules\rules_osc_range.yaml ВКЛЮЧЁН    {'enabled': True, 'sma_short': 50, 'sma_long': 200, 'lower_low_lookback': 120, 'lower_low_window': 20, 'apply_to': 'long'}
+   .claude\worktrees\debt-25-37-28\knowledge\rules\rules_wrd_moex.yaml выключен   {}
+   .claude\worktrees\debt-25-37-28\knowledge\rules.yaml выключен   {}
+   knowledge\rules\rules.yaml                         выключен   {}
+   knowledge\rules\rules_osc_range.yaml               ВКЛЮЧЁН    {'enabled': True, 'sma_short': 50, 'sma_long': 200, 'lower_low_lookback': 120, 'lower_low_window': 20, 'apply_to': 'long'}
+   knowledge\rules\rules_wrd_moex.yaml                выключен   {}
+   knowledge\rules.yaml                               выключен   {}
+
+=== ИТОГ ПО ФАЙЛАМ: конфигураций правил 8, с ВКЛЮЧЁННЫМ дневным гейтом 2 ===
+   .claude\worktrees\debt-25-37-28\knowledge\rules\rules_osc_range.yaml
+   knowledge\rules\rules_osc_range.yaml
+
+=== ШАГ 4. Стратегии ИЗ ДАННЫХ (только SELECT), а не из памяти ===
+   -- trades: strategy_id × timeframe
+      strategy_id=osc_range_moex  timeframe=H1  n=15
+      strategy_id=osc_range_moex_d1  timeframe=D1  n=34
+      strategy_id=osc_range_moex_h1  timeframe=H1  n=560
+      strategy_id=osc_range_moex_h4  timeframe=H4  n=171
+      strategy_id=trend_moex  timeframe=H1  n=153
+      strategy_id=trend_moex_d1  timeframe=D1  n=272
+      strategy_id=trend_moex_h1  timeframe=H1  n=5024
+      strategy_id=trend_moex_h4  timeframe=H4  n=1303
+   -- forward_state
+      strategy_id=osc_range_moex_d1_fwd  n=20
+
+=== ШАГ 5. Какой файл правил читает каждая точка входа (грепом по коду) ===
+   -- rules_osc_range.yaml (osc_range): 3
+      bot\run_forward_d1.py:121: RULES_FILE = config.rules_dir / "rules_osc_range.yaml"
+      bot\backtest\run_ab_tf_backtest.py:41: OSC_RULES_FILE = config.rules_dir / "rules_osc_range.yaml"
+      bot\backtest\run_osc_oos_debug.py:49: DEFAULT_RULES = config.rules_dir / "rules_osc_range.yaml"
+   -- rules.yaml (trend_moex/прочее): 2
+      bot\backtest\run_ab_swing_stop.py:46: RULES_FILE = config.rules_dir / "rules.yaml"
+      bot\backtest\run_ab_trend_fix.py:45: RULES_FILE = config.rules_dir / "rules.yaml"

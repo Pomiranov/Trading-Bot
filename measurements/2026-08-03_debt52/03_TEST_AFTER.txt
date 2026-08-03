@@ -1,0 +1,15 @@
+============================= test session starts =============================
+platform win32 -- Python 3.14.6, pytest-9.1.1, pluggy-1.6.0 -- D:\Trading-Bot-Nik\.venv\Scripts\python.exe
+cachedir: .pytest_cache
+rootdir: D:\Trading-Bot-Nik
+plugins: anyio-4.14.2, asyncio-1.4.0
+asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collecting ... collected 5 items
+
+tests/forward_tests/test_downtrend_gate_causality.py::DowntrendGateCausality::test_d1_gate_is_not_shifted PASSED [ 20%]
+tests/forward_tests/test_downtrend_gate_causality.py::DowntrendGateCausality::test_intraday_bar_takes_previous_session_not_its_own PASSED [ 40%]
+tests/forward_tests/test_downtrend_gate_causality.py::DowntrendGateCausality::test_no_intraday_bar_sees_its_own_session PASSED [ 60%]
+tests/forward_tests/test_downtrend_gate_causality.py::DowntrendGateCausality::test_shifted_in_gap_falls_inside_warmup PASSED [ 80%]
+tests/forward_tests/test_downtrend_gate_causality.py::DowntrendGateCausality::test_synthetic_flips_exactly_on_the_target_session PASSED [100%]
+
+============================== 5 passed in 1.04s ==============================

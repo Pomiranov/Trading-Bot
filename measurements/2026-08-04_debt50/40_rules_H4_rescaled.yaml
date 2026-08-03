@@ -1,0 +1,188 @@
+# ============================================================
+# QuantFlow — rules_osc_range.yaml
+# Стратегия osc_range_moex: осцилляторы для боковика.
+# Источник: Швагер «Технический анализ», гл. 15 (Бировиц) —
+# processed/strategies/oscillators_schwager.md
+#
+# Отдельный файл: у стратегии НЕТ фильтра weak_trend_block
+# (он запрещает торговлю при ADX < 20 — ровно тот режим, где
+# осцилляторы зарабатывают). Режим не угадывается по ADX:
+# сигнал = расхождение + ценовое подтверждение (принцип Бировица).
+#
+# Индикаторы: bull/bear_div_count — кворум расхождений на
+# MACD / RSI(9) / стохастике; mac_high/mac_low — коридор EMA28
+# максимумов/минимумов (КСС); micro_w/m_trigger — микро-паттерны.
+#
+# ВНИМАНИЕ О КОНВЕНЦИИ (введено 2026-07-28). Все числа ниже посчитаны по СТАРОЙ
+# конвенции комиссии: pnl вычитал только комиссию ВЫХОДА. С 28.07 pnl вычитает
+# ОБЕ стороны — это исправление ошибки учёта, см. docs/PROJECT_STATE.md раздел 2а.
+# Старые числа НЕ затёрты: они цитируются в конспектах. Новые значения на том же
+# наборе сделок (данные по 12.07, входы до 12.07):
+#   D1 OOS без фильтра даунтренда: PF 1.16 → 1.14, PnL +61 292 → +52 937
+#   D1 OOS с фильтром:             PF 1.67 → 1.64
+# Число сделок не изменилось ни в одном разрезе — правка в сайзинг не протекала.
+#
+# Отладка 2026-07-12 (IS = 2023-07..2024-12, OOS = 2025-01..2026-07,
+# backtest/run_osc_oos_debug.py):
+#   - Ослабление входа до одного правила (score 1.5 / confirmation 1)
+#     утроило сделки на D1 in-sample (5→24, PF 1.49), но развалилось
+#     на out-of-sample (PF 1.16→0.78) → ОТКАЧЕНО. Двойное
+#     подтверждение оставлено намеренно: это единственная
+#     конфигурация, пережившая OOS (D1 OOS: n=29, WR 58.6%, PF 1.16).
+#   - H4 на OOS убыточна в любой конфигурации (PF 0.76–0.87),
+#     режимы IS/OOS флипаются (ranging: лучший IS → худший OOS) —
+#     устойчивого эджа на H4 нет, в торговлю не выводить.
+#   - Микро-W без второго подтверждения in-sample убыточно
+#     (D1 PF 0.46, H4 PF 0.31): реализация упрощена относительно
+#     книги (нет стопа под минимумом расхождения и правила отмены).
+#   - Цель 2R/безубыток +1R (опция движка breakeven_r/target_r)
+#     на IS ухудшает H4 (PF 1.22→1.16), D1 не меняет → не включено;
+#     выход по развороту + трейлинг (тоже книжный) работает лучше.
+#
+# Проверка 2026-07-13 (Швагер гл. 9, stops_schwager.md): exit-правило
+# «close < div_low» (стоп-инвалидация под минимумом расхождения)
+# в A/B дало сделки, ИДЕНТИЧНЫЕ baseline: за 3 года D1 условие внутри
+# открытых позиций встретилось 2 раза из 9875 баров, и оба на баре,
+# где уже сработал 2×ATR-стоп (оба по close, стоп проверяется раньше).
+# Правило полностью затенено денежным стопом → НЕ добавлено.
+# ============================================================
+
+settings:
+  min_buy_score: 2.0
+  min_sell_score: 2.0
+  confirmation_rules: 2     # «расхождение + подтверждение» = минимум 2 правила
+
+# Параметры детектора расхождений (bull/bear_div_count) — ЯДРО стратегии,
+# не тумблер: дивергенция обязательна во входах обоих направлений, поэтому
+# ключей enabled/apply_to здесь сознательно нет. Книга свинги численно не
+# формализует — это проектная формализация, см.
+# processed/technical/oscillator_divergence.md.
+indicators:
+  rsi_period: 60
+  atr_period: 60
+  adx_period: 60
+  bb_period: 86
+  macd_fast: 52
+  macd_slow: 112
+  macd_signal: 39
+  ema_fast: 39
+  ema_slow: 90
+  rsi9_period: 39
+  stoch_window: 60
+  stoch_smooth: 13
+  mac_ema_period: 120
+
+divergence:
+  swing_window: 13        # пивот = экстремум среди ±N соседних баров
+  max_gap: 108            # последний пивот не старше N баров (свежесть расхождения)
+  pair_search_max: 20    # пара баров микро-W/M ищется не дальше N баров от пивота
+
+rules:
+  # ── LONG: бычье расхождение + ценовое подтверждение ────────
+
+  # Кворум «2 из 3» + пробой верхней границы КСС (главное подтверждение)
+  - name: osc_bull_div_mac_break
+    action: BUY
+    weight: 1.5
+    description: "Бычье расхождение ≥2 из 3 осцилляторов, подтверждено пробоем КСС вверх"
+    conditions:
+      - { indicator: bull_div_count, operator: ">=", value: 2 }
+      - { indicator: close, operator: ">", value: mac_high }
+
+  # Микро-W: пробой максимума пары «бар вверх + бар вниз» после расхождения
+  - name: osc_micro_w_entry
+    action: BUY
+    weight: 1.5
+    description: "Микро-W: бычье расхождение + пробой максимума пары вверх/вниз"
+    conditions:
+      - { indicator: bull_div_count, operator: ">=", value: 2 }
+      - { indicator: close, operator: ">", value: micro_w_trigger }
+
+  # Стохастик: %K пересёк %D вверх и вышел из зоны перепроданности.
+  # Кворум >=2 — правило «2 из 3» (одиночное расхождение игнорируется).
+  # Поведение не меняет (правила-партнёры уже требуют >=2 на том же
+  # баре, а вход в одиночку невозможен) — защита от будущих правок весов.
+  - name: osc_stoch_bull_cross
+    action: BUY
+    weight: 1.0
+    description: "Стохастик подтверждает: %K > %D, %K вышел из зоны 30 и не перегрет"
+    conditions:
+      - { indicator: bull_div_count, operator: ">=", value: 2 }
+      - { indicator: stoch_k, operator: ">", value: stoch_d }
+      - { indicator: stoch_k, operator: ">=", value: 30 }
+      - { indicator: stoch_k, operator: "<=", value: 55 }
+
+  # ── SELL (закрытие long): медвежье расхождение + подтверждение ──
+
+  - name: osc_bear_div_mac_break
+    action: SELL
+    weight: 1.5
+    description: "Медвежье расхождение ≥2 из 3 осцилляторов, подтверждено пробоем КСС вниз"
+    conditions:
+      - { indicator: bear_div_count, operator: ">=", value: 2 }
+      - { indicator: close, operator: "<", value: mac_low }
+
+  - name: osc_micro_m_entry
+    action: SELL
+    weight: 1.5
+    description: "Микро-M: медвежье расхождение + пробой минимума пары вниз/вверх"
+    conditions:
+      - { indicator: bear_div_count, operator: ">=", value: 2 }
+      - { indicator: close, operator: "<", value: micro_m_trigger }
+
+  # Кворум >=2 — см. комментарий к osc_stoch_bull_cross
+  - name: osc_stoch_bear_cross
+    action: SELL
+    weight: 1.0
+    description: "Стохастик подтверждает: %K < %D, %K вышел из зоны 70"
+    conditions:
+      - { indicator: bear_div_count, operator: ">=", value: 2 }
+      - { indicator: stoch_k, operator: "<", value: stoch_d }
+      - { indicator: stoch_k, operator: "<=", value: 70 }
+      - { indicator: stoch_k, operator: ">=", value: 45 }
+
+# Без ADX-блокировок (принцип Бировица), но со структурным фильтром:
+# лонги против многолетнего даунтренда — книжная «катастрофа в тренде».
+# Анализ 2026-07-12: GAZP/ROSN/SNGS ниже SMA200 70-79% времени (2023-2026),
+# но с выходами (эпизоды 1-174 дня) → фильтр, а не исключение тикеров.
+# Считается по D1 независимо от таймфрейма сигнала; применяет вызывающий
+# код (BacktestEngine / TradingOrchestrator.check_signal).
+# A/B на D1 (см. processed/strategies/structural_downtrend_filter.md):
+# OOS PF 1.16 → 1.67, PnL +61k → +133k; цена — блокирует и часть
+# капитуляционных разворотов (IS −43k). На H4 фильтр вреден, но H4
+# не используется.
+# Все три величины воспроизведены на текущем коде 2026-07-28 (гейт (а),
+# PROJECT_STATE раздел 2а): PF 1.67 точно, PnL +132 803 при опубликованном
+# «+133k», цена на IS −43 054. Конвенция комиссии — СТАРАЯ, см. шапку файла.
+filters:
+  structural_downtrend:
+    enabled: true
+    sma_short: 50          # мёртвый крест: SMA50 < SMA200
+    sma_long: 200          # цена < SMA200
+    lower_low_lookback: 120  # обновлён минимум окна, закончившегося 120 дней назад
+    lower_low_window: 20     # ширина окна минимума, дней
+    apply_to: long         # шорты не трогаем
+
+# ── Выход из открытой позиции ────────────────────────────────
+
+exit_rules:
+  # Stop-and-reverse Бировица: медвежье расхождение + уход под нижнюю границу КСС
+  - name: osc_stop_reverse
+    action: EXIT
+    weight: 1.0
+    description: "Выход: медвежье расхождение и закрытие под нижней границей КСС"
+    conditions:
+      - { indicator: bear_div_count, operator: ">=", value: 1 }
+      - { indicator: close, operator: "<", value: mac_low }
+
+  # Фиксация в зоне перекупленности: импульс развернулся у верхней границы
+  - name: osc_overbought_fade
+    action: EXIT
+    weight: 1.0
+    description: "Выход: стохастик перегрет (>70) и %K развернулся под %D"
+    conditions:
+      - { indicator: stoch_k, operator: ">", value: 70 }
+      - { indicator: stoch_k, operator: "<", value: stoch_d }
+
+ticker_specific: []
+macro_filters: []

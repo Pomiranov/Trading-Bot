@@ -144,7 +144,15 @@ class BacktestEngine:
         timeframe: str = "H1",
         breakeven_r: Optional[float] = None,   # прибыль ≥ N·R → стоп в безубыток (Швагер, гл. 15)
         target_r: Optional[float] = None,      # прибыль ≥ N·R → фиксация по цели
-        use_stops: bool = True,                # False = чистый SAR (Швагер, гл. 18): стоп и
+        use_stops: bool = True,
+        # ПЕРЕКЛЮЧАТЕЛЬ контрольной строки замера (реестр, попытка №2):
+        # False = окна остаются D1-овскими (61/50) при ЛЮБОМ таймфрейме.
+        # Нужен для строки «H4 с D1-окнами»: она фиксирует таймфрейм и меняет
+        # только окна, поэтому разность с «H4 пересчитанные» есть чистый эффект
+        # пересчёта. Множитель (universe.BARS_PER_SESSION) при этом НЕ трогается,
+        # и _timeframe остаётся настоящим — иначе фильтр перестал бы ресемплиться
+        # в дневные и считался бы по 200 барам H4 вместо 200 дней.
+        rescale_windows: bool = True,                # False = чистый SAR (Швагер, гл. 18): стоп и
                                                # трейлинг не исполняются, выход только по сигналу;
                                                # сайзинг по стоп-дистанции сохраняется
     ):
@@ -174,8 +182,9 @@ class BacktestEngine:
         # на РЕСЕМПЛЁННОМ дневном ряде (_downtrend_gate), их окна уже
         # календарные, и умножение дало бы 200×4.3 = 860 дневных баров —
         # двойной пересчёт. Предикат области — в universe.py.
-        self._warmup_bars    = scale_sessions_to_bars(WARMUP_SESSIONS, timeframe)
-        self._window_bars    = scale_sessions_to_bars(SIGNAL_WINDOW_SESSIONS, timeframe)
+        _tf_for_windows      = timeframe if rescale_windows else "D1"
+        self._warmup_bars    = scale_sessions_to_bars(WARMUP_SESSIONS, _tf_for_windows)
+        self._window_bars    = scale_sessions_to_bars(SIGNAL_WINDOW_SESSIONS, _tf_for_windows)
         self._breakeven_r    = breakeven_r
         self._target_r       = target_r
         self._use_stops      = use_stops

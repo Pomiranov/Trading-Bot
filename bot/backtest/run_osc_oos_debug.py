@@ -54,7 +54,7 @@ DEFAULT_RULES = config.rules_dir / "rules_osc_range.yaml"
 # были той же болезнью, что девять копий списка тикеров.
 
 def collect_trades(rules_file: Path, pm: bool = False,
-                   as_of: date | None = None) -> tuple[pd.DataFrame, dict, list]:
+                   as_of: date | None = None, rescale_windows: bool = True) -> tuple[pd.DataFrame, dict, list]:
     """Прогнать бэктест по всем ТФ/тикерам.
 
     Возвращает (DataFrame ЗАКРЫТЫХ сделок,
@@ -83,6 +83,7 @@ def collect_trades(rules_file: Path, pm: bool = False,
         engine = BacktestEngine(
             universe_version=MEASUREMENT_UNIVERSE_2026_07_VERSION,
             rules_engine=rules, timeframe=TF_LABEL[tf],
+            rescale_windows=rescale_windows,
             breakeven_r=1.0 if pm else None,
             target_r=2.0 if pm else None,
         )
@@ -178,6 +179,9 @@ def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--rules", type=Path, default=DEFAULT_RULES)
     ap.add_argument("--label", default="baseline")
+    ap.add_argument("--no-rescale", action="store_true",
+                    help="контрольная строка замера: окна остаются D1-овскими (61/50) "
+                         "при любом таймфрейме; множитель не трогается")
     ap.add_argument("--pm", action="store_true", help="ведение позиции: безубыток +1R, цель 2R")
     ap.add_argument("--show-oos", action="store_true", help="показать out-of-sample (только финал)")
     ap.add_argument("--as-of", type=date.fromisoformat, default=None, metavar="YYYY-MM-DD",
@@ -199,7 +203,8 @@ def main() -> None:
               f"сессию {SAMPLE_END_2026_07.isoformat()}; воспроизвести: "
               f"--as-of {SAMPLE_END_2026_07.isoformat()}")
     trades, skipped, open_at_edge = collect_trades(args.rules, pm=args.pm,
-                                                   as_of=args.as_of)
+                                                   as_of=args.as_of,
+                                                   rescale_windows=not args.no_rescale)
     out_csv = Path(__file__).resolve().parent / f"osc_debug_{args.label}.csv"
     trades.to_csv(out_csv, index=False)
     print(f"\nЗакрытые сделки сохранены: {out_csv} ({len(trades)} шт.)")

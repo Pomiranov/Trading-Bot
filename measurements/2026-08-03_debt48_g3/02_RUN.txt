@@ -1,0 +1,53 @@
+DB_USER задан: да; DB_PASSWORD задан: да  (значения не печатаются)
+
+=== ЗАЩИТЫ ДО ===
+  forward_runs.jsonl строк: 5
+  healthcheck_state mtime : 2026-08-03 09:00:07
+  боевой rules отпечаток  : 669b3dd154c0ef45eaa2eb4a9e4e994622359511
+
+=== ПЕРЕСОЗДАНИЕ КЛОНА + СВЕРКА ОБЪЁМОВ ===
+NOTICE:  database "forward_control" does not exist, skipping
+  боевая:
+18182D:/Git/20D:/Git/7532D:/Git/3
+  клон  :
+18182/20/7532/3
+  ожидание из записи 30.07: 18182/20/7532/3
+
+############ ПЛЕЧО 1: enabled: true (боевой файл, главное дерево) ############
+  код возврата: 0
+  skipped|1
+  last_close|267.6
+  skip_reason|structural_downtrend
+  trades_fwd|0
+  entry|—
+  entry_rules|—
+  строки про SBER:
+    2026-08-03 18:00:37 [INFO] quantflow.evaluator: Сигнал отклонён: osc_range_moex_d1_fwd SBER — structural_downtrend
+    2026-08-03 18:00:37 [INFO] quantflow.forward: ⛔ SBER: BUY-сигнал отклонён — Структурный даунтренд SBER (D1): лонги запрещены фильтром
+      ⛔ SBER: BUY-сигнал отклонён — Структурный даунтренд SBER (D1): лонги запрещены фильтром
+  rules_version прогона: 
+############ ПЛЕЧО 2: enabled: false (отдельный worktree) ############
+  ����� ������ � worktree: ������ ��������
+  боевой файл не тронут, отпечаток: 669b3dd154c0ef45eaa2eb4a9e4e994622359511
+  код возврата: 0
+  skipped|0
+  last_close|—
+  skip_reason|—
+  trades_fwd|1
+  entry|SBER @ 267.60000000
+  entry_rules|Сигнал на покупку (счёт 2.5). Правила: Микро-W: бычье расхождение + пробой максимума пары вверх/вниз; Стохастик подтверждает: %K > %D, %K вышел из зоны 30 и не перегрет | size_mult=0.35 (не применён)
+  строки про SBER:
+    2026-08-03 18:00:43 [INFO] risk.risk_manager: Позиция SBER: 3060 лотов (3060 акций), вход 267.60, стоп 251.26, риск 49998.24 руб.
+    2026-08-03 18:00:43 [INFO] quantflow.memory: Сделка записана: 885b367d-87bd-414c-9637-d91cde370534 | stocks | SBER | BUY | PnL: None
+    2026-08-03 18:00:43 [INFO] quantflow.orchestrator: Открыта сделка: SBER BUY @ 267.6 | strategy=osc_range_moex_d1_fwd
+
+=== УБОРКА ===
+  worktree удалён: да
+  клонов осталось: 0
+
+=== ЗАЩИТЫ ПОСЛЕ ===
+  forward_runs.jsonl строк: 5
+  healthcheck_state mtime : 2026-08-03 09:00:07
+  боевой rules отпечаток  : 669b3dd154c0ef45eaa2eb4a9e4e994622359511
+  боевая БД skipped/trades: 3/7532
+  git status рабочего дерева: 0 строк

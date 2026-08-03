@@ -307,6 +307,9 @@ class RulesEngine:
             "rsi_period", "macd_fast", "macd_slow", "macd_signal",
             "ema_fast", "ema_slow", "atr_period", "bb_period", "bb_std",
             "adx_period",
+            # Долг №50, класс (а3): бывшие жёсткие литералы indicators.py.
+            # Ни одного имени сверх семнадцати пре-регистрации.
+            "rsi9_period", "stoch_window", "stoch_smooth", "mac_ema_period",
         }
         return {
             k: (float(v) if k == "bb_std" else int(v))

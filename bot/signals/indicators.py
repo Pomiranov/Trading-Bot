@@ -129,8 +129,26 @@ def is_structural_downtrend(df_d1: pd.DataFrame, **params) -> bool:
 
 # ── Окно сигнала ──────────────────────────────────────────────────────────
 
-# Окно latest_precomputed по умолчанию: 61 бар = iloc[i-60 : i+1] бэктеста.
-SIGNAL_WINDOW_BARS = 61
+# Окно latest_precomputed задано в СЕССИЯХ (долг №50, вариант E2): 61 сессия.
+# На D1 это 61 бар — iloc[i-60 : i+1] бэктеста; на H4 движок переводит его в бары
+# приколоченным множителем (universe.BARS_PER_SESSION), получая 262.
+SIGNAL_WINDOW_SESSIONS = 61
+
+# D1-эквивалент. Имя сохранено: на него ссылаются run_forward_d1.py и
+# test_signal_window_ends_exactly_at_the_bar — ЕДИНСТВЕННАЯ защита главного
+# сигнального пути. Переименование потребовало бы правки той защиты в тот же
+# заход, а это ровно то, ради чего стояла заморозка №50.
+SIGNAL_WINDOW_BARS = SIGNAL_WINDOW_SESSIONS
+
+
+def signal_window_bars(timeframe: str = "D1") -> int:
+    """Окно сигнала в барах ТАЙМФРЕЙМА. D1 → 61, H4 → 262, H1 → 952.
+
+    Множитель приколочен, не считается из данных (universe.py). На D1 множитель
+    1/1, то есть перевод есть ТОЖДЕСТВО, а не округление, дающее тот же ответ.
+    """
+    from universe import scale_sessions_to_bars
+    return scale_sessions_to_bars(SIGNAL_WINDOW_SESSIONS, timeframe)
 
 
 def signal_window(computed: pd.DataFrame, i: int, bars: int = SIGNAL_WINDOW_BARS) -> pd.DataFrame:
@@ -169,6 +187,13 @@ class IndicatorEngine:
         pivot_strength: int = 3,
         pivot_max_age: int = 25,
         pair_search_max: int = 20,
+        # ── Долг №50, класс (а3): четыре ЖЁСТКИХ ЛИТЕРАЛА стали аргументами.
+        # Дефолты РАВНЫ прежним литералам, поэтому без явной передачи поведение
+        # побайтово прежнее — это и проверяет Г1.
+        rsi9_period: int = 9,        # был литерал :269
+        stoch_window: int = 14,      # был литерал :274
+        stoch_smooth: int = 3,       # был литерал :274 и :278
+        mac_ema_period: int = 28,    # был литерал :281-282
         swing_stop_window: int = 0,
         wrd_k: float = 0.0,
         wrd_atr_n: int = 10,
@@ -191,6 +216,11 @@ class IndicatorEngine:
         self.pivot_strength  = pivot_strength
         self.pivot_max_age   = pivot_max_age
         self.pair_search_max = pair_search_max
+        # Долг №50, класс (а3): дефолты равны прежним литералам
+        self.rsi9_period     = rsi9_period
+        self.stoch_window    = stoch_window
+        self.stoch_smooth    = stoch_smooth
+        self.mac_ema_period  = mac_ema_period
         # Трейлинг по свинг-минимумам (Швагер, гл. 9, метод 5, N=5..15);
         # 0 = выключен (колонка swing_low не считается) — задаётся секцией
         # swing_stop rules-файла стратегии
@@ -266,20 +296,23 @@ class IndicatorEngine:
         # ── Осцилляторный блок (Швагер/Бировиц, гл. 15) ──
 
         # RSI(9)
-        out["rsi9"] = RSIIndicator(close=out["close"], window=9).rsi()
+        out["rsi9"] = RSIIndicator(close=out["close"],
+                                   window=self.rsi9_period).rsi()
 
         # Медленный стохастик 14-3-3: fast %K → SMA3 = slow %K → SMA3 = slow %D
         stoch = StochasticOscillator(
             high=out["high"], low=out["low"], close=out["close"],
-            window=14, smooth_window=3,
+            window=self.stoch_window, smooth_window=self.stoch_smooth,
         )
         slow_k = stoch.stoch_signal()          # сглаженный %K
         out["stoch_k"] = slow_k
-        out["stoch_d"] = slow_k.rolling(3).mean()
+        out["stoch_d"] = slow_k.rolling(self.stoch_smooth).mean()
 
         # Коридор скользящих средних (КСС): EMA28 максимумов и минимумов
-        out["mac_high"] = EMAIndicator(close=out["high"], window=28).ema_indicator()
-        out["mac_low"]  = EMAIndicator(close=out["low"],  window=28).ema_indicator()
+        out["mac_high"] = EMAIndicator(close=out["high"],
+                                       window=self.mac_ema_period).ema_indicator()
+        out["mac_low"]  = EMAIndicator(close=out["low"],
+                                       window=self.mac_ema_period).ema_indicator()
 
         # ── Свинг-минимумы (Швагер, гл. 9, метод 5) ──
         # Пивот = минимум среди ±N соседних баров; подтверждается лишь

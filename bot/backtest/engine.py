@@ -22,7 +22,10 @@ import pandas as pd
 
 from costs import COMMISSION_PCT
 from market_time import last_closed_index
-from signals.indicators import IndicatorEngine, structural_downtrend_series
+from signals.indicators import (IndicatorEngine, SIGNAL_WINDOW_SESSIONS,
+                                structural_downtrend_series)
+# Множитель баров на сессию ПРИКОЛОЧЕН, из данных не считается (долг №50, E2).
+from universe import scale_sessions_to_bars
 from signals.rules_engine import RulesEngine, Action, classify_regime
 from risk.risk_manager import RiskManager
 from learning.trading_orchestrator import TradingOrchestrator
@@ -39,6 +42,10 @@ logger = logging.getLogger(__name__)
 # Все сделки бэктеста относятся к трендовой стратегии MOEX
 # (rules.yaml содержит только трендовые правила)
 BACKTEST_STRATEGY_ID = "trend_moex"
+
+# Разогрев бэктеста задан в СЕССИЯХ (долг №50, вариант E2): 50 сессий.
+# На D1 это прежние 50 баров, на H4 — 215. Было литералом range(50, …).
+WARMUP_SESSIONS = 50
 
 
 @dataclass
@@ -157,6 +164,18 @@ class BacktestEngine:
         self._strategy_id    = strategy_id
         self._universe_version = universe_version
         self._timeframe      = timeframe
+        # ── Долг №50, класс (б) по варианту E2 ───────────────────────────
+        # Оба окна заданы в СЕССИЯХ и переводятся в бары таймфрейма
+        # приколоченным множителем. На D1 множитель 1/1, то есть перевод —
+        # ТОЖДЕСТВО (61 и 50 остаются), поэтому опорные тройки D1 сдвинуться
+        # не могут по построению. На H4 выходит 262 и 215 — пре-регистрация.
+        #
+        # ⚠ Множитель НЕ применяется к окнам фильтра даунтренда: они считаются
+        # на РЕСЕМПЛЁННОМ дневном ряде (_downtrend_gate), их окна уже
+        # календарные, и умножение дало бы 200×4.3 = 860 дневных баров —
+        # двойной пересчёт. Предикат области — в universe.py.
+        self._warmup_bars    = scale_sessions_to_bars(WARMUP_SESSIONS, timeframe)
+        self._window_bars    = scale_sessions_to_bars(SIGNAL_WINDOW_SESSIONS, timeframe)
         self._breakeven_r    = breakeven_r
         self._target_r       = target_r
         self._use_stops      = use_stops
@@ -218,7 +237,7 @@ class BacktestEngine:
         open_trade: Optional[BacktestTrade] = None
         equity: list[float] = [capital]
 
-        for i in range(50, len(df_ind)):
+        for i in range(self._warmup_bars, len(df_ind)):
             row   = df_ind.iloc[i]
             price = float(row["close"])
             _atr  = row.get("atr")
@@ -248,7 +267,7 @@ class BacktestEngine:
 
             # ── 2. Правила выхода (exit_rules) ───────────────────────
             if open_trade:
-                window     = df_ind.iloc[max(0, i - 60): i + 1]
+                window     = df_ind.iloc[max(0, i - self._window_bars + 1): i + 1]
                 iv         = self._indicators.latest_precomputed(window)
                 exit_sig   = self._rules.evaluate_exit(iv, ticker)
                 if exit_sig.action == Action.EXIT:
@@ -261,7 +280,7 @@ class BacktestEngine:
                     open_trade = None
 
             # ── 3. Основной сигнал ────────────────────────────────────
-            window = df_ind.iloc[max(0, i - 60): i + 1]
+            window = df_ind.iloc[max(0, i - self._window_bars + 1): i + 1]
             iv     = self._indicators.latest_precomputed(window)
             signal = self._rules.evaluate(iv, ticker)
 

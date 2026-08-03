@@ -16,7 +16,44 @@ function resolveBuildSha(): string {
 }
 
 const nextConfig: NextConfig = {
+  /**
+   * ── Do not add `distDir` here ──
+   *
+   * Tried, measured, reverted. The motivation was real: `next build` and
+   * `next dev --turbopack` share `.next`, so verifying a production build while
+   * a dev server is running corrupts it, and a `NEXT_DIST_DIR` override looked
+   * like the safe way out.
+   *
+   * It is not. With any non-default `distDir`, Turbopack fails to resolve its
+   * own virtual font module for `next/font/google` —
+   *
+   *     Module not found: Can't resolve
+   *     '@vercel/turbopack-next/internal/font/google/font'
+   *
+   * — on every `@font-face` block of both families, and the build dies.
+   * Verified both ways on 15.5.22: identical source builds clean at the default
+   * path and fails at `.next-verify`.
+   *
+   * To build without disturbing a running dev server, copy the project instead
+   * (`rsync` the source, `cp -Rc` node_modules for an APFS clone) and build the
+   * copy at the default path.
+   */
   typedRoutes: true,
+  /**
+   * ── Why this is set, and it is not a cosmetic preference ──
+   *
+   * Next's dev-tools indicator defaults to the bottom-left corner and renders as
+   * a ~32px circular button with the Next logo in it. That is the same corner and
+   * the same shape as the assistant orb (`components/assistant/*`), and it was
+   * read as site furniture during review — "the round button with an N in it" —
+   * which cost a full audit pass to establish was Next's own overlay and not a
+   * component of this page at all.
+   *
+   * It does not ship: `devIndicators` has no effect on a production build, and
+   * nothing in the corner of a deployed page comes from here. Moving it to the
+   * opposite corner in dev is what stops the two being confused again.
+   */
+  devIndicators: { position: "bottom-right" },
   /* `X-Powered-By: Next.js` on every response. Not a vulnerability, but it
      hands a scanner the framework for free and buys nothing in return. */
   poweredByHeader: false,

@@ -12,6 +12,23 @@ import { cn } from "@/lib/utils";
  * carries the same softly lit cold dot, so the geometry lives here rather than
  * being written twice and drifting.
  *
+ * ── It is a lens, not a disc ──
+ *
+ * This used to be a 6px white square with `border-radius` and a cold
+ * `box-shadow` behind it. Captured at 4× against the live hero, that renders as
+ * a white blob with a blue smudge under it — no rim, no interior, no light
+ * direction — which reads as a printing artefact rather than as a lit indicator.
+ *
+ * It now carries `.signal-lens`: a radial well lit from above, a conic rim masked
+ * to a 1px annulus, and the aura. See the `--lens-*` block in
+ * `styles/tokens/color.css` for the construction and for why the rim has to be
+ * geometry rather than one more shadow.
+ *
+ * 8px rather than 6px, and the two pixels are what buy the structure: at 6px a
+ * 1px rim leaves a 4px core, which is below the size at which a rim and a core
+ * can be told apart on a 1× display. The dot sits in an `inline-flex` row with a
+ * `gap`, so the two pixels widen the pill by two and shift nothing else.
+ *
  * ── This is not the live dot, and the distinction is deliberate ──
  *
  * `.status-dot-live` (globals.css) is reserved for a genuine live state or the
@@ -30,27 +47,27 @@ import { cn } from "@/lib/utils";
  *
  * ── Colour ──
  *
- * White core inside a cold halo. The cold blue arrives entirely as `box-shadow`,
- * which is the permitted use of the signal colour — light, never ink. See the
- * doctrine at the top of tokens/color.css and the `cyan-as-ink` gate in
+ * The blue never leaves the interior of an 8px circle and the aura immediately
+ * around it. That is the permitted use of the signal colour — light, never ink.
+ * See the doctrine at the top of tokens/color.css and the `cyan-as-ink` gate in
  * check-design-tokens.mjs.
  *
  * ── Motion ──
  *
  * `opacity` and `box-shadow` only, on an out-of-flow-safe inline-block with a
- * fixed size, so it can neither shift a baseline nor cost layout. Under
- * `prefers-reduced-motion` the breathe is dropped and the dot rests at its lit
- * state — see `.signal-beacon` in globals.css, which pins it rather than letting
- * the global 0.01ms reset freeze it on an arbitrary keyframe.
+ * fixed size, so it can neither shift a baseline nor cost layout. The rim's
+ * bright arc is *static* here: at 8px a travelling highlight is invisible and
+ * still costs a repaint per frame, so the sweep from the reference is spent only
+ * on the 40px pipeline node. Under `prefers-reduced-motion` the breathe is
+ * dropped and the dot rests at its lit state — see `.signal-beacon` in
+ * globals.css, which pins it rather than letting the global 0.01ms reset freeze
+ * it on an arbitrary keyframe.
  */
 export function SignalDot({ className }: { className?: string }) {
   return (
     <span
       aria-hidden="true"
-      className={cn(
-        "signal-beacon inline-block size-1.5 shrink-0 rounded-[var(--radius-full)]",
-        className,
-      )}
+      className={cn("signal-lens signal-beacon inline-block size-2 shrink-0", className)}
     />
   );
 }

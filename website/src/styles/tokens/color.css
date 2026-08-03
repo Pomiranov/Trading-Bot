@@ -39,8 +39,24 @@
   --color-panel-raised: #171717;
 
   /* Warm paper — the inverted band. Text on paper uses the --color-on-paper-*
-     family declared in the :root block at the foot of this file. */
-  --color-paper: #f4f2ec;
+     family declared in the :root block at the foot of this file.
+
+     ── Softened from #f4f2ec ──
+
+     At L* 95.4 the old value was three levels off pure white, and against
+     ~7 000px of #030303 either side of it that read as a lamp switching on
+     rather than as the page changing material. Owner note: "приглушить белый
+     фон … не чисто белым, а warm paper".
+
+     #ebe8e0 is L* 92.4 — three perceptual steps down, and the warm bias is
+     *kept* (R>G>B, 11 levels of spread) precisely so it lands on paper rather
+     than on the dirty grey the same move would produce if it were neutral.
+
+     Every ratio in the --color-on-paper-* family below is re-measured against
+     this value, not against the old one. The binding constraint is
+     --color-on-paper-muted at 4.9:1; there is no room to go darker without
+     lifting that token with it. */
+  --color-paper: #ebe8e0;
 
   /* ─── Lines ─── */
   --color-border: rgba(255, 255, 255, 0.1); /* hairline, decorative */
@@ -69,9 +85,30 @@
   --color-fill-subtle: rgba(255, 255, 255, 0.03);
   --shadow-cta-rest: 0 4px 20px rgba(255, 255, 255, 0.1);
   --shadow-cta-hover: 0 8px 30px -6px rgba(255, 255, 255, 0.18);
+  /* ── Card hover: the light around a card is cold, the card itself is not ──
+     Owner direction: the white bloom this used to carry read as a lamp behind
+     the card — `0 0 32px -8px rgba(255,255,255,0.09)` over a #030303 page is a
+     grey smear with no colour and no direction, and at 32px it had no findable
+     edge either, so a hovered card looked *smudged* rather than *focused*.
+
+     Replaced by cold light, in the two layers that do different jobs:
+
+       • a 1px cold ring flush on the edge — this is the "premium terminal
+         focus" line. It is crisp, so the card gains a *definition* on hover
+         rather than a glow.
+       • a 24px cold bloom at -10px spread — tighter and dimmer than the white
+         one it replaces (0.09 white → 0.26 cyan reads *quieter*, because the
+         white was competing with the page's own white text while the cold sits
+         in a hue nothing else on the page occupies).
+
+     The dark drop is unchanged in kind and one step deeper, which is what keeps
+     the lift reading as elevation rather than as illumination.
+
+     Cold blue as a `box-shadow` is the permitted use — see the doctrine at the
+     top of this file. Both cyan alphas are at or under 0.28. */
   --shadow-card-hover:
-    0 18px 48px -12px rgba(0, 0, 0, 0.75), 0 0 0 1px rgba(255, 255, 255, 0.08),
-    0 0 32px -8px rgba(255, 255, 255, 0.09);
+    0 18px 48px -12px rgba(0, 0, 0, 0.78), 0 0 0 1px rgba(124, 200, 255, 0.16),
+    0 0 24px -10px rgba(124, 200, 255, 0.26);
   --shadow-card-rest: 0 1px 2px rgba(0, 0, 0, 0.4);
 
   /* ─── Success — healthy / confirmed trade state only ─── */
@@ -147,13 +184,17 @@
      --color-bg. None of the contrast figures elsewhere in this file carry over
      to a light surface — that is the whole reason these are separate tokens
      rather than an `invert` filter. */
+  /* Re-measured against #ebe8e0 when the paper was softened. The figures the
+     first three carried before (17.4 / 9.9 / 6.0) were against #f4f2ec and, on
+     the muted token, were optimistic even then — recomputed, 0.6 alpha over the
+     old paper was 5.0:1, not 6.0:1. These are the real numbers. */
   --color-paper-surface: #ffffff; /* cards sitting on paper */
-  --color-on-paper: #0a0a0a; /* 17.4:1 on paper */
-  --color-on-paper-secondary: rgba(10, 10, 10, 0.74); /*  9.9:1 */
-  --color-on-paper-muted: rgba(10, 10, 10, 0.6); /*  6.0:1 — floor on paper */
+  --color-on-paper: #0a0a0a; /* 16.2:1 on paper */
+  --color-on-paper-secondary: rgba(10, 10, 10, 0.74); /*  8.0:1 */
+  --color-on-paper-muted: rgba(10, 10, 10, 0.6); /*  4.9:1 — floor on paper */
   --color-border-on-paper: rgba(0, 0, 0, 0.12);
   --color-border-on-paper-strong: rgba(0, 0, 0, 0.3);
-  --color-paper-hover: #faf9f6; /* card hover on paper */
+  --color-paper-hover: #f2efe8; /* card hover on paper — one step above paper */
 
   /* Graphite — dark objects sitting ON paper.
      Consumed by `.on-paper-graphite` in globals.css, which is how both paper
@@ -168,16 +209,127 @@
   /* ─── Cold blue — LIGHT ONLY ───────────────────────────────────────────────
      Read the doctrine at the top of this file before using any of these.
 
-     Permitted: `box-shadow`, `radial-gradient`, SVG `stroke` on decorative
-     geometry (aperture orbits, pipeline spine, connectors).
+     Permitted: `box-shadow`, `radial-gradient`, `conic-gradient`, SVG `stroke`
+     on decorative geometry (aperture orbits, pipeline spine, connectors), and
+     the *interior* of a circular marker under 12px — see the lens block below.
      Forbidden: `color`, `background-color`, any status colour, any CTA fill.
+
+     `conic-gradient` joined the permitted list with the lens. It is the same
+     class of thing the doctrine already allows a radial to be — light painted
+     across decorative geometry — and it is the only primitive that can put a
+     *bright arc* on one side of a ring, which is the whole signature of the
+     reference the markers are drawn from.
 
      Enforced by the `cyan-as-ink` rule in scripts/check-design-tokens.mjs.
      Peak alpha anywhere is 0.28 and only on a stroke or a shadow. */
   --color-signal: #7cc8ff; /* decorative stroke */
-  --color-signal-core: #b8e3ff; /* aperture core, node centres */
+  --color-signal-core: #b8e3ff; /* aperture core, node centres, lens core */
   --color-signal-dim: rgba(124, 200, 255, 0.16);
   --color-signal-line: rgba(124, 200, 255, 0.28); /* the ceiling */
+
+  /* ─── The lens ─────────────────────────────────────────────────────────────
+     Every circular marker on the page is one object drawn at three sizes: the
+     8px closed-testing beacon, the 8px live chip, and the 32/40px pipeline
+     nodes. `.signal-lens` in globals.css is the shared recipe; these are its
+     colour stops.
+
+     ── Why box-shadow alone could not get there ──
+
+     All three markers used to be a *flat disc with a cold box-shadow behind
+     it*. Captured at 4× on the live build, the 6px beacon renders as a white
+     blob with a blue smudge under it: no rim, no interior, no light direction,
+     so the eye reads a printing artefact rather than a lit indicator. That is
+     the defect this block exists to fix.
+
+     A rim is *geometry*, and `box-shadow` cannot draw geometry inside a shape —
+     `inset` gets a feathered edge, never a crisp ring. So the marker is three
+     collaborating layers, each doing the one job it is good at:
+
+       1. the well — `background`, a radial lit from 30% down. Gives the marker
+                     a body, which is what stops it reading as a hole.
+       2. the rim  — `::before`, a conic masked to a 1px annulus. The reference's
+                     signature: a ring of light, brightest where the source is,
+                     dimming around the back.
+       3. the aura — `box-shadow`, shelf plus bloom. Still box-shadow, and
+                     correctly so: a bloom *is* a blur of the shape.
+
+     Because layer 2 now carries the definition, layer 3 gets *quieter* than the
+     old stack rather than louder. Structure replaced brightness — which is the
+     entire difference between expensive and neon.
+
+     ── Polarity is shared across the sizes, and the first attempt got it wrong ──
+
+     The obvious reading is that an 8px marker is a lamp rather than a container,
+     so its well should be filled with light — white specular high, ice-blue body
+     — while only the 40px node, which has to hold a white digit, keeps a dark
+     interior.
+
+     Rendered and measured, that is backwards. A near-white well puts a white rim
+     on a white core, so the rim disappears and the dot is a blob again — the exact
+     defect the lens was built to fix, reintroduced one layer up. Captured at 80×
+     beside the node, the node read as a lit lens and the beacon read as a smudge,
+     from the same three layers.
+
+     The rim needs something to be brighter *than*. So every size shares the
+     reference's polarity: a bright rim around a darker core. The small lens's core
+     is a saturated mid ice-blue rather than the node's neutral graphite, which is
+     what keeps it reading as a lamp that is on — the hue and the top-lit highlight
+     carry that, not the luminance. The blue never leaves the interior of an 8px
+     circle. */
+  --lens-rim-width: 1px;
+
+  /* Small cold lens — the beacon and the live chip. Core mid ice-blue, lit from
+     30% down; rim near-white, so the two cannot merge. */
+  --lens-well-hi: #7ab4e2;
+  --lens-well-mid: #33648f;
+  --lens-well-lo: #10263a;
+  --lens-rim-hot: rgba(242, 251, 255, 0.98);
+  --lens-rim-warm: rgba(180, 222, 255, 0.62);
+  --lens-rim-cool: rgba(124, 200, 255, 0.22);
+
+  /* Node rim — dimmer than the small lens, because a 40px ring at the small
+     lens's alphas is four times the lit area and reads as a light fitting. */
+  --lens-node-rim-hot: rgba(222, 241, 255, 0.82);
+  --lens-node-rim-warm: rgba(124, 200, 255, 0.34);
+  --lens-node-rim-cool: rgba(124, 200, 255, 0.08);
+  --lens-node-rim-hot-hover: rgba(240, 249, 255, 0.98);
+  --lens-node-rim-warm-hover: rgba(124, 200, 255, 0.52);
+  --lens-node-rim-cool-hover: rgba(124, 200, 255, 0.14);
+
+  /* ─── The node aura ──────────────────────────────────────────────────────
+     The outer half of the lens — layer 3 of the three above — for the 32/40px
+     pipeline node. Two states now, not three: the node stopped being a control
+     when the card collapse was removed, so there is no `stowed`.
+
+     Three layers, and the order matters:
+
+       1. a 3–4px cold *shelf* just outside the rim — the soft edge, which is
+          what makes the rim read as sitting *in* light rather than drawn on
+       2. a wide, heavily-negative-spread bloom — the aura, which must not have
+          a findable boundary
+       3. a dark drop — depth, so the node sits above the rail rather than in it
+
+     The 1px cold ring that used to be layer 0 is gone from the shadow stack: the
+     lens's `::before` now draws a real ring, and keeping a shadow-ring behind a
+     geometric one doubled the edge and read as a halo seam.
+
+     ── These are quieter than the stack they replace ──
+
+     Rest bloom went 18px/0.26 → 13px/0.17, hover 26px/0.42 → 20px/0.30. The rim
+     took over the job the bloom was overcompensating for, and the brief is a
+     marker that reads as expensive rather than lit up. Every alpha here is at or
+     under the 0.28 the palette doctrine allows for shadows. */
+  --aura-node-rest:
+    0 0 0 3px rgba(124, 200, 255, 0.03), 0 0 13px -4px rgba(124, 200, 255, 0.17),
+    0 6px 16px -8px rgba(0, 0, 0, 0.95);
+  --aura-node-hover:
+    0 0 0 4px rgba(124, 200, 255, 0.055), 0 0 20px -4px rgba(124, 200, 255, 0.3),
+    0 8px 20px -8px rgba(0, 0, 0, 0.95);
+
+  /* The disc itself. A flat fill at --color-bg made the node a hole punched in
+     the page; a top-lit radial gives it a body without any of it being bright
+     enough to read as a highlight. */
+  --fill-node: radial-gradient(circle at 50% 26%, #17191d 0%, #0b0c0e 54%, #060608 100%);
 
   /* Glow sizes, not colours: `sm` is an edge, `md` is a node, `lg` is the
      ambient pool behind the hero aperture. */

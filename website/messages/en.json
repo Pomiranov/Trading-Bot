@@ -1,9 +1,9 @@
 {
   "seo": {
-    "title": "Quant — automated trading operator for MOEX and Bybit",
+    "title": "Quant — automated trading operator for MOEX",
     "description": "Quant analyses the market, checks the strategy against written rules, measures confidence, limits risk and executes through your broker account. It starts in the sandbox.",
     "ogTitle": "The market makes noise. Quant turns it into a decision.",
-    "ogDescription": "Automated trading operator for MOEX and Bybit. Closed testing."
+    "ogDescription": "Automated trading operator for MOEX. Closed testing."
   },
   "nav": {
     "brand": "Quant",
@@ -35,6 +35,13 @@
     "plain": "In plain terms",
     "technical": "Technically",
     "closedTesting": "Closed testing"
+  },
+  "assistant": {
+    "open": "Open the Quant assistant",
+    "close": "Close",
+    "hint": "Assistant",
+    "title": "Quant assistant",
+    "body": "Not available yet. When it is, it will answer questions about the strategy, the risk limits and the closed-testing programme right here, without leaving the page."
   },
   "hero": {
     "eyebrow": "Closed testing",

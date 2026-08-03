@@ -1,4 +1,4 @@
-import type { ComponentPropsWithoutRef } from "react";
+import type { ComponentPropsWithoutRef, CSSProperties } from "react";
 import { TONE_STYLE, type StatusTone } from "@/lib/strategy-status";
 import { SignalDot } from "@/components/ui/signal-dot";
 import { cn } from "@/lib/utils";
@@ -87,30 +87,56 @@ export function StatusChip({
       }}
       {...props}
     >
-      {/* `relative` only on the live variant — the expanding ring is an
-          absolutely-positioned pseudo-element and needs this as its containing
-          block. It is out of flow, so the chip's box is identical in both
-          variants and turning the pulse on cannot move anything. */}
       {isBeacon ? (
-        // `SignalDot` owns its own core colour and halo — passing the tone
-        // colour through would defeat the point, since the beacon's core is
-        // white on every tone by design (see the note in that file).
+        // `SignalDot` owns its own well, rim and halo — passing the tone colour
+        // through would defeat the point, since the beacon's interior is cold on
+        // every tone by design (see the note in that file).
         <SignalDot />
       ) : (
         <span
           aria-hidden="true"
           className={cn(
-            "size-1.5 shrink-0 rounded-[var(--radius-full)]",
-            pulse && "status-dot-live relative",
+            "size-2 shrink-0 rounded-[var(--radius-full)]",
+            /*
+              ── Which dots are lenses, and which are not ──
+
+              `.signal-lens` gives a dot the page's shared marker construction: a
+              well lit from above, a conic rim masked to a 1px annulus, volume.
+              See the `--lens-*` block in styles/tokens/color.css.
+
+              Two of the three cases here take it:
+
+                • `pulse` — the live dot, on the cold lens, plus `.status-dot-live`
+                  for the sonar ring. `relative` comes from `.signal-lens`, which
+                  the expanding ring needs as its containing block; it is out of
+                  flow, so turning the pulse on still cannot move the chip.
+                • solid — the tone lens, which derives its well and rim from
+                  `--lens-tone` with `color-mix`. Hue is never normalised: green
+                  still means confirmed and red still means risk.
+
+              `outline` does not, and that is the one deliberate exception. It
+              exists to separate a partially-working integration from an
+              unimplemented stub (see the `variant` prop above), and it does that
+              by being *hollow*. A lens has an interior by definition, so filling
+              the outline dot with one would erase the distinction the variant was
+              added for.
+            */
+            pulse && "signal-lens status-dot-live",
+            !pulse && !outline && "signal-lens signal-lens--tone",
           )}
           style={
             outline
               ? { border: `1px solid ${s.color}` }
-              : // The live dot's core is white, not the tone colour: at 1.5 units
-                // across, a grey core inside a cold halo reads as smudged rather
-                // than as lit. The tone still carries in the chip's border, fill
-                // and text, and the label states the status in words regardless.
-                { backgroundColor: pulse ? "var(--color-text-primary)" : s.color }
+              : // `backgroundColor` is the floor, not the paint: `.signal-lens`
+                // overrides it with a gradient wherever `color-mix` resolves. On
+                // an engine that drops the mix, this flat tone fill is what shows
+                // — which is exactly the appearance the dot had before the lens.
+                // The live dot's floor is white rather than its tone, because a
+                // grey core inside a cold halo reads as smudged rather than lit.
+                {
+                  backgroundColor: pulse ? "var(--color-text-primary)" : s.color,
+                  ...({ "--lens-tone": s.color } as CSSProperties),
+                }
           }
         />
       )}

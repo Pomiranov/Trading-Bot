@@ -5,6 +5,7 @@ import { SignalField } from "@/components/ui/signal-field";
 import { SignalDot } from "@/components/ui/signal-dot";
 import { QAperture } from "./q-aperture";
 import { PointerTilt } from "./pointer-tilt";
+import { HeroSignalBurst } from "./signal-burst";
 
 /**
  * The argument in one screen, inside a contained dark panel.
@@ -90,6 +91,19 @@ export async function HeroSection({ locale }: { locale: string }) {
               line well short of the panel's foot. See EDGE_FADE in
               ui/grid-backplate.tsx. */}
           <GridBackplate signal mask="panel" />
+
+          {/* ── The panel answers a click ──
+
+              A short dispersal of signal along the grid, from the intersection
+              nearest wherever the panel was pressed. Immediately after
+              `GridBackplate` and before the content, so it lights the backplate
+              and is painted under the headline, the subline and the CTA — which
+              sit in the `relative` grid below and therefore above it.
+
+              It contributes one empty <div> to the server-rendered hero and
+              builds its six-element pool on mount; there is no path in it that
+              appends anything per click. See sections/hero/signal-burst.tsx. */}
+          <HeroSignalBurst />
 
           {/*
             ── Removed: the panel's own white pool ──

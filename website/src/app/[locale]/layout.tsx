@@ -11,6 +11,7 @@ import { SpeedInsights } from "@vercel/speed-insights/next";
 import { routing } from "@/lib/i18n/routing";
 import { fontVariables } from "@/lib/fonts";
 import { LenisProvider } from "@/components/motion/lenis-provider";
+import { AssistantLauncher } from "@/components/assistant/assistant-launcher";
 import { PostHogProvider } from "@/lib/analytics/posthog-provider";
 import "../globals.css";
 
@@ -117,6 +118,17 @@ export default async function LocaleLayout({
         <NextIntlClientProvider locale={locale} messages={messages}>
           <PostHogProvider>
             <LenisProvider>{children}</LenisProvider>
+            {/*
+              Inside `NextIntlClientProvider`, because the orb's accessible name
+              and the panel's copy are both translated — and outside
+              `LenisProvider`, because it is `position: fixed` and has nothing to
+              do with the scroll container.
+
+              Rendered here rather than in `page.tsx` so it survives any future
+              route under `[locale]`: an entry point that disappears on the
+              legal pages would be worse than not having one.
+            */}
+            <AssistantLauncher />
           </PostHogProvider>
         </NextIntlClientProvider>
         <Analytics />

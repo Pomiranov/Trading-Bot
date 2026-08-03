@@ -11,9 +11,12 @@ import { cn } from "@/lib/utils";
  *   at rest   — transparent, no border, no blur. The hero gets a clean top edge;
  *               the first thing a visitor sees is the artwork, not a bar sitting
  *               on it.
- *   compact   — the glass pill, once the page has moved off the hero.
+ *   compact   — the glass pill, once the page has moved off the very top.
  *   retracted — translated up out of the viewport, faded, and slightly
- *               compressed, once the reader is inside the content.
+ *               compressed, from the moment the pill would touch `#audience`.
+ *
+ * The boundary between the last two is a measured position on this page, not a
+ * round number: see `retractGateFor` below, which is where the timing lives.
  *
  * The retracted state is the point of this component. The header used to hold
  * its compact state for the whole page, which meant a 62px pill parked over
@@ -25,11 +28,15 @@ import { cn } from "@/lib/utils";
  *
  * ── What brings it back ──
  *
- *   • scrolling up, at all — the intent to leave the current block
+ *   • scrolling up by more than SENTINEL_GAP — the intent to leave the current
+ *     block. This is the only recovery on a touch device, which is why that
+ *     constant is sized against a phone viewport rather than a laptop one.
  *   • returning to the top of the page — back to the at-rest state
  *   • keyboard focus reaching anything inside it, via `:focus-within`, so Tab
  *     never lands on an invisible control
- *   • hovering the top edge of the viewport, via the sensor strip below
+ *   • hovering the top edge of the viewport, via the sensor strip below.
+ *     Pointer devices only, deliberately: a full-width 64px band across the top
+ *     of a phone screen would swallow taps aimed at the content under it.
  *
  * ── Why direction is read from IntersectionObserver and not from scrollY ──
  *
@@ -62,27 +69,104 @@ import { cn } from "@/lib/utils";
 /**
  * Vertical spacing between direction sentinels.
  *
- * 600px is comfortably under one viewport, so scrolling up by less than a screen
- * still crosses one and brings the header back. The sentinels only have to be
- * dense enough that a crossing reliably means "the reader has moved", not dense
- * enough to track position.
+ * 420px, down from 600. The gap is the *granularity of recovery*: a retracted
+ * header comes back when the reader crosses one going up, so 600px meant a
+ * reader had to scroll up two thirds of a laptop screen — and most of a phone
+ * screen — before the navigation returned. On touch that is the only recovery
+ * there is, because the hover sensor below is inert without a pointer.
+ *
+ * 420px is still far more than a reader moves while re-reading a line, so it
+ * cannot flicker from ordinary reading, and it is about half a phone viewport,
+ * which is a deliberate gesture. It has to stay comfortably under one viewport
+ * or a single upward flick could fail to cross any sentinel at all.
+ *
+ * The sentinels only have to be dense enough that a crossing reliably means
+ * "the reader has moved", never dense enough to track position.
  */
-const SENTINEL_GAP = 600;
+const SENTINEL_GAP = 420;
 
 /**
  * Sentinel count above which the header is allowed to retract at all.
  *
- * 0, so the first downward crossing — 600px, which is the hero's own foot on a
- * 900px viewport — is enough. It was 1, meaning the pill held its compact glass
- * state for the first 1 200px of the page: measured, that parked it over the
- * top of `#audience` and, at 1440, over the first row of `#how-it-works`. The
- * complaint it was changed on is exactly that — the header colliding with the
- * first big block under the hero — and one sentinel earlier is the whole fix.
- *
- * It cannot fire *on* the hero: retraction needs a downward crossing, and the
- * first sentinel is below the fold at every viewport this page supports.
+ * 0 — and the number is only meaningful together with where the track *starts*,
+ * which is now the `#audience` boundary rather than a fixed offset. See
+ * `retractGateFor` below. With the first sentinel sitting exactly on that
+ * boundary, "more than zero sentinels are above the viewport top" reads as "the
+ * reader has entered the content", which is the condition the header should
+ * retract on.
  */
 const RETRACT_AFTER = 0;
+
+/**
+ * Fallback gate for the case where `#audience` cannot be found, in document px.
+ * Only reachable if the page composition changes underneath this component;
+ * roughly one viewport, so the header still never retracts on the hero.
+ */
+const GATE_FALLBACK = 900;
+
+/**
+ * Never gate above this, in document px. Guards the degenerate case — a very
+ * short hero on a very tall viewport — where the boundary could land close
+ * enough to the top that the header retracts as soon as the reader nudges the
+ * page.
+ */
+const GATE_MIN = 320;
+
+/**
+ * Distance from the top of the document to an element, without reading scroll
+ * position.
+ *
+ * `getBoundingClientRect().top + scrollY` is the obvious form and it is exactly
+ * the thing this file may not do — see the note at the top on why nothing here
+ * may read the value Lenis animates. Walking `offsetTop` up the `offsetParent`
+ * chain is a pure layout read: it is the same category as the `scrollHeight`
+ * read in the measure effect below, it does not change while scrolling, and it
+ * is taken twice per resize.
+ */
+function documentTop(el: HTMLElement): number {
+  let y = 0;
+  let node: HTMLElement | null = el;
+  while (node) {
+    y += node.offsetTop;
+    node = node.offsetParent as HTMLElement | null;
+  }
+  return y;
+}
+
+/**
+ * Where the header is allowed to start retracting.
+ *
+ * ── The defect this replaces ──
+ *
+ * The track used to start at a flat 600px, which is not a position on this
+ * page — it is a number that happened to be under one viewport. Measured at
+ * 757×798 the hero is 857px tall and `#audience` begins at 857, so the header
+ * was leaving at 600: 171px early, with the hero still filling the screen and
+ * the reader given no reason for the navigation to go. At 1440×900 the hero is
+ * taller and the error is larger.
+ *
+ * The owner's description of the intended behaviour is precise — the header
+ * should retract "при соприкосновении с блоком Аудитория", when it *touches*
+ * the audience block — and that moment is exactly computable: the section's top
+ * edge reaches the pill's bottom edge when the page has scrolled
+ * `audienceTop − navHeight`. Before that instant the header is over the hero,
+ * which is its designed state; after it, the header would be over content.
+ *
+ * `--nav-height` is read rather than hard-coded so this stays correct with the
+ * one number that already governs the pill's box (see the header-geometry block
+ * in globals.css).
+ */
+function retractGateFor(): number {
+  const audience = document.getElementById("audience");
+  if (!audience) return GATE_FALLBACK;
+
+  const navHeight =
+    Number.parseFloat(
+      getComputedStyle(document.documentElement).getPropertyValue("--nav-height"),
+    ) || 86;
+
+  return Math.max(GATE_MIN, documentTop(audience) - navHeight);
+}
 
 /**
  * Keeps the last sentinel this far above the end of the scrollable range.
@@ -105,12 +189,14 @@ export function HeaderShell({ children }: { children: ReactNode }) {
   const [compact, setCompact] = useState(false);
   const [retracted, setRetracted] = useState(false);
   /**
-   * 0 on the server and on first paint. The sentinels are aria-hidden decoration
-   * whose only job is to inform an enhancement, so rendering none of them until
-   * the document has been measured costs nothing: the header simply stays in its
-   * default non-retracted state until then.
+   * Where the direction track starts and how many markers it holds.
+   *
+   * `count: 0` on the server and on first paint. The sentinels are aria-hidden
+   * decoration whose only job is to inform an enhancement, so rendering none of
+   * them until the document has been measured costs nothing: the header simply
+   * stays in its default non-retracted state until then.
    */
-  const [markCount, setMarkCount] = useState(0);
+  const [track, setTrack] = useState({ gate: GATE_FALLBACK, count: 0 });
   const topSentinel = useRef<HTMLDivElement>(null);
   const trackRef = useRef<HTMLDivElement>(null);
 
@@ -147,14 +233,27 @@ export function HeaderShell({ children }: { children: ReactNode }) {
    * width: at 390px this page is roughly twice as tall as at 1440px, and a track
    * sized for the wide case would leave the bottom half of the narrow page with
    * no sentinels in it.
+   *
+   * The gate is re-measured with it, and for the same reason with more force:
+   * it is derived from the hero's height, and the hero is `min-h-dvh` above
+   * `md` and content-sized below it. A gate measured at one width is simply the
+   * wrong number at another.
    */
   useEffect(() => {
     let timer: number | undefined;
 
     function measure() {
+      const gate = retractGateFor();
       const reachable =
-        document.documentElement.scrollHeight - window.innerHeight - SENTINEL_TAIL_MARGIN;
-      setMarkCount(Math.max(0, Math.floor(reachable / SENTINEL_GAP)));
+        document.documentElement.scrollHeight -
+        window.innerHeight -
+        SENTINEL_TAIL_MARGIN -
+        gate;
+      const count = Math.max(0, Math.floor(reachable / SENTINEL_GAP) + 1);
+      // Bail on an unchanged measurement: this setter re-subscribes the
+      // direction observer below, and a resize that does not move the gate
+      // should not cost a teardown.
+      setTrack((prev) => (prev.gate === gate && prev.count === count ? prev : { gate, count }));
     }
 
     function onResize() {
@@ -175,11 +274,20 @@ export function HeaderShell({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
-    const track = trackRef.current;
-    if (!track) return;
+    // `trackEl`, not `track`: the state of the same name is read in the
+    // dependency array below, and shadowing it here reads as a bug.
+    const trackEl = trackRef.current;
+    if (!trackEl) return;
 
-    const marks = Array.from(track.children) as HTMLElement[];
+    const marks = Array.from(trackEl.children) as HTMLElement[];
     if (marks.length === 0) return;
+
+    // Reset the bookkeeping attribute on every re-subscribe. React reuses these
+    // DOM nodes across renders (they are keyed by index), so a track rebuilt at
+    // a new gate after a resize would otherwise inherit the previous layout's
+    // `data-above` flags and mis-count the first callback by however many
+    // markers changed side.
+    for (const mark of marks) mark.setAttribute("data-above", "false");
 
     /**
      * How many sentinels are currently above the viewport's top edge. The count
@@ -219,7 +327,8 @@ export function HeaderShell({ children }: { children: ReactNode }) {
         }
 
         if (next > above) {
-          // Downward, and past the hero. Retract.
+          // Downward, and at or past the `#audience` boundary — marker 0 sits
+          // exactly on it. Retract.
           if (next > RETRACT_AFTER) setRetracted(true);
         } else if (next < above) {
           // Upward. The reader wants out of this block — bring the nav back.
@@ -232,8 +341,10 @@ export function HeaderShell({ children }: { children: ReactNode }) {
 
     for (const mark of marks) io.observe(mark);
     return () => io.disconnect();
-    // Re-subscribes when the track is rebuilt at a new length after a resize.
-  }, [markCount]);
+    // Re-subscribes when the track is rebuilt at a new gate or length after a
+    // resize. The measure effect above suppresses no-op updates, so this does
+    // not tear down on every resize event.
+  }, [track.gate, track.count]);
 
   return (
     <>
@@ -257,22 +368,29 @@ export function HeaderShell({ children }: { children: ReactNode }) {
       {/*
         The direction track: a column of 1px markers down the document.
 
+        It starts *at the retract gate* — the `#audience` boundary — rather than
+        one gap below the top of the page, which is the whole of the timing fix.
+        Marker 0 sits exactly on the boundary, so crossing it downward is both
+        "the reader moved down" and "the reader has left the hero", and
+        RETRACT_AFTER can stay 0 while meaning something real about the page.
+
         Every marker sits at a `top` inside the range the reader can already
         scroll to — see SENTINEL_TAIL_MARGIN for the 22 000px of phantom page the
-        naive version of this produced. `markCount` is measured, not fixed, so
-        the track ends where the document does at the current viewport width.
+        naive version of this produced. Both the gate and the count are
+        measured, not fixed, so the track starts and ends where the document
+        does at the current viewport width.
       */}
       <div
         ref={trackRef}
         aria-hidden="true"
         className="pointer-events-none absolute top-0 left-0 h-0 w-0"
       >
-        {Array.from({ length: markCount }, (_, i) => (
+        {Array.from({ length: track.count }, (_, i) => (
           <div
             key={i}
             data-above="false"
             className="absolute left-0 h-px w-px"
-            style={{ top: `${(i + 1) * SENTINEL_GAP}px` }}
+            style={{ top: `${track.gate + i * SENTINEL_GAP}px` }}
           />
         ))}
       </div>

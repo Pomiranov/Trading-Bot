@@ -126,7 +126,20 @@ body {
   background: rgba(255, 255, 255, 0.18);
 }
 
-/* ─── Noise texture overlay ─── */
+/* ─── Noise texture overlay ───────────────────────────────────────────────
+   Declared once as a token because three surfaces now need the same tile and a
+   second copy of a 300-character data URI is a second copy to keep in step.
+
+   `body::before` is a *positioned* pseudo-element and the first child of body,
+   so it paints before every `relative isolate` section — i.e. behind them. That
+   is fine while a section's background is transparent (the dark page), and it
+   is why the two opaque surfaces on the page have to carry their own grain: the
+   paper bands and the transition ramps paint over this one. See
+   `.band-blend__grain` and `.section-paper::before`. */
+:root {
+  --noise-tile: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
 body::before {
   content: "";
   position: fixed;
@@ -134,7 +147,7 @@ body::before {
   pointer-events: none;
   z-index: 0;
   opacity: 0.025;
-  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-image: var(--noise-tile);
   background-size: 256px 256px;
 }
 
@@ -885,6 +898,105 @@ section[id][data-rhythm="tight"] {
   }
 }
 
+/* ─── Hero signal dispersion ───────────────────────────────────────────────
+   The hero's click/tap response, driven by `sections/hero/signal-burst.tsx`.
+   Read that file for the timing and the element pool; this owns only how the
+   marks are drawn.
+
+   ── The rule that shapes all of it: it happens *in the grid* ──
+
+   The brief is "controlled signal dispersion inside a premium terminal grid",
+   and the difference between that and a click-sparkle is entirely that the
+   burst is constrained by geometry that already exists. So:
+
+     • the origin is snapped to the nearest 64px grid intersection, never to the
+       raw cursor position — the system responds *at a lattice point*
+     • every trace runs along a grid axis. No diagonals: a diagonal is not a
+       line the grid has, so it reads as something thrown over the top of the
+       page rather than as the page conducting
+     • the four traces have different lengths and durations, so the figure is a
+       dispersal and not a plus sign
+
+   ── Compositor-only, and why that is not optional here ──
+
+   Everything animated is `transform` and `opacity`. The obvious implementation
+   — animating a `mask-image` radius over a copy of the grid — repaints a
+   ~1200×750 layer every frame for the length of the effect, on the page's LCP
+   element, in response to a click. Six small absolutely-positioned elements
+   sliding on the compositor cost approximately nothing by comparison.
+
+   Nothing here lays out, and the whole layer is inside the panel's own
+   `overflow: hidden`, so the burst is bounded by the object it belongs to. */
+.hero-burst {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  /* Above the grid layers, below the panel's content — the traces light the
+     backplate, they never cross the headline or the CTA. */
+  z-index: 0;
+}
+
+/* A trace: one hairline segment, drawn pointing along +x with its tail at the
+   origin, then rotated into place by the component. `transform-origin: 0 0`
+   rather than `0 50%` so a horizontal trace occupies exactly the 1px row a grid
+   line occupies rather than straddling two at half intensity.
+
+   The head is brighter than the tail: a segment with a lit leading edge reads
+   as something travelling, where an evenly lit one reads as a line being
+   revealed. */
+.hero-burst__trace {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 1px;
+  width: 76px;
+  transform-origin: 0 0;
+  opacity: 0;
+  background-image: linear-gradient(
+    to right,
+    rgba(124, 200, 255, 0) 0%,
+    rgba(124, 200, 255, 0.34) 58%,
+    rgba(184, 227, 255, 0.72) 100%
+  );
+  will-change: transform, opacity;
+}
+
+/* The origin. A white core in a cold halo — the same two-part construction as
+   every other lit point on the page, so a click produces a member of the
+   existing family rather than a new kind of mark. */
+.hero-burst__core {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 6px;
+  width: 6px;
+  border-radius: var(--radius-full);
+  opacity: 0;
+  background-color: var(--color-text-primary);
+  box-shadow:
+    0 0 0 1px rgba(124, 200, 255, 0.34),
+    0 0 12px 1px rgba(124, 200, 255, 0.45);
+  will-change: transform, opacity;
+}
+
+/* The wavefront. One hairline ring, expanding once and gone in under a second.
+
+   Deliberately *not* `.status-dot-live`'s sonar ping, despite the shape: that
+   ring loops, and a looping ring on this page means "telemetry is arriving",
+   which is a claim. This one exists for exactly as long as the gesture that
+   caused it, and it is 20px across at rest. */
+.hero-burst__ring {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 20px;
+  width: 20px;
+  border-radius: var(--radius-full);
+  border: 1px solid rgba(124, 200, 255, 0.4);
+  opacity: 0;
+  will-change: transform, opacity;
+}
+
 /* ─── The band blend ───────────────────────────────────────────────────────
    The material change between the page's black base and one of its two paper
    bands, drawn by `ui/band-transition.tsx`. Read that file first — it owns the
@@ -941,6 +1053,58 @@ section[id][data-rhythm="tight"] {
    in". */
 .band-blend__hold {
   opacity: 0;
+}
+
+/* ── Grain, and it is a fix rather than a texture ──
+
+   The ramp crosses ~220 luminance levels over 208–352px of an opaque, perfectly
+   smooth vertical gradient. In 8-bit sRGB that is roughly one level per 1.5px,
+   which is squarely inside the range where Chromium's gradient rasteriser
+   produces visible Mach bands — and a banded gradient is *precisely* what reads
+   as "an abrupt transition someone gradient-filled", which is the complaint this
+   whole pass is answering.
+
+   Dithering it with the page's own noise tile removes the banding and, as a
+   side effect, gives the band the same material as the rest of the page. It is
+   the cheapest of the four changes made here and, measured against a before
+   shot, the second most visible after the interpolation space.
+
+   4.5% rather than the body overlay's 2.5%: it is doing dithering work on a
+   large flat field, not adding tooth to a dark background. Above ~6% it starts
+   to read as texture on the paper end, which is a different (and wrong) look.
+
+   It must sit *above* the ramp and the held ramp and *below* the grid layers,
+   so it is rendered between them — see the order in ui/band-transition.tsx. */
+.band-blend__grain {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.045;
+  background-image: var(--noise-tile);
+  background-size: 256px 256px;
+}
+
+/* The same tooth on the paper itself, at half strength.
+
+   Without it the ramp lands on a dead-flat #ebe8e0 and the last few levels of
+   the transition have a visible grain boundary at the exact pixel row the band
+   ends on — which would have replaced the hard edge this pass removed with a
+   subtler one. `::before` on the section rather than a rendered element,
+   because `.section-paper` is applied by ui/section.tsx to sections that do not
+   all have a `glow` slot to put a layer in.
+
+   The section is `relative isolate`, so this is contained, and `z-index: 0`
+   keeps it under the content while staying above the section's own background.
+   `--space-content-max` is irrelevant here: it covers the full bleed. */
+.section-paper::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.022;
+  background-image: var(--noise-tile);
+  background-size: 256px 256px;
 }
 
 /* The gentle brightening as the blend crosses the viewport. Opacity only, on a
@@ -1288,6 +1452,161 @@ main > section:not(.section-paper):not(#hero):has(+ .band-blend) {
     0 0 56px -16px rgba(255, 255, 255, 0.1);
 }
 
+/* ─── The lens ─────────────────────────────────────────────────────────────
+   The shared body of every circular marker on the page: the closed-testing
+   beacon, the terminal's live chip, the tone dots on every status chip, and the
+   seven pipeline nodes. Read the long `--lens-*` block in tokens/color.css for
+   the palette and for why `box-shadow` alone could not draw this.
+
+   Three layers. Only the middle one is new, and it is the whole point:
+
+     1. the well  — `background` on the element, a radial lit from 30% down
+     2. the rim   — `::before`, a conic-gradient masked to a `--lens-rim-width`
+                    annulus. A *ring* of light with a bright arc where the source
+                    is, dimming around the back.
+     3. the aura  — `box-shadow`, supplied per marker
+
+   ── The mask ──
+
+   `radial-gradient(closest-side, …)` on a square box puts its edge exactly on
+   the border-radius circle, so the annulus lands flush on the rim with no
+   feather. Two hard stops, no gradient between them: at 8px a feathered ring is
+   just a blur, which is the thing being fixed. `-webkit-mask-image` is written
+   alongside — house style, and the codebase already pairs them on
+   `.pipeline-rail--lit`.
+
+   ── Why `::before` and not `border` ──
+
+   A border participates in the box model. Every one of these markers sits on a
+   text baseline inside a flex row, and a 1px border on an 8px dot would change
+   its content box and shift the label beside it. `::before` is out of flow, so
+   the rim is free.
+
+   ── `--lens-sweep` ──
+
+   The angle the rim's bright arc sits at. Static on the small markers — at 8px a
+   travelling highlight is invisible and costs a repaint per frame — and animated
+   on the node, which is the one size where the reference's signature reads. It
+   is registered with `@property` because a bare custom property is not an
+   interpolable type, so `animation` would step it discretely rather than sweep
+   it. */
+@property --lens-sweep {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: -108deg;
+}
+
+.signal-lens {
+  position: relative;
+  /* `isolate` is load-bearing, not hygiene. The rim blends with `screen`, and
+     without a stacking context here it would blend against whatever happens to
+     be behind the marker — the page, a card, a paper band — so the same dot
+     would render three different ways. Isolated, it blends against its own well
+     and nothing else. */
+  isolation: isolate;
+  border-radius: var(--radius-full);
+  background: radial-gradient(
+    circle at 50% 30%,
+    var(--lens-well-hi) 0%,
+    var(--lens-well-mid) 52%,
+    var(--lens-well-lo) 100%
+  );
+}
+
+.signal-lens::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: conic-gradient(
+    from var(--lens-sweep),
+    var(--lens-rim-hot) 0deg,
+    var(--lens-rim-warm) 58deg,
+    var(--lens-rim-cool) 148deg,
+    var(--lens-rim-cool) 212deg,
+    var(--lens-rim-warm) 302deg,
+    var(--lens-rim-hot) 360deg
+  );
+  mask-image: radial-gradient(
+    closest-side,
+    transparent calc(100% - var(--lens-rim-width)),
+    #000 calc(100% - var(--lens-rim-width))
+  );
+  -webkit-mask-image: radial-gradient(
+    closest-side,
+    transparent calc(100% - var(--lens-rim-width)),
+    #000 calc(100% - var(--lens-rim-width))
+  );
+  /* The rim is light lying on the well, not a decal over it. `screen` keeps the
+     arc's dim quarter from painting a grey band across the lit interior, which
+     is what a plain composite does at these alphas. */
+  mix-blend-mode: screen;
+  pointer-events: none;
+}
+
+/* ── The tone lens ──
+   Every *semantic* status dot: the green/red/grey discs on `ui/status-chip.tsx`.
+   They were flat fills, which put them in a different visual language from the
+   three lit markers even though they sit two words apart in the same chip.
+
+   Hue is the one thing that may not be normalised here — green means confirmed,
+   red means risk, and those are the only two colours on this page besides the
+   monochrome. So the tone is an *input*: `--lens-tone` arrives from
+   `TONE_STYLE`, and `color-mix` derives the well and the rim from it. One
+   recipe, four tones, no hue invented by the CSS.
+
+   `color-mix` is not load-bearing — where it is unsupported the declarations are
+   dropped and the flat `background-color` the component still sets shows
+   through, which is exactly the old appearance. Progressive enhancement, not a
+   dependency. */
+.signal-lens--tone {
+  background: radial-gradient(
+    circle at 50% 30%,
+    color-mix(in oklab, var(--lens-tone) 30%, #ffffff) 0%,
+    var(--lens-tone) 58%,
+    color-mix(in oklab, var(--lens-tone) 68%, #000000) 100%
+  );
+}
+
+.signal-lens--tone::before {
+  background: conic-gradient(
+    from var(--lens-sweep),
+    color-mix(in oklab, var(--lens-tone) 15%, #ffffff) 0deg,
+    color-mix(in oklab, var(--lens-tone) 55%, #ffffff) 58deg,
+    color-mix(in oklab, var(--lens-tone) 78%, #000000) 148deg,
+    color-mix(in oklab, var(--lens-tone) 78%, #000000) 212deg,
+    color-mix(in oklab, var(--lens-tone) 55%, #ffffff) 302deg,
+    color-mix(in oklab, var(--lens-tone) 15%, #ffffff) 360deg
+  );
+  /* `screen` over a *saturated* well washes the hue out — the green dot came
+     back mint. The tone rim is opaque geometry instead, which is also why it can
+     carry a dark back quarter and still read as one bead. */
+  mix-blend-mode: normal;
+}
+
+/* On paper there is nothing for cold light to bloom into — a cyan halo on
+   #ebe8e0 reads as a print registration error, the same reason route cards drop
+   their cold edge inside a band. The lens keeps its *geometry* and inverts:
+   a dark bead with a single dark rim, no blend mode, no aura.
+
+   `:not(.signal-lens--tone)` because a tone lens carries *meaning* in its hue.
+   Green means confirmed and red means risk on paper exactly as they do on black,
+   so a tone dot keeps its own colour inside a band; only the cold markers, whose
+   blue is decoration, invert. No tone chip renders inside a paper band today —
+   this is the guard that keeps that true if one ever does. */
+.section-paper .signal-lens:not(.signal-lens--tone) {
+  background: radial-gradient(
+    circle at 50% 30%,
+    color-mix(in oklab, var(--color-on-paper) 82%, #ffffff) 0%,
+    var(--color-on-paper) 100%
+  );
+}
+
+.section-paper .signal-lens:not(.signal-lens--tone)::before {
+  background: rgba(0, 0, 0, 0.5);
+  mix-blend-mode: normal;
+}
+
 /* ─── Live status dot ──────────────────────────────────────────────────────
    The pulsing dot on `ui/status-chip.tsx`'s `pulse` variant. One use today: the
    mode chip in the operator terminal's own chrome.
@@ -1316,10 +1635,20 @@ main > section:not(.section-paper):not(#hero):has(+ .band-blend) {
    `opacity` only. It is out of flow, so it cannot affect the chip's size,
    baseline or line-height no matter how far it expands, and both properties
    composite. */
+/* The aura only — the well and the rim come from `.signal-lens`, which this
+   element also carries. The three lit circular markers on this page share that
+   recipe and differ only in their *alphas*: a live state should out-read a
+   programme marker, and a 40px node should not be four times as bright as an
+   8px dot just because it is four times the area.
+
+   The old 1px `0 0 0 1px rgba(…, 0.36)` ring layer is gone — the lens draws a
+   real one now, and a shadow-ring stacked behind a geometric ring doubled the
+   edge. What is left is shelf plus bloom, and the bloom came down from 13px/0.46
+   to 11px/0.34 because the rim took over the definition it was straining for. */
 .status-dot-live {
   box-shadow:
-    0 0 0 1px rgba(124, 200, 255, 0.35),
-    0 0 12px 1px rgba(124, 200, 255, 0.45);
+    0 0 0 3px rgba(124, 200, 255, 0.06),
+    0 0 11px 0 rgba(124, 200, 255, 0.34);
 }
 
 .status-dot-live::after {
@@ -1360,28 +1689,30 @@ main > section:not(.section-paper):not(#hero):has(+ .band-blend) {
    marking a programme state does not cross the honesty boundary that removed
    the footer's old "Systems operational" pulse.
 
-   White core, cold halo. The blue is entirely `box-shadow`, which is the
-   permitted use of the signal colour — light on geometry, never ink.
+   A lit lens, not a white disc. The well, the rim and the light direction all
+   come from `.signal-lens` above; this class contributes only the aura, which is
+   `box-shadow` — the permitted use of the signal colour, light on geometry,
+   never ink.
 
    The alphas are the quiet end of the range on purpose. The brief is a glow
    that reads as expensive rather than as neon, and the difference between those
-   two is almost entirely restraint in the outer radius: 10px of 0.4-alpha halo
+   two is almost entirely restraint in the outer radius: 9px of 0.3-alpha halo
    reads as a lit indicator; four times that reads as a torch pointed at the
    reader. */
 .signal-beacon {
-  background-color: var(--color-text-primary);
+  /* Shelf and bloom. The ring layer this used to carry is now real geometry on
+     `.signal-lens::before`; see the note on `.status-dot-live` above. */
   box-shadow:
-    0 0 0 1px rgba(124, 200, 255, 0.3),
-    0 0 10px 1px rgba(124, 200, 255, 0.4);
+    0 0 0 3px rgba(124, 200, 255, 0.045),
+    0 0 9px 0 rgba(124, 200, 255, 0.3);
 }
 
-/* On paper the halo has nothing to bloom into — a cold glow on #f4f2ec reads as
+/* On paper the halo has nothing to bloom into — a cold glow on #ebe8e0 reads as
    a print registration error, the same reason route cards drop their cold edge
-   inside a band. The dot keeps its cold *edge* and loses the bloom, and the
-   core inverts so it is visible at all. */
+   inside a band. `.section-paper .signal-lens` above already inverts the well and
+   the rim; the aura simply goes. */
 .section-paper .signal-beacon {
-  background-color: var(--color-on-paper);
-  box-shadow: 0 0 0 1px rgba(56, 132, 184, 0.45);
+  box-shadow: none;
 }
 
 /* The breathe. Deliberately not the live dot's expanding ring: no travel, no
@@ -1394,16 +1725,16 @@ main > section:not(.section-paper):not(#hero):has(+ .band-blend) {
 @keyframes qf-beacon-breathe {
   0%,
   100% {
-    opacity: 0.72;
+    opacity: 0.82;
     box-shadow:
-      0 0 0 1px rgba(124, 200, 255, 0.22),
-      0 0 7px 0 rgba(124, 200, 255, 0.28);
+      0 0 0 2px rgba(124, 200, 255, 0.025),
+      0 0 6px 0 rgba(124, 200, 255, 0.2);
   }
   50% {
     opacity: 1;
     box-shadow:
-      0 0 0 1px rgba(124, 200, 255, 0.34),
-      0 0 13px 2px rgba(124, 200, 255, 0.46);
+      0 0 0 4px rgba(124, 200, 255, 0.06),
+      0 0 11px 0 rgba(124, 200, 255, 0.36);
   }
 }
 
@@ -1539,6 +1870,222 @@ main > section:not(.section-paper):not(#hero):has(+ .band-blend) {
   );
 }
 
+/* ─── The rail, lit ────────────────────────────────────────────────────────
+   A second copy of the hairline, brighter and with a soft cold bloom, held at
+   `opacity: 0` and revealed only where the reader is actually pointing.
+
+   ── Why a travelling highlight rather than "the line turns blue on hover" ──
+
+   The brief asks for the spine to read as an *active system trace*. A rail that
+   lights along its whole 2 000px when the pointer enters the section says
+   "hover state"; a 200px band of light that follows the cursor down the rail
+   says "something is being carried along this". The second is the same amount
+   of CSS and it is the difference the section is being polished for.
+
+   It reuses the pointer field the hero and the paper bands already run on —
+   `ui/signal-field.tsx` writes `--signal-x/y/on`, this masks to `--signal-y`.
+   No new listener, no new mechanism, and the same three guards come for free:
+   no pointer, coarse pointer or reduced motion all leave `--signal-on` unset,
+   the calc resolves to 0, and the lit copy is fully transparent.
+
+   ── The 0.5rem ──
+
+   `--signal-y` is measured from the *field's* top edge; this element starts
+   0.5rem below it (see `.pipeline-rail` above). Without the correction the
+   brightest point sits 8px below the cursor, which is small enough to look like
+   imprecision rather than like an offset.
+
+   ── Restraint ──
+
+   0.55 alpha on a 1px line, with the bloom carried by `drop-shadow` rather than
+   by widening the line. Widening is what produces the "яркая палка" the brief
+   rules out: a 3px cold bar is a different object, where a 1px line with light
+   around it is the same object, lit. */
+.pipeline-rail--lit {
+  opacity: 0;
+  background: linear-gradient(
+    to bottom,
+    transparent 0%,
+    rgba(124, 200, 255, 0.55) 12%,
+    rgba(124, 200, 255, 0.55) 88%,
+    transparent 100%
+  );
+  filter: drop-shadow(0 0 3px rgba(124, 200, 255, 0.5))
+    drop-shadow(0 0 9px rgba(124, 200, 255, 0.3));
+  transition: opacity var(--duration-base) var(--ease-out-quart);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .pipeline-rail--lit {
+    opacity: calc(var(--signal-on, 0) * 1);
+    /* Not transitioned. The mask position must track the cursor exactly — the
+       same call `.signal-field__grid` documents: at any duration the light lags
+       the pointer and reads as a bug rather than as smoothing. Only the fade
+       in/out above is eased. */
+    mask-image: linear-gradient(
+      to bottom,
+      transparent calc(var(--signal-y, 50%) - 0.5rem - 240px),
+      #000 calc(var(--signal-y, 50%) - 0.5rem - 44px),
+      #000 calc(var(--signal-y, 50%) - 0.5rem + 44px),
+      transparent calc(var(--signal-y, 50%) - 0.5rem + 240px)
+    );
+    -webkit-mask-image: linear-gradient(
+      to bottom,
+      transparent calc(var(--signal-y, 50%) - 0.5rem - 240px),
+      #000 calc(var(--signal-y, 50%) - 0.5rem - 44px),
+      #000 calc(var(--signal-y, 50%) - 0.5rem + 44px),
+      transparent calc(var(--signal-y, 50%) - 0.5rem + 240px)
+    );
+  }
+}
+
+/* ── Removed: the keyboard hook for the lit rail ──
+
+   This was `.pipeline-field:has(.signal-node:focus-visible) .pipeline-rail--lit`,
+   and it existed because the nodes were <button>s: a reader tabbing the seven
+   controls got the trace lit too, so the section was not pointer-only.
+
+   The nodes are markers again — the card collapse was removed on owner
+   direction — and there is now nothing focusable in the section at all: the
+   cards are headings and prose, and the `sourceRef` line that used to close each
+   one was removed earlier. So the selector could not match anything, and a
+   rewrite onto `:focus-within` would have been the same dead rule with a
+   different spelling.
+
+   It is not replaced, and that is a considered call rather than an omission. The
+   lit rail carries no information — it is a hairline brightening where the
+   pointer is, on decoration the resting rail already draws in full. Nothing is
+   conveyed by it, so nothing is lost by it being pointer-only. What would be a
+   defect is *content* that only appears on hover, and there is none here. */
+
+/* ─── The node ─────────────────────────────────────────────────────────────
+   The largest of the three sizes the lens is drawn at — the seven markers on the
+   pipeline rail, 32px on a phone and 40px from `lg`. It carries `.signal-lens`
+   for the rim and supplies its own well and aura, because this is the one marker
+   whose polarity is inverted: it holds a white digit, so its interior has to
+   stay dark. See the polarity note in the `--lens-*` block in tokens/color.css.
+
+   ── It is no longer a control ──
+
+   It used to be a <button> that stowed its card into itself. That behaviour is
+   gone on owner direction — the cards in this section are always visible — so the
+   node is a marker again: a `<span aria-hidden>` holding its step number, with no
+   state, no `aria-expanded`, no hit area and no third aura.
+
+   Two states remain, and both are ambient rather than interactive: rest, and a
+   brightening as the pointer passes the row. Nothing about the section depends on
+   either.
+
+   ── The travelling specular ──
+
+   This is the size at which the reference's signature actually reads, so this is
+   the only place it is spent: the rim's bright arc sweeps once around the
+   circumference every 24s. Slow enough that it never becomes the thing you are
+   looking at, which is the whole difference between an instrument that is powered
+   on and an animation that is playing.
+
+   All seven sweep in phase, deliberately — the opposite call from the hero
+   aperture's coprime orbits, and for the opposite reason. The aperture is one
+   object whose rings must not resync into a visible beat; the rail is seven
+   markers on one spine, and a single light travelling down all of them in step
+   reads as one system rather than as seven independent decorations.
+
+   Motion is `box-shadow` and `transform` on the node, and one interpolated angle
+   on the rim. The lift is 1px: at a 32–40px object anything more reads as the
+   node detaching from the rail it is threaded on. */
+.signal-node {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* The dark well. Overrides `.signal-lens`'s lit interior — see above. */
+  background: var(--fill-node);
+  box-shadow: var(--aura-node-rest);
+  --lens-rim-hot: var(--lens-node-rim-hot);
+  --lens-rim-warm: var(--lens-node-rim-warm);
+  --lens-rim-cool: var(--lens-node-rim-cool);
+  transform: translateY(0);
+  transition:
+    box-shadow var(--duration-base) var(--ease-out-expo),
+    transform var(--duration-base) var(--ease-out-expo),
+    color var(--duration-base) var(--ease-out-expo);
+}
+
+/* The digit reads above the rim. It already would — the rim is a `::before` and
+   paints first — but the rim is `screen`-blended, and stating the order here
+   means a later change to either layer cannot quietly put the number underneath
+   a band of light. */
+.signal-node > * {
+  position: relative;
+  z-index: 1;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .signal-node::before {
+    animation: qf-lens-sweep 24s linear infinite;
+  }
+}
+
+/* Reduced motion keeps the rim exactly as it rests — a lit ring with its bright
+   arc at the light source, which is the frame the sweep passes through anyway.
+   Gated on `no-preference` above rather than left to the global reset, which
+   collapses duration to 0.01ms and would pin the arc at whatever angle the first
+   keyframe happens to name. */
+@keyframes qf-lens-sweep {
+  to {
+    --lens-sweep: 252deg;
+  }
+}
+
+/* ── Ambient brightening as the pointer passes the row ──
+   `.pipeline-stage` is the `display: contents` <li> that owns both the node and
+   its card, so hovering *either* lifts the pair. Cheaper than it looks: nothing
+   is announced, nothing is claimed, and the row is one object as far as the
+   reader is concerned. */
+@media (hover: hover) and (pointer: fine) {
+  .pipeline-stage:hover .signal-node {
+    box-shadow: var(--aura-node-hover);
+    color: var(--color-text-primary);
+    --lens-rim-hot: var(--lens-node-rim-hot-hover);
+    --lens-rim-warm: var(--lens-node-rim-warm-hover);
+    --lens-rim-cool: var(--lens-node-rim-cool-hover);
+  }
+}
+
+/* No `:focus-within` twin. There is nothing focusable inside a stage row now —
+   see the note above the rail's removed keyboard hook — so the rule would be
+   dead. If a card ever gains a link, add it here and restore that hook with it. */
+
+@media (prefers-reduced-motion: no-preference) {
+  @media (hover: hover) and (pointer: fine) {
+    .pipeline-stage:hover .signal-node {
+      transform: translateY(-1px);
+    }
+  }
+}
+
+/* ── The node highlights its own card, and the card highlights its node ──
+
+   Hovering or keyboard-focusing anywhere in a stage row lifts the pair. `:has()`
+   and `:focus-within` on the `display: contents` <li> that owns both — the row is
+   the only element that contains them, and a contents-box is still a valid
+   selector target.
+
+   ── What this used to be, and why it is one rule now ──
+
+   There were four rules here: an inset-only hover for the stage card (because
+   `.stage-collapse__track`'s `overflow: hidden` clipped `.card-premium`'s 6px
+   lift and its bloom, and a clipped lift shows as a gap opening at the card's
+   foot), plus a `:has(.signal-node:hover)` pair to light the card from the node.
+
+   The collapse is gone, so the clip is gone, so the reason for the inset-only
+   variant is gone with it: the stage cards now use the page's ordinary card hover
+   like every other card, which is one fewer dialect. And the node→card direction
+   collapsed into the row-level `:hover` in the node block above, which lights
+   both halves from either half.
+
+   Nothing is left to declare here — the row hover is `.pipeline-stage:hover
+   .signal-node` above, and the card half is `.card-premium` unmodified. */
+
 /* ─── Q-aperture ───────────────────────────────────────────────────────────
    Orbit rotation for the hero instrument. Transform-only, so it composites and
    cannot shift layout or cost LCP.
@@ -1583,6 +2130,495 @@ main > section:not(.section-paper):not(#hero):has(+ .band-blend) {
 
 .aperture-core {
   animation: qf-core-breathe 8s var(--ease-out-quart) infinite;
+}
+
+/* ─── The assistant orb ────────────────────────────────────────────────────
+   `components/assistant/*`. A glass sphere with light moving inside it, fixed in
+   the bottom-left corner, and the future entry point for the Quant assistant.
+
+   Drawn from `~/Downloads/Vois Asistent.mp4` — read the note at the top of
+   `assistant-orb.tsx` for what the frames establish and for the one thing that
+   was deliberately not copied (the reference's magenta crest, which is Siri's
+   palette and a budget-0 rule in check-design-tokens.mjs).
+
+   ── The dock cannot swallow a click ──
+
+   `pointer-events: none` on the container, re-enabled only on the button. The
+   dock is a fixed box wider and taller than the orb — it holds the hover label
+   and, above it, the panel — and every pixel of that box that is not the button
+   itself must stay transparent to the pointer. Without this line the corner of
+   every page eats clicks meant for the content behind it, which on mobile is the
+   footer's links.
+
+   ── Position, and why it is not the same corner at both sizes ──
+
+   `--z-launcher` (60) at both: above the page, below the mobile nav overlay at 90,
+   so the orb cannot float over an open menu.
+
+   **From `md`: bottom-left.** The page is a centred column with a wide gutter
+   either side, so the corner is empty. Swept at 40 scroll positions across
+   1280/1440/2560 on both locales: zero overlap with any link, button, input or
+   summary.
+
+   **Below `md`: bottom-right.** The same sweep at 390px found five collisions on
+   the left, and they were the expensive ones — the "Получить доступ к песочнице"
+   CTA (720px²), two footer link columns (1031px² and 588px²), the locale switch,
+   and two FAQ triggers. On a phone the content is full-bleed, so there is no
+   gutter to sit in and the left edge is where every heading, link and label
+   starts. Docking right dropped it to two, and both of those are the *right
+   padding* of a FAQ row rather than anything in it.
+
+   Owner brief named the left corner, but that was describing where Next's dev
+   indicator sat, and the binding requirement in the same brief is "не перекрывать
+   CTA, footer, FAQ и формы". Where those two conflict on a 390px screen, the
+   measurement wins. One line each in this block and the two `@media` rules below
+   flips it back if that call is wrong.
+
+   ── The 56px geometry, which is derived and not chosen ──
+
+   A FAQ row's disclosure marker sits at `100vw - 72px` → `100vw - 56px` at every
+   viewport width, because the card inset (32px) and its padding (24px) are both
+   fixed and the marker is 16px. An orb of size S at inset I clears it iff
+   `I + S ≤ 56`.
+
+   So below `md` the sphere is 40px at a 12px inset — 52, four pixels of clearance
+   at any width, including 320px. 40px is under the 44px minimum target, so the
+   target is decoupled from the mark by a centred pseudo-element, exactly as the
+   pipeline node's used to be: the hit area is 44px and out of flow, which lands it
+   at `100vw - 54px` and still clears the marker by two.
+
+   Measured, not asserted: `elementsFromPoint` at 320/360/390 puts the marker on
+   top at its own centre in all three. */
+.assistant-dock {
+  position: fixed;
+  bottom: 1rem;
+  right: 0.75rem;
+  z-index: var(--z-launcher);
+  display: flex;
+  flex-direction: column;
+  /* Right-docked, so the panel and the hint hang off the right edge. */
+  align-items: flex-end;
+  gap: 0.75rem;
+  pointer-events: none;
+}
+
+@media (min-width: 768px) {
+  .assistant-dock {
+    right: auto;
+    bottom: 1.5rem;
+    left: 1.5rem;
+    align-items: flex-start;
+  }
+}
+
+/* ── Stood down ──
+   Set by the launcher's IntersectionObserver while a protected region is on screen
+   — read the note on `DEFAULT_CLEAR_OF` in `assistant-launcher.tsx` for the
+   measurements behind the list, and note that it only ever engages below `md`.
+
+   It scales *down and toward its own corner* rather than fading in place, so the
+   orb reads as withdrawing rather than as a rendering fault. `visibility` is in the
+   transition and `pointer-events: none` is unconditional at this state, so a
+   withdrawn orb is neither tappable nor a hit-test target over the CTA it just
+   cleared — the whole point of the behaviour. */
+.assistant-dock[data-stood="true"] {
+  opacity: 0;
+  visibility: hidden;
+  transform: scale(0.8) translateY(0.5rem);
+  /* Unconditional at this state, and it is the whole point of the behaviour: a
+     withdrawn orb must not be a hit-test target over the CTA it just cleared. */
+  pointer-events: none;
+}
+
+/* `visibility` is in the transition on both sides, with the step reversed. Going
+   out it flips at the *end*, so the scale-down is visible; coming back it flips at
+   the start, so the scale-up is. Without it in the transition at all, a withdrawn
+   orb would still be `visibility: visible` mid-fade and still hit-testable. */
+@media (prefers-reduced-motion: no-preference) {
+  .assistant-dock {
+    /* Only ever engages below `md`, where the dock is right-docked — so the orb
+       withdraws toward its own corner rather than across the screen. */
+    transform-origin: bottom right;
+    transition:
+      opacity var(--duration-base) var(--ease-out-expo),
+      transform var(--duration-base) var(--ease-out-expo),
+      visibility var(--duration-base) step-start;
+  }
+
+  .assistant-dock[data-stood="true"] {
+    transition:
+      opacity var(--duration-base) var(--ease-out-expo),
+      transform var(--duration-base) var(--ease-out-expo),
+      visibility var(--duration-base) step-end;
+  }
+}
+
+/* Reduced motion still stands down — it is a state change, not decoration — it
+   just arrives without travel. `transform: none` rather than a suppressed
+   transition, so the withdrawn state is purely `opacity`/`visibility`. */
+@media (prefers-reduced-motion: reduce) {
+  .assistant-dock[data-stood="true"] {
+    transform: none;
+  }
+}
+
+.assistant-dock__row {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+}
+
+/* ── The hover label ──
+   The orb carries no glyph, so this is what names it for a sighted pointer user.
+   It slides in from behind the sphere, which is why the transform is a small
+   negative x rather than a fade alone: appearing in place reads as a tooltip,
+   emerging from the object reads as part of it.
+
+   `visibility` is in the transition so the chip is not a hidden hit target
+   between states — `pointer-events: none` already guarantees that, and the pair
+   together mean it is unreachable by pointer *and* by hit-testing.
+
+   ── Gated on width *and* pointer, and the width half is load-bearing ──
+
+   A coarse pointer has no hover, so the chip would either never appear or stick
+   after a tap. That is the obvious half.
+
+   The width half exists because `hover`/`pointer` describe the *input device*, not
+   the viewport: a touch laptop, a Chromebook, a desktop browser at a narrow window
+   — and every headless Chromium — all report `hover: hover` and `pointer: fine` at
+   390px. The chip would render there, and because it is a flex sibling of the orb
+   inside a right-aligned dock, it would push the sphere ~110px inward from the
+   right edge. Measured: that lands the orb in the middle of the content column,
+   straight on top of the route-card links and the "Получить доступ" CTA.
+
+   So the dock's geometry must not depend on an input-device query. Below `md` the
+   chip is never in the flow, whatever the pointer says, and the orb's position is
+   the one derived on `.assistant-dock` above. `aria-label` is the name there. */
+.assistant-dock__hint {
+  display: none;
+  padding: 0.3125rem 0.625rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-full);
+  background: var(--color-glass-surface-strong);
+  color: var(--color-text-secondary);
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: var(--text-label);
+  letter-spacing: var(--text-label--letter-spacing);
+  text-transform: uppercase;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transform: translateX(-0.5rem);
+  transition:
+    opacity var(--duration-micro) var(--ease-out-expo),
+    transform var(--duration-base) var(--ease-out-expo);
+}
+
+@media (min-width: 768px) and (hover: hover) and (pointer: fine) {
+  .assistant-dock__hint {
+    display: block;
+  }
+
+  .assistant-dock__row:hover .assistant-dock__hint,
+  .assistant-dock__row:focus-within .assistant-dock__hint {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* ── The sphere ──
+   `overflow: hidden` clips the two oversized flow layers to the circle;
+   `isolation: isolate` scopes their `screen` blend to the orb, so the sphere
+   renders identically over a card, a paper band or the page.
+
+   The resting box-shadow is two layers and no more: a dark drop, because the orb
+   sits *on* the page rather than in it, and a tight cold halo. Tight is the whole
+   point — the reference's sphere is lit from within and almost none of that light
+   escapes, and a wide bloom here would read as the crypto-neon the palette
+   doctrine exists to prevent. The cyan alpha is 0.22 at rest, inside the 0.28
+   ceiling. */
+/* ── The button is the target, and carries no paint ──
+   44px below `md`, which is the fingertip minimum, against a 40px sphere. From
+   `md` it is the sphere's own 56px. `display: grid` + `place-items: center` is
+   what keeps the smaller sphere optically centred in the larger target. */
+.assistant-orb {
+  display: grid;
+  place-items: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: var(--radius-full);
+  cursor: pointer;
+  pointer-events: auto;
+  transition: transform var(--duration-base) var(--ease-out-expo);
+}
+
+/* ── The sphere is the object, and carries no hit testing ──
+   `overflow: hidden` clips the two flow layers to the circle; `isolation: isolate`
+   scopes their `screen` blend to the orb, so it renders identically over a card, a
+   paper band or the page.
+
+   The resting box-shadow is two layers and no more: a dark drop, because the orb
+   sits *on* the page rather than in it, and a tight cold halo. Tight is the whole
+   point — the reference's sphere is lit from within and almost none of that light
+   escapes, and a wide bloom here would read as the crypto-neon the palette
+   doctrine exists to prevent. The cyan alpha is 0.22 at rest, inside the 0.28
+   ceiling. */
+.assistant-orb__sphere {
+  position: relative;
+  isolation: isolate;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: var(--radius-full);
+  overflow: hidden;
+  /* The well: a dark navy sphere, darkest at the crown. This is what the flow
+     moves inside, and what makes the object read as spherical before any of the
+     light arrives. */
+  background: radial-gradient(circle at 50% 22%, #0c1526 0%, #060a13 62%, #03050a 100%);
+  box-shadow:
+    0 10px 28px -10px rgba(0, 0, 0, 0.95),
+    0 0 20px -6px rgba(124, 200, 255, 0.22);
+  pointer-events: none;
+  transition: box-shadow var(--duration-base) var(--ease-out-expo);
+}
+
+@media (min-width: 768px) {
+  .assistant-orb,
+  .assistant-orb__sphere {
+    width: 3.5rem;
+    height: 3.5rem;
+  }
+}
+
+/* ── The flow ──
+   Two oversized gradient fields counter-rotating at coprime periods. `inset: -55%`
+   is what guarantees a corner never enters the circle at any rotation: a square
+   rotating inside a circular clip needs its half-diagonal to exceed the radius,
+   and 210% of the box across the diagonal covers it with room to spare.
+
+   `transform` only, so both layers composite. The blur is static — applied once
+   per layer, not animated — which is what keeps a filtered layer cheap. */
+/* Each layer is a pair of *flattened* ellipses, not round blobs. That is what
+   makes the interior read as the reference's wave: a wide, shallow gradient
+   sweeping through a circle is a band, and a round one is a cloud. The first
+   version used 38%×26% blobs under a 5px blur on a 56px sphere — 9% of the
+   diameter — and the result was a fogged marble with no discernible wave. 3px,
+   and the ellipses flattened to roughly 3:1, is where the band re-appears. */
+.assistant-orb__flow {
+  position: absolute;
+  inset: -55%;
+  background:
+    radial-gradient(54% 19% at 37% 63%, rgba(154, 232, 255, 1) 0%, rgba(154, 232, 255, 0) 72%),
+    radial-gradient(42% 25% at 67% 39%, rgba(54, 129, 240, 0.92) 0%, rgba(54, 129, 240, 0) 74%);
+  filter: blur(3px);
+  pointer-events: none;
+}
+
+.assistant-orb__flow--b {
+  background:
+    radial-gradient(46% 17% at 63% 71%, rgba(216, 248, 255, 0.88) 0%, rgba(216, 248, 255, 0) 70%),
+    radial-gradient(35% 22% at 33% 31%, rgba(26, 70, 186, 0.9) 0%, rgba(26, 70, 186, 0) 76%);
+  /* `screen` is what makes two overlapping fields read as one body of light
+     rather than as two stacked blobs. */
+  mix-blend-mode: screen;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .assistant-orb__flow {
+    animation: qf-orb-flow 24s linear infinite;
+  }
+
+  .assistant-orb__flow--b {
+    animation: qf-orb-flow 31s linear infinite reverse;
+  }
+}
+
+/* Starts at -34° rather than 0 so the resting composition — what a reduced-motion
+   reader sees permanently, and what the orb shows in its first frame — is the
+   reference's *diagonal* wave rather than the horizontal band that 0° happens to
+   produce. The sweep is a full turn either way. */
+@keyframes qf-orb-flow {
+  from {
+    transform: rotate(-34deg);
+  }
+  to {
+    transform: rotate(326deg);
+  }
+}
+
+/* Reduced motion gets the same -34° frame as a static state. The animation is
+   gated on `no-preference`, so without this the layers would rest at 0° — the one
+   angle the keyframes exist to avoid. */
+@media (prefers-reduced-motion: reduce) {
+  .assistant-orb__flow {
+    transform: rotate(-34deg);
+  }
+
+  .assistant-orb__flow--b {
+    transform: rotate(28deg);
+  }
+}
+
+/* ── The glass ──
+   Two jobs, both of them what turns a lit circle into a sphere:
+
+     • the crown — a dark radial anchored *above* the top edge, so the darkening
+       is strongest at the top and gone by the middle. In the reference this is
+       the single strongest depth cue: the top of the sphere is the darkest part
+       of the whole object.
+     • the rim — a hairline all round, plus a bright specular arc on the *lower*
+       edge and a second, softer one lower-left. That is where the reference's
+       light comes from, and putting it anywhere else makes the object read as
+       a disc with a gradient on it. */
+.assistant-orb__glass {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background:
+    /* The crown. Anchored above the top edge so the darkening is strongest at the
+       top and gone by the middle. */
+    radial-gradient(
+      132% 104% at 50% -16%,
+      rgba(2, 4, 9, 0.95) 0%,
+      rgba(2, 4, 9, 0.62) 34%,
+      rgba(2, 4, 9, 0.18) 54%,
+      transparent 70%
+    ),
+    /* The limb. Without this the orb was a circle with a gradient in it — a flat
+       horizon, dark at the top and pale across the whole bottom half. A sphere
+       falls away at *every* edge, not only the one furthest from the light, and
+       the bottom limb going dark under a thin bright specular line is what the
+       reference actually shows there. This one gradient is the difference between
+       a disc and a body. */
+    radial-gradient(
+      closest-side,
+      transparent 56%,
+      rgba(2, 4, 9, 0.34) 82%,
+      rgba(2, 4, 9, 0.72) 100%
+    );
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.12),
+    inset 0 -6px 10px -6px rgba(216, 248, 255, 1),
+    inset 4px -5px 13px -8px rgba(158, 220, 255, 0.85);
+  pointer-events: none;
+}
+
+/* ── Hover: the orb wakes ──
+   The halo widens by 8px and warms, and the sphere rises 2px. Nothing about the
+   flow changes speed: a decoration that accelerates under the pointer reads as a
+   loading state, and this button is not loading anything. */
+@media (hover: hover) and (pointer: fine) {
+  .assistant-orb:hover .assistant-orb__sphere {
+    box-shadow:
+      0 14px 34px -10px rgba(0, 0, 0, 0.95),
+      0 0 28px -6px rgba(124, 200, 255, 0.34);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  @media (hover: hover) and (pointer: fine) {
+    .assistant-orb:hover {
+      transform: translateY(-2px);
+    }
+  }
+}
+
+/* Pressed. `--duration-micro` and no curve worth naming — the whole value of an
+   active state is that it lands in the same frame as the finger. It is on the
+   button rather than the sphere so it applies on touch too, where there is no
+   hover for it to compose with. */
+.assistant-orb:active {
+  transform: scale(0.94);
+  transition-duration: var(--duration-micro);
+}
+
+/* Open. The halo stays at its hover value with the pointer gone, which is how the
+   orb says the panel beside it belongs to it. */
+.assistant-orb[data-open="true"] .assistant-orb__sphere {
+  box-shadow:
+    0 14px 34px -10px rgba(0, 0, 0, 0.95),
+    0 0 28px -6px rgba(124, 200, 255, 0.34);
+}
+
+/* The focus ring goes *outside* the sphere — `outline-offset` clears the halo, so
+   the ring reads as a ring rather than as one more layer of the glass. */
+.assistant-orb:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 3px;
+}
+
+/* ── The panel ──
+   A small glass card above the orb. `max-width` rather than a fixed width so the
+   two locales can differ in length, and `min()` against the viewport so it cannot
+   reach the right edge on a 320px phone — the dock is inset 1rem on the left, and
+   1rem on the right of that is the remaining budget. */
+.assistant-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  width: min(19rem, calc(100vw - 2rem));
+  padding: 1rem 1.125rem 1.125rem;
+  border: 1px solid var(--color-glass-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-glass-surface-strong);
+  backdrop-filter: blur(var(--blur-glass));
+  box-shadow:
+    0 20px 48px -16px rgba(0, 0, 0, 0.9),
+    0 0 0 1px rgba(124, 200, 255, 0.1);
+  pointer-events: auto;
+}
+
+.assistant-panel:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+/* The entrance rises out of the orb rather than fading in place, for the same
+   reason the hover label slides out of it: the panel belongs to the sphere.
+   `@starting-style` is what lets a `hidden` → shown element animate at all —
+   without it there is no previous computed style to interpolate from and the panel
+   simply appears. Progressive enhancement: where it is unsupported the panel
+   appears instantly, which is the correct fallback. */
+@media (prefers-reduced-motion: no-preference) {
+  .assistant-panel {
+    transition:
+      opacity var(--duration-base) var(--ease-out-expo),
+      transform var(--duration-base) var(--ease-out-expo);
+  }
+
+  @starting-style {
+    .assistant-panel[data-open="true"] {
+      opacity: 0;
+      transform: translateY(0.75rem) scale(0.97);
+    }
+  }
+}
+
+.assistant-panel__close {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 1.5rem;
+  height: 1.5rem;
+  margin: -0.25rem -0.375rem -0.25rem 0;
+  border-radius: var(--radius-full);
+  color: var(--color-text-quaternary);
+  cursor: pointer;
+  transition:
+    color var(--duration-micro) var(--ease-out-expo),
+    background-color var(--duration-micro) var(--ease-out-expo);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .assistant-panel__close:hover {
+    background-color: var(--color-highlight-bg);
+    color: var(--color-text-primary);
+  }
+}
+
+.assistant-panel__close:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 1px;
+  color: var(--color-text-primary);
 }
 
 /* ─── Liquid Glass Button base ─── */

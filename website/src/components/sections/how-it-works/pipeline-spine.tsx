@@ -1,9 +1,10 @@
 import type { ReactNode } from "react";
+import { Reveal } from "@/components/motion/reveal";
 import { Surface } from "@/components/ui/surface";
 import { MonoLabel } from "@/components/ui/mono-label";
-import { Reveal } from "@/components/motion/reveal";
-import { cn } from "@/lib/utils";
+import { SignalField } from "@/components/ui/signal-field";
 import type { PipelineStage } from "@/content-layer/types";
+import { cn } from "@/lib/utils";
 
 /**
  * The decision path as a connected pipeline.
@@ -48,6 +49,44 @@ import type { PipelineStage } from "@/content-layer/types";
  *
  * The `% 3` orphan logic is gone. A spine has no orphans — adding an eighth
  * stage adds a row and nothing else.
+ *
+ * ── The cards are always visible ──
+ *
+ * There was a version in which each node was a <button> that stowed its card
+ * into itself, with the motion in `.stage-collapse` in globals.css. It is gone
+ * on owner direction: the seven steps *are* the section's argument, and a
+ * section whose content has to be clicked back into existence is one where a
+ * reader can land on six empty rows.
+ *
+ * Removed with it: the `useState` and the `./pipeline-stage.tsx` client
+ * component that held it, `aria-expanded` / `aria-controls` / `inert`, the node's
+ * 44px hit area, the third (`stowed`) node aura, and the `how.stageToggle`
+ * message in both locales. The whole section is server-rendered again.
+ *
+ * What survives is what was always the better half of that pass:
+ *
+ *   • **The nodes are lit markers.** Each carries `.signal-lens` — a dark well, a
+ *     conic rim masked to 1px with a specular arc that sweeps once every 24s, and
+ *     a tight aura. Drawn from `~/Downloads/Button.mp4`; see the `--lens-*` block
+ *     in styles/tokens/color.css. They mark position in the sequence and take no
+ *     input.
+ *
+ *   • **The rail lights where the pointer is**, via the same `SignalField` the
+ *     hero uses. See `.pipeline-rail--lit`.
+ *
+ *   • **The step numbers are 1–7, not 01–07.** Owner direction. Two-digit
+ *     zero-padding is a convention for a set that will exceed nine or for a
+ *     fixed-width column; this is seven nodes in a 32–40px circle, where the
+ *     leading zero is half the glyphs saying nothing. The numeral moved up one
+ *     type role with the change — a single digit at `--text-label` (11px) in a
+ *     40px disc reads as an artefact rather than as a step number — and
+ *     `tabular-nums` stays, so the digits are still on one width.
+ *
+ * The hard constraints from the two failed versions are unchanged and none of
+ * the above touches them: no ScrollTrigger, no pinning, no scroll-linked
+ * transform, no nested scroll container, no `data-lenis-prevent`. This is a CSS
+ * grid and one IntersectionObserver-driven entrance; it reads no scroll position
+ * at all.
  */
 
 function StageCard({
@@ -118,7 +157,19 @@ export function PipelineSpine({
   extras?: Record<string, ReactNode>;
 }) {
   return (
-    <div className="relative">
+    /*
+      `SignalField` wraps the spine so the rail can be lit where the pointer is
+      — see `.pipeline-rail--lit` in globals.css for what that buys and why a
+      travelling highlight rather than a hover state.
+
+      It is the same ~60-line client shell the hero and the two paper bands
+      already use: it writes `--signal-x/y/on` and nothing else, so everything
+      inside it — including all seven MDX-rendered cards — stays server-
+      rendered. With no pointer, a coarse pointer, or reduced motion it installs
+      no listener, the variables stay unset, and the lit rail is fully
+      transparent.
+    */
+    <SignalField className="pipeline-field relative">
       {/*
         The spine, as a sibling of the list rather than a child of it — an <ol>
         may only contain <li>, and a decorative span inside it is both invalid
@@ -128,10 +179,17 @@ export function PipelineSpine({
         no hard start or stop. See `.pipeline-rail` in globals.css for the
         gradient and for why it is a class rather than utilities.
 
-        `left` tracks the node column: 1.25rem (the centre of the 2.5rem rail)
-        below lg, dead centre at lg where the grid becomes three columns.
+        `left` tracks the node column: 1rem below lg, dead centre at lg where the
+        grid becomes three columns. The lit copy is a second element rather than
+        a pseudo-element on the first, because it needs its own mask and its own
+        `filter`, and stacking those on one element would put the bloom on the
+        resting hairline too.
       */}
       <span aria-hidden="true" className="pipeline-rail left-[1rem] lg:left-1/2" />
+      <span
+        aria-hidden="true"
+        className="pipeline-rail pipeline-rail--lit left-[1rem] lg:left-1/2"
+      />
 
       {/*
         ── The rail column is narrower below `lg` ──
@@ -153,55 +211,82 @@ export function PipelineSpine({
         change both together or the hairline stops running through the nodes.
       */}
       <ol className="grid grid-cols-[2rem_minmax(0,1fr)] gap-x-3 gap-y-6 lg:grid-cols-[minmax(0,1fr)_4.5rem_minmax(0,1fr)] lg:gap-x-4 lg:gap-y-10">
-      {stages.map((stage, i) => {
-        // Alternate sides at lg. Odd stages left, even stages right — the
-        // reference's rhythm, and it keeps the eye moving down the spine
-        // rather than scanning a single column.
-        const right = i % 2 === 1;
-        // Explicit row placement, not auto-flow. `display: contents` on the
-        // <li> drops its children straight into the parent grid, and mixing
-        // auto-placement with explicit column starts lets the browser open a
-        // new row whenever a column is already occupied — which silently
-        // doubles the grid's height as soon as two consecutive cards land on
-        // the same side. Pinning the row makes the layout deterministic.
-        const row = i + 1;
+        {stages.map((stage, i) => {
+          /*
+            `right`: alternate sides at lg. Odd stages left, even stages right —
+            the reference's rhythm, and it keeps the eye moving down the spine
+            rather than scanning a single column.
+          */
+          const right = i % 2 === 1;
+          /*
+            `row`: explicit placement, not auto-flow. `display: contents` on the
+            <li> drops its children straight into the parent grid, and mixing
+            auto-placement with explicit column starts lets the browser open a
+            new row whenever a column is already occupied — which silently
+            doubles the grid's height as soon as two consecutive cards land on
+            the same side. Pinning the row makes the layout deterministic.
+          */
+          const row = i + 1;
 
-        return (
-          <li key={stage.id} className="contents">
-            {/*
-              Node. It gets its own grid cell rather than being absolutely
-              positioned over the spine, so it stays registered with its row no
-              matter how tall the card beside it grows.
-            */}
-            <div
-              className="relative z-10 col-start-1 flex items-start justify-center pt-5 lg:col-start-2"
-              style={{ gridRow: row }}
-            >
-              <span
-                aria-hidden="true"
-                className="flex size-8 items-center justify-center rounded-[var(--radius-full)] border border-[color:var(--color-border-strong)] bg-[color:var(--color-bg)] font-mono text-[length:var(--text-label)] tabular-nums text-[color:var(--color-text-secondary)] lg:size-10"
-                style={{ boxShadow: "var(--glow-signal-sm)" }}
+          return (
+            /*
+              ── This used to be `<PipelineStageRow>`, a client component ──
+
+              That file existed for one reason: it held the `useState` for the
+              card collapse. With the collapse removed on owner direction, the row
+              is layout and nothing else, so it is inlined here and the file is
+              gone — which also takes a client boundary out of the section. The
+              whole spine is server-rendered again, MDX included.
+
+              `pipeline-stage` is the hook the row-level node/card highlight in
+              globals.css selects on. It is the only element that contains both
+              halves of the pair, and `display: contents` does not prevent it
+              being matched.
+            */
+            <li key={stage.id} className="pipeline-stage contents">
+              <div
+                className="relative z-10 col-start-1 flex items-start justify-center pt-5 lg:col-start-2"
+                style={{ gridRow: row }}
               >
-                {String(stage.order).padStart(2, "0")}
-              </span>
-            </div>
+                {/*
+                  ── The node is decoration again ──
 
-            <Reveal
-              // Capped at 4: past roughly four siblings a stagger stops reading
-              // as one gesture and starts reading as a queue.
-              index={Math.min(i, 4)}
-              className={cn(
-                "col-start-2 flex min-w-0",
-                right ? "lg:col-start-3" : "lg:col-start-1",
-              )}
-              style={{ gridRow: row }}
-            >
-              <StageCard stage={stage} techLabel={techLabel} extra={extras?.[stage.id]} />
-            </Reveal>
-          </li>
-        );
+                  It was a <button> carrying `aria-expanded` / `aria-controls`
+                  that stowed its card into itself. The cards are now always
+                  visible, so there is nothing to expand and nothing to name: a
+                  control that does nothing is worse than a mark, because it takes
+                  a tab stop and promises an action.
+
+                  `aria-hidden` because the step number is already carried in
+                  reading order — each card opens on its own `stepLabel`, and the
+                  cards are in DOM order — so announcing a bare digit before it
+                  would be a duplicate. The 44px hit-area pseudo-element went with
+                  the button; a marker does not need a touch target.
+                */}
+                <span
+                  aria-hidden="true"
+                  className="signal-lens signal-node size-8 font-mono text-[length:var(--text-caption)] tabular-nums text-[color:var(--color-text-secondary)] lg:size-10"
+                >
+                  <span>{stage.order}</span>
+                </span>
+              </div>
+
+              <Reveal
+                // Capped at 4: past roughly four siblings a stagger stops reading
+                // as one gesture and starts reading as a queue.
+                index={Math.min(row - 1, 4)}
+                className={cn(
+                  "col-start-2 flex min-w-0",
+                  right ? "lg:col-start-3" : "lg:col-start-1",
+                )}
+                style={{ gridRow: row }}
+              >
+                <StageCard stage={stage} techLabel={techLabel} extra={extras?.[stage.id]} />
+              </Reveal>
+            </li>
+          );
         })}
       </ol>
-    </div>
+    </SignalField>
   );
 }

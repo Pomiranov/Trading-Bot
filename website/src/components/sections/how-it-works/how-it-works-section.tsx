@@ -143,6 +143,16 @@ export async function HowItWorksSection({ locale }: { locale: string }) {
       <SectionHeader id="how-it-works" eyebrow={t("eyebrow")} heading={t("heading")} />
 
       <div className="mt-[var(--space-header-to-body)]">
+        {/*
+          No `toggleLabel`. The nodes were <button>s that stowed their cards, and
+          a single digit is not a usable accessible name, so the section
+          substituted `how.stageToggle` per stage and passed it down.
+
+          The collapse is gone on owner direction — the cards are always visible —
+          so the nodes are `aria-hidden` markers with nothing to name. The prop,
+          the message in both locales, and the client component that consumed it
+          all went with it. See the note at the top of `pipeline-spine.tsx`.
+        */}
         <PipelineSpine stages={stages} techLabel={techLabel} extras={extras} />
       </div>
     </Section>

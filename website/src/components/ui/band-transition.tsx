@@ -92,36 +92,79 @@ export function BandTransition({ direction, className }: BandTransitionProps) {
   const intoPaper = direction === "into-paper";
 
   /*
-    Six stops, and the middle two are the ones that matter.
+    ── Nine stops, mixed in oklab, placed on a smoothstep ──
 
-    The first version was `bg → panel-raised → paper`. On paper that measured as
-    a hard horizon rather than a blend, and the reason is the token values:
-    --color-bg is #030303 and --color-panel-raised is #171717. Both are
-    near-black, so a stop at 55% spent the whole first half of the band going
-    from black to *slightly less black* and then crossed 220 luminance levels in
-    the remaining 45%.
+    This is the change that actually settled the "переход слишком резкий"
+    complaint, and it is two independent fixes that had to land together.
 
-    Two genuine mid-tones — a 22% and a 55% mix of paper into the graphite —
-    spread that crossing across the second half of the band instead of
-    concentrating it in one horizon. `color-mix` keeps them derived from the two
-    tokens rather than hard-coding greys that would need maintaining if either
-    end of the palette moved.
+    **1. The interpolation space.** Every mid-tone used to be
+    `color-mix(in srgb, …)`. sRGB is not perceptually uniform anywhere, and it
+    is worst exactly here — mixing a near-black with a near-white in gamma space
+    puts the perceptual midpoint at about 22% of the mix fraction, so a stop
+    written as "55% paper" rendered far lighter than 55% of the way across and
+    the band spent its second half almost done. `in oklab` makes the mix
+    fraction mean what it says. Same two tokens, same six characters changed,
+    and it is the single most visible line in this file.
+
+    **2. The stop *positions*, which are now a curve rather than a spacing.**
+    Even a perceptually-linear ramp reads as a slab of grey being panned past,
+    because the eye locks onto the two places where the rate of change starts
+    and stops. So the stops are placed on a smoothstep (3t²−2t³) in oklab L
+    rather than at even intervals: the change begins imperceptibly, happens in
+    the middle, and *settles* asymptotically into the paper.
+
+    That settle is what removes the knee. The band used to reach full paper at
+    100% and the section below it was flat paper from its first pixel, so there
+    was a discontinuity in the first derivative at the seam — invisible as an
+    edge, but readable as "the gradient stopped here". The last 12% of the ramp
+    now covers five luminance levels.
+
+    The two mix families exist because the ramp crosses --color-panel-raised on
+    its way: below it, graphite is mixed into black; above it, paper is mixed
+    into graphite. Deriving both from tokens rather than hard-coding greys is
+    what keeps the band correct if either end of the palette moves.
   */
   const BLACK = "var(--color-bg)";
-  const GRAPHITE = "var(--color-panel-raised)";
+  /** Graphite mixed down into the page black — the ramp's bottom quarter. */
+  const DARK = (graphite: number) =>
+    `color-mix(in oklab, var(--color-panel-raised) ${graphite}%, var(--color-bg))`;
+  /** Paper mixed up out of the graphite — everything above it. */
   const MIX = (paper: number) =>
-    `color-mix(in srgb, var(--color-paper) ${paper}%, var(--color-panel-raised))`;
+    `color-mix(in oklab, var(--color-paper) ${paper}%, var(--color-panel-raised))`;
   const PAPER = "var(--color-paper)";
 
-  /*
-    The dark half is deliberately steeper than the light half. Perceived
-    lightness is not linear in sRGB: the first two stops cover ~20 luminance
-    levels and read as one tone, so they are given only a quarter of the band,
-    and the three stops that actually cross the gap get the rest.
-  */
-  const ramp = intoPaper
-    ? `linear-gradient(to bottom, ${BLACK} 0%, ${GRAPHITE} 26%, ${MIX(22)} 46%, ${MIX(55)} 64%, ${MIX(85)} 82%, ${PAPER} 100%)`
-    : `linear-gradient(to bottom, ${PAPER} 0%, ${MIX(85)} 18%, ${MIX(55)} 36%, ${MIX(22)} 54%, ${GRAPHITE} 74%, ${BLACK} 100%)`;
+  /**
+   * Position → colour, as the smoothstep tabulates it. Written out rather than
+   * computed so the ramp is readable as a shape, and so the mirrored
+   * `into-dark` direction is provably the same curve rather than an
+   * approximation of it.
+   */
+  const STOPS: [number, string][] = [
+    [0, BLACK],
+    [18, DARK(59)],
+    [30, MIX(8)],
+    [42, MIX(28)],
+    [54, MIX(49)],
+    [66, MIX(69)],
+    [78, MIX(84)],
+    [88, MIX(94)],
+    [100, PAPER],
+  ];
+
+  /**
+   * Renders a stop table as a top-to-bottom gradient, mirroring it for the
+   * `into-dark` direction so both blends are the same curve read in opposite
+   * directions rather than two hand-written approximations of each other.
+   */
+  const gradient = (stops: [number, string][]) =>
+    `linear-gradient(to bottom, ${(intoPaper
+      ? stops
+      : stops.map(([at, colour]): [number, string] => [100 - at, colour]).reverse()
+    )
+      .map(([at, colour]) => `${colour} ${at}%`)
+      .join(", ")})`;
+
+  const ramp = gradient(STOPS);
 
   /*
     ── The held ramp: the same change, later ──
@@ -142,10 +185,21 @@ export function BandTransition({ direction, className }: BandTransitionProps) {
     Base opacity is 0, so every failure mode — no view-timeline support, reduced
     motion, a timeline that never resolves — lands on the finished ramp rather
     than on a band stuck dark. Same rule as the grid layers below it.
+
+    It is now derived from the same STOPS table, compressed into the band's last
+    60% with a flat black hold above it, rather than hand-written. That is what
+    guarantees the endpoint constraint mechanically instead of by review: the
+    first stop is BLACK at 0% and the last is PAPER at 100% by construction, so
+    no future edit to the curve can reintroduce the seam.
   */
-  const held = intoPaper
-    ? `linear-gradient(to bottom, ${BLACK} 0%, ${BLACK} 44%, ${GRAPHITE} 68%, ${MIX(22)} 84%, ${MIX(62)} 94%, ${PAPER} 100%)`
-    : `linear-gradient(to bottom, ${PAPER} 0%, ${MIX(62)} 6%, ${MIX(22)} 16%, ${GRAPHITE} 32%, ${BLACK} 56%, ${BLACK} 100%)`;
+  const HOLD_FROM = 40;
+  const held = gradient([
+    [0, BLACK],
+    ...STOPS.map(([at, colour]): [number, string] => [
+      HOLD_FROM + (at * (100 - HOLD_FROM)) / 100,
+      colour,
+    ]),
+  ]);
 
   /**
    * The two tints, on the existing hairline tokens rather than fresh alphas:
@@ -218,6 +272,16 @@ export function BandTransition({ direction, className }: BandTransitionProps) {
         className="band-blend__hold pointer-events-none absolute inset-0"
         style={{ backgroundImage: held }}
       />
+
+      {/* Grain, between the two ramps and the grid.
+
+          Above the ramps because it is dithering *them* — a 220-level gradient
+          over 208–352px bands in 8-bit sRGB, which is inside Chromium's visible
+          Mach-band range and is a large part of why the blend read as a
+          gradient fill rather than as a material. Below the grid because the
+          hairlines are geometry and should stay crisp. See
+          `.band-blend__grain` in globals.css. */}
+      <div className="band-blend__grain" />
 
       {layers.map((layer) => (
         <div

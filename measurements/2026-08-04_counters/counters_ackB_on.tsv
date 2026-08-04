@@ -1,0 +1,17 @@
+tf	metric	value	zero_kind
+D1	downtrend	14	
+D1	position_open	1	
+D1	sizing	0	ноль наблюдений (путь достигнут 22 раз)
+D1	capital	0	ноль наблюдений (путь достигнут 22 раз)
+D1	born	37	
+D1	passed	22	
+D1	gate_active	1	
+D1	identity_holds	1	
+H4	downtrend	83	
+H4	position_open	15	
+H4	sizing	0	ноль наблюдений (путь достигнут 82 раз)
+H4	capital	0	ноль наблюдений (путь достигнут 82 раз)
+H4	born	180	
+H4	passed	82	
+H4	gate_active	1	
+H4	identity_holds	1	

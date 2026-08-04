@@ -71,6 +71,7 @@ def collect_trades(rules_file: Path, pm: bool = False,
     почему обрезка конца в диапазоне после 11.07 меняет только D1-числа.
     """
     ind_engine = IndicatorEngine()
+    counters: dict = {}
     rows = []
     open_at_edge: list = []
     skipped: dict = {}
@@ -91,6 +92,20 @@ def collect_trades(rules_file: Path, pm: bool = False,
             res = engine.run(ticker, df)
             if res.skipped_downtrend:
                 skipped[(TF_LABEL[tf], ticker)] = res.skipped_downtrend
+            # Счётчики путей отказа копятся ПО ТАЙМФРЕЙМУ: тождество проверяется на
+            # разрезе, тикерная раскладка его не меняет.
+            c = counters.setdefault(TF_LABEL[tf], dict(
+                born=0, passed=0, downtrend=0, position_open=0, sizing=0,
+                capital=0, gate_active=False))
+            c["born"] += res.signals_born
+            c["downtrend"] += res.skipped_downtrend
+            c["position_open"] += res.skipped_position_open
+            c["sizing"] += res.skipped_sizing
+            c["capital"] += res.skipped_capital
+            # «прошло» = состоявшиеся входы = закрытые + открытая на краю (долг №25):
+            # «стало сделкой» считается ФАКТОМ ЗАПИСИ входа, а не закрытием.
+            c["passed"] += len(res.trades) + len(res.open_trades_at_end)
+            c["gate_active"] |= res.gate_active
             df_ind = ind_engine.compute(df)
             for t in res.trades:
                 adx = None
@@ -120,7 +135,7 @@ def collect_trades(rules_file: Path, pm: bool = False,
                     "sample":      "IS" if t.entry_date < IS_END else "OOS",
                 })
         print(f"  {TF_LABEL[tf]}: прогнано {len(data)} тикеров")
-    return pd.DataFrame(rows), skipped, open_at_edge
+    return pd.DataFrame(rows), skipped, open_at_edge, counters
 
 
 def stats(df: pd.DataFrame) -> str:
@@ -174,6 +189,84 @@ def report(trades: pd.DataFrame, show_oos: bool = False) -> None:
             print(f"{regime:<30} {stats(grp)}")
 
 
+
+# ── Счётчики путей отказа сигнала, шаг 1 (заведено 2026-08-04) ────────────────
+#
+# ТРИ ВИДА НУЛЯ. Печатаются с меткой, а не как «0»: без метки из нулей через месяц
+# выведут неверное.
+#   «не достигнут»             — первая причина оборвала проверку (Б1 обрывает
+#                                Б2-Б4, Б2 обрывает Б3/Б4);
+#   «недостижим по построению» — режим прогона исключает путь (фильтр выключен ⇒ Б1);
+#   «ноль наблюдений»          — путь достижим, событий не было.
+#
+# ДВА МЕСТА, и одно не считается выполнением: сводка ниже И машиночитаемый файл
+# рядом с CSV, которые сверяются между собой. Основание — отказ PHOR 30.07 есть в
+# базе и отсутствует в журнале, то есть у одного источника нет с чем сверяться.
+PATHS = [("downtrend", "Б1 фильтр даунтренда"),
+         ("position_open", "Б2 позиция уже открыта"),
+         ("sizing", "Б3 сайзинг не дал позиции"),
+         ("capital", "Б4 не хватает капитала")]
+
+
+def zero_kind(key: str, c: dict) -> str:
+    """Тип нуля для пути key. Вызывается только когда счётчик равен нулю."""
+    if key == "downtrend" and not c["gate_active"]:
+        return "недостижим по построению (фильтр выключен)"
+    if key in ("sizing", "capital"):
+        # ИСПРАВЛЕНО 2026-08-04 до коммита: первая редакция возвращала здесь
+        # «не достигнут», если сработали Б1/Б2 — и это НЕВЕРНО. Б1/Б2 обрывают
+        # проверку только для ТЕХ сигналов, которые они отвергли; остальные до
+        # сайзинга доходят. Достижимость измеряется числом дошедших, а не наличием
+        # отказов раньше: дошло = прошло + Б3 + Б4.
+        reached = c["passed"] + c["sizing"] + c["capital"]
+        if reached == 0:
+            return "не достигнут (все сигналы оборваны Б1/Б2)"
+        return f"ноль наблюдений (путь достигнут {reached} раз)"
+    # Б2 вычисляется для КАЖДОГО BUY-сигнала: его ветка стоит в той же цепочке
+    # elif и проверяется всегда, когда не сработали предыдущие. «Не достигнут»
+    # к нему неприменим по построению.
+    return "ноль наблюдений"
+
+
+def counters_report(counters: dict, path: Path) -> None:
+    lines = ["tf\tmetric\tvalue\tzero_kind"]
+    print("\n" + "=" * 72)
+    print("  СЧЁТЧИКИ ПУТЕЙ ОТКАЗА СИГНАЛА (шаг 1)")
+    print("=" * 72)
+    for tf, c in sorted(counters.items()):
+        rejects = sum(c[k] for k, _ in PATHS)
+        ident = c["passed"] + rejects
+        print(f"\n  -- {tf} --")
+        print(f"  {'Б0 сигнал родился':<34} {c['born']:>7}")
+        print(f"  {'прошло (стало сделкой)':<34} {c['passed']:>7}")
+        for k, title in PATHS:
+            v = c[k]
+            note = "" if v else "   <- НУЛЬ: " + zero_kind(k, c)
+            print(f"  {title:<34} {v:>7}{note}")
+            lines.append(f"{tf}\t{k}\t{v}\t" + ("" if v else zero_kind(k, c)))
+        lines.append(f"{tf}\tborn\t{c['born']}\t")
+        lines.append(f"{tf}\tpassed\t{c['passed']}\t")
+        lines.append(f"{tf}\tgate_active\t{int(c['gate_active'])}\t")
+        ok = "СХОДИТСЯ" if ident == c["born"] else f"НЕ СХОДИТСЯ, разница {c['born'] - ident:+}"
+        print("  " + "-" * 44)
+        print(f"  тождество: прошло {c['passed']} + отказы {rejects} = {ident} "
+              f"против родилось {c['born']}  ->  {ok}")
+        lines.append(f"{tf}\tidentity_holds\t{int(ident == c['born'])}\t")
+    path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    print(f"\n  машиночитаемая улика: {path}")
+    # СВЕРКА ДВУХ МЕСТ: файл перечитывается и сравнивается с напечатанным
+    back: dict = {}
+    for ln in path.read_text(encoding="utf-8").splitlines()[1:]:
+        parts = (ln.split("\t") + ["", "", "", ""])[:4]
+        back.setdefault(parts[0], {})[parts[1]] = parts[2]
+    bad = []
+    for tf, c in counters.items():
+        for k in [p[0] for p in PATHS] + ["born", "passed"]:
+            if back.get(tf, {}).get(k) != str(c[k]):
+                bad.append(f"{tf}/{k}")
+    print("  сверка сводки с файлом: " + ("СОВПАЛО" if not bad else "РАСХОЖДЕНИЕ: " + ", ".join(bad)))
+
+
 def main() -> None:
     logging.basicConfig(level=logging.ERROR)
     ap = argparse.ArgumentParser()
@@ -202,9 +295,9 @@ def main() -> None:
         print(f"Конец окна НЕ приколочен. Опорные числа эры 2026-07 считаны по "
               f"сессию {SAMPLE_END_2026_07.isoformat()}; воспроизвести: "
               f"--as-of {SAMPLE_END_2026_07.isoformat()}")
-    trades, skipped, open_at_edge = collect_trades(args.rules, pm=args.pm,
-                                                   as_of=args.as_of,
-                                                   rescale_windows=not args.no_rescale)
+    trades, skipped, open_at_edge, counters = collect_trades(
+        args.rules, pm=args.pm, as_of=args.as_of,
+        rescale_windows=not args.no_rescale)
     out_csv = Path(__file__).resolve().parent / f"osc_debug_{args.label}.csv"
     trades.to_csv(out_csv, index=False)
     print(f"\nЗакрытые сделки сохранены: {out_csv} ({len(trades)} шт.)")
@@ -230,6 +323,7 @@ def main() -> None:
         print(f"Отклонено фильтром структурного даунтренда: {total} BUY-баров")
         for (tf, ticker), n in sorted(skipped.items()):
             print(f"  {tf} {ticker}: {n}")
+    counters_report(counters, out_csv.with_name(f"counters_{args.label}.tsv"))
     report(trades, show_oos=args.show_oos)
 
 

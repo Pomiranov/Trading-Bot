@@ -93,7 +93,17 @@ class BacktestResult:
     win_rate: float = 0.0
     avg_pnl: float = 0.0
     trading_days: int = 0
-    skipped_downtrend: int = 0   # BUY-сигналы, отклонённые фильтром структурного даунтренда
+    skipped_downtrend: int = 0   # Б1: BUY-сигналы, отклонённые фильтром структурного даунтренда
+    # ── Счётчики путей отказа сигнала, шаг 1, заведены 2026-08-04 ──────────────
+    # ЛОВУШКА, записанная в пре-регистрации: счётчик считает ПЕРВУЮ сработавшую
+    # причину, а не все применимые. Нуль у пути означает «НЕ ДОСТИГНУТ», а не «не
+    # сработал»: Б1 обрывает проверку, Б2 обрывает Б3/Б4. Читать нули только вместе
+    # с типом, который печатает сводка.
+    signals_born: int = 0        # Б0: signal.action == BUY, ДО проверки open_trade
+    skipped_position_open: int = 0   # Б2: позиция по тикеру уже открыта
+    skipped_sizing: int = 0          # Б3: сайзинг не дал позиции (pos ложно)
+    skipped_capital: int = 0         # Б4: позиция дороже свободного капитала
+    gate_active: bool = False        # был ли фильтр даунтренда включён в прогоне
     trades: list[BacktestTrade] = field(default_factory=list)
     # СПИСОК, а не одиночное поле, хотя сегодня движок держит одну переменную
     # open_trade и длина всегда 0 или 1. Пирамидинг (гл. 8) стоит в очереди
@@ -241,6 +251,7 @@ class BacktestEngine:
         # Фильтр структурного даунтренда (из yaml стратегии; None = выключен).
         # apply_to: long — движок и так открывает только лонги.
         dt_gate = self._downtrend_gate(df, df_ind.index)
+        result.gate_active = dt_gate is not None
 
         capital      = self.initial_capital
         open_trade: Optional[BacktestTrade] = None
@@ -293,6 +304,12 @@ class BacktestEngine:
             iv     = self._indicators.latest_precomputed(window)
             signal = self._rules.evaluate(iv, ticker)
 
+            # Б0 «сигнал РОДИЛСЯ» — вариант (а) пре-регистрации: считается ДО
+            # проверки open_trade. Вариант (б) (только при open_trade is None) дал бы
+            # тождество, сходящееся тривиально, и СКРЫЛ бы путь Б2.
+            if signal.action == Action.BUY:
+                result.signals_born += 1
+
             # BLOCK → не открываем новые позиции
             if (
                 open_trade is None and signal.action == Action.BUY
@@ -317,6 +334,10 @@ class BacktestEngine:
                 # `and` вычисляется слева направо и коротко замыкается, поэтому
                 # вложенный `if` тождествен прежнему условию: при ложном `pos`
                 # второе сравнение не вычислялось и раньше.
+                if not pos:
+                    result.skipped_sizing += 1          # Б3
+                elif pos.position_value > capital:
+                    result.skipped_capital += 1         # Б4
                 if pos:
                     if pos.position_value <= capital:
                         commission  = pos.position_value * self.commission_pct
@@ -361,6 +382,13 @@ class BacktestEngine:
                             self._learn(
                                 self._orchestrator.on_trade_opened(open_trade.learning_trade)
                             )
+
+            elif open_trade is not None and signal.action == Action.BUY:
+                # Б2: ветки здесь НЕ БЫЛО ВООБЩЕ — BUY при открытой позиции
+                # проваливался сквозь все три условия молча. Ветка добавлена ПОСЛЕ
+                # существующих и только инкрементирует счётчик: поведение входа не
+                # меняется, потому что раньше здесь не выполнялось ничего.
+                result.skipped_position_open += 1
 
             elif open_trade is not None and signal.action == Action.SELL:
                 status = "WIN" if price > open_trade.entry_price else "LOSS"

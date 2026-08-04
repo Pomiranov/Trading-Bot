@@ -27,6 +27,7 @@ import pandas as pd
 
 from config import config
 from universe import (
+    BARS_PER_SESSION,
     SAMPLE_START_2026_07, SAMPLE_END_2026_07,
     MEASUREMENT_UNIVERSE_2026_07, MEASUREMENT_UNIVERSE_2026_07_VERSION,
 )
@@ -70,6 +71,7 @@ def collect_trades(rules_file: Path, pm: bool = False,
     форвард качает только D1). Общая строка это различие скрыла бы, а оно объясняет,
     почему обрезка конца в диапазоне после 11.07 меняет только D1-числа.
     """
+    args_no_rescale_flag = [not rescale_windows]
     ind_engine = IndicatorEngine()
     counters: dict = {}
     rows = []
@@ -88,6 +90,15 @@ def collect_trades(rules_file: Path, pm: bool = False,
             breakeven_r=1.0 if pm else None,
             target_r=2.0 if pm else None,
         )
+        # КОНФИГУРАЦИЯ ОКОН — В ШАПКУ. Заведено 04.08: конфигурацию прежних улик
+        # пришлось ВЫВОДИТЬ из метки прогона и совпадения чисел вместо чтения, и это
+        # стоило блокирующего разбора (H4-строки заморозки оказались контрольной
+        # строкой, а не предметом). Печатается ЗДЕСЬ, где поля движка уже вычислены,
+        # а не по флагу: флаг говорит о намерении, поля — о факте.
+        print(f"  rescale_windows: {not args_no_rescale_flag[0]}  "
+              f"(множитель {BARS_PER_SESSION.get(TF_LABEL[tf])})")
+        print(f"  фактические поля движка: _window_bars={engine._window_bars}, "
+              f"_warmup_bars={engine._warmup_bars}")
         for ticker, df in data.items():
             res = engine.run(ticker, df)
             if res.skipped_downtrend:

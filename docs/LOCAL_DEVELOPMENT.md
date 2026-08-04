@@ -72,6 +72,13 @@ This starts:
 ## Running Individual Components
 
 ```bash
+# ⚠ WINDOWS: `python3`/`python` уводят в СИСТЕМНЫЙ интерпретатор, где нет
+#   зависимостей проекта (portalocker, asyncpg). Замерено: первый запуск форварда
+#   упал на `ModuleNotFoundError: portalocker`; `run_forward_d1.bat` потому и
+#   задаёт PY=D:\Trading-Bot-Nik\.venv\Scripts\python.exe явно.
+#   На Windows звать ТОЛЬКО так:
+#       .venv/Scripts/python.exe bot/ui/dashboard.py
+#   Команды `python3` ниже верны для macOS (канонический путь по этому файлу).
 # Dashboard only
 python3 bot/ui/dashboard.py
 

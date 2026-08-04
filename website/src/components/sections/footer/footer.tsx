@@ -127,7 +127,7 @@ export async function Footer({ locale }: { locale: string }) {
             <Link
               href="/"
               locale={otherLocale.code}
-              aria-label={`${t("brand")} — ${otherLocale.label}`}
+              aria-label={nav("localeSwitchAction")}
               className="-mx-2 inline-flex min-h-11 min-w-11 items-center justify-start rounded-[var(--radius-sm)] px-2 font-mono text-[length:var(--text-label)] tracking-[var(--text-label--letter-spacing)] text-[color:var(--color-text-tertiary)] uppercase no-underline transition-colors duration-[var(--duration-micro)] hover:text-[color:var(--color-text-primary)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--color-accent)]"
             >
               {otherLocale.label}

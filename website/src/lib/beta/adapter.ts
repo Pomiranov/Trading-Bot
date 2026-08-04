@@ -25,8 +25,14 @@ export interface BetaAdapter {
  */
 const consoleAdapter: BetaAdapter = {
   async submit(input) {
+    // Masked, not verbatim: this is the *default* adapter, so on a deployment
+    // where nobody configured a webhook the full address would land in the
+    // hosting provider's logs with unknown retention. `a***@domain` is enough
+    // to see signups arriving without turning the log into a PII store.
+    const at = input.email.indexOf("@");
+    const masked = at > 0 ? `${input.email[0]}***${input.email.slice(at)}` : "***";
     console.log(
-      `[beta-adapter:console] signup received, NOT stored (no destination configured): ${input.email}`,
+      `[beta-adapter:console] signup received, NOT stored (no destination configured): ${masked}`,
     );
     return { delivered: false };
   },

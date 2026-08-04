@@ -1,3 +1,4 @@
+import { getTranslations } from "next-intl/server";
 import { SiteHeader } from "@/components/sections/nav/site-header";
 import { HeroSection } from "@/components/sections/hero/hero-section";
 import { AudienceSection } from "@/components/sections/audience/audience-section";
@@ -76,9 +77,24 @@ export default async function HomePage({
   params: Promise<{ locale: string }>;
 }) {
   const { locale } = await params;
+  const tNav = await getTranslations({ locale, namespace: "nav" });
 
   return (
     <>
+      {/*
+        First tab stop on the page. The header holds eight focusable controls,
+        and 2.4.1 wants them skippable before legal pages make this a
+        multi-page site. Hidden until keyboard focus; surfaces as the same
+        glass pill the nav uses, above it (--z-toast), so it cannot appear
+        *under* the thing it skips. The anchor interceptor in lenis-provider
+        already moves sequential focus to the target.
+      */}
+      <a
+        href="#hero"
+        className="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-[var(--z-toast)] focus:block focus:rounded-[var(--radius-md)] focus:border focus:border-[color:var(--color-border)] focus:bg-[color:var(--color-panel)] focus:px-5 focus:py-3 focus:font-mono focus:text-[length:var(--text-caption)] focus:tracking-[0.1em] focus:uppercase focus:text-[color:var(--color-text-primary)] focus:outline-2 focus:outline-offset-2 focus:outline-[color:var(--color-accent)]"
+      >
+        {tNav("skipToContent")}
+      </a>
       <SiteHeader locale={locale} />
       <main className="flex flex-col">
         <HeroSection locale={locale} />

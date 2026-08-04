@@ -3,6 +3,7 @@ import { Section } from "@/components/ui/section";
 import { SectionHeading } from "@/components/ui/section-heading";
 import { MonoLabel } from "@/components/ui/mono-label";
 import { Surface } from "@/components/ui/surface";
+import { ArrowLink } from "@/components/ui/arrow-link";
 import { Reveal } from "@/components/motion/reveal";
 import { SignalCard } from "./signal-card";
 
@@ -87,6 +88,16 @@ export async function TelegramSection({ locale }: { locale: string }) {
             <p className="max-w-[52ch] text-[length:var(--text-lead)] leading-[var(--text-lead--line-height)] tracking-[var(--text-lead--letter-spacing)] text-[color:var(--color-text-secondary)]">
               {t("lead")}
             </p>
+            {/* A quiet route out, not a second white pill: the dashboard's CTA
+                two sections up already owns this conversion, and a touchpoint
+                must not out-shout it. Link-weight is the ceiling here. */}
+            <ArrowLink
+              href="#access"
+              analytics={{ target: "sandbox_access", location: "telegram" }}
+              className="mt-2 self-start"
+            >
+              {t("cta")}
+            </ArrowLink>
           </div>
 
           {/* The artefact, at its own size. `min-w-0` so the card's mono labels

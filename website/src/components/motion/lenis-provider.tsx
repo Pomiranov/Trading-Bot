@@ -42,15 +42,30 @@ export function LenisProvider({ children }: { children: React.ReactNode }) {
 
       const lenis = getLenis();
       if (lenis) {
-        lenis.scrollTo(el, {
-          offset: -offset,
+        /*
+          A number, not the element. Handing Lenis the element delegates the
+          position maths to its own resolution, and measured landings came out
+          −52…+116px off the intent per section — enough to clip the
+          how-it-works heading under the header pill on the primary hero CTA
+          journey, while the document itself was verified stable during the
+          flight (the drift is in the resolution, not the layout). One
+          explicit read at click time is exact, and this handler runs on a
+          user gesture between animations, so it does not race the scroll
+          value Lenis animates — the same reasoning the fallback branch below
+          already relies on.
+        */
+        const top = el.getBoundingClientRect().top + window.scrollY - offset;
+        lenis.scrollTo(top, {
           duration: 1.1,
           easing: easeOutQuart,
         });
       } else {
-        // Reduced-motion fallback — Lenis is never instantiated in that mode.
+        // Lenis is never instantiated under reduced motion, so this branch is
+        // exactly the reduced-motion path — and an explicit behavior:"smooth"
+        // is not suppressed by the global `scroll-behavior: auto` reset. Jump.
+        const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
         const top = el.getBoundingClientRect().top + window.scrollY - offset;
-        window.scrollTo({ top, behavior: "smooth" });
+        window.scrollTo({ top, behavior: reduce ? "auto" : "smooth" });
       }
 
       // Keep the URL shareable without letting the browser also jump to the

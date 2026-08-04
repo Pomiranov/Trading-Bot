@@ -447,7 +447,10 @@ export function DashboardTerminal() {
                 tabIndex={selected ? 0 : -1}
                 onClick={() => setActive(i)}
                 onKeyDown={(e) => onTabKeyDown(e, i)}
-                title={tab.desc}
+                // Not `title`: a native tooltip is unreachable from keyboard
+                // and touch. The description rides an sr-only child instead,
+                // referenced here, so every channel gets the same text.
+                aria-describedby={`${tabId(i)}-desc`}
                 className={cn(
                   "group relative shrink-0 cursor-pointer px-5 py-3.5 text-left font-mono text-[length:var(--text-label)] tracking-[var(--text-label--letter-spacing)] uppercase outline-none [scroll-snap-align:start]",
                   "transition-colors duration-[var(--duration-base)] ease-[var(--ease-out-expo)]",
@@ -458,6 +461,9 @@ export function DashboardTerminal() {
                 )}
               >
                 {tab.label}
+                <span id={`${tabId(i)}-desc`} className="sr-only">
+                  {tab.desc}
+                </span>
                 {/* Selected marker: a solid white rail on the bottom edge, not a
                     colour. Was a left rail when the list was vertical. */}
                 <span

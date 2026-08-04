@@ -921,23 +921,34 @@ section[id][data-rhythm="tight"] {
   /* With no rim to sit under, the hairline goes back to the band's own strong
      border. A cold border alone on paper is the print-registration artefact.
 
-     ── Both selectors are required, and the second one is not redundant ──
+     ── Both rules are required, and the second one is not redundant ──
 
      A custom property is substituted at computed-value time *on the element that
      declares it*, and descendants inherit the already-resolved value. So
      `--rim-edge: var(--color-highlight-border)` on `.section-paper` resolves once,
      against the band's own `rgba(0,0,0,0.3)`, and every card below it inherits
-     that literal — including the graphite panels, which re-point
-     `--color-highlight-border` to white 0.28 precisely because they are dark
-     objects sitting on light paper.
-
-     Measured without the second rule: the Foundation cards computed `--rim-edge:
-     rgba(0,0,0,0.3)` — a black hairline on a #131313 card, i.e. no visible hover
-     border at all, where before this pass they had a white one. Re-declaring it
-     inside the graphite scope makes the `var()` resolve again in that context. */
-  .section-paper,
-  .on-paper-graphite {
+     that literal. Measured without a graphite re-declaration: the Foundation
+     cards computed `--rim-edge: rgba(0,0,0,0.3)` — a black hairline on a #131313
+     card, i.e. no visible hover border at all. */
+  .section-paper {
     --rim-edge: var(--color-highlight-border);
+  }
+
+  /* Graphite faces are dark objects again, and their hover edge is the cold
+     rim — owner direction for this pass: restrained ice-blue on the dark cards
+     inside the bands, never a white glow. The print-registration argument is
+     about cold light on *paper*; this edge sits on #131313, the same ground the
+     dark sections light. `--color-signal-line` is not re-pointed by the band,
+     so it resolves to the 0.28-ceiling signal colour. */
+  .on-paper-graphite {
+    --rim-edge: var(--color-signal-line);
+  }
+
+  /* And with a cold edge back, the masked conic rim returns with it — the
+     interaction layer stays one system across the page. Overrides the
+     band-wide `display: none` above for graphite subtrees only. */
+  .on-paper-graphite .card-premium::after {
+    display: block;
   }
 }
 
@@ -1548,17 +1559,17 @@ main > section:not(.section-paper):not(#hero):has(+ .band-blend) {
   --shadow-cta-hover: 0 8px 30px -6px rgba(255, 255, 255, 0.18);
 
   /* Resting: a soft dark drop, so the panel sits on the paper.
-     Hover: the same drop, deepened, plus a white edge and a soft white bloom —
-     graphite elevation and white glow, never a coloured one. On paper the cold
-     blue is invisible at its permitted alpha and looks like a print
-     registration error above it, so it is not used here at all. */
+     Hover: the same drop, deepened, plus a cold edge and a tight ice bloom —
+     owner direction for this pass: the dark cards inside the bands light
+     restrained ice-blue, never white. The paper itself keeps its ban on cold
+     light; this shadow only ever sits on a #131313 face. Alphas at or under
+     the 0.28 ceiling, bloom spent within 28px. */
   --shadow-card-rest: 0 2px 8px -2px rgba(0, 0, 0, 0.18);
   --shadow-card-hover:
-    0 24px 56px -20px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.14),
-    0 0 44px -12px rgba(255, 255, 255, 0.12);
-  /* Graphite panels sit inside a paper band, so they inherit the band's ban on
-     cold light — see the note in `.section-paper`. Both rim variants collapse
-     onto the white-glow hover this block already defines. */
+    0 24px 56px -20px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(124, 200, 255, 0.2),
+    0 0 28px -12px rgba(124, 200, 255, 0.16);
+  /* Both rim variants collapse onto the same cold hover this block defines —
+     one card system inside the band, at one intensity. */
   --shadow-card-hover-rim: var(--shadow-card-hover);
   --shadow-card-hover-route: var(--shadow-card-hover);
 
@@ -2694,8 +2705,12 @@ main > section:not(.section-paper):not(#hero):has(+ .band-blend) {
 .assistant-orb__flow {
   position: absolute;
   inset: -55%;
+  /* Crest tightened against the reference: the 68%-end ellipse at full alpha
+     spread a milky, desaturated wash over half the sphere on some phases —
+     the reference's band is compact and saturated ice, so the light stop ends
+     at 58% and the core steps down to 0.9. */
   background:
-    radial-gradient(58% 27% at 37% 63%, rgba(201, 242, 255, 1) 0%, rgba(124, 208, 255, 0.72) 40%, rgba(124, 208, 255, 0) 68%),
+    radial-gradient(58% 27% at 37% 63%, rgba(201, 242, 255, 0.9) 0%, rgba(124, 208, 255, 0.66) 38%, rgba(124, 208, 255, 0) 58%),
     radial-gradient(62% 30% at 60% 34%, rgba(34, 78, 213, 0.95) 0%, rgba(34, 78, 213, 0) 66%);
   filter: blur(2px);
   pointer-events: none;
@@ -2716,29 +2731,47 @@ main > section:not(.section-paper):not(#hero):has(+ .band-blend) {
 }
 
 @media (prefers-reduced-motion: no-preference) {
-  /* 18s / 29s — coprime, so the composition never visibly repeats. The primary
-     band was slowed to 24s in the first build and read as near-static next to
-     the reference's ~20s loop; 18s puts one full pass of the main wave inside
-     the 12–20s window the reference occupies, and B stays the slow undertow. */
+  /* A pendulum, not a rotor. The full 360° sweep put the crest through the
+     *crown* on every pass — the top of the sphere became the brightest part of
+     the object for a third of the loop, and the reference never does that: on
+     every frame of Vois Asistent.mp4 the upper third stays dark navy and the
+     ribbon sways inside the lower two thirds. Each arc below is chosen so its
+     layer's bright ellipse stays under the equator at both extremes (verified
+     by rotating the ellipse centres by hand), and `alternate` makes the loop
+     seamless by construction.
+
+     9s/14.5s legs keep the former 18s/29s round trips — still coprime, so the
+     two-layer composition never visibly repeats — and ease-in-out gives the
+     turnarounds the slow organic settle the reference's liquid has. */
   .assistant-orb__flow {
-    animation: qf-orb-flow 18s linear infinite;
+    animation: qf-orb-flow 9s ease-in-out infinite alternate;
   }
 
   .assistant-orb__flow--b {
-    animation: qf-orb-flow 29s linear infinite reverse;
+    animation: qf-orb-flow-b 14.5s ease-in-out infinite alternate;
   }
 }
 
-/* Starts at -34° rather than 0 so the resting composition — what a reduced-motion
-   reader sees permanently, and what the orb shows in its first frame — is the
-   reference's *diagonal* wave rather than the horizontal band that 0° happens to
-   produce. The sweep is a full turn either way. */
+/* Primary crest sits lower-left of the layer's centre: -100° parks it
+   lower-right, +30° lower-left, and the travel between them passes through
+   the bottom — never the crown. */
 @keyframes qf-orb-flow {
   from {
-    transform: rotate(-34deg);
+    transform: rotate(-100deg);
   }
   to {
-    transform: rotate(326deg);
+    transform: rotate(30deg);
+  }
+}
+
+/* B's sliver sits lower-right, so its safe arc is its own: -20° → 80° sweeps
+   lower-right → bottom → lower-left. */
+@keyframes qf-orb-flow-b {
+  from {
+    transform: rotate(-20deg);
+  }
+  to {
+    transform: rotate(80deg);
   }
 }
 
@@ -2778,10 +2811,10 @@ main > section:not(.section-paper):not(#hero):has(+ .band-blend) {
        job is to darken the top, not to desaturate it. */
     radial-gradient(
       132% 104% at 50% -16%,
-      rgba(3, 8, 22, 0.88) 0%,
-      rgba(3, 8, 22, 0.55) 34%,
-      rgba(3, 8, 22, 0.16) 54%,
-      transparent 70%
+      rgba(3, 8, 22, 0.9) 0%,
+      rgba(3, 8, 22, 0.58) 34%,
+      rgba(3, 8, 22, 0.24) 58%,
+      transparent 78%
     ),
     /* The limb. Without this the orb was a circle with a gradient in it — a flat
        horizon, dark at the top and pale across the whole bottom half. A sphere
@@ -2801,10 +2834,13 @@ main > section:not(.section-paper):not(#hero):has(+ .band-blend) {
      as --lens-rim-hot — with the two lower speculars unchanged and a faint
      cold wash along the top edge, which is where the reference's crown catches
      its own rim light. */
+  /* Lower speculars stepped down from full alpha: at 1.0 the bottom edge read
+     as lit to the very rim, where the reference always keeps a dark lower limb
+     *under* the specular line. */
   box-shadow:
     inset 0 0 0 1px rgba(196, 228, 255, 0.2),
-    inset 0 -6px 10px -6px rgba(216, 248, 255, 1),
-    inset 4px -5px 13px -8px rgba(158, 220, 255, 0.85),
+    inset 0 -6px 10px -6px rgba(216, 248, 255, 0.65),
+    inset 4px -5px 13px -8px rgba(158, 220, 255, 0.6),
     inset 0 8px 12px -10px rgba(124, 200, 255, 0.5);
   pointer-events: none;
   transition: box-shadow var(--duration-base) var(--ease-out-expo);
@@ -2926,13 +2962,17 @@ main > section:not(.section-paper):not(#hero):has(+ .band-blend) {
   }
 }
 
+/* 44px of hit area around a 24px-reading glyph — the panel opens on touch
+   devices too, and this was the smallest target on the page. The negative
+   margins absorb the growth so the header row keeps its optical geometry;
+   same trick as the locale switchers in the header. */
 .assistant-panel__close {
   display: grid;
   place-items: center;
   flex-shrink: 0;
-  width: 1.5rem;
-  height: 1.5rem;
-  margin: -0.25rem -0.375rem -0.25rem 0;
+  width: 2.75rem;
+  height: 2.75rem;
+  margin: -0.875rem -1rem -0.875rem -0.625rem;
   border-radius: var(--radius-full);
   color: var(--color-text-quaternary);
   cursor: pointer;

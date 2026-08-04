@@ -184,34 +184,65 @@ export function SignalCard() {
           ── The footer's height is reserved, so the demo cannot reflow the page ──
 
           The idle→resolved swap trades two buttons for a chip, a caption and a
-          reset control — the taller block at every width — so each press used
-          to change the card's height and shove the whole Telegram panel around
-          mid-interaction, under the visitor's own pointer.
+          reset control, so each press used to change the card's height and shove
+          the whole Telegram panel around mid-interaction, under the visitor's
+          own pointer.
 
-          The `min-h` ladder is the resolved state's measured footer height
-          (RU, the longer locale; EN is lower everywhere), rounded up, at each
-          width where a line-wrap changes it: 204px at 320, 186px from 360,
-          149px from 480. From `sm` the idle buttons share one row and the
-          resolved copy fits one line each (129px) — except under `lg`'s
-          two-column grid, which narrows the card again (149px) until the
-          detail line unwraps around 1440 (129px). `min-h`, never a fixed
-          height, so a longer translation degrades to growth, not clipping.
+          This used to be a hand-measured `min-h` pixel ladder — six breakpoints
+          of RU-measured constants that were wrong the moment any copy or
+          translation changed length, and that left a visible strip of empty
+          card under the idle buttons at most widths. The reserve is
+          self-measuring instead: both resolved variants render permanently as
+          *sizing ghosts* — plain, `invisible`, `aria-hidden`, `inert` — stacked
+          into the same grid cell as the live layer, so the cell is always
+          exactly as tall as the tallest state at the current width and locale,
+          and the constants are gone. The live layer keeps the original
+          mount/unmount swap untouched, because the focus hand-off effect above
+          depends on it and is measured to work. The ghosts never change state,
+          never animate and never take focus, so they can race nothing. The
+          anti-CLS property is preserved by construction.
         */}
-        <div className="flex min-h-[204px] flex-col gap-3 border-t border-[color:var(--color-border)] pt-4 min-[360px]:min-h-[186px] min-[480px]:min-h-[149px] sm:min-h-[129px] lg:min-h-[149px] min-[1440px]:min-h-[129px]">
+        <div className="grid border-t border-[color:var(--color-border)] pt-4">
           {/* The live region is mounted with the card, not with the outcome.
               A `role="status"` element only announces *mutations inside a
               region the accessibility tree already knows about* — the previous
               version mounted region and content together, in one insertion,
               which real screen readers skip more often than not (WCAG 4.1.3).
               So an sr-only region sits here from first render and only its
-              text swaps; it is `sr-only`, and therefore out of flow, so it can
-              neither take the parent's gap nor move anything. The visible chip
-              below repeats the same words and animates freely, because it is
-              no longer the live element. */}
+              text swaps; it is `sr-only`, and therefore absolutely positioned,
+              so it cannot open a grid track of its own. The visible chip below
+              repeats the same words and animates freely, because it is no
+              longer the live element. */}
           <div role="status" aria-live="polite" className="sr-only">
             {resolved ? `${resolved.label}. ${resolved.detail}` : null}
           </div>
 
+          {(["accepted", "skipped"] as const).map((s) => {
+            const variant =
+              s === "accepted"
+                ? { label: t("cardAccepted"), detail: t("cardAcceptedDetail"), tone: "success" as const }
+                : { label: t("cardSkipped"), detail: t("cardSkippedDetail"), tone: "muted" as const };
+            return (
+              <div
+                key={s}
+                aria-hidden="true"
+                inert
+                className="invisible col-start-1 row-start-1 flex flex-col gap-3"
+              >
+                <div className="flex flex-col gap-2">
+                  <StatusChip tone={variant.tone} label={variant.label} />
+                  <p className="text-[length:var(--text-caption)] leading-[var(--text-caption--line-height)] text-[color:var(--color-text-quaternary)]">
+                    {variant.detail}
+                  </p>
+                </div>
+                <Button variant="ghost" size="sm" className="min-h-11 self-start" tabIndex={-1}>
+                  {t("cardReset")}
+                </Button>
+              </div>
+            );
+          })}
+
+          <div className="col-start-1 row-start-1">
           {resolved ? (
             <motion.div
               // Same rule as elsewhere: never branch `initial` on the
@@ -244,47 +275,48 @@ export function SignalCard() {
             </motion.div>
           ) : (
             <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-start">
-              {/*
-                Two fixes here, both for 390px.
+            {/*
+              Two fixes here, both for 390px.
 
-                `h-auto min-h-9 py-2` alongside `whitespace-normal`: `size="sm"` is
-                a fixed `h-9` and the base button style is `whitespace-nowrap`.
-                Overriding only the wrapping — which this did — lets the label
-                break to two lines inside a box still locked to 36px, so the RU
-                "Исполнить в песочнице" rendered spilling out through the top and
-                bottom edges of its own button. Either the height follows the
-                content or the text must not wrap; for a CTA whose Russian label is
-                21 characters, growing is the right one.
+              `h-auto min-h-9 py-2` alongside `whitespace-normal`: `size="sm"` is
+              a fixed `h-9` and the base button style is `whitespace-nowrap`.
+              Overriding only the wrapping — which this did — lets the label
+              break to two lines inside a box still locked to 36px, so the RU
+              "Исполнить в песочнице" rendered spilling out through the top and
+              bottom edges of its own button. Either the height follows the
+              content or the text must not wrap; for a CTA whose Russian label is
+              21 characters, growing is the right one.
 
-                `w-full` below `sm`, `flex-1` above it: sharing a ~265px row with
-                the Skip button still forced the label onto three lines, which
-                made a 96px-tall button beside a 36px one. Stacked, each takes a
-                line or two at full width.
+              `w-full` below `sm`, `flex-1` above it: sharing a ~265px row with
+              the Skip button still forced the label onto three lines, which
+              made a 96px-tall button beside a 36px one. Stacked, each takes a
+              line or two at full width.
 
-                `min-h-11`, not `min-h-9`: these are the only two controls a
-                visitor is invited to press inside the demo card, and at 36px both
-                sat under the 44px touch floor. The floor is a minimum, so a label
-                that needs two lines still grows past it — which is the same
-                reason `h-auto` is here.
-              */}
-              <Button
-                ref={executeRef}
-                className="h-auto min-h-11 w-full py-2 whitespace-normal sm:w-auto sm:flex-1"
-                size="sm"
-                onClick={() => setState("accepted")}
-              >
-                {t("cardExecute")}
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-auto min-h-11 w-full sm:w-auto"
-                onClick={() => setState("skipped")}
-              >
-                {t("cardDismiss")}
-              </Button>
-            </div>
+              `min-h-11`, not `min-h-9`: these are the only two controls a
+              visitor is invited to press inside the demo card, and at 36px both
+              sat under the 44px touch floor. The floor is a minimum, so a label
+              that needs two lines still grows past it — which is the same
+              reason `h-auto` is here.
+            */}
+            <Button
+              ref={executeRef}
+              className="h-auto min-h-11 w-full py-2 whitespace-normal sm:w-auto sm:flex-1"
+              size="sm"
+              onClick={() => setState("accepted")}
+            >
+              {t("cardExecute")}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-auto min-h-11 w-full sm:w-auto"
+              onClick={() => setState("skipped")}
+            >
+              {t("cardDismiss")}
+            </Button>
+          </div>
           )}
+          </div>
         </div>
       </Surface>
 

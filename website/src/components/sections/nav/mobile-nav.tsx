@@ -250,7 +250,7 @@ export function MobileNav({
                       track({ name: "journey_step", props: { section: key } });
                       close();
                     }}
-                    className="flex items-center rounded-[var(--radius-md)] px-3 py-3 font-mono text-[length:var(--text-caption)] tracking-[0.1em] text-[color:var(--color-text-secondary)] uppercase no-underline transition-colors duration-[var(--duration-micro)] hover:bg-[color:var(--color-highlight-bg)] hover:text-[color:var(--color-text-primary)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--color-accent)]"
+                    className="flex min-h-11 items-center rounded-[var(--radius-md)] px-3 py-3 font-mono text-[length:var(--text-caption)] tracking-[0.1em] text-[color:var(--color-text-secondary)] uppercase no-underline transition-colors duration-[var(--duration-micro)] hover:bg-[color:var(--color-highlight-bg)] hover:text-[color:var(--color-text-primary)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--color-accent)]"
                     initial={reduce ? false : { opacity: 0, x: -6 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{

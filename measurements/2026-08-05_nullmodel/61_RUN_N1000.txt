@@ -1,0 +1,30 @@
+MODE=series  seed_base=20260806  N=1000  procs=14  yader v sisteme=16
+OTPECHATOK SVECHEY: strok=10667 tikerov=12 min=2023-07-11 21:00:00 max=2026-07-28 21:00:00 sha256[:16]=0216ab485d977d91 -> SOVPAL
+KONTROL DO: n=18 WR=72.2% PF=1.638 PnL_syraya=127747.96 (cel 127747.96) PnL_okrugl=127747.97 (cel 127747.97) -> SOSHLOS
+nablyudennyh D1/OOS=18 razreshennyh OOS-barov=3462
+  progon 50 sid=20260806:50 n=18 godnyy=True (50/1000, 174 s)
+  progon 100 sid=20260806:100 n=18 godnyy=True (100/1000, 302 s)
+  progon 147 sid=20260806:147 n=18 godnyy=True (150/1000, 451 s)
+  progon 200 sid=20260806:200 n=18 godnyy=True (200/1000, 572 s)
+  progon 249 sid=20260806:249 n=18 godnyy=True (250/1000, 680 s)
+  progon 299 sid=20260806:299 n=18 godnyy=True (300/1000, 778 s)
+  progon 349 sid=20260806:349 n=18 godnyy=True (350/1000, 876 s)
+  progon 399 sid=20260806:399 n=18 godnyy=True (400/1000, 972 s)
+  progon 449 sid=20260806:449 n=18 godnyy=True (450/1000, 1071 s)
+  progon 499 sid=20260806:499 n=18 godnyy=True (500/1000, 1161 s)
+  progon 552 sid=20260806:552 n=18 godnyy=True (550/1000, 1275 s)
+  progon 599 sid=20260806:599 n=18 godnyy=True (600/1000, 1401 s)
+  progon 649 sid=20260806:649 n=18 godnyy=True (650/1000, 1503 s)
+  progon 699 sid=20260806:699 n=18 godnyy=True (700/1000, 1603 s)
+  progon 749 sid=20260806:749 n=18 godnyy=True (750/1000, 1700 s)
+  progon 799 sid=20260806:799 n=18 godnyy=True (800/1000, 1805 s)
+  progon 849 sid=20260806:849 n=18 godnyy=True (850/1000, 1908 s)
+  progon 899 sid=20260806:899 n=18 godnyy=True (900/1000, 2010 s)
+  progon 949 sid=20260806:949 n=18 godnyy=True (950/1000, 2115 s)
+  progon 999 sid=20260806:999 n=18 godnyy=True (1000/1000, 2205 s)
+VREMYA: 2205.8 s na 1000 progonov = 2.21 s/progon pri procs=14
+GODNYH: 1000 iz 1000
+3.1 PROTSENTIL PF 1.638: 94.6
+    p1=0.042 p5=0.116 mediana=0.594 p95=1.663 p99=2.272
+    OTRITSATELNYH: 791 iz 1000 = 79.1%
+3.2 MEDIANA doli top-2 (pnl>0, n=209): 229.0% (nablyudennoe 103.2%)

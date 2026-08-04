@@ -1,0 +1,21 @@
+{
+  "master_seed": 20260806,
+  "N": 1000,
+  "tries": 300,
+  "procs": 14,
+  "candles_fingerprint": "0216ab485d977d91",
+  "candles_rows": 10667,
+  "control_before_ok": true,
+  "control_after": "UDALEN (tozhdestvo)",
+  "good": 1000,
+  "percentile_of_1638": 94.6,
+  "negative_runs": 791,
+  "positive_runs": 209,
+  "median_top2_share": 229.02059301345776,
+  "p1": 0.04190433775565785,
+  "p5": 0.11605030789273788,
+  "median_pf": 0.5943161395260999,
+  "p95": 1.6627248628670406,
+  "p99": 2.2723177518147097,
+  "seconds": 2205.801072400005
+}

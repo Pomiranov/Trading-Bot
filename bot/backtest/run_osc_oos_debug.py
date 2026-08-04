@@ -92,19 +92,22 @@ def collect_trades(rules_file: Path, pm: bool = False,
             res = engine.run(ticker, df)
             if res.skipped_downtrend:
                 skipped[(TF_LABEL[tf], ticker)] = res.skipped_downtrend
-            # Счётчики путей отказа копятся ПО ТАЙМФРЕЙМУ: тождество проверяется на
-            # разрезе, тикерная раскладка его не меняет.
+            # Счётчики копятся ПО ТАЙМФРЕЙМУ как СПИСКИ МЕТОК БАРОВ: разрез
+            # назначает этот файл ниже, тем же IS_END, что и сделки на :124/:135.
             c = counters.setdefault(TF_LABEL[tf], dict(
-                born=0, passed=0, downtrend=0, position_open=0, sizing=0,
-                capital=0, gate_active=False))
-            c["born"] += res.signals_born
-            c["downtrend"] += res.skipped_downtrend
-            c["position_open"] += res.skipped_position_open
-            c["sizing"] += res.skipped_sizing
-            c["capital"] += res.skipped_capital
-            # «прошло» = состоявшиеся входы = закрытые + открытая на краю (долг №25):
-            # «стало сделкой» считается ФАКТОМ ЗАПИСИ входа, а не закрытием.
-            c["passed"] += len(res.trades) + len(res.open_trades_at_end)
+                born_at=[], passed_at=[], known_at=[], downtrend_at=[],
+                position_open_at=[], sizing_at=[], capital_at=[], gate_active=False))
+            c["born_at"] += res.born_at
+            c["downtrend_at"] += res.skipped_downtrend_at
+            c["position_open_at"] += res.skipped_position_open_at
+            c["sizing_at"] += res.skipped_sizing_at
+            c["capital_at"] += res.skipped_capital_at
+            # «прошло» = состоявшиеся входы (факт записи, долг №25);
+            # «с известным исходом» = только ЗАКРЫТЫЕ. Разница — открытые на краю.
+            # Читать С3 как «примеров с известным исходом» нельзя: ровно этот класс
+            # отозвал тройку 30 / 60.0% / 1.20 (дрейфующая открытая SBER).
+            c["known_at"] += [t.entry_date for t in res.trades]
+            c["passed_at"] += [t.entry_date for t in res.trades] +                               [t.entry_date for t in res.open_trades_at_end]
             c["gate_active"] |= res.gate_active
             df_ind = ind_engine.compute(df)
             for t in res.trades:
@@ -190,82 +193,114 @@ def report(trades: pd.DataFrame, show_oos: bool = False) -> None:
 
 
 
-# ── Счётчики путей отказа сигнала, шаг 1 (заведено 2026-08-04) ────────────────
+# ── Счётчики путей отказа сигнала: разбиение по разрезу IS/OOS ────────────────
 #
-# ТРИ ВИДА НУЛЯ. Печатаются с меткой, а не как «0»: без метки из нулей через месяц
-# выведут неверное.
-#   «не достигнут»             — первая причина оборвала проверку (Б1 обрывает
-#                                Б2-Б4, Б2 обрывает Б3/Б4);
-#   «недостижим по построению» — режим прогона исключает путь (фильтр выключен ⇒ Б1);
-#   «ноль наблюдений»          — путь достижим, событий не было.
+# РАЗРЕЗ НАЗНАЧАЕТСЯ ЗДЕСЬ, тем же IS_END, которым размечаются сделки на :124/:135.
+# Движок отдаёт МЕТКИ БАРОВ и про разрезы не знает: четвёртый литерал границы в
+# движке разошёлся бы с колонкой `sample` в CSV молча (класс долга №24). Литералов
+# границы от разбиения не прибавилось — по-прежнему один на этот файл.
 #
-# ДВА МЕСТА, и одно не считается выполнением: сводка ниже И машиночитаемый файл
-# рядом с CSV, которые сверяются между собой. Основание — отказ PHOR 30.07 есть в
-# базе и отсутствует в журнале, то есть у одного источника нет с чем сверяться.
+# ТРИ ВИДА НУЛЯ, и число дошедших печатается ПО РАЗРЕЗУ, а не общее: иначе метка
+# соврёт в ту же сторону, в которую соврала первая редакция zero_kind.
+#   «не достигнут»             — все сигналы разреза оборваны Б1/Б2;
+#   «недостижим по построению» — режим исключает путь (фильтр выключен ⇒ Б1);
+#   «ноль наблюдений»          — путь достигнут в этом разрезе, событий не было.
+#
+# ДВА МЕСТА, и одно не считается выполнением: сводка И машиночитаемый TSV,
+# сверяются между собой.
 PATHS = [("downtrend", "Б1 фильтр даунтренда"),
          ("position_open", "Б2 позиция уже открыта"),
          ("sizing", "Б3 сайзинг не дал позиции"),
          ("capital", "Б4 не хватает капитала")]
+SAMPLES = ["IS", "OOS"]
 
 
-def zero_kind(key: str, c: dict) -> str:
-    """Тип нуля для пути key. Вызывается только когда счётчик равен нулю."""
+def _split(stamps: list) -> dict:
+    """Разложить метки баров по разрезам ТЕМ ЖЕ сравнением, что и сделки."""
+    out = {s: 0 for s in SAMPLES}
+    for t in stamps:
+        out["IS" if pd.Timestamp(t).tz_localize(None) < IS_END else "OOS"] += 1
+    return out
+
+
+def zero_kind(key: str, c: dict, smp: str) -> str:
     if key == "downtrend" and not c["gate_active"]:
         return "недостижим по построению (фильтр выключен)"
     if key in ("sizing", "capital"):
-        # ИСПРАВЛЕНО 2026-08-04 до коммита: первая редакция возвращала здесь
-        # «не достигнут», если сработали Б1/Б2 — и это НЕВЕРНО. Б1/Б2 обрывают
-        # проверку только для ТЕХ сигналов, которые они отвергли; остальные до
-        # сайзинга доходят. Достижимость измеряется числом дошедших, а не наличием
-        # отказов раньше: дошло = прошло + Б3 + Б4.
-        reached = c["passed"] + c["sizing"] + c["capital"]
+        reached = c["passed"][smp] + c["sizing"][smp] + c["capital"][smp]
         if reached == 0:
-            return "не достигнут (все сигналы оборваны Б1/Б2)"
-        return f"ноль наблюдений (путь достигнут {reached} раз)"
-    # Б2 вычисляется для КАЖДОГО BUY-сигнала: его ветка стоит в той же цепочке
-    # elif и проверяется всегда, когда не сработали предыдущие. «Не достигнут»
-    # к нему неприменим по построению.
+            return "не достигнут (все сигналы разреза оборваны Б1/Б2)"
+        return f"ноль наблюдений (путь достигнут {reached} раз в этом разрезе)"
     return "ноль наблюдений"
 
 
 def counters_report(counters: dict, path: Path) -> None:
-    lines = ["tf\tmetric\tvalue\tzero_kind"]
-    print("\n" + "=" * 72)
-    print("  СЧЁТЧИКИ ПУТЕЙ ОТКАЗА СИГНАЛА (шаг 1)")
-    print("=" * 72)
-    for tf, c in sorted(counters.items()):
-        rejects = sum(c[k] for k, _ in PATHS)
-        ident = c["passed"] + rejects
+    lines = ["tf\tsample\tmetric\tvalue\tzero_kind"]
+    print("\n" + "=" * 76)
+    print("  СЧЁТЧИКИ ПУТЕЙ ОТКАЗА СИГНАЛА — разбиение по разрезу IS/OOS")
+    print("=" * 76)
+    for tf, raw in sorted(counters.items()):
+        c = {k: _split(raw[k + "_at"]) for k in ("born", "passed", "known",
+                                                 "downtrend", "position_open",
+                                                 "sizing", "capital")}
+        c["gate_active"] = raw["gate_active"]
         print(f"\n  -- {tf} --")
-        print(f"  {'Б0 сигнал родился':<34} {c['born']:>7}")
-        print(f"  {'прошло (стало сделкой)':<34} {c['passed']:>7}")
+        hdr = f"  {'':<34}" + "".join(f"{s:>10}" for s in SAMPLES) + f"{'ЦЕЛОЕ':>10}"
+        print(hdr)
+        def row(title, key):
+            vals = [c[key][s] for s in SAMPLES]
+            tot = sum(vals)
+            print(f"  {title:<34}" + "".join(f"{v:>10}" for v in vals) + f"{tot:>10}")
+            for s in SAMPLES:
+                zk = "" if c[key][s] else zero_kind(key, c, s)
+                lines.append(f"{tf}\t{s}\t{key}\t{c[key][s]}\t{zk}")
+            lines.append(f"{tf}\tALL\t{key}\t{tot}\t")
+            return tot
+        born = row("Б0 сигнал родился", "born")
+        passed = row("прошло (стало сделкой)", "passed")
+        known = row("  из них с ИЗВЕСТНЫМ исходом", "known")
+        opened = passed - known
+        print(f"  {'  разница = открытых на краю':<34}" +
+              "".join(f"{c['passed'][s]-c['known'][s]:>10}" for s in SAMPLES) + f"{opened:>10}")
+        tots = {}
         for k, title in PATHS:
-            v = c[k]
-            note = "" if v else "   <- НУЛЬ: " + zero_kind(k, c)
-            print(f"  {title:<34} {v:>7}{note}")
-            lines.append(f"{tf}\t{k}\t{v}\t" + ("" if v else zero_kind(k, c)))
-        lines.append(f"{tf}\tborn\t{c['born']}\t")
-        lines.append(f"{tf}\tpassed\t{c['passed']}\t")
-        lines.append(f"{tf}\tgate_active\t{int(c['gate_active'])}\t")
-        ok = "СХОДИТСЯ" if ident == c["born"] else f"НЕ СХОДИТСЯ, разница {c['born'] - ident:+}"
-        print("  " + "-" * 44)
-        print(f"  тождество: прошло {c['passed']} + отказы {rejects} = {ident} "
-              f"против родилось {c['born']}  ->  {ok}")
-        lines.append(f"{tf}\tidentity_holds\t{int(ident == c['born'])}\t")
+            tots[k] = row(title, k)
+        for k, title in PATHS:
+            for s in SAMPLES:
+                if not c[k][s]:
+                    print(f"    НУЛЬ {title} / {s}: {zero_kind(k, c, s)}")
+        print("  " + "-" * 66)
+        ok_all = True
+        for s in SAMPLES + ["ЦЕЛОЕ"]:
+            if s == "ЦЕЛОЕ":
+                b, p_, r = born, passed, sum(tots.values())
+            else:
+                b, p_ = c["born"][s], c["passed"][s]
+                r = sum(c[k][s] for k, _ in PATHS)
+            ok = (p_ + r == b)
+            ok_all &= ok
+            print(f"  тождество {s:>6}: прошло {p_} + отказы {r} = {p_+r} против родилось {b}"
+                  f"  ->  {'СХОДИТСЯ' if ok else 'НЕ СХОДИТСЯ'}")
+            lines.append(f"{tf}\t{s}\tidentity_holds\t{int(ok)}\t")
+        lines.append(f"{tf}\tALL\tgate_active\t{int(c['gate_active'])}\t")
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
     print(f"\n  машиночитаемая улика: {path}")
-    # СВЕРКА ДВУХ МЕСТ: файл перечитывается и сравнивается с напечатанным
     back: dict = {}
     for ln in path.read_text(encoding="utf-8").splitlines()[1:]:
-        parts = (ln.split("\t") + ["", "", "", ""])[:4]
-        back.setdefault(parts[0], {})[parts[1]] = parts[2]
+        q = (ln.split("\t") + ["", "", "", "", ""])[:5]
+        back[(q[0], q[1], q[2])] = q[3]
     bad = []
-    for tf, c in counters.items():
-        for k in [p[0] for p in PATHS] + ["born", "passed"]:
-            if back.get(tf, {}).get(k) != str(c[k]):
-                bad.append(f"{tf}/{k}")
+    for tf, raw in counters.items():
+        c = {k: _split(raw[k + "_at"]) for k in ("born", "passed", "known",
+                                                 "downtrend", "position_open",
+                                                 "sizing", "capital")}
+        for k in list(c):
+            for s in SAMPLES:
+                if back.get((tf, s, k)) != str(c[k][s]):
+                    bad.append(f"{tf}/{s}/{k}")
+            if back.get((tf, "ALL", k)) != str(sum(c[k].values())):
+                bad.append(f"{tf}/ALL/{k}")
     print("  сверка сводки с файлом: " + ("СОВПАЛО" if not bad else "РАСХОЖДЕНИЕ: " + ", ".join(bad)))
-
 
 def main() -> None:
     logging.basicConfig(level=logging.ERROR)

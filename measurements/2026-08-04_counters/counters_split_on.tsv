@@ -1,0 +1,51 @@
+tf	sample	metric	value	zero_kind
+D1	IS	born	6	
+D1	OOS	born	31	
+D1	ALL	born	37	
+D1	IS	passed	4	
+D1	OOS	passed	18	
+D1	ALL	passed	22	
+D1	IS	known	4	
+D1	OOS	known	18	
+D1	ALL	known	22	
+D1	IS	downtrend	2	
+D1	OOS	downtrend	12	
+D1	ALL	downtrend	14	
+D1	IS	position_open	0	ноль наблюдений
+D1	OOS	position_open	1	
+D1	ALL	position_open	1	
+D1	IS	sizing	0	ноль наблюдений (путь достигнут 4 раз в этом разрезе)
+D1	OOS	sizing	0	ноль наблюдений (путь достигнут 18 раз в этом разрезе)
+D1	ALL	sizing	0	
+D1	IS	capital	0	ноль наблюдений (путь достигнут 4 раз в этом разрезе)
+D1	OOS	capital	0	ноль наблюдений (путь достигнут 18 раз в этом разрезе)
+D1	ALL	capital	0	
+D1	IS	identity_holds	1	
+D1	OOS	identity_holds	1	
+D1	ЦЕЛОЕ	identity_holds	1	
+D1	ALL	gate_active	1	
+H4	IS	born	54	
+H4	OOS	born	126	
+H4	ALL	born	180	
+H4	IS	passed	26	
+H4	OOS	passed	56	
+H4	ALL	passed	82	
+H4	IS	known	26	
+H4	OOS	known	56	
+H4	ALL	known	82	
+H4	IS	downtrend	23	
+H4	OOS	downtrend	60	
+H4	ALL	downtrend	83	
+H4	IS	position_open	5	
+H4	OOS	position_open	10	
+H4	ALL	position_open	15	
+H4	IS	sizing	0	ноль наблюдений (путь достигнут 26 раз в этом разрезе)
+H4	OOS	sizing	0	ноль наблюдений (путь достигнут 56 раз в этом разрезе)
+H4	ALL	sizing	0	
+H4	IS	capital	0	ноль наблюдений (путь достигнут 26 раз в этом разрезе)
+H4	OOS	capital	0	ноль наблюдений (путь достигнут 56 раз в этом разрезе)
+H4	ALL	capital	0	
+H4	IS	identity_holds	1	
+H4	OOS	identity_holds	1	
+H4	ЦЕЛОЕ	identity_holds	1	
+H4	ALL	gate_active	1	

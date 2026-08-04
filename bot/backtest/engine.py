@@ -104,6 +104,17 @@ class BacktestResult:
     skipped_sizing: int = 0          # Б3: сайзинг не дал позиции (pos ложно)
     skipped_capital: int = 0         # Б4: позиция дороже свободного капитала
     gate_active: bool = False        # был ли фильтр даунтренда включён в прогоне
+    # ── МЕТКИ БАРОВ для разбиения по разрезу IS/OOS ────────────────────────────
+    # Движок разрезов НЕ ЗНАЕТ и знать не должен: `sample` присваивается в
+    # прогонщике (run_osc_oos_debug.py:124,135) единственным литералом IS_END.
+    # Четвёртый литерал здесь разошёлся бы с колонкой CSV МОЛЧА — класс долга №24.
+    # Поэтому движок отдаёт МЕТКИ, а раскладывает их по разрезам тот же прогонщик
+    # тем же сравнением. Число литералов границы от этой правки не меняется.
+    born_at: list = field(default_factory=list)
+    skipped_downtrend_at: list = field(default_factory=list)
+    skipped_position_open_at: list = field(default_factory=list)
+    skipped_sizing_at: list = field(default_factory=list)
+    skipped_capital_at: list = field(default_factory=list)
     trades: list[BacktestTrade] = field(default_factory=list)
     # СПИСОК, а не одиночное поле, хотя сегодня движок держит одну переменную
     # open_trade и длина всегда 0 или 1. Пирамидинг (гл. 8) стоит в очереди
@@ -309,6 +320,7 @@ class BacktestEngine:
             # тождество, сходящееся тривиально, и СКРЫЛ бы путь Б2.
             if signal.action == Action.BUY:
                 result.signals_born += 1
+                result.born_at.append(dt)
 
             # BLOCK → не открываем новые позиции
             if (
@@ -316,6 +328,7 @@ class BacktestEngine:
                 and dt_gate is not None and bool(dt_gate.iloc[i])
             ):
                 result.skipped_downtrend += 1
+                result.skipped_downtrend_at.append(dt)
             elif open_trade is None and signal.action == Action.BUY:
                 pos = self._risk.calculate_position(
                     ticker=ticker,
@@ -335,9 +348,11 @@ class BacktestEngine:
                 # вложенный `if` тождествен прежнему условию: при ложном `pos`
                 # второе сравнение не вычислялось и раньше.
                 if not pos:
-                    result.skipped_sizing += 1          # Б3
+                    result.skipped_sizing += 1
+                    result.skipped_sizing_at.append(dt)          # Б3
                 elif pos.position_value > capital:
-                    result.skipped_capital += 1         # Б4
+                    result.skipped_capital += 1
+                    result.skipped_capital_at.append(dt)         # Б4
                 if pos:
                     if pos.position_value <= capital:
                         commission  = pos.position_value * self.commission_pct
@@ -389,6 +404,7 @@ class BacktestEngine:
                 # существующих и только инкрементирует счётчик: поведение входа не
                 # меняется, потому что раньше здесь не выполнялось ничего.
                 result.skipped_position_open += 1
+                result.skipped_position_open_at.append(dt)
 
             elif open_trade is not None and signal.action == Action.SELL:
                 status = "WIN" if price > open_trade.entry_price else "LOSS"

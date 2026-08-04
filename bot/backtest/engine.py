@@ -307,49 +307,60 @@ class BacktestEngine:
                     portfolio_value=capital,
                     lot_size=self.lot_size,
                 )
-                if pos and pos.position_value <= capital:
-                    commission  = pos.position_value * self.commission_pct
-                    capital    -= pos.position_value + commission
-                    open_trade  = BacktestTrade(
-                        ticker=ticker,
-                        entry_date=dt,
-                        entry_price=price,
-                        shares=pos.shares,
-                        stop_price=pos.stop_price,
-                        initial_risk=max(price - pos.stop_price, 0.0),
-                        entry_rules="+".join(sorted(
-                            r.name for r in signal.triggered_rules
-                            if r.action == Action.BUY
-                        )),
-                    )
-                    # result.total_trades здесь БОЛЬШЕ НЕ инкрементируется: счётчик
-                    # считал ОТКРЫТЫЕ сделки, и незакрытая на краю данных попадала в
-                    # знаменатель WR наравне с состоявшимися. Теперь n = len(trades),
-                    # то есть закрытые, и присваивается в блоке финальных метрик.
-
-                    # ── Обучение: зафиксировать открытие сделки ──────
-                    if self._orchestrator is not None:
-                        volume_ratio = None
-                        if vol_ma is not None:
-                            ma = vol_ma.iloc[i]
-                            vol = row.get("volume")
-                            if pd.notna(ma) and ma and vol is not None and pd.notna(vol):
-                                volume_ratio = float(vol) / float(ma)
-                        open_trade.learning_trade = self._build_learning_trade(
+                # РАЗДЕЛЕНО 2026-08-04, семантика сохранена. Было одно условие
+                # `if pos and pos.position_value <= capital:` — два РАЗНЫХ отказа
+                # (сайзинг не дал позиции; позиция дороже капитала) слиты в него и
+                # неразличимы, а `else` у него нет вовсе. Инструментовать неразличимое
+                # нельзя, поэтому вложение сделано ОТДЕЛЬНЫМ коммитом БЕЗ счётчиков:
+                # одним коммитом сдвиг опорных троек был бы неразличим по причине —
+                # та же контрольная строка, что в замерах.
+                # `and` вычисляется слева направо и коротко замыкается, поэтому
+                # вложенный `if` тождествен прежнему условию: при ложном `pos`
+                # второе сравнение не вычислялось и раньше.
+                if pos:
+                    if pos.position_value <= capital:
+                        commission  = pos.position_value * self.commission_pct
+                        capital    -= pos.position_value + commission
+                        open_trade  = BacktestTrade(
                             ticker=ticker,
-                            row=row,
-                            price=price,
+                            entry_date=dt,
+                            entry_price=price,
                             shares=pos.shares,
                             stop_price=pos.stop_price,
-                            capital=capital + pos.position_value + commission,
-                            signal=signal,
-                            volume_ratio=volume_ratio,
-                            opened_at=dt,
-                            iv=iv,
+                            initial_risk=max(price - pos.stop_price, 0.0),
+                            entry_rules="+".join(sorted(
+                                r.name for r in signal.triggered_rules
+                                if r.action == Action.BUY
+                            )),
                         )
-                        self._learn(
-                            self._orchestrator.on_trade_opened(open_trade.learning_trade)
-                        )
+                        # result.total_trades здесь БОЛЬШЕ НЕ инкрементируется: счётчик
+                        # считал ОТКРЫТЫЕ сделки, и незакрытая на краю данных попадала в
+                        # знаменатель WR наравне с состоявшимися. Теперь n = len(trades),
+                        # то есть закрытые, и присваивается в блоке финальных метрик.
+
+                        # ── Обучение: зафиксировать открытие сделки ──────
+                        if self._orchestrator is not None:
+                            volume_ratio = None
+                            if vol_ma is not None:
+                                ma = vol_ma.iloc[i]
+                                vol = row.get("volume")
+                                if pd.notna(ma) and ma and vol is not None and pd.notna(vol):
+                                    volume_ratio = float(vol) / float(ma)
+                            open_trade.learning_trade = self._build_learning_trade(
+                                ticker=ticker,
+                                row=row,
+                                price=price,
+                                shares=pos.shares,
+                                stop_price=pos.stop_price,
+                                capital=capital + pos.position_value + commission,
+                                signal=signal,
+                                volume_ratio=volume_ratio,
+                                opened_at=dt,
+                                iv=iv,
+                            )
+                            self._learn(
+                                self._orchestrator.on_trade_opened(open_trade.learning_trade)
+                            )
 
             elif open_trade is not None and signal.action == Action.SELL:
                 status = "WIN" if price > open_trade.entry_price else "LOSS"

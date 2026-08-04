@@ -1,0 +1,19 @@
+OTPECHATOK ZAGRUZHENNOGO MASSIVA SVECHEY
+  strok vsego      : 10667
+  tikerov          : 12
+  min metka        : 2023-07-11 21:00:00
+  max metka        : 2026-07-28 21:00:00
+  sha256[:16] vsego: 0216ab485d977d91
+  po bumagam (strok / sha256[:12]):
+    ALRS    890  1bb82895536e
+    CHMF    890  36b91b1b0a04
+    GAZP    890  47c7361822bf
+    LKOH    890  5673b28e4f8a
+    MGNT    890  6e31ed212c4d
+    MOEX    890  83d3fee75e17
+    NVTK    886  834e58f09b0b
+    PLZL    883  cb7892eb85bf
+    ROSN    890  acc0b09cb616
+    SBER    890  95c2d84b0a0f
+    SNGS    890  53cdf7e59cf2
+    TATN    888  2aac527d92c8

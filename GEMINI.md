@@ -53,7 +53,7 @@ Gemini **не является** основным исполнителем из�
 
 Gemini CLI работает как ACP-агент внутри контейнера OpenHands Agent Canvas:
 
-- Agent Profile: `Gemini — Quant Research`;
+- Agent Profile: `Gemini-Quant-Research`;
 - ACP-сервер: `gemini` из `/opt/acp-node/bin/` (`@google/gemini-cli`, вложен в образ);
 - аутентификация: backend-секрет в хранилище OpenHands. Никаких credential-файлов Gemini на хосте нет и создавать их в репозитории нельзя.
 

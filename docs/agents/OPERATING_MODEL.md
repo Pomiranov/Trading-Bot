@@ -72,6 +72,16 @@ Canvas — рабочая оболочка и точка запуска аген
 - Agent Profile **нельзя сменить внутри начатой беседы**. Отсюда: один агент = один профиль = одна беседа = одна ветка = один worktree.
 - ACP-агенты запускаются подпроцессами **внутри контейнера**. Логины на хосте (`~/.claude`, `~/.codex`, `~/.gemini`) контейнеру не видны; аутентификация подаётся через OpenHands Secrets.
 - Встроенный worktree-режим Canvas создаёт каталог внутри файловой системы контейнера, **не видимый с хоста**. Проект его не использует — см. [`WORKTREE_POLICY.md`](WORKTREE_POLICY.md).
+- **Имя Agent Profile ограничено шаблоном `^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$`** (проверено по схеме API установленной версии): пробелы, тире «—» и кириллица недопустимы. Отсюда имена вида `Codex-Quant-Implementation`.
+- Команда запуска ACP берётся из реестра провайдеров и при пустом `acp_command` автоматически переписывается с `npx -y <pkg>` на вложенный в образ бинарник (`claude-agent-acp`, `codex-acp`, `gemini --acp`). Поэтому `acp_command` оставляется пустым: так запуск не требует сети.
+
+**Фактические профили на 2026-08-06:**
+
+| Профиль | `acp_server` | Модель | Startup timeout | Состояние |
+|---|---|---|---|---|
+| `Claude-Code-Quant-Architecture` | `claude-code` | `opus[1m]` | 90 с | работает (self-test пройден) |
+| `Codex-Quant-Implementation` | `codex` | `gpt-5.5` | 90 с | работает (self-test пройден) |
+| `Gemini-Quant-Research` | `gemini-cli` | `auto` | 120 с | ждёт credential владельца |
 
 Canvas не должен допускать работу двух агентов в одном working tree. Механизм — host-visible worktree на задачу, а не настройка Canvas.
 
@@ -83,10 +93,10 @@ Canvas не должен допускать работу двух агентов
 
 | Агент | Профиль в Canvas | Основное |
 |---|---|---|
-| **Claude Code** | `Claude Code — Quant Architecture` | архитектура, межмодульные изменения, рефакторинги, security, финальная интеграция |
-| **Codex** | `Codex — Quant Implementation` | реализация по чёткому ТЗ, тесты, багфиксы, build/typecheck/lint, независимый review кода Claude |
-| **Gemini CLI** | `Gemini — Quant Research` | исследование кодовой базы, альтернативы, большой контекст, документация, независимый UX/архитектурный review |
-| **OpenHands Agent** | `OpenHands — Quant Maintenance` | issue triage, зависимости, повторяемые автоматизации, отчёты, мелкие изолированные задачи |
+| **Claude Code** | `Claude-Code-Quant-Architecture` | архитектура, межмодульные изменения, рефакторинги, security, финальная интеграция |
+| **Codex** | `Codex-Quant-Implementation` | реализация по чёткому ТЗ, тесты, багфиксы, build/typecheck/lint, независимый review кода Claude |
+| **Gemini CLI** | `Gemini-Quant-Research` | исследование кодовой базы, альтернативы, большой контекст, документация, независимый UX/архитектурный review |
+| **OpenHands Agent** | `OpenHands-Quant-Maintenance` | issue triage, зависимости, повторяемые автоматизации, отчёты, мелкие изолированные задачи |
 
 Каждый агент обязан:
 

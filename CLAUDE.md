@@ -44,7 +44,7 @@ Claude **не** является приёмщиком собственной р�
 
 Claude Code работает как ACP-агент внутри контейнера OpenHands Agent Canvas:
 
-- Agent Profile: `Claude Code — Quant Architecture`;
+- Agent Profile: `Claude-Code-Quant-Architecture`;
 - ACP-сервер: `claude-agent-acp` (вложен в образ, `/opt/acp-node/bin/`);
 - аутентификация: backend-секрет `CLAUDE_CODE_OAUTH_TOKEN` в хранилище OpenHands. Keychain хоста контейнеру не виден — это ожидаемо.
 

@@ -130,9 +130,30 @@ scripts/agents/close-worktree.sh agent/gemini/rm-p1-021-core-tests
 
 ---
 
+## Git identity: почему агент её не настраивает
+
+В linked worktree `git config --local` пишет **не** в конфиг worktree, а в общий `.git/config` канонического дерева. Это проверено на практике: агент без identity выполнил `git config --local user.name/user.email`, и канонический репозиторий стал подписывать коммиты владельца именем агента.
+
+Поэтому:
+
+- на репозитории включён `extensions.worktreeConfig = true`;
+- `create-worktree.sh` задаёт identity **worktree-scoped** (`git config --worktree`) по префиксу ветки: `openhands-claude`, `openhands-codex`, `openhands-gemini`, `openhands-openhands`, `openhands-infra`;
+- **агенту запрещено выполнять `git config` в любой области** (`AGENTS.md §6`). Отсутствие identity — дефект среды, о котором нужно сообщить, а не настраивать самому;
+- canonical working tree сохраняет глобальную identity владельца.
+
+Проверка:
+
+```bash
+git -C /Users/danila/Downloads/Trading-Bot-merge-learning-nik config --local --get-regexp '^user\.'   # должно быть пусто
+git -C <worktree> config --get user.name                                                              # openhands-<agent>
+```
+
+---
+
 ## Что запрещено
 
 - Работать в canonical working tree.
+- Выполнять `git config` (любая область) — см. предыдущий раздел.
 - Создавать worktree вручную через `git worktree add`, минуя скрипт.
 - Использовать один worktree для двух задач или двух агентов.
 - Переключать ветку внутри существующего worktree (`git checkout <другая ветка>`).

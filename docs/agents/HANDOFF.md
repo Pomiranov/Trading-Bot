@@ -11,7 +11,7 @@
 | № | Поле | Требование |
 |---|---|---|
 | 1 | **Task ID** | как в постановке |
-| 2 | **Agent Profile** | точное имя профиля в Canvas, например `Codex — Quant Implementation` |
+| 2 | **Agent Profile** | точное имя профиля в Canvas, например `Codex-Quant-Implementation` |
 | 3 | **Branch** | полное имя ветки |
 | 4 | **Worktree** | абсолютный путь |
 | 5 | **Base commit** | короткий SHA, зафиксированный в начале работы |
@@ -53,7 +53,7 @@
 ## Handoff
 
 **1. Task ID:** RM-P0-003
-**2. Agent Profile:** Codex — Quant Implementation
+**2. Agent Profile:** Codex-Quant-Implementation
 **3. Branch:** agent/codex/rm-p0-003-add-ci
 **4. Worktree:** /Users/danila/OpenHands/worktrees/Quant/agent-codex-rm-p0-003-add-ci
 **5. Base commit:** 7f357e3

@@ -169,6 +169,25 @@ WT_ADMIN="$(git -C "$WT" rev-parse --path-format=absolute --git-dir)"
 	printf 'branch=%s\n' "$BRANCH"
 } >"$WT_ADMIN/quant-base"
 
+# ── Git identity агента: ТОЛЬКО worktree-scoped ─────────────────────────────
+# Без этого агент, у которого нет identity, выполнит `git config --local user.*`,
+# а в linked worktree это пишет в ОБЩИЙ .git/config канонического дерева — и
+# следующий коммит владельца окажется подписан агентом. Проверено на практике.
+# extensions.worktreeConfig=true включает per-worktree конфиг (git >= 2.31).
+case "$BRANCH" in
+agent/claude/*) AGENT_ID=claude ;;
+agent/codex/*) AGENT_ID=codex ;;
+agent/gemini/*) AGENT_ID=gemini ;;
+agent/openhands/*) AGENT_ID=openhands ;;
+*) AGENT_ID=infra ;;
+esac
+if [ "$(git -C "$CANONICAL" config --local --get extensions.worktreeConfig 2>/dev/null)" != "true" ]; then
+	git -C "$CANONICAL" config --local extensions.worktreeConfig true
+	printf '  включён extensions.worktreeConfig (per-worktree git config)\n'
+fi
+git -C "$WT" config --worktree user.name "openhands-$AGENT_ID"
+git -C "$WT" config --worktree user.email "openhands-$AGENT_ID@openhands.local"
+
 # ── 7. Необязательный симлинк на .env ───────────────────────────────────────
 # Симлинк, а не копия: секрет остаётся в единственном месте. .env покрыт .gitignore,
 # поэтому симлинк не попадёт в коммит.

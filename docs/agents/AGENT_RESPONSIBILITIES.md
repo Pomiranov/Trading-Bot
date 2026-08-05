@@ -6,7 +6,7 @@
 
 ---
 
-## Claude Code — `Claude Code — Quant Architecture`
+## Claude Code — `Claude-Code-Quant-Architecture`
 
 **Берёт:**
 
@@ -24,7 +24,7 @@
 
 ---
 
-## Codex — `Codex — Quant Implementation`
+## Codex — `Codex-Quant-Implementation`
 
 **Берёт:**
 
@@ -42,7 +42,7 @@
 
 ---
 
-## Gemini CLI — `Gemini — Quant Research`
+## Gemini CLI — `Gemini-Quant-Research`
 
 **Берёт:**
 
@@ -60,7 +60,7 @@
 
 ---
 
-## Встроенный OpenHands Agent — `OpenHands — Quant Maintenance`
+## Встроенный OpenHands Agent — `OpenHands-Quant-Maintenance`
 
 Настраивается **последним**, после того как работают Claude, Codex, Gemini, GitHub и worktree-поток. На 2026-08-06 — `OPTIONAL_NOT_CONFIGURED` (нет LLM credential).
 

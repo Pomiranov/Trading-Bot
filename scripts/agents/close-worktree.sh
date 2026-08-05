@@ -5,8 +5,10 @@
 #   scripts/agents/close-worktree.sh <branch> [--force]
 #
 # По умолчанию удаление БЕЗОПАСНОЕ: скрипт отказывается удалять worktree с
-# незакоммиченными изменениями или с неотправленными коммитами.
+# незакоммиченными изменениями — только они теряются безвозвратно.
 # --force требуется явно и означает согласие потерять эту работу.
+# Про коммиты, отсутствующие в origin, выдаётся предупреждение, но не отказ:
+# `git worktree remove` не удаляет ветку, поэтому закоммиченное сохраняется.
 #
 # Локальную ветку скрипт НЕ удаляет (она может быть в открытом PR) и никогда
 # не трогает удалённые ветки. Секретов не читает и не выводит.
@@ -22,8 +24,7 @@ usage() {
 Использование: scripts/agents/close-worktree.sh <branch> [--force]
 
   <branch>   ветка задачи, например agent/codex/rm-p0-003-add-ci
-  --force    удалить, даже если есть незакоммиченные изменения или
-             неотправленные коммиты (работа будет потеряна)
+  --force    удалить вместе с незакоммиченными изменениями (они будут потеряны)
 
 Посмотреть состояние перед закрытием:
   scripts/agents/status-worktrees.sh
@@ -81,8 +82,11 @@ printf '  worktree : %s\n' "$WT"
 printf '\n'
 
 # ── Проверка 1: незакоммиченные изменения ───────────────────────────────────
+# Только они означают реальную потерю данных: `git worktree remove` удаляет рабочее
+# дерево, но НЕ ветку — закоммиченное остаётся достижимым по имени ветки.
 DIRTY="$(git -C "$WT" status --porcelain || true)"
 BLOCK=0
+WARN=0
 if [ -n "$DIRTY" ]; then
 	printf '  ⚠ незакоммиченные изменения (%s файл(ов)):\n' "$(printf '%s\n' "$DIRTY" | wc -l | tr -d ' ')"
 	printf '%s\n' "$DIRTY" | sed 's/^/      /'
@@ -105,18 +109,18 @@ fi
 if [ -n "$UPSTREAM" ]; then
 	AHEAD="$(git -C "$WT" rev-list --count "$UPSTREAM..HEAD" 2>/dev/null || echo '?')"
 	if [ "$AHEAD" != "0" ]; then
-		printf '  ⚠ неотправленных коммитов: %s (upstream %s)\n' "$AHEAD" "$UPSTREAM"
+		printf '  ⚠ неотправленных коммитов: %s (upstream %s) — сохранятся в ветке\n' "$AHEAD" "$UPSTREAM"
 		git -C "$WT" log --oneline "$UPSTREAM..HEAD" | sed 's/^/      /'
-		BLOCK=1
+		WARN=1
 	else
 		printf '  ✓ все коммиты отправлены в %s\n' "$UPSTREAM"
 	fi
 elif [ -n "$BASE_COMMIT" ] && git -C "$WT" rev-parse --verify --quiet "$BASE_COMMIT" >/dev/null; then
 	OWN="$(git -C "$WT" rev-list --count "$BASE_COMMIT..HEAD" 2>/dev/null || echo '?')"
 	if [ "$OWN" != "0" ]; then
-		printf '  ⚠ ветка не публиковалась; собственных коммитов после base: %s\n' "$OWN"
+		printf '  ⚠ ветка не публиковалась; собственных коммитов после base: %s — сохранятся в ветке\n' "$OWN"
 		git -C "$WT" log --oneline "$BASE_COMMIT..HEAD" | sed 's/^/      /'
-		BLOCK=1
+		WARN=1
 	else
 		printf '  ✓ собственных коммитов нет (HEAD совпадает с base commit)\n'
 	fi
@@ -128,7 +132,7 @@ else
 	if [ "$UNREACHABLE" != "0" ]; then
 		printf '    коммитов, отсутствующих в origin: %s — среди них могут быть чужие\n' "$UNREACHABLE"
 		git -C "$WT" log --oneline -10 HEAD --not --remotes | sed 's/^/      /'
-		BLOCK=1
+		WARN=1
 	else
 		printf '    все коммиты есть в origin\n'
 	fi
@@ -138,7 +142,9 @@ printf '\n'
 
 if [ "$BLOCK" -eq 1 ] && [ "$FORCE" -eq 0 ]; then
 	cat >&2 <<EOF
-ОШИБКА: закрытие остановлено — есть незавершённая работа (см. выше).
+ОШИБКА: закрытие остановлено — в worktree есть НЕЗАКОММИЧЕННЫЕ изменения (см. выше).
+        Они будут потеряны безвозвратно: git worktree remove удаляет рабочее дерево.
+        (Закоммиченное не теряется — оно остаётся в ветке.)
 
 Безопасные варианты:
   1) закоммитить и отправить:
@@ -153,6 +159,12 @@ if [ "$BLOCK" -eq 1 ] && [ "$FORCE" -eq 0 ]; then
 --force удаляет эту работу безвозвратно.
 EOF
 	exit 1
+fi
+
+if [ "$WARN" -eq 1 ]; then
+	printf 'ВНИМАНИЕ: у ветки есть коммиты, отсутствующие в origin. Они НЕ пропадут —\n'
+	printf '          останутся в ветке %s, но исчезнут из поля зрения до push.\n' "$BRANCH"
+	printf '          Не забудьте: git push -u origin %s\n\n' "$BRANCH"
 fi
 
 # ── Удаление ────────────────────────────────────────────────────────────────

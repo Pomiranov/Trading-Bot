@@ -1,4 +1,4 @@
-# AGENTS.md — обязательные правила для всех агентов проекta Quant
+# AGENTS.md — обязательные правила для всех агентов проекта Quant
 
 **Это единственный источник общих правил.** `CLAUDE.md` и `GEMINI.md` содержат только дополнения, специфичные для своего агента, и не повторяют этот файл. Codex читает `AGENTS.md` как главный источник правил.
 
@@ -211,7 +211,10 @@ OpenHands Agent Canvas загружает файлы правил репозит
 | `GEMINI.md` | дополнения для Gemini CLI |
 | `docs/agents/OPERATING_MODEL.md` | уровни ответственности, кто что решает |
 | `docs/agents/AGENT_RESPONSIBILITIES.md` | какой агент какие задачи берёт |
-| `docs/agents/PROJECT_CONTEXT.md` | контекст проекта для быстрого входа |
+| `docs/agents/PROJECT_CONTEXT.md` | контекст кодовой базы для быстрого входа |
+| `docs/agents/QUANT_SOURCE_CONTEXT.md` | компактная сводка Source Pack: статусы, Launch Blockers, открытые вопросы |
+| `docs/agents/MODEL_PROFILES.md` | какой Agent Profile и какая модель под какую работу |
+| `docs/source/SOURCE_MANIFEST.md` | инвентарь Source Pack и что перепроверять по коду |
 | `docs/agents/WORKTREE_POLICY.md` | изоляция, порядок работы с worktree |
 | `docs/agents/TASK_SPECIFICATION.md` | формат постановки задачи |
 | `docs/agents/HANDOFF.md` | формат сдачи результата |

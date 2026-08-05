@@ -1,141 +1,72 @@
-# QuantFlow Trading Bot — CLAUDE.md
+# CLAUDE.md — дополнения для Claude Code
 
-## Project Root
-
-**Canonical location**: `/Users/danila/Documents/GitHub/Trading-Bot/`  
-**GitHub remote**: `https://github.com/Pomiranov/Trading-Bot.git`  
-**Active branch**: `merge-learning-nik`
-
-> All Claude Code edits MUST happen in this directory.  
-> Never edit files in ~/Downloads/Trading-Bot-* (those are stale copies).
+> **Сначала прочитай [`AGENTS.md`](AGENTS.md).** Там находятся все общие обязательные правила: canonical root, source of truth, worktree-изоляция, терминология, обязательные проверки, git-запреты, работа с секретами, формат сдачи. Этот файл их **не повторяет** — только дополняет.
+>
+> Затем, если контекст проекта ещё не загружен: [`docs/agents/PROJECT_CONTEXT.md`](docs/agents/PROJECT_CONTEXT.md).
 
 ---
 
-## Project Layout
+## Что изменилось в этом файле (важно)
 
-```
-Trading-Bot/
-├── bot/                    — Core application (Python)
-│   ├── main.py            — Unified entry point (Telegram bot + platform)
-│   ├── config.py          — Centralised configuration via .env
-│   ├── tg/                — Telegram bot (handlers, FSM, menus, middlewares, notifications)
-│   ├── ui/                — Web dashboard (Flask) + Mini App + static assets
-│   ├── qf_platform/       — Platform layer (repositories, services, DTOs, schema)
-│   ├── learning/          — AI learning system (belief updater, hypothesis engine)
-│   ├── backtest/          — Backtesting engine
-│   ├── broker/            — Broker clients (Tinkoff, Bybit)
-│   ├── services/          — High-level services (Tinkoff data, trading, stats)
-│   ├── security/          — Auth, encryption, audit, credentials vault
-│   ├── signals/           — Signal indicators + rules engine
-│   ├── risk/              — Risk manager
-│   ├── market/            — Market data hub
-│   ├── engine/            — Paper trading engine
-│   ├── realtime/          — SSE real-time hub
-│   ├── auth/              — JWT, sessions, brute-force protection
-│   ├── gateway/           — Trade gateway
-│   └── data/              — Data loaders
-├── website/               — Next.js marketing website (TypeScript)
-├── knowledge/             — Trading knowledge base (rules.yaml, market theory)
-├── tests/                 — Test suite (platform + security)
-├── docs/                  — Project documentation
-├── infra/                 — Infrastructure configs (logrotate, etc.)
-├── data/                  — Shared data files
-├── logs/                  — Runtime logs (git-ignored)
-├── docker-compose.yml     — TimescaleDB (TimescaleDB/pg15) + Adminer
-├── requirements.txt       — Python dependencies
-├── start.sh               — macOS startup script
-├── start.ps1              — Windows PowerShell startup script
-├── start.bat              — Windows batch startup
-├── .env                   — Secrets (git-ignored — copy from .env.example)
-└── .env.example           — Environment variable template
-```
+До 2026-08-06 этот файл содержал ошибки, на которые опирались агенты. Все они исправлены; если ты помнишь старые утверждения из предыдущих сессий — они неверны:
+
+| Было (неверно) | Стало (проверено по коду) |
+|---|---|
+| canonical root — `Documents/GitHub/Trading-Bot`, «Downloads — stale copies» | canonical root — `/Users/danila/Downloads/Trading-Bot-merge-learning-nik`; недоступной является копия в `Documents` |
+| активная ветка `merge-learning-nik` | фактическая работа идёт в `quant-site-approved-reference-redesign`; ветку задачи определяет Control Center |
+| Telegram-фреймворк — aiogram 3.x | `python-telegram-bot>=20` (`aiogram` — 0 вхождений в коде) |
+| токен бота — `BOT_TOKEN` | `TELEGRAM_TOKEN` (`bot/config.py:37`) |
+| Dashboard auth — «JWT-based» | серверные сессии + Argon2id (`bot/security/session_auth.py`, `bot/auth/session_manager.py`); `bot/auth/jwt_service.py` — legacy |
+| `.env`: `DASHBOARD_SECRET_KEY`, `BYBIT_API_KEY/SECRET` | таких ключей в `.env.example` нет; фактический список — `.env.example` и `bot/config.py` |
+| «Никогда не работай в Downloads» | никогда не работай в **основном** working tree — только в своём worktree (`AGENTS.md §3`) |
+
+Правило на будущее: **любой путь и любое имя переменной проверяй по коду, а не по этому файлу.**
 
 ---
 
-## Key Entry Points
+## Роль Claude Code в проекте
 
-| Component | File | Port |
-|---|---|---|
-| Trading Bot + Telegram | `bot/main.py` | — |
-| Dashboard (Flask) | `bot/ui/dashboard.py` | 5001 |
-| Mini App (HTML) | `bot/ui/static/miniapp/index.html` | (served via dashboard) |
-| Website (Next.js) | `website/` | 3000 (dev) |
-| Database (TimescaleDB) | `docker-compose.yml` | 5432 |
-| Adminer (DB UI) | `docker-compose.yml` | 8080 |
+Основные задачи (полная матрица — [`docs/agents/AGENT_RESPONSIBILITIES.md`](docs/agents/AGENT_RESPONSIBILITIES.md)):
 
----
+- архитектура и решения, затрагивающие более одного модуля;
+- сложные межмодульные изменения;
+- системные рефакторинги;
+- security-sensitive задачи;
+- финальная техническая интеграция результатов других агентов.
 
-## Development Commands
+Claude — единственный агент, которому Control Center поручает архитектурные решения. Каждое такое решение оформляется как ADR в `docs/adr/` (`AGENTS.md §9`).
 
-```bash
-# Start everything (macOS)
-./start.sh
-
-# Start database only
-docker-compose up -d
-
-# Start dashboard only
-python3 bot/ui/dashboard.py
-
-# Start bot only
-python3 bot/main.py
-
-# Run tests
-python3 -m pytest tests/
-
-# Website (Next.js dev)
-cd website && npm run dev
-```
+Claude **не** является приёмщиком собственной работы: независимую проверку делают Codex (реализация, тесты, сборка) и Gemini (архитектурная и UX-альтернатива).
 
 ---
 
-## Environment Setup
+## Особенности запуска
 
-Copy `.env.example` → `.env` and fill in:
-- `DB_PASSWORD` — PostgreSQL password
-- `BOT_TOKEN` — Telegram bot token
-- `TINKOFF_TOKEN` — T-Invest API token
-- `DASHBOARD_SECRET_KEY` — Flask secret key
-- `BYBIT_API_KEY` / `BYBIT_API_SECRET` — Bybit credentials (optional)
+Claude Code работает как ACP-агент внутри контейнера OpenHands Agent Canvas:
 
----
+- Agent Profile: `Claude Code — Quant Architecture`;
+- ACP-сервер: `claude-agent-acp` (вложен в образ, `/opt/acp-node/bin/`);
+- аутентификация: backend-секрет `CLAUDE_CODE_OAUTH_TOKEN` в хранилище OpenHands. Keychain хоста контейнеру не виден — это ожидаемо.
 
-## Git Workflow
-
-```
-Edit code here
-  ↓
-git add <files>
-  ↓
-git commit -m "description"
-  ↓
-git push origin merge-learning-nik
-  ↓
-GitHub (Pomiranov/Trading-Bot, branch: merge-learning-nik)
-  ↓
-Deploy to Windows Server 2019
-```
-
-**Branch strategy**:
-- `merge-learning-nik` — main development branch (use this)
-- `main` — stable releases only
-- `quantflow-nik` — archived (predecessor to merge-learning-nik)
+Пути внутри контейнера совпадают с путями на macOS (`/Users/danila/...`), поэтому команды из документации применимы без трансляции. Проверяй фактический корень через `git rev-parse --show-toplevel`.
 
 ---
 
-## Windows Server 2019 Deployment
+## Локальный контекст Claude в репозитории
 
-Use `start.ps1` (PowerShell) or `start.bat`.  
-See `docs/windows-deployment.md` for full instructions.
-
-Services run as Windows Services via NSSM.
+- `.claude/launch.json` — конфигурация запуска, коммитится.
+- Пользовательские настройки Claude Code (`~/.claude/`) в репозиторий не попадают и не должны.
+- Skills, hooks и MCP-серверы хоста в контейнерной беседе недоступны: набор MCP задаётся профилем OpenHands.
 
 ---
 
-## Important Notes
+## Что Claude делает в начале каждой задачи
 
-- **Secrets**: Never commit `.env`, `Password.env`, or credential vault files
-- **Broker mode**: `TINKOFF_SANDBOX=true` by default — set to `false` for live trading
-- **Database**: TimescaleDB (PostgreSQL + time-series extension) on port 5432
-- **No Redis**: Not currently used; session data via PostgreSQL
-- **Dashboard auth**: JWT-based; credentials stored in `bot/data/credential_vault.json` (git-ignored)
+1. Команды из `AGENTS.md §1` (корень, ветка, commit, статус).
+2. Прочитать Task Specification от Control Center (формат — `docs/agents/TASK_SPECIFICATION.md`).
+3. Убедиться, что работа идёт в выделенном worktree, а не в основном дереве:
+   ```bash
+   git rev-parse --show-toplevel   # должен быть под /Users/danila/OpenHands/worktrees/Quant/
+   ```
+4. Если задача архитектурная — проверить `docs/source/14_OPEN_QUESTIONS_AND_DECISIONS.md`: возможно, решение заблокировано открытым вопросом и задачу нельзя начинать.
+5. В конце — handoff по `docs/agents/HANDOFF.md`, без исключений.

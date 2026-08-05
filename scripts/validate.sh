@@ -20,19 +20,36 @@ echo "════════════════════════�
 # ─── Git ────────────────────────────────────────────────────────────────────
 header "Git"
 
-# Correct repo root
+# Correct repo root.
+# Canonical working tree is Downloads/Trading-Bot-merge-learning-nik (fixed 2026-08-06,
+# OQ-OPS-07 — this check previously demanded Documents/GitHub/Trading-Bot and always failed).
+# Agent worktrees under OpenHands/worktrees/Quant are equally valid roots: they share the
+# same .git and the same remote. Documents/GitHub/Trading-Bot is the stale copy and is rejected.
+CANONICAL_ROOT="/Users/danila/Downloads/Trading-Bot-merge-learning-nik"
+WORKTREE_ROOT="${QUANT_WORKTREE_ROOT:-/Users/danila/OpenHands/worktrees/Quant}"
 if [[ "$REPO_ROOT" == *"Documents/GitHub/Trading-Bot"* ]]; then
-    pass "Canonical repo path"
+    fail "Stale repo copy: $REPO_ROOT — canonical is $CANONICAL_ROOT (see AGENTS.md)"
+elif [[ "$REPO_ROOT" == "$CANONICAL_ROOT" ]]; then
+    pass "Canonical working tree"
+elif [[ "$REPO_ROOT" == "$WORKTREE_ROOT"/* ]]; then
+    pass "Agent worktree: ${REPO_ROOT##*/}"
 else
-    fail "Wrong repo path: $REPO_ROOT — must be in Documents/GitHub/Trading-Bot"
+    warn "Unrecognised repo root: $REPO_ROOT (expected $CANONICAL_ROOT or a worktree under $WORKTREE_ROOT)"
 fi
 
-# Correct branch
+# Branch. Task branches (agent/*, infra/*) are expected inside worktrees; the canonical
+# tree carries the active development branch. Base branch is set per task by Control Center.
 BRANCH=$(git -C "$REPO_ROOT" branch --show-current)
-if [[ "$BRANCH" == "merge-learning-nik" ]]; then
-    pass "Active branch: $BRANCH"
+if [[ "$BRANCH" =~ ^(agent/(claude|codex|gemini|openhands)|infra)/ ]]; then
+    pass "Task branch: $BRANCH"
+elif [[ "$BRANCH" == "quant-site-approved-reference-redesign" ]]; then
+    pass "Development branch: $BRANCH"
+elif [[ "$BRANCH" == "merge-learning-nik" ]]; then
+    warn "'merge-learning-nik' is out of use — diverged 25/134 from the development branch (docs/GIT_WORKFLOW.md)"
+elif [[ "$BRANCH" == "main" ]]; then
+    warn "On 'main' — release branch; agents must not work here (AGENTS.md §6)"
 else
-    warn "Active branch is '$BRANCH', expected 'merge-learning-nik'"
+    warn "Unexpected branch '$BRANCH' — see docs/GIT_WORKFLOW.md for naming rules"
 fi
 
 # Remote configured

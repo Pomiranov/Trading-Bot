@@ -65,6 +65,18 @@
   --duration-rim-sweep: 4.5s;
 
   /**
+   * One wander of the internal sheen across a hovered button's face, out and
+   * back. Slower than the perimeter arc on purpose: the arc is a specular
+   * travelling an edge and reads as light; a mass moving *inside* the face is a
+   * bigger visual event and at the arc's 4.5s it reads as a pulse. 5.6s is where
+   * it stops being countable.
+   *
+   * It only ever runs on the one button under the pointer — see the note above
+   * `@property --btn-sheen-x` in globals.css.
+   */
+  --duration-btn-sheen: 5.6s;
+
+  /**
    * Q-aperture orbit periods. Three coprime values, so the rings never resync
    * into a single visible beat — the panel should read as powered on, never as
    * an animation playing. If these ever share a common factor the aperture

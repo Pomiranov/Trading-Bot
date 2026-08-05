@@ -48,15 +48,29 @@
      rather than as the page changing material. Owner note: "приглушить белый
      фон … не чисто белым, а warm paper".
 
-     #ebe8e0 is L* 92.4 — three perceptual steps down, and the warm bias is
+     #ebe8e0 was L* 92.4 — three perceptual steps down, and the warm bias is
      *kept* (R>G>B, 11 levels of spread) precisely so it lands on paper rather
      than on the dirty grey the same move would produce if it were neutral.
 
+     ── Softened again, from #ebe8e0 ──
+
+     Even at 92.4 the band read as a lamp against ~7 000px of #030303, and the
+     blend above it had to spend 352px of grey getting there. Owner direction for
+     this pass names a target band — #E6E4DF / #E3E1DC / #DFDDD7, "close warm
+     mineral off-white" — and #e4e1da (228,225,218) sits in the middle of it at
+     L* 90.0. Two and a half perceptual steps down again, same warm bias, same
+     10-level spread.
+
+     Two things follow from it and both are done: the ramp has ~28 fewer
+     luminance levels to cross, which is most of why the band could be shortened
+     to 128/160/208px, and --color-on-paper-muted had to be lifted with it (see
+     the note on that token).
+
      Every ratio in the --color-on-paper-* family below is re-measured against
-     this value, not against the old one. The binding constraint is
-     --color-on-paper-muted at 4.9:1; there is no room to go darker without
-     lifting that token with it. */
-  --color-paper: #ebe8e0;
+     this value, not against either of the old ones. The binding constraint is
+     --color-on-paper-muted; there is no room to go darker without lifting that
+     token again. */
+  --color-paper: #e4e1da;
 
   /* ─── Lines ─── */
   --color-border: rgba(255, 255, 255, 0.1); /* hairline, decorative */
@@ -122,9 +136,24 @@
      rest; all of its light is in the border on hover. A resting CTA now sits
      on a plain contact drop, and every photon it emits is earned by a pointer. */
   --shadow-cta-rest: 0 1px 2px rgba(0, 0, 0, 0.4);
+  /* ── The white bloom and the shadow-ring are both gone ──
+     Two separate defects lived in this one value, and both were named in the
+     owner's review of the rendered page.
+
+     `0 8px 30px -6px rgba(255,255,255,0.18)` was a *white* bloom under a white
+     pill on #030303. White light over near-black has no hue and, at 30px, no
+     findable edge — so it rendered as the "серая тяжёлая тень" under every CTA
+     on the page. It is the same mistake `--shadow-card-hover` was corrected for
+     one block down, left behind on the buttons. Replaced by a dark drop, which
+     is what actually reads as a control lifting off black.
+
+     `0 0 0 1px rgba(124,200,255,0.22)` was a cold ring flush on the edge. It
+     predates `.btn-lens-light::before`, which now draws a real 1px ring 3px out
+     — and a shadow-ring behind a geometric one doubles the edge into the halo
+     seam the node block warns about. The arc owns the edge now; this owns depth
+     and a whisper of ambient cold, spent inside 12px. */
   --shadow-cta-hover:
-    0 8px 30px -6px rgba(255, 255, 255, 0.18), 0 0 0 1px rgba(124, 200, 255, 0.22),
-    0 0 18px -7px rgba(124, 200, 255, 0.26);
+    0 6px 18px -8px rgba(0, 0, 0, 0.72), 0 0 12px -7px rgba(124, 200, 255, 0.2);
   /* ── Card hover: the light around a card is cold, the card itself is not ──
      Owner direction: the white bloom this used to carry read as a lamp behind
      the card — `0 0 32px -8px rgba(255,255,255,0.09)` over a #030303 page is a
@@ -224,17 +253,30 @@
      --color-bg. None of the contrast figures elsewhere in this file carry over
      to a light surface — that is the whole reason these are separate tokens
      rather than an `invert` filter. */
-  /* Re-measured against #ebe8e0 when the paper was softened. The figures the
-     first three carried before (17.4 / 9.9 / 6.0) were against #f4f2ec and, on
-     the muted token, were optimistic even then — recomputed, 0.6 alpha over the
-     old paper was 5.0:1, not 6.0:1. These are the real numbers. */
-  --color-paper-surface: #ffffff; /* cards sitting on paper */
-  --color-on-paper: #0a0a0a; /* 16.2:1 on paper */
-  --color-on-paper-secondary: rgba(10, 10, 10, 0.74); /*  8.0:1 */
-  --color-on-paper-muted: rgba(10, 10, 10, 0.6); /*  4.9:1 — floor on paper */
+  /* Re-measured against #e4e1da when the paper was softened a second time. The
+     figures the first three carried before were against #ebe8e0 (and, before
+     that, #f4f2ec).
+
+     `--color-paper-surface` is no longer #ffffff. The palette doctrine for this
+     pass is explicit that a light surface may not be a blinding pure white, and
+     a #ffffff card on L* 90 paper is also a four-step jump where one step is
+     wanted. #f7f5f0 is one perceptual step above the paper — enough for a card
+     to read as sitting *on* the band, not enough to punch a hole in it. In
+     practice both bands render their cards through `.on-paper-graphite`, so this
+     is the fallback surface rather than the shipped one; it must still obey the
+     rule.
+
+     `--color-on-paper-muted` went 0.6 → 0.63 alpha. At 0.6 over the new paper it
+     measured 4.82:1 — still over the 4.5 floor, but with no margin at all for a
+     future paper move. 0.63 restores the margin at 5.2:1 and is the binding
+     constraint on this whole family. */
+  --color-paper-surface: #f7f5f0; /* cards sitting on paper */
+  --color-on-paper: #0a0a0a; /* 15.1:1 on paper */
+  --color-on-paper-secondary: rgba(10, 10, 10, 0.74); /*  7.5:1 */
+  --color-on-paper-muted: rgba(10, 10, 10, 0.63); /*  5.2:1 — floor on paper */
   --color-border-on-paper: rgba(0, 0, 0, 0.12);
   --color-border-on-paper-strong: rgba(0, 0, 0, 0.3);
-  --color-paper-hover: #f2efe8; /* card hover on paper — one step above paper */
+  --color-paper-hover: #eceae3; /* card hover on paper — one step above paper */
 
   /* Graphite — dark objects sitting ON paper.
      Consumed by `.on-paper-graphite` in globals.css, which is how both paper
@@ -437,6 +479,30 @@
   --rim-warm-panel: rgba(124, 200, 255, 0.14);
   --rim-cool-panel: rgba(124, 200, 255, 0.035);
 
+  /* ── Neutral: the same rim with the colour taken out ──────────────────────
+     A fourth scale, for cards where cold light is the wrong signal rather than
+     merely a strong one — the "где гарантия заканчивается" pair, which are
+     statements of *limitation*. Owner direction for this pass is explicit: blue
+     hover is forbidden on those two, and the hover must be a restrained white
+     highlight on a uniform edge.
+
+     It is deliberately the same mechanism, not a second one. Re-pointing the
+     rim trio to three white alphas keeps the masked-conic ring, the raking light
+     direction and the falloff identical to every other card on the page — only
+     the hue leaves. That is what makes the neutral pair read as part of the
+     system rather than as a card that opted out of it.
+
+     Held one step under the cyan card scale in perceived strength: white on
+     #131313 is far more visible per unit alpha than ice-blue is, so 0.34 here
+     lands where 0.55 lands there. */
+  --rim-hot-neutral: rgba(255, 255, 255, 0.34);
+  --rim-warm-neutral: rgba(255, 255, 255, 0.14);
+  --rim-cool-neutral: rgba(255, 255, 255, 0.05);
+
+  /* Its hover shadow: depth only. The cold bloom that `--shadow-card-hover-rim`
+     carries is the thing the neutral pair must not have — see the block above. */
+  --shadow-card-hover-neutral: 0 18px 48px -14px rgba(0, 0, 0, 0.78);
+
   /* ── The hover shadow, with the ring removed ──
      `--shadow-card-hover` carries `0 0 0 1px rgba(124,200,255,0.16)` — a cold
      edge drawn as a shadow, which was the only way to get one before the rim
@@ -476,8 +542,69 @@
   /* Set to the values `.btn-lens-face::after` actually shipped with (0.14/0.12
      — the declared 0.16/0.28 were never consumed), and the gradient now reads
      these tokens, so tuning them tunes the buttons. */
+  /* ── Held down, and the frames are why ──
+     Re-extracted from Button.mp4 for this pass: the reference pill's face is
+     *flat*. There is a ~1px lighter run along its top edge and a contact shade
+     hugging the bottom, and between them the fill does not change. There is no
+     gradient across the face at all.
+
+     At 0.12 the bottom shade composited a white CTA's bottom edge to 224 —
+     thirty-one levels under its top — which over #030303 reads as a grey band
+     across the lower third of the button. Rendered at 2× beside the reference,
+     that is the difference between "a body with a lit edge" and a 2010 gradient
+     button, and it was the "кнопка выглядит пластиковой" note.
+
+     0.09 puts the bottom at 232 and the gradient's stops (see
+     `.btn-lens-face::after`) confine both cues to the outer fifth of the height,
+     so the middle — where the label sits — is untouched fill. */
   --btn-specular: rgba(255, 255, 255, 0.14);
-  --btn-shade: rgba(0, 0, 0, 0.12);
+  --btn-shade: rgba(0, 0, 0, 0.09);
+
+  /* ─── The perimeter arc ────────────────────────────────────────────────────
+     One geometry for every button on the page, light-faced or dark-faced, so the
+     contour cannot differ per section. Read the note above
+     `.btn-lens-light::before` in globals.css for what each number fixes.
+
+       • width — 1px. It shipped at 2px, and at 2px on a 44px control the ring is
+                 4.5% of the button's height: that is a *border*, not a light on
+                 an edge, and it was the "слишком толстый contour" note.
+       • inset — 3px of ground between the fill and the ring. Flush against the
+                 white edge the arc's own white head vanishes into the pill; 4px
+                 (the shipped value) put the ring inside the band the
+                 `focus-visible` outline occupies at `outline-offset: 3px`, so
+                 the two states collided into what reads as a rendering fault.
+                 3px clears the fill and stays under the outline.
+       • radius — derived, so it stays concentric with the button. Overridable
+                 by a caller that changes the button's own radius; every current
+                 call site is `--radius-md`.
+       • bloom — 4px at 0.42, down from 5px at 0.7. The arc is a specular on an
+                 edge; at 0.7 its halo was brighter than the arc and the whole
+                 control read as glowing rather than as lit. */
+  --btn-arc-width: 1px;
+  --btn-arc-inset: -3px;
+  --btn-arc-radius: calc(var(--radius-md) + 3px);
+  --btn-arc-bloom: drop-shadow(0 0 4px rgba(164, 220, 255, 0.42));
+
+  /* ─── The internal sheen ───────────────────────────────────────────────────
+     The half of Button1.mp4 that is not the edge: a soft mass of light inside
+     the face that drifts under the pointer. It used to exist only as `.btn-tier`
+     — a pricing-only class, i.e. exactly the per-section button variant the
+     brief rules out — and its hot stop was at **0.75 alpha**, which over the
+     white fill composited to rgb(224,242,255). That is a pale blue button, and
+     it is why one tier read as permanently hovered next to its neighbours.
+
+     Now it is part of the shared primitive at two intensities, because the two
+     polarities need different amounts of light to register the same way:
+
+       • light faces — 0.28. Composites to rgb(243,250,255): plainly cooler than
+         the surrounding white, nowhere near a tint. Measured against the label,
+         black-on-that is 18.9:1, so the text centre keeps full contrast.
+       • dark faces  — 0.12. A near-black face shows a wash at a third of the
+         alpha a white one needs; at the light value it looked backlit.
+
+     Both are 0 at rest. Nothing on this page glows before it is touched. */
+  --btn-sheen-light: 0.28;
+  --btn-sheen-dark: 0.12;
 
   /* The dark-glass variants — `outline` and `secondary` — are the ones that can
      carry the reference's cold rim, because they have a dark face for light to

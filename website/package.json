@@ -13,6 +13,8 @@
     "check:design": "node scripts/check-design-tokens.mjs",
     "check:media": "node scripts/check-media.mjs",
     "check": "npm run check:content && npm run check:i18n && npm run check:design && npm run check:media",
+    "qa:landing": "node scripts/landing-assertions.mjs",
+    "qa:landing:webkit": "node scripts/landing-assertions.mjs --engine=webkit",
     "media:poster": "node scripts/media/build-poster.mjs",
     "build:messages": "node -e \"console.error('build:messages is STALE and would delete 56 live keys. Read the banner at the top of scripts/build-messages.mjs before reviving it, then run it directly with: node scripts/build-messages.mjs'); process.exit(1)\""
   },

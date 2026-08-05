@@ -906,6 +906,24 @@ section[id][data-rhythm="tight"] {
     --rim-cool: var(--rim-cool-panel);
   }
 
+  /* ── Neutral cards: the same rim with the hue taken out ──
+     `.card-neutral` re-points the trio to whites and drops the cold bloom. It
+     exists for the "где гарантия заканчивается" pair — see `--rim-*-neutral` in
+     tokens/color.css for the direction and the alpha reasoning.
+
+     Declared *after* the panel scale so a neutral card inside a panel still wins,
+     and it re-declares all three (never a subset) for the same reason
+     `.card-premium` does: custom properties inherit, and leaving one cyan stop
+     behind would put a blue quarter on an otherwise white ring. */
+  .card-neutral {
+    --rim-hot: var(--rim-hot-neutral);
+    --rim-warm: var(--rim-warm-neutral);
+    --rim-cool: var(--rim-cool-neutral);
+    /* The dim quarter of the ring sits over this hairline. Cold here would leak
+       the hue back in through the one stop the trio above does not cover. */
+    --rim-edge: var(--color-border-strong);
+  }
+
   /* ── Paper bands get no rim at all ──
      Cold light on #ebe8e0 reads as a print registration error, which is why the
      lens inverts and route cards drop their cold edge inside a band. There is no
@@ -952,6 +970,33 @@ section[id][data-rhythm="tight"] {
   }
 }
 
+/* ── The neutral pair's hover shadow, and the lift they do not take ──────────
+   Outside the `@supports` block above, because these two rules have to hold on
+   the no-mask fallback path as well: there the edge is `border-color` plus
+   `--shadow-card-hover`, whose own `0 0 0 1px rgba(124,200,255,0.16)` ring and
+   cold bloom are exactly what a neutral card must not have.
+
+   Owner direction for these two cards, in full: a uniform hairline that softens
+   to white on hover, a barely-there interior light, no blue frame, no bright
+   aura, no movement toward the cursor, and no layout shift. The shadow token
+   carries depth only; the `transform: none` below removes the -6px lift the card
+   primitive applies. A statement of limitation should acknowledge the pointer,
+   not lean into it. */
+.card-neutral {
+  --shadow-card-hover: var(--shadow-card-hover-neutral);
+  --shadow-card-hover-rim: var(--shadow-card-hover-neutral);
+  /* The resting edge, uniform on all four sides. This replaces a 2px 72%-white
+     rule down the left edge alone — read the note at the call site in
+     `sections/safety/safety-section.tsx` for what that looked like and why the
+     emphasis survives without it.
+
+     Unlayered, so it beats Surface's `border-[color:var(--color-border)]`
+     utility; one class, so `.card-premium:hover` (two compound selectors) still
+     beats *it* and the edge lightens on hover like every other card's. That
+     cascade order is the whole design and it is why this is not an inline style. */
+  border-color: var(--color-border-strong);
+}
+
 /* The lift is the one part that must yield to prefers-reduced-motion; the
    border/background/shadow highlight is not motion and stays. */
 @media (prefers-reduced-motion: no-preference) {
@@ -963,6 +1008,14 @@ section[id][data-rhythm="tight"] {
 
   .card-premium:focus-within {
     transform: translateY(-6px);
+  }
+
+  /* Two selectors rather than one, so this beats both of the rules above at
+     equal specificity via source order — and keeps doing so if either of them
+     gains a qualifier later. */
+  .card-neutral:hover,
+  .card-neutral:focus-within {
+    transform: none;
   }
 }
 
@@ -1556,7 +1609,19 @@ main > section:not(.section-paper):not(#hero):has(+ .band-blend) {
      "dirty grey glow" under every tier CTA. On #131313 a dark drop still
      reads, so rest keeps a little real elevation here. */
   --shadow-cta-rest: 0 2px 8px -2px rgba(0, 0, 0, 0.6);
-  --shadow-cta-hover: 0 8px 30px -6px rgba(255, 255, 255, 0.18);
+  /* ── The white bloom is gone here too, and this is where it actually showed ──
+     The comment two lines up already said a white halo under a white pill was
+     the "dirty grey glow", removed it from *rest* — and left it on *hover*. On
+     #131313 a 30px white bloom at 0.18 is a grey rectangle around the button,
+     which is precisely what the owner's review of the pricing row was pointing
+     at. `.btn-tier` used to override it for those three CTAs specifically; with
+     the sheen promoted into the shared primitive that override is gone, so the
+     value has to be right here rather than patched per section.
+
+     Same two layers as the base token, one step deeper because graphite is a
+     lighter ground than #030303 and a drop has to work harder to read on it. */
+  --shadow-cta-hover:
+    0 8px 22px -10px rgba(0, 0, 0, 0.6), 0 0 14px -8px rgba(124, 200, 255, 0.22);
 
   /* Resting: a soft dark drop, so the panel sits on the paper.
      Hover: the same drop, deepened, plus a cold edge and a tight ice bloom —
@@ -2587,15 +2652,53 @@ main > section:not(.section-paper):not(#hero):has(+ .band-blend) {
     transform var(--duration-base) var(--ease-out-expo);
 }
 
+/* ── The chip is pointer-only, and that is the fix for the stuck label ──
+   It used to reveal on `.assistant-dock__row:focus-within` as well as on hover,
+   and that combination had a measured defect. Closing the panel restores focus to
+   the orb — `onClose` and the Escape handler in `assistant-launcher.tsx` both call
+   `.focus()` explicitly, and correctly so: focus on an element about to be
+   `hidden` falls to <body> and would drop the reader at the top of the page. But
+   the orb is inside this row, so `:focus-within` matched, and the label stayed lit
+   with the pointer nowhere near it.
+
+   Measured on the live page at 1440: press the orb, click the ×, move the pointer
+   to (900, 300) — `getComputedStyle(hint).opacity` came back **1**, with
+   `document.activeElement.matches(':focus-visible')` false. That is the
+   "подпись «Ассистент» остаётся видимой после закрытия" report, and it is a state
+   bug rather than a paint one: nothing was stuck, the rule was simply describing
+   the wrong condition.
+
+   `:focus-visible` would not be enough on its own either — Escape *is* a keyboard
+   dismissal, so the restored focus legitimately matches it and the chip would
+   still be lit after closing that way.
+
+   So the chip is now exactly what it is for: the name of a glyph-less control,
+   shown while a pointer is over it. `pointerleave` always removes it, by
+   construction; a tap cannot make it stick, because the whole block is gated on
+   `hover: hover`; and closing the panel by any route leaves nothing behind.
+
+   Keyboard focus is not left without an indicator. The orb carries its own
+   `:focus-visible` ring (further down this file), and its accessible name comes
+   from `aria-label` — which is what a screen reader reads and what the chip was
+   duplicating for sighted mouse users only. Owner direction allows exactly this
+   trade: "keyboard focus можно обозначить ring без постоянной подписи". */
 @media (min-width: 768px) and (hover: hover) and (pointer: fine) {
   .assistant-dock__hint {
     display: block;
   }
 
-  .assistant-dock__row:hover .assistant-dock__hint,
-  .assistant-dock__row:focus-within .assistant-dock__hint {
+  .assistant-dock__row:hover .assistant-dock__hint {
     opacity: 1;
     transform: translateX(0);
+  }
+
+  /* And not while the panel is open: the panel's own heading is the words
+     "Ассистент Quant", so the chip beside it is the same label twice, 40px
+     apart. Wins over the hover rule on specificity, so moving the pointer back
+     onto an open orb does not re-reveal it. */
+  .assistant-dock[data-open="true"] .assistant-dock__row:hover .assistant-dock__hint {
+    opacity: 0;
+    transform: translateX(-0.5rem);
   }
 }
 
@@ -2705,14 +2808,27 @@ main > section:not(.section-paper):not(#hero):has(+ .band-blend) {
 .assistant-orb__flow {
   position: absolute;
   inset: -55%;
-  /* Crest tightened against the reference: the 68%-end ellipse at full alpha
-     spread a milky, desaturated wash over half the sphere on some phases —
-     the reference's band is compact and saturated ice, so the light stop ends
-     at 58% and the core steps down to 0.9. */
+  /* ── Re-tuned against ref-vois frames: the crest is cyan, not white ──
+     It ran `rgba(201,242,255,0.9)` at the core. Composited under `screen` over a
+     navy well, a 201/242/255 core is only 54 levels off pure white in the red
+     channel, so it desaturated on the way through and the lower half of the
+     sphere read as a milky grey-white blur — the "грязный blur" note, and the one
+     way the object still differed from the reference at a glance.
+
+     Frame-checked: the reference's crest is unmistakably *cyan* even at its
+     brightest, and what makes it read as liquid is the saturated core sitting
+     directly against the deep cobalt shoulder above it. So the core keeps 40
+     levels of red-channel headroom (150 rather than 201) and the mid stop is
+     pushed further into blue. Same alphas, same geometry — only the hue moved.
+
+     Blur 1.5px rather than 2px for the same reason: at 56px, 2px was softening
+     the crest's leading edge into the shoulder, which is the boundary the whole
+     effect depends on. Still enough to keep the ellipse from showing its own
+     edge. */
   background:
-    radial-gradient(58% 27% at 37% 63%, rgba(201, 242, 255, 0.9) 0%, rgba(124, 208, 255, 0.66) 38%, rgba(124, 208, 255, 0) 58%),
+    radial-gradient(58% 27% at 37% 63%, rgba(150, 228, 255, 0.92) 0%, rgba(96, 186, 255, 0.68) 38%, rgba(96, 186, 255, 0) 58%),
     radial-gradient(62% 30% at 60% 34%, rgba(34, 78, 213, 0.95) 0%, rgba(34, 78, 213, 0) 66%);
-  filter: blur(2px);
+  filter: blur(1.5px);
   pointer-events: none;
   transition: opacity var(--duration-base) var(--ease-out-expo);
 }
@@ -2722,8 +2838,11 @@ main > section:not(.section-paper):not(#hero):has(+ .band-blend) {
      1.0) — at equal strength the two bands merged into one washed floor and
      the lower hemisphere read as frost rather than as a second, deeper pass
      of the same wave. */
+  /* Pulled into the same hue family as the primary crest, for the same reason:
+     at 196/240/255 the secondary sliver was the whitest thing in the object and
+     it sat in the lower hemisphere, which is what turned the bottom into frost. */
   background:
-    radial-gradient(44% 16% at 62% 72%, rgba(196, 240, 255, 0.78) 0%, rgba(196, 240, 255, 0) 62%),
+    radial-gradient(44% 16% at 62% 72%, rgba(168, 232, 255, 0.78) 0%, rgba(168, 232, 255, 0) 62%),
     radial-gradient(42% 24% at 32% 32%, rgba(16, 47, 152, 0.9) 0%, rgba(16, 47, 152, 0) 70%);
   /* `screen` is what makes two overlapping fields read as one body of light
      rather than as two stacked blobs. */
@@ -2873,7 +2992,10 @@ main > section:not(.section-paper):not(#hero):has(+ .band-blend) {
      per-frame cost. `brightness`/`saturate` rather than opacity so the band
      gets more luminous without the well behind it showing through. */
   .assistant-orb:hover .assistant-orb__flow {
-    filter: blur(2px) brightness(1.12) saturate(1.06);
+    /* Must restate the blur, and must restate the *same* blur: `filter` is a
+       single property, so any omitted function is dropped — and 2px here against
+       1.5px at rest would soften the crest on hover, which is backwards. */
+    filter: blur(1.5px) brightness(1.12) saturate(1.06);
   }
 }
 
@@ -2930,9 +3052,22 @@ main > section:not(.section-paper):not(#hero):has(+ .band-blend) {
   border-radius: var(--radius-lg);
   background: var(--color-glass-surface-strong);
   backdrop-filter: blur(var(--blur-glass));
+  /* ── One edge, not two ──
+     This carried `0 0 0 1px rgba(124,200,255,0.1)` *on top of* the 1px
+     `--color-glass-border` above — a cold shadow-ring sitting on the exact pixel
+     row as a white hairline. Two rings at one radius composite into a single
+     thicker, brighter line, which is the "popup border выглядит слишком ярким и
+     тяжёлым" note, and it is the same doubling the node and card blocks in
+     tokens/color.css both warn against.
+
+     The border is now the only ring. What replaces the cold layer is a *local*
+     highlight instead of another perimeter: a 1px inset specular along the top
+     edge, so the card reads as a lit surface catching light from the page's own
+     source rather than as an outlined box. The drop is one step shorter and
+     shallower — a panel resting above the orb, not a floating slab. */
   box-shadow:
-    0 20px 48px -16px rgba(0, 0, 0, 0.9),
-    0 0 0 1px rgba(124, 200, 255, 0.1);
+    0 18px 40px -18px rgba(0, 0, 0, 0.85),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
   pointer-events: auto;
 }
 
@@ -3095,10 +3230,23 @@ main > section:not(.section-paper):not(#hero):has(+ .band-blend) {
      tokens/color.css as the button's depth cue, and the shipped 0.14/0.12
      values now live there — an implementation that disagrees with its own
      token is a knob that silently does nothing. */
+  /* ── Both cues live on the edges, not across the face ──
+     The stops were `0% → 45% → 100%`: a specular fading over nearly half the
+     height and a shade rising over the other half, i.e. a gradient *across the
+     whole face*. Re-checked against Button.mp4, the reference has neither — its
+     fill is flat, with a hairline-bright top run and a contact shade tight under
+     the bottom edge.
+
+     `18%` and `76%` reproduce that: the specular is spent inside the top fifth,
+     the shade inside the bottom quarter, and the middle half of the button —
+     which is the part the label occupies — is untouched fill. Two transparent
+     stops rather than one so neither cue bleeds toward the other; the effect on
+     the label's measured contrast is now under 0.1:1. */
   background: linear-gradient(
     to bottom,
     var(--btn-specular) 0%,
-    rgba(255, 255, 255, 0) 45%,
+    rgba(255, 255, 255, 0) 18%,
+    rgba(0, 0, 0, 0) 76%,
     var(--btn-shade) 100%
   );
   pointer-events: none;
@@ -3202,21 +3350,31 @@ main > section:not(.section-paper):not(#hero):has(+ .band-blend) {
   .btn-lens-light::before {
     content: "";
     position: absolute;
-    /* One pixel of ground between the fill and the ring. Flush against the
-       white edge the arc's own white head vanished into the pill; the dark
-       seam is what lets a light read as *beside* the button, the same role
-       the reference's visible border plays under its streak. */
-    inset: -4px;
-    border-radius: calc(var(--radius-md) + 4px);
-    padding: 2px;
+    /* Geometry through the tokens — `--btn-arc-*` in tokens/color.css records
+       what each of the three numbers fixes. Summarised: 1px instead of 2px, so
+       the contour is a light on an edge rather than a border; 3px of ground
+       instead of 4px, so the ring clears the fill without entering the band the
+       `focus-visible` outline occupies. */
+    inset: var(--btn-arc-inset);
+    border-radius: var(--btn-arc-radius);
+    padding: var(--btn-arc-width);
+    /* ── The 0°/360° stop pair is identical, and that is the fix for the seam ──
+       It shipped as `rgba(255,255,255,1)` at 0deg against
+       `rgba(255,255,255,0.46)` at 360deg. A conic gradient wraps at that
+       boundary, so a 54-point step in alpha sat on one radial line of the ring
+       — and because the whole gradient rotates, that step swept the perimeter
+       once per turn and read as the arc *breaking* as it crossed the top edge.
+       The two ends now agree, so the head is one symmetric taper: dim rising in
+       from 320deg, peak at the source, falling away to 110deg. Nothing to jump
+       at, at any angle, including over the corners. */
     background: conic-gradient(
       from var(--rim-sweep, -40deg),
-      rgba(255, 255, 255, 1) 0deg,
-      rgba(196, 232, 255, 0.72) 30deg,
-      rgba(124, 200, 255, 0.28) 72deg,
-      transparent 120deg,
-      transparent 316deg,
-      rgba(255, 255, 255, 0.46) 360deg
+      rgba(255, 255, 255, 0.95) 0deg,
+      rgba(196, 232, 255, 0.62) 26deg,
+      rgba(124, 200, 255, 0.24) 64deg,
+      transparent 112deg,
+      transparent 318deg,
+      rgba(255, 255, 255, 0.95) 360deg
     );
     mask-image: linear-gradient(#000 0 0), linear-gradient(#000 0 0);
     mask-clip: content-box, border-box;
@@ -3229,7 +3387,7 @@ main > section:not(.section-paper):not(#hero):has(+ .band-blend) {
        frame while the sweep runs, on one ~300×54 layer, on exactly one hovered
        button; measured class of cost the dark rim already pays for its own
        gradient interpolation. */
-    filter: drop-shadow(0 0 5px rgba(164, 220, 255, 0.7));
+    filter: var(--btn-arc-bloom);
     opacity: 0;
     pointer-events: none;
     transition: opacity var(--motion-soft) var(--ease-out-expo);
@@ -3241,9 +3399,19 @@ main > section:not(.section-paper):not(#hero):has(+ .band-blend) {
     }
   }
 
-  .btn-lens-light:focus-visible::before {
-    opacity: 1;
-  }
+  /* ── No arc on keyboard focus, and that is deliberate ──
+     The light variant's ring sits 3–4px outside the fill and the page's focus
+     outline sits 3–5px outside it. Lighting both put two concentric rings a
+     pixel apart, which is not a focus indicator — it is what a broken focus
+     indicator looks like, and it was the "focus ring выглядит как браузерная
+     ошибка" note.
+
+     So the two states are separated by *mechanism* rather than layered: hover is
+     the travelling arc, focus is the outline. The outline is 2px of pure white
+     at 20.4:1 against the page, which is the stronger of the two indicators and
+     the one that has to be unambiguous. The dark variant keeps its rim on focus
+     because that ring is at `inset: 0`, inside the button, and cannot collide
+     with anything. */
 
   @media (prefers-reduced-motion: no-preference) {
     @media (hover: hover) and (pointer: fine) {
@@ -3267,54 +3435,79 @@ main > section:not(.section-paper):not(#hero):has(+ .band-blend) {
   }
 }
 
-/* ── The tier CTA — Button1.mp4, translated ──
+/* ── The internal sheen — Button1.mp4's other half, on every button ──────────
    The reference is a luminous glass slab: a saturated blue fill whose interior
    light-mass slowly drifts, under a bloom the size of the button. Copied
-   literally that is both a forbidden cold fill and crypto-neon, so what is
-   kept is the *behaviour* — an interior light that moves, a lit edge, a halo —
-   and what changes is the budget: the face stays the system's white, the
-   moving mass is a pale ice sheen over it, the halo is a 1px cold hairline
-   plus a bloom that ends 14px out, at cyan alphas ≤ 0.28.
+   literally that is both a forbidden cold fill and crypto-neon, so what is kept
+   is the *behaviour* — an interior light that moves — and what changes is the
+   budget.
 
-   Hover-driven, like everything else on the page: three of these sit side by
-   side in the pricing row, and three idle-shimmering slabs would be a casino.
-   The sheen's origin is animated (registered <percentage>, compositor-cheap at
-   one 300×44 layer, and only ever one — a pointer hovers one button at a
-   time), so under the cursor the light-mass wanders the way the reference's
-   does. Reduced motion keeps the lit state and drops the wander. */
-@property --tier-x {
+   ── This used to be `.btn-tier`, and that was the actual defect ──
+
+   It shipped as a class applied only to the three pricing CTAs, with its hot
+   stop at 0.75 alpha. Two problems, both named in the owner's review of the
+   rendered page:
+
+     1. **A per-section button variant.** The brief's first rule for this pass is
+        that every CTA shares one architecture and that no section gets a button
+        of its own. A treatment that exists on three buttons out of fourteen is
+        the thing that made the row read as inconsistent — Sandbox under the
+        pointer looked like a different component from the Access CTA.
+     2. **0.75 alpha is a fill, not a light.** Over the white face it composited
+        to rgb(224,242,255). That is a pale blue button, which is what "Sandbox
+        имеет монотонную голубую поверхность" was describing, and a cold *fill*
+        is forbidden outright by the palette doctrine.
+
+   So the sheen moved into `.btn-lens-face` — the marker every filled variant
+   already carries — at 0.28 on light faces and 0.12 on dark ones. See the
+   `--btn-sheen-*` block in tokens/color.css for both compositions measured.
+
+   ── Why it paints as `background-image` and not in `::after` ──
+
+   `::after` renders *above* the button's inline content, so a sheen there would
+   sit on the label and eat its contrast. `background-image` composites over
+   `background-color` and under the text, so the light passes behind the glyphs
+   and the text centre keeps the full 20.4:1 the palette promises. It also means
+   the sheen inverts for free inside a paper band, where the same variant is a
+   black pill.
+
+   Hover-driven, like everything else here: fourteen idle-shimmering controls
+   would be a casino, and a pointer can only be on one at a time — which is what
+   bounds the cost of animating a registered `<percentage>` to a single ~300×44
+   layer. Reduced motion keeps the lit state and drops the wander. */
+@property --btn-sheen-x {
   syntax: "<percentage>";
   inherits: false;
-  initial-value: 24%;
+  initial-value: 26%;
 }
 
-.btn-tier:hover,
-.btn-tier:focus-visible {
-  background-image: radial-gradient(
-    150% 260% at var(--tier-x, 24%) 24%,
-    rgba(198, 233, 255, 0.75) 0%,
-    rgba(148, 214, 255, 0.28) 38%,
-    rgba(124, 200, 255, 0) 68%
-  );
+@media (hover: hover) and (pointer: fine) {
+  .btn-lens-face:hover {
+    background-image: radial-gradient(
+      150% 260% at var(--btn-sheen-x, 26%) 22%,
+      rgba(214, 238, 255, var(--btn-sheen-a, 0)) 0%,
+      rgba(160, 214, 255, calc(var(--btn-sheen-a, 0) * 0.34)) 42%,
+      rgba(124, 200, 255, 0) 72%
+    );
+  }
 }
 
-/* The halo. Overrides the graphite band's white-bloom hover on this one
-   control: the tier CTA is the page's Button1 site, and its edge light is
-   cold by direction — a hairline and a tight shelf, not a wash. Dark drop
-   first, so the lift stays elevation rather than illumination. */
-.on-paper-graphite .btn-tier {
-  /* The hairline is a pale blue-white, which the rim doctrine allows above the
-     cyan ceiling (same clause as --lens-rim-hot); the bloom is saturated cyan
-     and sits at the 0.28 ceiling exactly, spent within 14px. */
-  --shadow-cta-hover:
-    0 8px 22px -8px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(186, 227, 255, 0.5),
-    0 0 14px -4px rgba(124, 200, 255, 0.28);
+/* The two intensities. Set on the polarity markers rather than inside the
+   gradient, so a variant that is added later picks up the right one by declaring
+   which face it has — the same contract `.btn-lens-dark` already uses for the
+   rim. */
+.btn-lens-light {
+  --btn-sheen-a: var(--btn-sheen-light);
+}
+
+.btn-lens-dark {
+  --btn-sheen-a: var(--btn-sheen-dark);
 }
 
 @media (prefers-reduced-motion: no-preference) {
   @media (hover: hover) and (pointer: fine) {
-    .btn-tier:hover {
-      animation: qf-tier-drift 4.2s ease-in-out infinite;
+    .btn-lens-face:hover {
+      animation: qf-btn-sheen var(--duration-btn-sheen) ease-in-out infinite;
     }
   }
 }
@@ -3322,13 +3515,13 @@ main > section:not(.section-paper):not(#hero):has(+ .band-blend) {
 /* Wanders right and settles back — the reference's mass drifts and returns
    rather than orbiting, so `alternate` symmetry is correct here (unlike the
    perimeter arc, where a reversing light reads as a slider). */
-@keyframes qf-tier-drift {
+@keyframes qf-btn-sheen {
   0%,
   100% {
-    --tier-x: 24%;
+    --btn-sheen-x: 26%;
   }
   50% {
-    --tier-x: 76%;
+    --btn-sheen-x: 74%;
   }
 }
 

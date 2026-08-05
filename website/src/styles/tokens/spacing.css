@@ -10,9 +10,29 @@
  * `default` is the norm, `tight` binds sections that belong together.
  */
 
+/**
+ * ── Trimmed, and only where the void was measurable ──
+ *
+ * Measured at 1440 after the blends came down: the two seams still paying a full
+ * `major` top — audience → how-it-works and faq → access — read as 216px of black
+ * above a heading, on top of the previous section's 48px bottom. 264px is 29% of a
+ * 900px viewport crossed with nothing in it, and it is the only remaining place on
+ * the page where the reader waits.
+ *
+ * `major` 232 → 184 and `default` 176 → 152 at the ceiling; the floors come down
+ * one step with them so a phone gets the same proportion rather than the same
+ * pixels. `tight` is unchanged — it was already doing its job, and it is what the
+ * blend-adjacent sections resolve to.
+ *
+ * The three roles and their meanings are untouched: `major` still opens a movement,
+ * `default` is still the norm, `tight` still binds. What changed is how loud
+ * "opens a movement" has to be. Anchor landing follows automatically — every
+ * `scroll-margin-top` in globals.css is `calc(--anchor-clearance - <this token>)`,
+ * so the deep links track the padding rather than a copy of it.
+ */
 @theme {
-  --space-section-y: clamp(96px, 11vw, 176px);
-  --space-section-y-major: clamp(128px, 15vw, 232px);
+  --space-section-y: clamp(88px, 10vw, 152px);
+  --space-section-y-major: clamp(112px, 12vw, 184px);
   --space-section-y-tight: clamp(72px, 8vw, 112px);
 
   --space-page-x: clamp(24px, 8vw, 120px);

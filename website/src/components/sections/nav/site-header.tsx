@@ -95,12 +95,22 @@ export async function SiteHeader({ locale }: { locale: string }) {
           {otherLocale.label}
         </Link>
 
+        {/* ── The default size, not `sm`, and it costs nothing ──
+            At `sm` this rendered 36px tall. That clears WCAG 2.2's 24px target-size
+            minimum, but the brief's floor for any control a finger can reach is
+            44px, and the block is `hidden lg:block` — so it *is* on screen at
+            1024px, which is an iPad in landscape.
+
+            Measured before changing it: the row already contains a 44px element
+            (the locale switch carries `min-h-11` for exactly this reason), so the
+            shell's 86px height is set by that and the CTA growing to 44px does not
+            move it. Verified — header height is 86px before and after.
+
+            It also reads better. A 36px pill in an 86px shell was the timid
+            member of a ladder whose other rungs are 48px (hero, access); at 44px
+            the header CTA is subordinate to them without looking unfinished. */}
         <div className="hidden lg:block">
-          <ButtonLink
-            href="#access"
-            size="sm"
-            analytics={{ target: "sandbox_access", location: "header" }}
-          >
+          <ButtonLink href="#access" analytics={{ target: "sandbox_access", location: "header" }}>
             {t("ctaShort")}
           </ButtonLink>
         </div>

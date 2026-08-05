@@ -97,7 +97,37 @@ export async function SafetySection({ locale }: { locale: string }) {
 
       {/* ── Where the guarantee stops ──
           Two cards spanning the width the four above occupy, raised, with more
-          padding and a left rule. Heavier than the guarantees, on purpose. */}
+          padding. Heavier than the guarantees, on purpose.
+
+          ── The 2px left rule is gone, and it was a real defect ──
+
+          It was `border-l-2` with an inline `borderLeftColor:
+          var(--color-text-secondary)` — a 2px bar at 72% white down one edge of
+          a graphite card, permanently. Rendered at 1440 it is the single
+          brightest line in the section, and because the other three edges are
+          `--color-border` at 10% it reads as an *asymmetry*: a one-sided white
+          stripe, which is what a clipped border or a stray focus ring looks
+          like. The owner's review named it exactly that, and required a uniform
+          hairline all the way round.
+
+          Emphasis is not lost, because the rule was one of five devices and the
+          other four are untouched: a raised surface, `lg` padding, two cards
+          spanning the width the four guarantees occupy, and body copy at primary
+          rather than secondary contrast. `--color-border-strong` on all four
+          edges keeps a *sixth* — these cards have a visibly firmer outline than
+          the guarantees above them — without putting the weight on one side.
+
+          `card-neutral` is the other half, and it carries both changes. It must
+          not be an inline style: an inline `borderColor` beats *every* stylesheet
+          rule short of `!important`, which is precisely how the old left rule
+          "survived hover" — and a resting edge that cannot lighten is the
+          asymmetry problem again in a different form. As a class in globals.css
+          it loses to `.card-premium:hover` on specificity, so the edge resolves
+          to the same highlight white every other card on the page uses.
+
+          The class also stops these two taking the cold rim the rest of the
+          page's cards light on hover: blue is a signal colour and these are
+          statements of limitation. See `--rim-*-neutral` in tokens/color.css. */}
       <div className="mt-[var(--space-block)] flex flex-col gap-5">
         <MonoLabel as="h3">{t("limitsHeading")}</MonoLabel>
         <ul className="grid gap-[var(--space-card-gap)] md:grid-cols-2">
@@ -107,19 +137,7 @@ export async function SafetySection({ locale }: { locale: string }) {
                 <Surface
                   variant="raised"
                   padding="lg"
-                  className="flex w-full flex-col gap-3 border-l-2"
-                  /*
-                    The left rule's colour lives in an inline style, not a
-                    `border-l-[color:…]` utility, because the unlayered
-                    `.card-premium:hover { border-color: … }` in globals.css
-                    beats any layered utility — measured on hover the 2px rule
-                    silently went highlight-white with the other three edges.
-                    An inline longhand wins over a stylesheet shorthand at the
-                    cascade level, so the emphasis edge now survives hover and
-                    focus. The 2px width stays a utility; only the colour needs
-                    the escalation.
-                  */
-                  style={{ borderLeftColor: "var(--color-text-secondary)" }}
+                  className="card-neutral flex w-full flex-col gap-3"
                 >
                   {/* <h4>, one level under the group's <h3> label above. */}
                   <h4 className="text-[length:var(--text-h3)] leading-[var(--text-h3--line-height)] font-medium tracking-[var(--text-h3--letter-spacing)] text-[color:var(--color-text-primary)]">

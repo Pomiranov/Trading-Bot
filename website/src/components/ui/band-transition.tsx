@@ -139,15 +139,36 @@ export function BandTransition({ direction, className }: BandTransitionProps) {
    * `into-dark` direction is provably the same curve rather than an
    * approximation of it.
    */
+  /*
+    ── Re-weighted for the shorter band, and the shape is the point ──
+
+    The curve above was a symmetric smoothstep, which puts its slowest stretch in
+    the *middle* — and the middle of a black→paper ramp is mid-grey. Over 352px
+    that meant roughly 120px where the ground barely changed while sitting at the
+    least legible value it ever takes. Rendered, that is a slab of grey being
+    panned past: the "серый градиент выглядит как туман" note, and it is why
+    height alone was never going to fix this.
+
+    So the settle moved to the *paper* end. The change now happens early and
+    resolves late: 49% of the way across the band the ground is already 69% paper
+    (it was 49%), and the last quarter spends itself on the final eight luminance
+    levels. Two consequences, both wanted — there is no mid-grey plateau to read
+    as fog, and the derivative at the seam is still ~0, which is what keeps the
+    boundary with the flat section below invisible.
+
+    The asymmetry is legitimate here in a way it would not be on a slider: the two
+    ends are not equivalent. Black is the page's ground and needs no
+    introduction; paper is the arrival and is what has to feel inevitable.
+  */
   const STOPS: [number, string][] = [
     [0, BLACK],
-    [18, DARK(59)],
-    [30, MIX(8)],
-    [42, MIX(28)],
-    [54, MIX(49)],
-    [66, MIX(69)],
-    [78, MIX(84)],
-    [88, MIX(94)],
+    [12, DARK(52)],
+    [22, MIX(10)],
+    [32, MIX(34)],
+    [42, MIX(56)],
+    [52, MIX(73)],
+    [64, MIX(86)],
+    [80, MIX(95)],
     [100, PAPER],
   ];
 
@@ -253,15 +274,38 @@ export function BandTransition({ direction, className }: BandTransitionProps) {
           horizontal padding, and the no-horizontal-scroll guarantee is absolute.
         */
         /*
-          Taller than it was — 176/224/256 became 208/288/352. A 220-level
-          luminance change needs room, and at 256px the crossing was still
-          happening fast enough to read as a horizon two-thirds of the way down
-          rather than as a material changing. 352px at `lg` is about a fifth of
-          a 1440×900 viewport, which is the point where the eye stops being able
-          to see both ends of the ramp at once and therefore stops reading it as
-          an edge at all.
+          ── Shorter: 208/288/352 → 128/160/208 ──
+
+          The previous pass took these *up*, reasoning that a 220-level luminance
+          change needs room to happen in. That was true of the ramp it had. It is
+          not true of this one, and it cost more than it bought.
+
+          Measured on the live page at 1440: four blends × 352px is 1408px, 11% of
+          a 12 762px document, and each one is 39% of a 900px viewport — so a
+          reader crossing from How It Works to Foundation panned through most of a
+          screen with nothing on it. On a phone, 208px sat in a 844px viewport with
+          the same problem in miniature. Owner direction is explicit: the
+          transition must let the eye adapt without becoming a section of its own,
+          and it must be substantially more compact on mobile.
+
+          Two changes made the height affordable, and neither is a compromise:
+
+            • the paper end came down ~28 luminance levels (`--color-paper` is now
+              #e4e1da), so there is materially less distance to cover;
+            • the ramp's settle moved to the paper end, so the band no longer
+              spends its middle sitting on mid-grey — see the STOPS note above.
+
+          208px at `lg` is ~23% of a 1440×900 viewport: still deep enough that
+          both ends are never crisply in view together, which is the property that
+          stops it reading as an edge. 128px on a phone is the same fraction of
+          844px that the old 208 was of a desktop viewport.
+
+          Fixed heights rather than a clamp on the section rhythm, unchanged in
+          reasoning: a material change wants the same room to happen in at any
+          width, and fixed also means it can never become the tallest thing on a
+          small screen.
         */
-        "band-blend relative isolate h-52 w-full overflow-hidden sm:h-72 lg:h-88",
+        "band-blend relative isolate h-32 w-full overflow-hidden sm:h-40 lg:h-52",
         className,
       )}
       style={{ backgroundImage: ramp }}

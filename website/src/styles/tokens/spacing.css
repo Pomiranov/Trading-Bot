@@ -1,0 +1,66 @@
+/**
+ * Spacing rhythm. Tailwind v4's default scale (--spacing: 0.25rem) already
+ * gives a 4px baseline for utility spacing — this file adds only the semantic,
+ * page-level tokens.
+ *
+ * Three vertical steps, not one. Every section previously used the same
+ * 201.6px padding, which reads as a metronome rather than a rhythm: nothing
+ * groups, nothing breathes, and the eye gets no signal about where one part of
+ * the argument ends and the next begins. `major` opens a new movement,
+ * `default` is the norm, `tight` binds sections that belong together.
+ */
+
+/**
+ * ── Trimmed, and only where the void was measurable ──
+ *
+ * Measured at 1440 after the blends came down: the two seams still paying a full
+ * `major` top — audience → how-it-works and faq → access — read as 216px of black
+ * above a heading, on top of the previous section's 48px bottom. 264px is 29% of a
+ * 900px viewport crossed with nothing in it, and it is the only remaining place on
+ * the page where the reader waits.
+ *
+ * `major` 232 → 184 and `default` 176 → 152 at the ceiling; the floors come down
+ * one step with them so a phone gets the same proportion rather than the same
+ * pixels. `tight` is unchanged — it was already doing its job, and it is what the
+ * blend-adjacent sections resolve to.
+ *
+ * The three roles and their meanings are untouched: `major` still opens a movement,
+ * `default` is still the norm, `tight` still binds. What changed is how loud
+ * "opens a movement" has to be. Anchor landing follows automatically — every
+ * `scroll-margin-top` in globals.css is `calc(--anchor-clearance - <this token>)`,
+ * so the deep links track the padding rather than a copy of it.
+ */
+@theme {
+  --space-section-y: clamp(88px, 10vw, 152px);
+  --space-section-y-major: clamp(112px, 12vw, 184px);
+  --space-section-y-tight: clamp(72px, 8vw, 112px);
+
+  --space-page-x: clamp(24px, 8vw, 120px);
+  --space-grid-gutter: 24px;
+
+  /* One content width for the whole page. 1280px matches the header's own max
+     width, so the header and every section share a single left edge at every
+     viewport — previously there were 7 different edges across 7 widths. */
+  --space-content-max: 1280px;
+
+  /* The one legitimately narrow column: long-form reading (FAQ answers). */
+  --space-prose-max: 68ch;
+}
+
+/**
+ * The section-*internal* scale. Plain `:root` rather than `@theme` for the
+ * reason documented at length in tokens/color.css — these are read through
+ * arbitrary values and inline styles, and an unconsumed `@theme` variable
+ * resolves to the empty string.
+ *
+ * Previously ad-hoc: `mt-14` in five sections, `mt-12` in three, `mt-10` in
+ * two, each chosen per component with no shared meaning. Three roles is enough.
+ * The distance from a section header to its first content is a different
+ * distance from the one between two blocks inside that content, and both are
+ * different again from the gutter between sibling cards.
+ */
+:root {
+  --space-header-to-body: clamp(48px, 5vw, 72px);
+  --space-block: clamp(32px, 3.5vw, 48px);
+  --space-card-gap: 20px;
+}

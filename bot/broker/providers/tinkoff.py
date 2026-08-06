@@ -436,15 +436,32 @@ class TinkoffBrokerAdapter(BrokerAdapter):
         try:
             with build_client() as client:
                 resp = client.instruments.find_instrument(query=ticker)
-                for item in resp.instruments:
-                    if item.ticker == ticker:
-                        return {
-                            "figi": item.figi,
-                            "ticker": item.ticker,
-                            "name": item.name,
-                            "lot": item.lot,
-                            "currency": item.currency,
-                        }
+                candidates = [item for item in resp.instruments if item.ticker == ticker]
+                # A ticker can map to dozens of listings (bonds, futures, dual
+                # listings) alongside the real one — only api_trade_available_flag
+                # tells us which single match can actually be traded via API.
+                tradable = [item for item in candidates if item.api_trade_available_flag]
+                chosen = tradable[0] if tradable else (candidates[0] if candidates else None)
+                if chosen is None:
+                    return None
+                figi = chosen.figi
+
+                # find_instrument() returns InstrumentShort, which has no 'lot'
+                # field — a second call to get_instrument_by() is required.
+                from tinkoff.invest import InstrumentIdType
+                full = client.instruments.get_instrument_by(
+                    id_type=InstrumentIdType.INSTRUMENT_ID_TYPE_FIGI,
+                    id=figi,
+                    class_code="",
+                )
+                instr = full.instrument
+                return {
+                    "figi": instr.figi,
+                    "ticker": instr.ticker,
+                    "name": instr.name,
+                    "lot": instr.lot,
+                    "currency": instr.currency,
+                }
         except Exception as exc:
             logger.error("Ошибка поиска инструмента %s: %s", ticker, exc)
         return None

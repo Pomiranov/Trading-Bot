@@ -1,0 +1,342 @@
+/**
+ * Reset, typography and motion policy.
+ *
+ * Reads only from tokens.css — no raw colour, size or radius appears below.
+ */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  /* Keeps rem stable under a user's browser zoom while the layout stays px-based
+     for the density the terminal needs. */
+  font-size: var(--qf-root-size);
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  background: var(--qf-bg);
+  color: var(--qf-text-secondary);
+  font-family: var(--qf-font-sans);
+  font-size: var(--qf-body-size);
+  line-height: var(--qf-body-lh);
+  letter-spacing: var(--qf-body-ls);
+  font-weight: var(--qf-weight-regular);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  /* Safe-area insets: a phone in landscape puts the notch over the sidebar rail. */
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+  overflow-x: hidden;
+}
+
+/* ─── Numerals ───────────────────────────────────────────────────────────────
+   The most consequential typographic fix. The old interface had zero
+   occurrences of `font-variant-numeric`: numeric cells were set in a mono face
+   as a *workaround*, and every proportional-font figure — metric tiles, inline
+   values, stat rows — used Inter's default proportional digits, where 1 is
+   narrower than 8. A column of those cannot be scanned vertically, and a value
+   that re-renders on a poll shifts horizontally as its digits change.
+
+   Applied to the root so it holds in both faces, making mono a *semantic* choice
+   (identifiers, tickers, raw values) rather than an alignment device. */
+html {
+  font-variant-numeric: tabular-nums lining;
+  font-feature-settings: 'tnum' 1, 'lnum' 1;
+}
+
+/* ─── Type roles. Six. ────────────────────────────────────────────────────── */
+
+.qf-label {
+  font-family: var(--qf-font-mono);
+  font-size: var(--qf-label-size);
+  line-height: var(--qf-label-lh);
+  letter-spacing: var(--qf-label-ls);
+  text-transform: uppercase;
+  color: var(--qf-text-tertiary);
+  font-weight: var(--qf-weight-medium);
+}
+
+/* Uppercase mono is for eyebrows and short section markers only. It used to be
+   the default for every field label on every screen, at 10–11px with positive
+   tracking in Cyrillic — the least legible configuration the system can produce.
+   Ordinary field labels are captions in the interface face. */
+.qf-caption {
+  font-size: var(--qf-caption-size);
+  line-height: var(--qf-caption-lh);
+  letter-spacing: var(--qf-caption-ls);
+  color: var(--qf-text-tertiary);
+}
+
+.qf-body {
+  font-size: var(--qf-body-size);
+  line-height: var(--qf-body-lh);
+  letter-spacing: var(--qf-body-ls);
+}
+
+.qf-heading {
+  font-size: var(--qf-heading-size);
+  line-height: var(--qf-heading-lh);
+  letter-spacing: var(--qf-heading-ls);
+  font-weight: var(--qf-weight-semibold);
+  color: var(--qf-text-primary);
+}
+
+.qf-metric {
+  font-size: var(--qf-metric-size);
+  line-height: var(--qf-metric-lh);
+  letter-spacing: var(--qf-metric-ls);
+  color: var(--qf-text-primary);
+  font-weight: var(--qf-weight-medium);
+}
+
+.qf-metric-lg {
+  font-size: var(--qf-metric-lg-size);
+  line-height: var(--qf-metric-lg-lh);
+  letter-spacing: var(--qf-metric-lg-ls);
+  color: var(--qf-text-primary);
+  font-weight: var(--qf-weight-medium);
+}
+
+.qf-mono {
+  font-family: var(--qf-font-mono);
+}
+
+h1 { font-size: var(--qf-heading-size); line-height: var(--qf-heading-lh);
+     letter-spacing: var(--qf-heading-ls); font-weight: var(--qf-weight-semibold);
+     color: var(--qf-text-primary); }
+h2 { font-size: var(--qf-heading-size); line-height: var(--qf-heading-lh);
+     letter-spacing: var(--qf-heading-ls); font-weight: var(--qf-weight-semibold);
+     color: var(--qf-text-primary); }
+h3 { font-size: var(--qf-body-size); line-height: var(--qf-body-lh);
+     font-weight: var(--qf-weight-semibold); color: var(--qf-text-primary); }
+
+/* ─── Money and its unit are one atom ───────────────────────────────────────
+   The balance tile rendered `1 038 050,` on one line and `₽` on the next at
+   1600px, because the currency symbol was part of the wrapping text run. That
+   also made the tile's height content-dependent, which is a layout shift on
+   refresh. Formatting emits U+00A0 between value and unit, and this makes the
+   whole run unbreakable. */
+.qf-money,
+.qf-num {
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums lining;
+}
+
+/* Sign colour. The sign character itself carries the meaning in greyscale — the
+   colour is reinforcement, never the only signal. */
+.qf-positive { color: var(--qf-success); }
+.qf-negative { color: var(--qf-danger); }
+.qf-neutral-value { color: var(--qf-text-secondary); }
+/* An absent measurement, distinct from a measured zero. */
+.qf-unknown-value { color: var(--qf-text-quaternary); }
+
+/* ─── Links and controls ──────────────────────────────────────────────────── */
+
+a {
+  color: var(--qf-text-primary);
+  text-decoration: none;
+}
+
+a:hover { color: var(--qf-accent-hover); }
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: none;
+}
+
+button { cursor: pointer; }
+button:disabled { cursor: not-allowed; }
+
+/* ─── Focus ──────────────────────────────────────────────────────────────────
+   White, 2px, 2px offset — ≥3:1 against both the element and the ground.
+   `:focus-visible` rather than `:focus` so a mouse click on a table row does not
+   paint a ring. This was the one thing the old system got right; only the colour
+   changes. */
+:focus-visible {
+  outline: 2px solid var(--qf-accent);
+  outline-offset: 2px;
+  border-radius: var(--qf-radius-xs);
+}
+
+/* Inside a clipped container an outside offset is invisible; inset it. */
+.qf-sidebar :focus-visible,
+.qf-table :focus-visible {
+  outline-offset: -2px;
+}
+
+/* ─── Skip link ─── */
+.qf-skip-link {
+  position: absolute;
+  top: var(--qf-space-2);
+  left: var(--qf-space-2);
+  z-index: var(--qf-z-toast);
+  /* Measured at 375px it came out 41px tall — under the 44px touch floor. The
+     skip link is the *first* target in the tab order and the one a
+     switch-control or keyboard user hits first, so it has no business being the
+     one element below the minimum. */
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--qf-touch-target);
+  padding: var(--qf-space-2) var(--qf-space-4);
+  background: var(--qf-panel-raised);
+  color: var(--qf-text-primary);
+  border: 1px solid var(--qf-border-strong);
+  border-radius: var(--qf-radius-sm);
+  transform: translateY(-200%);
+  transition: transform var(--qf-duration-micro) var(--qf-ease);
+}
+
+.qf-skip-link:focus {
+  transform: translateY(0);
+}
+
+/* ─── Screen-reader-only ─── */
+.qf-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
+/* ─── Scrollbars ─────────────────────────────────────────────────────────────
+   10px, not 4px. A 4px thumb is untappable on touch and barely grabbable with a
+   mouse; it was also the only affordance for the horizontal overflow that passed
+   for a mobile table strategy. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--qf-border-strong) transparent;
+}
+
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: var(--qf-border-strong);
+  border-radius: var(--qf-radius-full);
+  border: 2px solid var(--qf-bg);
+}
+::-webkit-scrollbar-thumb:hover { background: var(--qf-text-quaternary); }
+
+::selection {
+  background: var(--qf-accent);
+  color: var(--qf-on-accent);
+}
+
+/* The site hard-codes `::selection { color: #ffffff }` globally and nothing
+   overrides it where the ground turns near-white. The live band is the one paper
+   surface here, so it gets its own rule. */
+.qf-band--live ::selection {
+  background: var(--qf-on-paper);
+  color: var(--qf-paper);
+}
+
+/* ─── Functional motion ──────────────────────────────────────────────────────
+   Motion has exactly one job here: to say *that something changed, and where*.
+   Everything below earns its place by that test, and every one of them is
+   bounded. There is no infinite animation anywhere in this stylesheet — the old
+   one had 13, six of them reachable, attached to `.online` and `.live`, i.e. to
+   the *healthy* states. Pulsing is the strongest peripheral-attention device a
+   dark UI has; spending it on "nothing is wrong" leaves nothing for "something
+   is". */
+
+/* A changed cell: static directional hold, decaying once. Never animate the
+   digits themselves, and never animate a value that was merely re-fetched. */
+@keyframes qf-tick-up {
+  from { background-color: var(--qf-success-dim); }
+  to { background-color: transparent; }
+}
+@keyframes qf-tick-down {
+  from { background-color: var(--qf-danger-dim); }
+  to { background-color: transparent; }
+}
+
+.qf-tick-up { animation: qf-tick-up 600ms var(--qf-ease) 1; }
+.qf-tick-down { animation: qf-tick-down 600ms var(--qf-ease) 1; }
+
+/* A new row, top of list only, 8px. Existing rows must not reflow. */
+@keyframes qf-row-in {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.qf-row-in { animation: qf-row-in var(--qf-duration-base) var(--qf-ease) 1; }
+
+/* A panel or tab swap: cross-fade, no translate. A slide implies a spatial
+   relationship between views that does not exist. */
+@keyframes qf-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.qf-fade-in { animation: qf-fade-in var(--qf-duration-base) var(--qf-ease) 1; }
+
+/* Skeleton: three cycles, then static. Bounded by iteration count, not by hope. */
+@keyframes qf-shimmer {
+  0% { opacity: 0.5; }
+  50% { opacity: 0.85; }
+  100% { opacity: 0.5; }
+}
+
+.qf-skeleton {
+  background: var(--qf-panel-raised);
+  border-radius: var(--qf-radius-xs);
+  animation: qf-shimmer 1.5s var(--qf-ease) var(--qf-skeleton-cycles);
+  /* Holds the final keyframe so the block stays visible once the loop ends. */
+  animation-fill-mode: forwards;
+}
+
+/* ─── Reduced motion ─────────────────────────────────────────────────────────
+   The old rule collapsed every duration to 0.01ms, which also killed the
+   functional signals: the tick flash and the row-insert cue became invisible, so
+   a reduced-motion user *lost* the information those cues carried rather than
+   receiving it more calmly. And because it never touched
+   `animation-iteration-count`, the 13 infinite loops kept looping.
+
+   The correct pattern replaces motion with a non-moving equivalent. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  /* A tick becomes a static 600ms background hold — same information, no motion.
+     `animation` is overridden above, so this uses a transition on a class the
+     renderer removes on a timer. */
+  .qf-tick-up {
+    animation: none !important;
+    background-color: var(--qf-success-dim);
+  }
+  .qf-tick-down {
+    animation: none !important;
+    background-color: var(--qf-danger-dim);
+  }
+
+  /* A shimmer becomes a static block. */
+  .qf-skeleton {
+    animation: none !important;
+    opacity: 0.7;
+  }
+
+  /* A new row keeps its 2px left rule instead of sliding in. */
+  .qf-row-in {
+    animation: none !important;
+    box-shadow: inset 2px 0 0 var(--qf-border-strong);
+  }
+}

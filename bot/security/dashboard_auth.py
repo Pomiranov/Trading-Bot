@@ -16,8 +16,14 @@ _LOCAL_HOSTS = frozenset({"127.0.0.1", "::1", "localhost"})
 
 
 def _client_host() -> str:
-    forwarded = (request.headers.get("X-Forwarded-For") or "").split(",")[0].strip()
-    return forwarded or (request.remote_addr or "")
+    """Real TCP peer only — X-Forwarded-For is client-supplied and must
+    never be trusted for the local/trusted-request decision below, or any
+    attacker can spoof "X-Forwarded-For: 127.0.0.1" to bypass the API-key
+    check on every mutating endpoint. If this app is ever put behind a
+    reverse proxy, use werkzeug's ProxyFix (with an explicit trusted-hop
+    count) so it rewrites remote_addr correctly instead of trusting a raw
+    header here."""
+    return request.remote_addr or ""
 
 
 def _is_local_request() -> bool:

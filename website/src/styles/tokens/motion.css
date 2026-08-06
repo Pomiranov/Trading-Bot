@@ -1,0 +1,93 @@
+/**
+ * Shared motion tokens. Durations here are mirrored as JS constants in
+ * src/components/motion (for Framer Motion transition configs) so GSAP and
+ * Framer animations read as one system rather than two products glued
+ * together. Never bounce/spring-past-target; ease-out-expo/quart only.
+ */
+
+@theme {
+  --duration-micro: 150ms; /* colour / opacity on hover */
+  --duration-base: 300ms; /* card state change */
+  /**
+   * Disclosure open/close — the FAQ rows.
+   *
+   * Its own step because neither neighbour fits: `--duration-base` (300ms) is a
+   * state change on something already on screen and reads as a snap when it is
+   * moving 200px of answer, and `--duration-reveal` (800ms) is a scroll
+   * entrance the reader did not ask for, which is far too slow for a control
+   * they just clicked. 420ms is the band where an expansion reads as material
+   * moving rather than as a panel appearing.
+   */
+  --duration-disclosure: 420ms;
+  /* Scroll entrance. 700ms is the number that actually ships — motion/reveal.tsx
+     runs 0.7s — and the token now matches it instead of the 800ms it drifted to;
+     the header's retraction reads this too, so the two entrances share a clock. */
+  --duration-reveal: 700ms;
+
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);
+}
+
+/**
+ * Plain `:root` — these are read from CSS `animation` shorthands in
+ * globals.css, which Tailwind does not scan for theme-variable usage. See
+ * tokens/color.css for the full explanation of the tree-shaking trap.
+ */
+:root {
+  --duration-panel: 500ms; /* tab / panel swap */
+
+  /**
+   * ─── The interaction layer ───
+   *
+   * Two steps for the rim and the buttons, both deliberately *faster* than
+   * `--duration-base`.
+   *
+   * 300ms is tuned for a card changing state — background, border and a 6px
+   * lift, which is a lot of pixels moving and wants time. An *edge* lighting up
+   * is the opposite case: it is the page acknowledging the pointer, and at 300ms
+   * the acknowledgement arrives after the reader has already registered that
+   * they are hovering, which reads as lag rather than as ease. Measured against
+   * the reference clips, the light on the rim resolves in ~1/4s.
+   *
+   * `--motion-fast` is the press. An active state has value only if it lands in
+   * the same frame as the finger, so this is the smallest step that is still a
+   * transition rather than a jump.
+   */
+  --motion-fast: 120ms; /* press / release */
+  --motion-soft: 240ms; /* rim, button hover — inside the 180–280ms band */
+
+  /**
+   * One full turn of a button's rim arc. Slow enough that it reads as light
+   * travelling rather than as a spinner, and it only ever runs while a single
+   * button is hovered — see the note on `.btn-lens` in globals.css for why the
+   * cards deliberately do *not* animate theirs.
+   */
+  --duration-rim-sweep: 4.5s;
+
+  /**
+   * One wander of the internal sheen across a hovered button's face, out and
+   * back. Slower than the perimeter arc on purpose: the arc is a specular
+   * travelling an edge and reads as light; a mass moving *inside* the face is a
+   * bigger visual event and at the arc's 4.5s it reads as a pulse. 5.6s is where
+   * it stops being countable.
+   *
+   * It only ever runs on the one button under the pointer — see the note above
+   * `@property --btn-sheen-x` in globals.css.
+   */
+  --duration-btn-sheen: 5.6s;
+
+  /**
+   * Q-aperture orbit periods. Three coprime values, so the rings never resync
+   * into a single visible beat — the panel should read as powered on, never as
+   * an animation playing. If these ever share a common factor the aperture
+   * develops a pulse, which is the exact thing that would make it look cheap.
+   */
+  --duration-orbit-a: 32s;
+  --duration-orbit-b: 46s;
+  --duration-orbit-c: 61s;
+}
+
+/* Removed as dead: `--duration-count-up` and `--ease-lenis` (no consumers
+   anywhere), and `--ease-out-quint` — the quint curve lives as the literal
+   inside motion/reveal.tsx, which is the only place it is used; a token
+   nothing reads is documentation pretending to be a knob. */

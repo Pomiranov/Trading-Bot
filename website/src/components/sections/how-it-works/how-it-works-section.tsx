@@ -1,0 +1,180 @@
+import { getTranslations } from "next-intl/server";
+import { contentSource } from "@/content-layer/source";
+import { Section } from "@/components/ui/section";
+import { SectionHeader } from "@/components/ui/section-header";
+import { MonoLabel } from "@/components/ui/mono-label";
+import { OffscreenPause } from "@/components/motion/offscreen-pause";
+import { PipelineSpine } from "./pipeline-spine";
+
+/**
+ * The decision path, told twice: a plain sentence first, then the module that
+ * performs it. Every `sourceRef` resolves to a real symbol in the Python
+ * codebase — the most verifiable claim on the site, kept intact.
+ *
+ * The layout mechanics, and the two failed versions that produced them, are
+ * documented in `pipeline-spine.tsx`. The short form: layout plus
+ * IntersectionObserver only, because the pinned-ScrollTrigger version of this
+ * section is where the backward-scroll bug lived.
+ *
+ * ── What left this section ──
+ *
+ * It used to carry three separate arguments in one 2 543px block — the
+ * pipeline, the confidence bounds and the manifesto — which made it 1 286px
+ * longer than anything else on the page and meant its own H2 was two screens
+ * gone by the time a reader reached the third topic.
+ *
+ *   • The manifesto is now `#foundation`, its own titled section.
+ *   • The confidence bounds now sit *inside the belief-gate node*, which is
+ *     where they belong: they are literally that gate's parameters, and a
+ *     reader now meets them at the moment the gate is being explained rather
+ *     than as three unlabelled figures several hundred pixels further down.
+ */
+export async function HowItWorksSection({ locale }: { locale: string }) {
+  const [stages, learning, t, common] = await Promise.all([
+    contentSource.getPipelineStages(locale),
+    contentSource.getLearningSystemCopy(locale),
+    getTranslations({ locale, namespace: "how" }),
+    getTranslations({ locale, namespace: "common" }),
+  ]);
+
+  const techLabel = common("technical");
+
+  /**
+   * System constants from the code, never results:
+   * `MIN_TRADES_FOR_CONFIDENCE` and the MIN/MAX_CONFIDENCE clamps in
+   * bot/learning/belief_updater.py:37,46-47.
+   *
+   * These are values an operator configures before the first trade, not
+   * anything the system achieved. They stay under the section's own
+   * "confidence bounds" label so they can never be skimmed as performance.
+   */
+  const bounds = [
+    { value: String(learning.minTradesFloor), label: t("minTradesLabel") },
+    { value: learning.minConfidence.toFixed(2), label: t("minConfidenceLabel") },
+    { value: learning.maxConfidence.toFixed(2), label: t("maxConfidenceLabel") },
+  ];
+
+  // Keyed by id rather than by index, so reordering the MDX files cannot
+  // silently attach the belief gate's parameters to a different stage.
+  const beliefGate = stages.find((s) => s.id === "belief-gate");
+
+  const extras = beliefGate
+    ? {
+        [beliefGate.id]: (
+          <div className="flex flex-col gap-3 border-t border-[color:var(--color-border)] pt-4">
+            <MonoLabel as="span">{t("constantsHeading")}</MonoLabel>
+            {/*
+              Single column at base, three from 420px. At ≤375px the card
+              beside the rail leaves this <dl> ~280px, so three columns are
+              ~60px each — narrower than the RU mono uppercase labels, which
+              overflowed. `min-[420px]` rather than `sm` (640px) because the
+              three-up fits comfortably from ~420px and stacking any wider
+              than necessary would change layouts that were never broken.
+            */}
+            <dl className="grid grid-cols-1 gap-3 min-[420px]:grid-cols-3">
+              {bounds.map((b) => (
+                <div key={b.label} className="flex min-w-0 flex-col gap-1">
+                  <dt className="sr-only">{b.label}</dt>
+                  <dd className="font-mono text-[length:var(--text-h3)] leading-[var(--text-h3--line-height)] font-semibold tabular-nums tracking-[var(--text-h3--letter-spacing)] text-[color:var(--color-text-primary)]">
+                    {b.value}
+                  </dd>
+                  {/* aria-hidden: the <dt> above already carries this text for
+                      assistive tech, and repeating it would read the label
+                      twice per figure. A <dd> rather than a <p> because a div
+                      grouping inside a <dl> may only contain dt/dd — a <p>
+                      here is invalid HTML. */}
+                  <dd
+                    aria-hidden="true"
+                    className="font-mono text-[length:var(--text-label)] leading-[1.3] tracking-[var(--text-label--letter-spacing)] text-[color:var(--color-text-quaternary)] uppercase"
+                  >
+                    {b.label}
+                  </dd>
+                </div>
+              ))}
+            </dl>
+          </div>
+        ),
+      }
+    : undefined;
+
+  return (
+    /*
+      No `glow` prop.
+
+      This section opened with a white radial pool at `[--glow-y:0%]`, which put
+      its brightest point on the section's own top edge — directly under the
+      hairline divider. Two adjacent horizontal features in the same 40px band
+      read as a seam artefact rather than as depth, and it was the first thing
+      visible when arriving from the audience row. The section's own heading and
+      the pipeline rail below it carry the entrance, which is a better one: the
+      reader arrives at content rather than at a boundary.
+    */
+    /*
+      ── The section-level `flex flex-col gap-[…]` this used to carry did
+         nothing, and the symptom was visible ──
+
+      `Section`'s `className` lands on the <section> element, but every child
+      passed to it is rendered inside one `max-w` container div. So the flex
+      column had exactly one item, the gap had nothing to sit between, and the
+      spine's top edge measured at y=342.117 against the heading block's bottom
+      edge at y=342.117 — zero.
+
+      That is why the first card appeared welded to "Путь от свечи до заявки",
+      and why hovering it looked like a collision rather than a lift: the card
+      primitive's hover is `translateY(-6px)`, straight into the H2's descender
+      line.
+
+      The fix is to space the body against the header the way every other
+      section on the page already does — `mt-[var(--space-header-to-body)]` on
+      the block itself, which is 48–72px — rather than to reach for a gap on a
+      container that has one child. Do not put the flex/gap back.
+    */
+    <Section id="how-it-works" rhythm="major" divider>
+      {/*
+        Parks the seven pipeline nodes' 24s conic rim sweeps while the section
+        is scrolled away — the same `data-qf-offscreen` mechanism the hero's
+        aperture uses, extracted into a droppable child because this section
+        has no client shell of its own. A registered-custom-property animation
+        repaints its gradient on the main thread every frame, so seven of them
+        behind a distant viewport were the page's largest idle cost.
+      */}
+      <OffscreenPause />
+      {/*
+        Heading only — no lead, no note.
+
+        Three blocks of prose were removed from this section on owner direction,
+        and the argument for each is that the section already makes the point
+        visually:
+
+          • the lead said "six steps between a candle and an order", which is
+            what six numbered nodes on a spine say by existing
+          • the `rulesNote` carried the Schwager attribution for `osc_range` and
+            `WRD`. Provenance, but bibliographic provenance in a marketing
+            section header — and every node still carries its own `sourceRef`
+            into the Python codebase, which is the verifiable claim that matters
+          • the `loopNote` and the learning-system intro sat below the spine and
+            re-explained the belief update in two paragraphs. The belief gate's
+            own node already shows the three constants that govern it, at the
+            moment the gate is being explained
+
+        The heading was rewritten to carry the section alone. If any of this copy
+        has to come back, it belongs in the docs, not above the diagram.
+      */}
+      <SectionHeader id="how-it-works" eyebrow={t("eyebrow")} heading={t("heading")} />
+
+      <div className="mt-[var(--space-header-to-body)]">
+        {/*
+          No `toggleLabel`. The nodes were <button>s that stowed their cards, and
+          a single digit is not a usable accessible name, so the section
+          substituted `how.stageToggle` per stage and passed it down.
+
+          The collapse is gone on owner direction — the cards are always visible —
+          so the nodes are `aria-hidden` markers with nothing to name. The prop,
+          the message in both locales, and the client component that consumed it
+          all went with it. See the note at the top of `pipeline-spine.tsx`.
+        */}
+        <PipelineSpine stages={stages} techLabel={techLabel} extras={extras} />
+      </div>
+    </Section>
+  );
+}

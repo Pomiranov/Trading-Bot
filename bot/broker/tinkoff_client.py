@@ -113,14 +113,15 @@ class TinkoffClient:
         try:
             with self._get_client() as client:
                 resp = client.instruments.find_instrument(query=ticker)
-                figi = None
-                for item in resp.instruments:
-                    if item.ticker == ticker:
-                        figi = item.figi
-                        break
-
-                if figi is None:
+                candidates = [item for item in resp.instruments if item.ticker == ticker]
+                # A ticker can map to dozens of listings (bonds, futures, dual
+                # listings) alongside the real one — only api_trade_available_flag
+                # tells us which single match can actually be traded via API.
+                tradable = [item for item in candidates if item.api_trade_available_flag]
+                chosen = tradable[0] if tradable else (candidates[0] if candidates else None)
+                if chosen is None:
                     return None
+                figi = chosen.figi
 
                 from tinkoff.invest import InstrumentIdType
                 full = client.instruments.get_instrument_by(
@@ -182,7 +183,14 @@ class TinkoffClient:
                 )
                 return resp.order_id
         except Exception as exc:
-            logger.error("Ошибка выставления рыночной заявки: %s", exc)
+            exc_str = str(exc)
+            if "30052" in exc_str or "forbidden for trading" in exc_str.lower():
+                logger.warning(
+                    "Инструмент figi=%s недоступен для торговли в sandbox (30052) — пропускаем",
+                    figi,
+                )
+            else:
+                logger.error("Ошибка выставления рыночной заявки: %s", exc)
             return None
 
     def place_limit_order(

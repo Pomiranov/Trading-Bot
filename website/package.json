@@ -1,0 +1,52 @@
+{
+  "name": "website",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev --turbopack",
+    "build": "next build --turbopack",
+    "start": "next start",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint",
+    "check:content": "node scripts/check-content-parity.mjs",
+    "check:i18n": "node scripts/check-messages-parity.mjs",
+    "check:design": "node scripts/check-design-tokens.mjs",
+    "check:media": "node scripts/check-media.mjs",
+    "check": "npm run check:content && npm run check:i18n && npm run check:design && npm run check:media",
+    "qa:landing": "node scripts/landing-assertions.mjs",
+    "qa:landing:webkit": "node scripts/landing-assertions.mjs --engine=webkit",
+    "media:poster": "node scripts/media/build-poster.mjs",
+    "build:messages": "node -e \"console.error('build:messages is STALE and would delete 56 live keys. Read the banner at the top of scripts/build-messages.mjs before reviving it, then run it directly with: node scripts/build-messages.mjs'); process.exit(1)\""
+  },
+  "dependencies": {
+    "@base-ui/react": "^1.6.0",
+    "@hookform/resolvers": "^5.4.0",
+    "@vercel/analytics": "^2.0.1",
+    "@vercel/speed-insights": "^2.0.0",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "lenis": "^1.3.25",
+    "motion": "^12.42.2",
+    "next": "15.5.22",
+    "next-intl": "^4.13.2",
+    "next-mdx-remote": "^6.0.0",
+    "posthog-js": "^1.404.1",
+    "react": "19.1.0",
+    "react-dom": "19.1.0",
+    "react-hook-form": "^7.82.0",
+    "shadcn": "^4.13.1",
+    "tailwind-merge": "^3.6.0",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@eslint/eslintrc": "^3",
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "eslint": "^9",
+    "eslint-config-next": "15.5.22",
+    "tailwindcss": "^4",
+    "typescript": "^5"
+  }
+}

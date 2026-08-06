@@ -1,10 +1,18 @@
-"""Управление рисками: размер позиции через ATR, стоп-лосс, дневной лимит убытков."""
+"""Управление рисками: размер позиции через ATR, стоп-лосс, дневной лимит убытков.
+
+Open-position and daily-PnL state is persisted via risk/state_store.py
+(a lock-guarded JSON file) rather than kept in an in-process dict: the
+dashboard and the bot run as separate OS processes (start.sh), so two
+independent in-memory copies would each enforce max_open_positions /
+max_daily_loss_pct against an incomplete view. See state_store.py.
+"""
 
 import logging
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass, fields
 from typing import Optional
 
 from config import config
+from risk.state_store import transaction
 
 logger = logging.getLogger(__name__)
 
@@ -25,6 +33,11 @@ class PositionSizing:
         distance = abs(self.entry_price - self.stop_price)
         return self.entry_price + 2 * distance
 
+    @classmethod
+    def from_dict(cls, data: dict) -> "PositionSizing":
+        known = {f.name for f in fields(cls)}
+        return cls(**{k: v for k, v in data.items() if k in known})
+
 
 @dataclass
 class RiskCheckResult:
@@ -43,8 +56,6 @@ class RiskManager:
 
     def __init__(self):
         self.cfg = config.risk
-        self._daily_pnl: float = 0.0
-        self._open_positions: dict[str, PositionSizing] = {}
 
     # ─── Размер позиции ───────────────────────────────────────────────
 
@@ -124,16 +135,21 @@ class RiskManager:
 
         is_buy = direction.lower() in ("buy", "long")
 
+        with transaction() as state:
+            pos_count = len(state["open_positions"])
+            has_ticker = ticker in state["open_positions"]
+            daily_pnl = state["daily_pnl"]
+
         if is_buy:
             # Лимит открытых позиций
-            if len(self._open_positions) >= self.cfg.max_open_positions:
+            if pos_count >= self.cfg.max_open_positions:
                 return RiskCheckResult(
                     allowed=False,
                     reason=f"Достигнут лимит открытых позиций: {self.cfg.max_open_positions}",
                 )
 
             # Уже в позиции по этому тикеру
-            if ticker in self._open_positions:
+            if has_ticker:
                 return RiskCheckResult(
                     allowed=False,
                     reason=f"Позиция по {ticker} уже открыта",
@@ -141,17 +157,22 @@ class RiskManager:
 
         # Дневной лимит убытков
         max_daily_loss = portfolio_value * self.cfg.max_daily_loss_pct
-        if self._daily_pnl <= -max_daily_loss:
+        if daily_pnl <= -max_daily_loss:
             return RiskCheckResult(
                 allowed=False,
                 reason=(
                     f"Достигнут дневной лимит убытков: "
-                    f"{self._daily_pnl:.2f} руб. (лимит -{max_daily_loss:.2f} руб.)"
+                    f"{daily_pnl:.2f} руб. (лимит -{max_daily_loss:.2f} руб.)"
                 ),
             )
 
-        # Размер позиции не превышает max_position_pct
-        if position and position.position_value > portfolio_value * self.cfg.max_position_pct * 20:
+        # Размер позиции не превышает разумный множитель риска на сделку.
+        # max_position_pct — это доля капитала, которой готовы рискнуть (риск
+        # до стопа), а не сама заявка: при узком стопе номинал позиции
+        # закономерно в разы больше риска. 20x — грубый потолок "не более
+        # 20 таких риск-порций в одной позиции", подобранный эмпирически;
+        # если стратегия сама требует иного, править здесь.
+        if position and position.position_value > portfolio_value * self.cfg.max_position_pct * _POSITION_VALUE_SANITY_MULTIPLIER:
             return RiskCheckResult(
                 allowed=False,
                 reason="Размер позиции превышает допустимый лимит",
@@ -163,17 +184,20 @@ class RiskManager:
 
     def register_open(self, position: PositionSizing) -> None:
         """Зарегистрировать открытие позиции."""
-        self._open_positions[position.ticker] = position
+        with transaction() as state:
+            state["open_positions"][position.ticker] = asdict(position)
         logger.info("Открыта позиция: %s", position.ticker)
 
     def register_close(self, ticker: str, exit_price: float) -> float:
         """Зарегистрировать закрытие позиции, вернуть PnL."""
-        position = self._open_positions.pop(ticker, None)
-        if position is None:
-            return 0.0
+        with transaction() as state:
+            data = state["open_positions"].pop(ticker, None)
+            if data is None:
+                return 0.0
+            position = PositionSizing.from_dict(data)
+            pnl = (exit_price - position.entry_price) * position.shares
+            state["daily_pnl"] += pnl
 
-        pnl = (exit_price - position.entry_price) * position.shares
-        self._daily_pnl += pnl
         logger.info(
             "Закрыта позиция %s: вход %.2f, выход %.2f, PnL %.2f руб.",
             ticker, position.entry_price, exit_price, pnl,
@@ -182,16 +206,22 @@ class RiskManager:
 
     def reset_daily(self) -> None:
         """Сбросить суточный PnL (вызывать в начале торговой сессии)."""
-        self._daily_pnl = 0.0
+        with transaction() as state:
+            state["daily_pnl"] = 0.0
         logger.info("Дневной PnL сброшен")
 
     @property
     def daily_pnl(self) -> float:
-        return self._daily_pnl
+        with transaction() as state:
+            return state["daily_pnl"]
 
     @property
     def open_positions(self) -> dict[str, PositionSizing]:
-        return dict(self._open_positions)
+        with transaction() as state:
+            return {
+                ticker: PositionSizing.from_dict(data)
+                for ticker, data in state["open_positions"].items()
+            }
 
     def trailing_stop(
         self,
@@ -203,19 +233,76 @@ class RiskManager:
         Рассчитать скользящий стоп для открытой позиции.
         Возвращает новый уровень стоп-лосса или None если позиция не найдена.
         """
-        position = self._open_positions.get(ticker)
-        if position is None:
-            return None
+        with transaction() as state:
+            data = state["open_positions"].get(ticker)
+            if data is None:
+                return None
+            position = PositionSizing.from_dict(data)
 
-        new_stop = current_price - atr * self.cfg.atr_stop_multiplier
-        if new_stop > position.stop_price:
-            logger.info(
-                "Trailing stop %s: %.2f → %.2f",
-                ticker, position.stop_price, new_stop,
-            )
-            position.stop_price = new_stop
+            new_stop = current_price - atr * self.cfg.atr_stop_multiplier
+            if new_stop > position.stop_price:
+                logger.info(
+                    "Trailing stop %s: %.2f → %.2f",
+                    ticker, position.stop_price, new_stop,
+                )
+                position.stop_price = new_stop
+                state["open_positions"][ticker] = asdict(position)
 
-        return position.stop_price
+            return position.stop_price
 
+    def reconcile_with_broker(self, broker_positions: dict[str, dict]) -> list[str]:
+        """
+        Выровнять внутренний трекер с реальными позициями у брокера.
+
+        Защищает от главного риска рассинхронизации: сетевая ошибка при
+        выставлении заявки может означать как "заявка не прошла", так и
+        "заявка прошла, но ответ не дошёл" — во втором случае трекер думает,
+        что позиции нет, и на следующем цикле стратегия открывает такую же
+        позицию повторно. Источник истины — брокер; трекер подстраивается
+        под него, расхождения возвращаются как сообщения для алерта.
+
+        broker_positions: {ticker: {"avg_price": float, "lots": int}} —
+        текущие реальные позиции у брокера.
+        """
+        messages: list[str] = []
+        with transaction() as state:
+            tracked = state["open_positions"]
+            tracked_tickers = set(tracked)
+            broker_tickers = set(broker_positions)
+
+            for ticker in sorted(broker_tickers - tracked_tickers):
+                info = broker_positions[ticker]
+                avg_price = float(info.get("avg_price") or 0)
+                lots = int(info.get("lots") or 0)
+                # Стоп неизвестен — используем цену входа как временный,
+                # консервативный (более тесный, а не более широкий) стоп до
+                # ручной проверки оператором, а не гадаем реальный уровень.
+                tracked[ticker] = asdict(PositionSizing(
+                    ticker=ticker,
+                    entry_price=avg_price,
+                    stop_price=avg_price,
+                    lot_size=lots,
+                    shares=lots,
+                    risk_amount=0.0,
+                    position_value=avg_price * lots,
+                ))
+                messages.append(
+                    f"{ticker}: позиция у брокера отсутствовала во внутреннем трекере — "
+                    f"импортирована (стоп-лосс требует ручной проверки)"
+                )
+
+            for ticker in sorted(tracked_tickers - broker_tickers):
+                del tracked[ticker]
+                messages.append(
+                    f"{ticker}: позиция закрыта у брокера, но оставалась во внутреннем "
+                    f"трекере — снята"
+                )
+
+        for msg in messages:
+            logger.warning("Risk reconciliation: %s", msg)
+        return messages
+
+
+_POSITION_VALUE_SANITY_MULTIPLIER = 20
 
 risk_manager = RiskManager()

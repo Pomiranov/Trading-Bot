@@ -1,0 +1,269 @@
+# 13 — Stale Documents Register
+
+| Field | Value |
+|---|---|
+| **Дата аудита** | 2026-08-05 |
+| **Путь к проекту** | `/Users/danila/Downloads/Trading-Bot-merge-learning-nik` |
+| **Ветка** | `quant-site-approved-reference-redesign` |
+| **Commit HEAD** | `a54a100b4d542f1d866b5f89336ce0703fea6ced` |
+| **Статус документа** | ACTIVE — реестр состояния всей документации |
+| **Область** | 46 Markdown-документов вне `docs/source/` |
+| **Связанные документы** | [00](00_SOURCE_INDEX.md) · [11](11_MASTER_ROADMAP.md) · [12](12_AGENT_WORKSTREAMS_AND_RESPONSIBILITIES.md) |
+
+> **Ничего не удалено.** Это прямое ограничение, установленное владельцем. Все рекомендации — «оставить», «обновить» или «архивировать (пометить)». Пометка означает добавление строки в шапку файла, а не его удаление.
+
+### Что удалось проверить
+- Полный инвентарь: 46 Markdown-файлов (`docs/` 15, `design/` 13, `website/docs/` 17, корень 2), с датами последнего изменения по Git и объёмом в строках.
+- Соответствие ключевых утверждений фактическому коду — построчно, для документов, которые могут ввести в заблуждение.
+- Untracked-статус 5 документов на дату аудита; закрыт 2026-08-06: четыре ролевых промта вынесены в `/Users/danila/OpenHands/import/quant-role-prompts/`, `design/DASHBOARD_UIUX_AUDIT.md` закоммичен (`dd2c5fe`).
+
+### Что проверить не удалось
+- Актуальность 13 документов `design/screens/**` и части `website/docs/**` в части **дизайнерского замысла** — они описывают визуальные решения, проверка которых требует доступа к аутентифицированному Dashboard UI ([04](04_DASHBOARD_AUDIT.md)).
+
+---
+
+## Executive Summary
+
+**Документации много (46 файлов), и она распадается на три очень разные группы.**
+
+1. **Опасная (2 файла).** `CLAUDE.md` и `README.md` — те самые документы, которые читают первыми. Оба содержат утверждения, прямо противоречащие коду. `CLAUDE.md` указывает неверный корень проекта, неверную активную ветку, неверные имена переменных окружения и неверную модель аутентификации. `README.md` называет продукт «институциональной платформой с байесовской системой убеждений» — ни то, ни другое не соответствует коду. **Это единственная группа, требующая немедленного исправления.**
+2. **Историческая (около 30 файлов).** Отчёты завершённых итераций редизайна сайта и Dashboard, планы реализации, аудиты июля. Как записи о проделанной работе они корректны; как описание текущего состояния — устарели. Их нужно пометить, чтобы никто не принял их за актуальные.
+3. **Живая и полезная (около 14 файлов).** Операционные руководства, гайд по медиа-ассетам, ADR, `LANDING_COPY_REMOVALS.md`, `SECURITY_REVIEW.md`. Их следует сохранить и поддерживать.
+
+**Особая находка:** самая ценная документация проекта находится **не в Markdown-файлах, а внутри кода**. Docstrings в `next.config.ts`, `bot/qf_platform/migrate.py`, `bot/ui/api/v2/__init__.py`, `bot/security/session_auth.py`, `website/src/app/[locale]/page.tsx` объясняют не «что», а «почему», с описанием отвергнутых альтернатив и конкретных инцидентов, которые к ним привели. Этот аудит опирался на них многократно. **Эту практику следует считать стандартом проекта и защищать при рефакторинге.**
+
+---
+
+## 1. Документы, требующие немедленного исправления
+
+<a id="x-01"></a>
+### [X-01] `README.md` — оверклеймы, противоречащие коду и собственному сайту
+
+| Поле | Значение |
+|---|---|
+| **Путь** | `README.md` (корень) |
+| **Объём** | 1 312 строк |
+| **Дата** | 2026-07-21 (Git) |
+| **Назначение** | Главное описание проекта; двуязычное (RU/EN) |
+| **Соответствует коду?** | **Частично — с критическими оверклеймами** |
+
+**Статус:** VERIFIED · **Критичность:** High · **Приоритет:** P0 · **Roadmap ID:** RM-P0-004
+
+**Что устарело / неверно:**
+
+| Утверждение README | Факт | Доказательство |
+|---|---|---|
+| «Институциональная платформа алгоритмической торговли» | Однопользовательский инструмент: 0 совпадений по `tenant|subscription|billing`; один брокерский счёт; whitelist `chat_id` | [A-01](02_REPOSITORY_AND_SYSTEM_ARCHITECTURE_AUDIT.md#a-01) |
+| «с **байесовской** системой убеждений» | Байесовского вывода нет. `grep -rniE "bayes|posterior|prior|likelihood"` по `bot/` → **0**. Формула — экспоненциальное сглаживание: `new_confidence = current + (target - current) * 0.15` | `bot/learning/belief_updater.py:305` |
+| Бейдж `License: MIT` | **Файла LICENSE в репозитории нет** | `ls LICENSE*` → нет совпадений |
+
+**Что всё ещё полезно:** описание архитектуры в общих чертах, инструкции быстрого старта, разделы про сигнальный движок, бэктест, конфигурацию и безопасность — в основном соответствуют.
+
+**Противоречия:** прямое противоречие с сайтом, который честно заявляет «Это AI? Нет — ни в смысле нейросетей, ни в смысле языковых моделей. В проекте нет ни одной ML-библиотеки» (`faq.a1`). README описывает тот же продукт сильнее, чем его продаёт маркетинг — редкая и нежелательная инверсия.
+
+**Рекомендация:** **ОБНОВИТЬ.** Убрать «институциональная» и «байесовская» либо заменить точными формулировками («торговый оператор для MOEX со статистикой доверия к стратегиям на экспоненциальном сглаживании»). Либо добавить LICENSE, либо убрать бейдж. Добавить в шапку ссылку на [00_SOURCE_INDEX](00_SOURCE_INDEX.md).
+
+**Чем заменяется:** частично — [01](01_CURRENT_PROJECT_CONTEXT.md) (контекст) и [02](02_REPOSITORY_AND_SYSTEM_ARCHITECTURE_AUDIT.md) (архитектура). README остаётся как точка входа, но должен ссылаться на Source Pack.
+
+---
+
+<a id="x-02"></a>
+### [X-02] `CLAUDE.md` — неверный корень, ветка, переменные и модель аутентификации
+
+| Поле | Значение |
+|---|---|
+| **Путь** | `CLAUDE.md` (корень) |
+| **Объём** | 141 строка |
+| **Дата** | 2026-07-20 (Git) |
+| **Назначение** | Инструкции для AI-агентов: где работать, как запускать, какие правила |
+| **Соответствует коду?** | **Нет — 6 неверных утверждений в базовых вещах** |
+
+**Статус:** VERIFIED · **Критичность:** High · **Приоритет:** P0 · **Roadmap ID:** RM-P0-004
+
+**Что неверно:**
+
+| # | Утверждение `CLAUDE.md` | Факт | Доказательство |
+|---|---|---|---|
+| 1 | «Canonical location: `/Users/danila/Documents/GitHub/Trading-Bot/`» и «Never edit files in ~/Downloads/Trading-Bot-*» | Активный репозиторий — **`/Users/danila/Downloads/Trading-Bot-merge-learning-nik`**. Каталог в `Documents/` существует, но его последние правки — 2026-07-28, тогда как здесь 5 коммитов впереди `origin` и HEAD от 2026-08-05 | `git rev-parse --show-toplevel`; `git status`: «ahead of origin by 5 commits» |
+| 2 | «Active branch: `merge-learning-nik`» | Фактическая ветка — **`quant-site-approved-reference-redesign`**. `merge-learning-nik` существует, но её HEAD от 2026-08-05 01:12, а рабочей — 10:28 | `git rev-parse --abbrev-ref HEAD` |
+| 3 | «`BOT_TOKEN` — Telegram bot token» | Код читает **`TELEGRAM_TOKEN`** | `bot/config.py:37` |
+| 4 | «`DASHBOARD_SECRET_KEY` — Flask secret key» | Такой переменной нет ни в коде, ни в `.env.example` | поиск по `.env.example` и `bot/config.py` |
+| 5 | «`BYBIT_API_KEY`/`BYBIT_API_SECRET` (optional)» | В коде есть (`bot/config.py:61-62`), но **отсутствуют в `.env.example`** | сверка списков переменных |
+| 6 | «Dashboard auth: JWT-based; credentials stored in `bot/data/credential_vault.json`» | Аутентификация — **серверные сессии, не JWT**. Схема прямо помечает: «Server-side sessions. **No JWT**, no client-side claims». Vault хранит брокерские/сервисные секреты, а не пароли операторов — те в `dashboard_users.password_hash` (Argon2id) | `bot/qf_platform/schema.py:447,450`; `bot/security/session_auth.py` |
+
+Дополнительно: `bot/tg/` описан aiogram-терминологией («FSM, middlewares»), тогда как используется **python-telegram-bot 22.8** (проверено импортом; `aiogram` не установлен). Понятийно близко (`ConversationHandler` ≈ FSM), но библиотека другая.
+
+**Что всё ещё полезно:** карта каталогов (в основном верна), таблица точек входа и портов, команды разработки, описание Windows-деплоя, правила про секреты.
+
+**Противоречия:** пункт 1 — самое серьёзное: инструкция предписывает агенту **не работать** в том каталоге, который фактически является активным репозиторием. Агент, буквально следующий `CLAUDE.md`, либо откажется работать, либо начнёт править устаревшую копию.
+
+**Рекомендация:** **ОБНОВИТЬ немедленно** — это самая дешёвая задача с самым широким эффектом (XS). Исправить все 6 пунктов, привести терминологию Telegram, добавить ссылку на [00_SOURCE_INDEX](00_SOURCE_INDEX.md) как на источник истины и правило «сначала `git rev-parse --show-toplevel`».
+
+**Чем заменяется:** дополняется [01](01_CURRENT_PROJECT_CONTEXT.md) и [12](12_AGENT_WORKSTREAMS_AND_RESPONSIBILITIES.md); сам `CLAUDE.md` остаётся как краткая точка входа.
+
+---
+
+## 2. `docs/` — 15 файлов
+
+| Путь | Строк | Дата | Назначение | Соответствие коду | Что устарело | Что полезно | Рекомендация | Заменяется |
+|---|---|---|---|---|---|---|---|---|
+| `docs/README.md` | 907 | 2026-06-28 | Полное описание бота (RU) | **Частично** | Самый старый документ проекта (июнь). Описывает Dashboard до рефакторинга; бейдж License MIT без файла LICENSE | Описание сигнального движка, бэктеста, конфигурации, REST API | **АРХИВИРОВАТЬ (пометить)** — дублирует корневой `README.md`, но старее его на 3 недели | [01](01_CURRENT_PROJECT_CONTEXT.md), [02](02_REPOSITORY_AND_SYSTEM_ARCHITECTURE_AUDIT.md) |
+| `docs/PROJECT_ARCHITECTURE.md` | 237 | 2026-07-20 | Схема системы | **Частично** | Схема верхнего уровня в целом верна, но не отражает: разделение `/api/v1` и `/api/v2`, платформенный слой `qf_platform`, дублирование Telegram-ботов, отсутствие связи website ↔ bot | Схема слоёв интерфейсов как отправная точка | **АРХИВИРОВАТЬ (пометить)** | [02](02_REPOSITORY_AND_SYSTEM_ARCHITECTURE_AUDIT.md) |
+| `docs/PROJECT_STRUCTURE.md` | 195 | 2026-07-20 | Карта каталогов | **Частично** | Заявляет «Trading-Bot/ ← Git root & project root (**ONE location**)» — это и есть источник путаницы [X-02]. Упоминает `credential_vault.json`, которого нет на диске (создаётся при первом использовании) | Карта каталогов `bot/` в основном верна | **АРХИВИРОВАТЬ (пометить)** | [02 §1](02_REPOSITORY_AND_SYSTEM_ARCHITECTURE_AUDIT.md) |
+| `docs/DASHBOARD_OPERATIONS.md` | 227 | 2026-07-29 | Эксплуатация Dashboard | **Вероятно да** (INFERRED) | Требует проверки на предмет production WSGI ([D-02](04_DASHBOARD_AUDIT.md)) | Операционные процедуры | **ОСТАВИТЬ, обновить** после RM-P1-012 | дополняется [04](04_DASHBOARD_AUDIT.md) |
+| `docs/LOCAL_DEVELOPMENT.md` | 207 | 2026-07-20 | Локальная разработка | **Частично** | Не описывает `QF_TEST_USER`/`QF_TEST_PASSWORD` для 72 пропускаемых тестов ([Q-04](08_QA_TESTING_PERFORMANCE_AND_RELIABILITY_AUDIT.md)); не упоминает, что `pytest` отсутствует в `requirements.txt` | Инструкции запуска | **ОСТАВИТЬ, обновить** в рамках RM-P0-003 | дополняется [08](08_QA_TESTING_PERFORMANCE_AND_RELIABILITY_AUDIT.md) |
+| `docs/GIT_WORKFLOW.md` | 142 | 2026-07-20 | Git-процесс | **Частично** | Описывает ветку `merge-learning-nik` как основную; фактическая работа идёт в `quant-site-approved-reference-redesign` | Общий процесс | **ОБНОВИТЬ** вместе с RM-P0-004 | — |
+| `docs/WINDOWS_DEPLOYMENT.md` | 265 | 2026-07-20 | Деплой на Windows Server 2019 | **UNVERIFIED** — среда недоступна | Оборачивает Werkzeug dev-сервер в службу NSSM ([D-02](04_DASHBOARD_AUDIT.md)) | Процедура NSSM, структура служб | **ОСТАВИТЬ, обновить** после RM-P1-012 | — |
+| `docs/windows-deployment.md` | 148 | 2026-07-14 | То же, в нижнем регистре | **Частично** | **Дубль** предыдущего файла, старее на 6 дней. `CLAUDE.md` ссылается именно на этот (`docs/windows-deployment.md`) | — | **АРХИВИРОВАТЬ (пометить)** — оставить `WINDOWS_DEPLOYMENT.md` | — |
+| `docs/DASHBOARD_QUALITY_LOG.md` | 99 | 2026-07-21 | Журнал качества | Исторический | Записи июля | Как история решений | **ОСТАВИТЬ** как журнал | — |
+| `docs/security/phase-0-report.md` | 67 | 2026-07-13 | Отчёт по безопасности, фаза 0 | Исторический | — | Контекст, почему приняты текущие решения | **ОСТАВИТЬ** как история; соответствующие тесты живы (`tests/security_tests/test_phase0_security.py`) | [07](07_SECURITY_PRIVACY_AND_COMPLIANCE_AUDIT.md) |
+| `docs/security/phase-1-report.md` | 111 | 2026-07-13 | Отчёт по безопасности, фаза 1 | Исторический | — | То же | **ОСТАВИТЬ** как история | [07](07_SECURITY_PRIVACY_AND_COMPLIANCE_AUDIT.md) |
+| `docs/BA_GPT_SYSTEM_PROMPT.md` | 670 | вне репозитория с 2026-08-06 | Промпт для BA-агента | Не о коде | — | Инструмент | **ВЫНЕСЕН** в `/Users/danila/OpenHands/import/quant-role-prompts/02_BUSINESS_ANALYST_PROMPT.md` решением владельца (OQ-DOC-01); копия под git — `.agents/skills/quant-business-analyst/references/02_BUSINESS_ANALYST_PROMPT.md` | — |
+| `docs/MARKETING_PROMPT_ENGINEER_GPT.md` | 479 | вне репозитория с 2026-08-06 | Промпт для маркетинга | Не о коде | — | Инструмент | **ВЫНЕСЕН** в `/Users/danila/OpenHands/import/quant-role-prompts/04_MARKETING_PROMPT.md` (OQ-DOC-01); копия под git — `.agents/skills/quant-marketing/references/04_MARKETING_PROMPT.md` | — |
+| `docs/PROJECT_MANAGER_PROMPT_ENGINEER_GPT.md` | 792 | вне репозитория с 2026-08-06 | Промпт для PM | Не о коде | Может конфликтовать с [12](12_AGENT_WORKSTREAMS_AND_RESPONSIBILITIES.md) — проверить согласованность | Инструмент | **ВЫНЕСЕН** в `/Users/danila/OpenHands/import/quant-role-prompts/01_PROJECT_MANAGER_CHAT_PROMPT.md` (OQ-DOC-01); копия под git — `.agents/skills/quant-project-manager/references/01_PROJECT_MANAGER_CHAT_PROMPT.md`; сверку с [12](12_AGENT_WORKSTREAMS_AND_RESPONSIBILITIES.md) выполнять по ней | частично [12](12_AGENT_WORKSTREAMS_AND_RESPONSIBILITIES.md) |
+
+---
+
+## 3. `design/` — 13 файлов
+
+| Путь | Строк | Дата | Назначение | Соответствие коду | Что устарело | Рекомендация | Заменяется |
+|---|---|---|---|---|---|---|---|
+| `design/ROADMAP.md` | 211 | 2026-07-20 | Roadmap редизайна Dashboard | **Нет** | Ссылается на структуру, которой больше нет: «`bot/ui/dashboard.py` → функция `_db_metrics()` и route `/api/metrics`». **Проверено:** ни `_db_metrics`, ни `/api/metrics` в `dashboard.py` нет — файл теперь 57-строчный launcher, а маршрут переехал в `legacy_api.py:285` | **АРХИВИРОВАТЬ (пометить как DEPRECATED)** | **[11](11_MASTER_ROADMAP.md)** — единственная актуальная Roadmap |
+| `design/AUDIT_REPORT.md` | 160 | 2026-07-20 | Аудит Dashboard (2026-07-19) | **Нет** | Вся инвентаризация привязана к `ui/dashboard.py → /api/*`, то есть к структуре до рефакторинга. Статусы BROKEN/PHANTOM относятся к устранённым проблемам | **АРХИВИРОВАТЬ (пометить)** | [04](04_DASHBOARD_AUDIT.md) |
+| `design/DASHBOARD_APPROVED_REFERENCE_AUDIT.md` | 2 493 | 2026-08-03 | Аудит по утверждённому референсу | **Вероятно да** (INFERRED) — самый свежий и самый крупный документ `design/` | Часть могла быть реализована после 03.08 | **ОСТАВИТЬ** — основной справочник по дизайну Dashboard | дополняется [04](04_DASHBOARD_AUDIT.md) |
+| `design/DASHBOARD_REDESIGN_IMPLEMENTATION_PLAN.md` | 198 | 2026-07-29 | План реализации редизайна | **UNVERIFIED** | Степень выполнения не установлена (нет доступа к UI) | **ОСТАВИТЬ, сверить** после визуального аудита | [04](04_DASHBOARD_AUDIT.md) |
+| `design/DESIGN_SYSTEM.md` | 208 | 2026-07-20 | Дизайн-система | **Частично** | Токены сайта менялись позже; зафиксирован дрейф `--qf-paper` и `--qf-accent-hover` ([Q-02](08_QA_TESTING_PERFORMANCE_AND_RELIABILITY_AUDIT.md)) | **ОБНОВИТЬ** в рамках RM-P2-015 | источник истины — `website/src/styles/tokens/` |
+| `design/DASHBOARD_UIUX_AUDIT.md` | 447 | 2026-08-06 (`dd2c5fe`) | UI/UX-аудит Dashboard | **UNVERIFIED** | — | **ОСТАВИТЬ, сверить** с [04](04_DASHBOARD_AUDIT.md) | дополняет [04](04_DASHBOARD_AUDIT.md) |
+| `design/UIUX_DESIGNER_META_PROMPT.md` | 789 | вне репозитория с 2026-08-06 | Промпт для дизайнера | Не о коде | — | **ВЫНЕСЕН** в `/Users/danila/OpenHands/import/quant-role-prompts/03_UIUX_DESIGNER_PROMPT.md` (OQ-DOC-01); копия под git — `.agents/skills/quant-uiux-designer/references/03_UIUX_DESIGNER_PROMPT.md` | — |
+| `design/screens/P0_01_dashboard.md` | 163 | 2026-07-20 | Спецификация экрана | **UNVERIFIED** | Спецификации до редизайна | **ОСТАВИТЬ, сверить** | [04](04_DASHBOARD_AUDIT.md) |
+| `design/screens/P0_02_analytics.md` | 141 | 2026-07-20 | То же | **UNVERIFIED** | То же | **ОСТАВИТЬ, сверить** | [04](04_DASHBOARD_AUDIT.md) |
+| `design/screens/P0_03_signals.md` | 146 | 2026-07-20 | То же | **UNVERIFIED** | То же | **ОСТАВИТЬ, сверить** | [04](04_DASHBOARD_AUDIT.md) |
+| `design/screens/P1_04_portfolio.md` | 153 | 2026-07-20 | То же | **UNVERIFIED** | То же | **ОСТАВИТЬ, сверить** | [04](04_DASHBOARD_AUDIT.md) |
+| `design/screens/P1_05_belief_system.md` | 152 | 2026-07-20 | То же | **UNVERIFIED** | Проверить, не описывает ли «belief» как ML/байесовскую систему — это была бы та же ошибка, что в README | **ОСТАВИТЬ, сверить** | [06 §4](06_BACKEND_DATA_AND_INTEGRATIONS_AUDIT.md) |
+| `design/screens/P1_06_hypotheses.md` | 197 | 2026-07-20 | То же | **UNVERIFIED** | То же | **ОСТАВИТЬ, сверить** | [04](04_DASHBOARD_AUDIT.md) |
+
+---
+
+## 4. `website/docs/` — 17 файлов
+
+| Путь | Строк | Дата | Назначение | Соответствие | Рекомендация | Заменяется |
+|---|---|---|---|---|---|---|
+| `SECURITY_REVIEW.md` | 176 | 2026-07-28 | Обзор безопасности сайта | **Да** | **ОСТАВИТЬ** — на него прямо ссылается `next.config.ts` как на реестр открытых вопросов (включая отложенный CSP `script-src`) | дополняется [07](07_SECURITY_PRIVACY_AND_COMPLIANCE_AUDIT.md) |
+| `LANDING_COPY_REMOVALS.md` | 169 | 2026-07-28 | Учёт удалённого с лендинга | **Да** | **ОСТАВИТЬ** — фиксирует, куда переехало каждое раскрытие при удалении секций `#brokers` и `#strategies`; на него ссылается `page.tsx` | — |
+| `VIDEO_ASSET_GUIDE.md` | 327 | 2026-07-27 | Гайд по медиа-ассетам | **Частично** | **ОСТАВИТЬ, пометить**: описывает `hero-prototype.mp4`, который **не используется ни одним компонентом** ([W-06](03_WEBSITE_AUDIT.md)). Решение — RM-P2-011 | [03 §W-06](03_WEBSITE_AUDIT.md) |
+| `adr/0001-monogram.md` | 58 | 2026-07-20 | ADR по монограмме | **Да** | **ОСТАВИТЬ** — образец формата ADR для проекта | — |
+| `REDESIGN_QA_REPORT.md` | 740 | 2026-07-27 | QA-отчёт редизайна | Исторический | **АРХИВИРОВАТЬ (пометить)** | [03](03_WEBSITE_AUDIT.md), [08](08_QA_TESTING_PERFORMANCE_AND_RELIABILITY_AUDIT.md) |
+| `REFERENCE_IMPLEMENTATION_PLAN.md` | 954 | 2026-07-27 | План реализации по референсу | Исторический (выполнен) | **АРХИВИРОВАТЬ (пометить)** | — |
+| `SITE_AUDIT.md` | 330 | 2026-07-27 | Аудит сайта | Исторический | **АРХИВИРОВАТЬ (пометить)** | **[03](03_WEBSITE_AUDIT.md)** |
+| `SITE_BLOCK_AUDIT.md` | 642 | 2026-07-27 | Аудит блоков | Исторический | **АРХИВИРОВАТЬ (пометить)** | [03 §2](03_WEBSITE_AUDIT.md) |
+| `SITE_REDESIGN_PLAN.md` | 413 | 2026-07-27 | План редизайна | Исторический (выполнен) | **АРХИВИРОВАТЬ (пометить)** | — |
+| `DESIGN_EXCELLENCE_AUDIT.md` | 128 | 2026-07-27 | Аудит качества дизайна | Исторический | **АРХИВИРОВАТЬ (пометить)** | [03](03_WEBSITE_AUDIT.md) |
+| `audit/DESIGN_AUDIT_2026-07.md` | 443 | 2026-07-27 | Дизайн-аудит июля | Исторический | **АРХИВИРОВАТЬ (пометить)** | [03](03_WEBSITE_AUDIT.md) |
+| `audit/BRAND_POSITIONING.md` | 51 | 2026-07-21 | Позиционирование бренда | **Частично** | **ОСТАВИТЬ, сверить** с [09 §2](09_PRODUCT_UX_MARKETING_AND_MONETIZATION_AUDIT.md) | [09](09_PRODUCT_UX_MARKETING_AND_MONETIZATION_AUDIT.md) |
+| `audit/CRO_REPORT.md` | 54 | 2026-07-21 | Отчёт по конверсии | Исторический | **АРХИВИРОВАТЬ (пометить)** — писался до текущей структуры страницы | [09 §4](09_PRODUCT_UX_MARKETING_AND_MONETIZATION_AUDIT.md) |
+| `audit/MARKETING_AUDIT.md` | 78 | 2026-07-21 | Маркетинговый аудит | Исторический | **АРХИВИРОВАТЬ (пометить)** | [09](09_PRODUCT_UX_MARKETING_AND_MONETIZATION_AUDIT.md) |
+| `audit/UX_REVIEW.md` | 65 | 2026-07-21 | UX-обзор | Исторический | **АРХИВИРОВАТЬ (пометить)** | [03 §3](03_WEBSITE_AUDIT.md) |
+| `audit/DESIGN_RECOMMENDATIONS.md` | 45 | 2026-07-21 | Рекомендации по дизайну | Исторический | **АРХИВИРОВАТЬ (пометить)** | [03](03_WEBSITE_AUDIT.md) |
+| `design-references/approved-stitch-reference.jpg` | — | 2026-07-27 | Утверждённый визуальный референс | **Да** | **ОСТАВИТЬ** — источник истины по визуальному направлению | — |
+
+Прочее: `website/README.md` (не в таблице выше) — 1 450 байт, краткий; **ОСТАВИТЬ**. `bot/ui/static/miniapp/BOTFATHER.md` — инструкция подключения Mini App, **ОСТАВИТЬ** (актуальна, и её замечание про HTTPS подтвердилось в [T-03](05_TELEGRAM_BOT_AUDIT.md)). `knowledge/HOW_TO_ADD_KNOWLEDGE.md` и `website/public/media/quant-hero/README.md` — **ОСТАВИТЬ**.
+
+---
+
+## 5. Документы, которые НЕЛЬЗЯ считать актуальными
+
+Сводный список для быстрой справки. Использовать их как основание для решений **запрещено** ([12 §2](12_AGENT_WORKSTREAMS_AND_RESPONSIBILITIES.md)):
+
+**Критично (содержат неверные утверждения о текущем состоянии):**
+1. `CLAUDE.md` — до исправления RM-P0-004
+2. `README.md` — до исправления RM-P0-004
+3. `design/ROADMAP.md` — заменён [11](11_MASTER_ROADMAP.md)
+4. `design/AUDIT_REPORT.md` — описывает устранённые проблемы устаревшей структуры
+5. `docs/PROJECT_STRUCTURE.md` — источник путаницы с «одним каноническим расположением»
+6. `docs/PROJECT_ARCHITECTURE.md` — не отражает v1/v2, `qf_platform`, дублирование ботов
+7. `docs/README.md` — самый старый (июнь)
+8. `docs/windows-deployment.md` — дубль в нижнем регистре
+
+**Исторические (корректны как записи, но не как описание «сейчас»):**
+9–17. `website/docs/SITE_AUDIT.md`, `SITE_BLOCK_AUDIT.md`, `SITE_REDESIGN_PLAN.md`, `REDESIGN_QA_REPORT.md`, `REFERENCE_IMPLEMENTATION_PLAN.md`, `DESIGN_EXCELLENCE_AUDIT.md`, `audit/DESIGN_AUDIT_2026-07.md`, `audit/CRO_REPORT.md`, `audit/MARKETING_AUDIT.md`, `audit/UX_REVIEW.md`, `audit/DESIGN_RECOMMENDATIONS.md`
+
+**Требуют сверки (актуальность не установлена):**
+18–24. `design/screens/*` (6 файлов), `design/DASHBOARD_REDESIGN_IMPLEMENTATION_PLAN.md`
+
+---
+
+## 6. Рекомендуемая процедура пометки
+
+Не удаляя файл, добавить в самое начало:
+
+```markdown
+> **⚠️ АРХИВНЫЙ ДОКУМЕНТ — не источник истины.**
+> Отражает состояние на <дата>. Текущее состояние: `docs/source/<номер>_<файл>.md`.
+> Проверено аудитом 2026-08-05 (commit a54a100). Сохранён как запись о проделанной работе.
+```
+
+Для документов, требующих обновления, а не архивации:
+
+```markdown
+> **🔄 ЧАСТИЧНО УСТАРЕЛ.** Расхождения с кодом на 2026-08-05 (commit a54a100)
+> перечислены в `docs/source/13_STALE_DOCUMENTS_REGISTER.md`. Обновление — задача <RM-ID>.
+```
+
+---
+
+## 7. Что стоит сохранить как практику
+
+**Документация внутри кода — сильнейшая сторона проекта.** Примеры, на которые опирался этот аудит:
+
+| Файл | Что объясняет |
+|---|---|
+| `website/next.config.ts` | Почему `distDir` пробовали и откатили (Turbopack ломается на виртуальном модуле шрифтов); почему `devIndicators` перенесён; что именно **не** входит в CSP и почему |
+| `website/src/app/[locale]/layout.tsx` | Почему `dynamicParams = false` — с перечислением трёх конкретных 500-х ошибок, которые это устраняет |
+| `website/src/app/[locale]/page.tsx` | Порядок секций как аргумент; что унесли с собой две удалённые секции и куда переехало каждое раскрытие |
+| `bot/qf_platform/migrate.py` | Что миграция при импорте молча ломала четыре эндпоинта навсегда; почему транзакция на statement |
+| `bot/ui/api/v2/__init__.py` | Правило контрактного слоя; почему тихий fallback опаснее ошибки («так live-число попадает на sandbox-экран») |
+| `bot/security/session_auth.py` | Почему отвергнут JWT; почему CSRF-cookie **не** `HttpOnly`; почему `Secure` по умолчанию включён |
+| `bot/main.py` | Почему нужна реконсиляция позиций: `place_market_order` глотает исключения, включая таймаут **после** исполнения |
+| `bot/ui/legacy_api.py` | Почему loopback-проверка использует реальный TCP-peer, а не `X-Forwarded-For` |
+| `bot/ui/views.py` | Почему Mini App вынесен на отдельный маршрут (67 KB = 21 % payload скрытого экрана) |
+| `website/scripts/build-messages.mjs` | Почему скрипт намеренно выведен из строя (удалил бы 56 живых ключей) |
+
+**Рекомендация:** зафиксировать в [12](12_AGENT_WORKSTREAMS_AND_RESPONSIBILITIES.md) как обязательную практику — при удалении или изменении такого решения объяснение должно переезжать вместе с кодом, а не исчезать.
+
+---
+
+## Top Critical Findings
+
+1. **[X-02]** `CLAUDE.md` указывает неверный корень проекта, неверную ветку, неверные имена переменных и неверную модель аутентификации — агент, следующий ему буквально, будет работать в устаревшей копии.
+2. **[X-01]** `README.md` называет продукт «институциональной платформой с байесовской системой убеждений» — оба утверждения не подтверждаются кодом и противоречат честному сайту.
+3. `design/ROADMAP.md` и `design/AUDIT_REPORT.md` ссылаются на функции и маршруты, которых больше нет в указанных файлах.
+4. Дубль руководства по Windows-деплою, причём `CLAUDE.md` ссылается на более старую версию.
+5. Бейдж `License: MIT` в `README.md` при отсутствии файла LICENSE.
+
+## Quick Wins
+
+| Действие | Объём |
+|---|---|
+| Исправить 6 пунктов `CLAUDE.md` | XS |
+| Убрать 2 оверклейма из `README.md` | XS |
+| Пометить 8 критично устаревших документов | XS |
+| Удалить дубль `docs/windows-deployment.md` (или пометить) и поправить ссылку в `CLAUDE.md` | XS |
+| Добавить LICENSE либо убрать бейдж | XS |
+
+## Recommended Next Steps
+
+1. RM-P0-004 — исправить `CLAUDE.md` и `README.md`.
+2. Пометить документы из раздела 5 по процедуре раздела 6.
+3. Свести два Windows-руководства в одно.
+4. Сверить `design/screens/*` и `design/DASHBOARD_UIUX_AUDIT.md` при визуальном аудите Dashboard.
+5. Проверить исторический промт PM (`.agents/skills/quant-project-manager/references/01_PROJECT_MANAGER_CHAT_PROMPT.md`, копия вне репозитория — `/Users/danila/OpenHands/import/quant-role-prompts/01_PROJECT_MANAGER_CHAT_PROMPT.md`) на согласованность с [12](12_AGENT_WORKSTREAMS_AND_RESPONSIBILITIES.md).
+
+## Open Questions
+
+См. [14](14_OPEN_QUESTIONS_AND_DECISIONS.md): OQ-DOC-01 (закрыт 2026-08-06), OQ-DOC-02 (заводить ли `docs/archive/` вместо пометок в шапке), OQ-LEGAL-04 (лицензия проекта).
+
+## Уровень уверенности документа
+
+**Высокий** для инвентаря, дат, объёмов и всех расхождений в `CLAUDE.md` и `README.md` — каждое проверено против кода конкретной командой или файлом.
+**Средний** для оценки исторических документов сайта — их устаревание выведено из даты и факта завершения редизайна, без построчной сверки каждого.
+**Низкий** для 7 документов, помеченных «требуют сверки» — это дизайн-спецификации, проверка которых требует доступа к аутентифицированному Dashboard UI, не полученного в этом аудите.

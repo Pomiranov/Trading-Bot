@@ -1,0 +1,32 @@
+/**
+ * Explicit z-index scale. Never use arbitrary values like z-50 / z-9999
+ * outside this list.
+ *
+ * --z-scene and --z-scene-overlay are gone with the Three.js scene they were
+ * added for. The hero video sits at --z-base inside its own stacking context.
+ */
+
+@theme {
+  --z-base: 0;
+  --z-nav: 40;
+  /* The assistant dock. Above the page and above the header, so the orb is
+     reachable wherever the reader has scrolled to; below --z-modal-backdrop, so
+     it cannot float over the open mobile-nav panel. That ordering is the whole
+     reason it is 60 and not 50 or 100. */
+  --z-launcher: 60;
+  --z-modal-backdrop: 80;
+  --z-modal: 90;
+  --z-toast: 100;
+  --z-tooltip: 110;
+}
+
+/**
+ * Unconditional mirror, for the same reason radius.css has one: `--z-launcher` is
+ * read through `z-index: var(--z-launcher)` in a plain CSS rule in globals.css,
+ * not through a `z-*` utility, and Tailwind v4 tree-shakes a `@theme` variable
+ * that no utility consumes. Without this the declaration resolves to the empty
+ * string and the dock silently drops to `z-index: auto`.
+ */
+:root {
+  --z-launcher: 60;
+}

@@ -1,0 +1,59 @@
+{
+  "daily_pnl": 0.0,
+  "open_positions": {
+    "SBER": {
+      "ticker": "SBER",
+      "entry_price": 100.0,
+      "stop_price": 110.0,
+      "lot_size": 1,
+      "shares": 500,
+      "risk_amount": 2500.0,
+      "position_value": 50000.0
+    },
+    "TICK0": {
+      "ticker": "TICK0",
+      "entry_price": 100.0,
+      "stop_price": 95.0,
+      "lot_size": 1,
+      "shares": 500,
+      "risk_amount": 2500.0,
+      "position_value": 50000.0
+    },
+    "TICK1": {
+      "ticker": "TICK1",
+      "entry_price": 100.0,
+      "stop_price": 95.0,
+      "lot_size": 1,
+      "shares": 500,
+      "risk_amount": 2500.0,
+      "position_value": 50000.0
+    },
+    "TICK2": {
+      "ticker": "TICK2",
+      "entry_price": 100.0,
+      "stop_price": 95.0,
+      "lot_size": 1,
+      "shares": 500,
+      "risk_amount": 2500.0,
+      "position_value": 50000.0
+    },
+    "TICK3": {
+      "ticker": "TICK3",
+      "entry_price": 100.0,
+      "stop_price": 95.0,
+      "lot_size": 1,
+      "shares": 500,
+      "risk_amount": 2500.0,
+      "position_value": 50000.0
+    },
+    "TICK4": {
+      "ticker": "TICK4",
+      "entry_price": 100.0,
+      "stop_price": 95.0,
+      "lot_size": 1,
+      "shares": 500,
+      "risk_amount": 2500.0,
+      "position_value": 50000.0
+    }
+  }
+}

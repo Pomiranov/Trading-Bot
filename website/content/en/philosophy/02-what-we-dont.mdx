@@ -1,0 +1,8 @@
+---
+id: bounded-conviction
+order: 2
+heading: Bounded conviction
+sourceRef: belief_updater.py:46-47 · trading_orchestrator.py:63
+---
+
+Confidence is bounded to the 0.05–0.95 range. No strategy starts at full trust, and none reaches it. A signal below the 0.20 floor is recorded but not executed. Position size comes from volatility and a fixed risk budget: confidence decides whether a trade happens, it does not yet scale how large it is.

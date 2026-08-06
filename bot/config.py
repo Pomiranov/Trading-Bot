@@ -50,6 +50,10 @@ class DashboardConfig:
     require_api_key_for_reads: bool = field(
         default_factory=lambda: os.getenv("DASHBOARD_REQUIRE_API_KEY", "false").lower() == "true"
     )
+    miniapp_url: str = field(default_factory=lambda: os.getenv(
+        "MINIAPP_URL",
+        f"http://{os.getenv('DASHBOARD_HOST', '127.0.0.1')}:{os.getenv('DASHBOARD_PORT', '5001')}/miniapp"
+    ))
 
 
 @dataclass
@@ -70,6 +74,7 @@ class RiskConfig:
 @dataclass
 class SecretsConfig:
     master_key: str = field(default_factory=lambda: os.getenv("SECRETS_MASTER_KEY", "").strip())
+    internal_token: str = field(default_factory=lambda: os.getenv("QF_INTERNAL_TOKEN", "").strip())
 
 
 @dataclass
@@ -91,11 +96,12 @@ class AppConfig:
     logging: LoggingConfig = field(default_factory=LoggingConfig)
 
     moex_base_url: str = "https://iss.moex.com/iss"
-    rules_file: Path = BASE_DIR.parent / "knowledge" / "rules.yaml"
+    rules_dir: Path = PROJECT_ROOT / "knowledge" / "rules"
+    rules_file: Path = PROJECT_ROOT / "knowledge" / "rules" / "rules.yaml"
     log_level: str = field(default_factory=lambda: os.getenv("LOG_LEVEL", "INFO"))
 
     tickers: list = field(default_factory=lambda: os.getenv(
-        "TICKERS", "SBER,GAZP,LKOH,YNDX,NVTK"
+        "TICKERS", "SBER,GAZP,LKOH,NVTK"
     ).split(","))
 
     poll_interval: int = field(default_factory=lambda: int(os.getenv("POLL_INTERVAL", "60")))

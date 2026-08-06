@@ -237,7 +237,8 @@ async def trade_cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
 def build_trade_conversation() -> ConversationHandler:
     return ConversationHandler(
         entry_points=[
-            CallbackQueryHandler(cb_trade_start, pattern=r"^trade_(buy|sell)_[a-z]+$"),
+            # Matches both trade_buy_tinkoff and trade_sell_tinkoff_SBER (from position detail)
+            CallbackQueryHandler(cb_trade_start, pattern=r"^trade_(buy|sell)_.+"),
         ],
         states={
             TradeStates.ENTER_TICKER: [

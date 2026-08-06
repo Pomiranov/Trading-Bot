@@ -1,0 +1,55 @@
+/**
+ * Radius scale.
+ *
+ * The previous system had a single `--radius: 0.5rem` feeding a shadcn bridge,
+ * so every panel on the page rendered at 8px. Measured census on the live
+ * build: 8px ×37, 6.4px ×8, 4.8px ×24. The approved reference reads at roughly
+ * 16–24px on cards, hero panel and the closing CTA block, and at 8px the whole
+ * page reads as an admin tool rather than as a product surface.
+ *
+ * ── Why the scale is declared twice ──
+ *
+ * Tailwind v4 emits a `@theme` variable only when some utility consumes it.
+ * That is a real trap here, not a theoretical one: `--radius-xl` was declared
+ * in `globals.css` and resolved to the *empty string* at runtime, because
+ * nothing referenced `rounded-xl`. Any component writing
+ * `borderRadius: "var(--radius-xl)"` in an inline style silently got nothing.
+ *
+ * So: `@theme` declares the scale so the plain `rounded-lg` / `rounded-xl`
+ * utilities (used by shadcn's own components) resolve to our values, and the
+ * `:root` block below re-declares the identical values unconditionally so the
+ * custom properties are always present for `rounded-[var(--radius-*)]` and for
+ * inline styles regardless of what Tailwind decides to keep.
+ *
+ * The two blocks must stay in sync. Values are literal in both — do not make
+ * one derive from the other, because the derivation is exactly what can be
+ * tree-shaken away.
+ *
+ * Nesting rule: an inner radius sits ~4px below its outer radius, so a
+ * `--radius-md` row inside a `--radius-xl` panel keeps the corners concentric.
+ */
+
+@theme {
+  --radius-xs: 4px; /* reserved bottom step — no consumers today */
+  --radius-sm: 8px; /* focus-ring rounding on text links, nav items */
+  --radius-md: 12px; /* buttons, inputs, nested panels, terminal rows */
+  --radius-lg: 16px; /* cards — was 8px */
+  --radius-xl: 20px; /* large panels, terminal frame */
+  --radius-2xl: 24px; /* hero panel, final-CTA panel */
+  --radius-full: 9999px; /* pills, status chips */
+}
+
+/**
+ * Unconditional mirror. See the note above — this is what guarantees
+ * `getComputedStyle(document.documentElement).getPropertyValue('--radius-2xl')`
+ * returns "24px" and not "".
+ */
+:root {
+  --radius-xs: 4px;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+  --radius-2xl: 24px;
+  --radius-full: 9999px;
+}

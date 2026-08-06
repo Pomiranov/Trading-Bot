@@ -19,33 +19,48 @@ def nav_row(back: str | None = "m_main", refresh: str | None = None) -> list[Inl
 # ── Main menu ─────────────────────────────────────────────────────────────────
 
 MAIN_MENU = InlineKeyboardMarkup([
+    # — Торговля —
     [
-        InlineKeyboardButton("📊 Dashboard",    callback_data="m_dashboard"),
-        InlineKeyboardButton("💼 Портфель",     callback_data="m_portfolio"),
+        InlineKeyboardButton("🤖 Auto Trading",  callback_data="m_trading_bot"),
+        InlineKeyboardButton("📡 Сигналы",       callback_data="m_signals"),
     ],
     [
-        InlineKeyboardButton("📈 Позиции",      callback_data="m_positions"),
-        InlineKeyboardButton("📑 Заявки",       callback_data="m_orders"),
+        InlineKeyboardButton("📊 Paper Trading", callback_data="m_paper"),
+        InlineKeyboardButton("🔄 Торговля",      callback_data="m_trading"),
     ],
     [
-        InlineKeyboardButton("📜 Операции",     callback_data="m_operations"),
-        InlineKeyboardButton("💰 Баланс",       callback_data="m_balance"),
+        InlineKeyboardButton("🧠 Learning",      callback_data="m_learning"),
+    ],
+    # — Мониторинг —
+    [
+        InlineKeyboardButton("📊 Dashboard",     callback_data="m_dashboard"),
+        InlineKeyboardButton("💼 Портфель",      callback_data="m_portfolio"),
     ],
     [
-        InlineKeyboardButton("📊 Аналитика",    callback_data="m_analytics"),
-        InlineKeyboardButton("📈 Статистика",   callback_data="m_statistics"),
+        InlineKeyboardButton("📈 Позиции",       callback_data="m_positions"),
+        InlineKeyboardButton("📑 Заявки",        callback_data="m_orders"),
+    ],
+    # — Аналитика —
+    [
+        InlineKeyboardButton("📊 Аналитика",     callback_data="m_analytics"),
+        InlineKeyboardButton("📈 Статистика",    callback_data="m_statistics"),
     ],
     [
-        InlineKeyboardButton("🤖 Торговый бот", callback_data="m_trading_bot"),
-        InlineKeyboardButton("📡 Сигналы",      callback_data="m_signals"),
+        InlineKeyboardButton("📜 Операции",      callback_data="m_operations"),
+        InlineKeyboardButton("💰 Баланс",        callback_data="m_balance"),
+    ],
+    # — Настройки —
+    [
+        InlineKeyboardButton("🔔 Уведомления",   callback_data="m_notifications"),
+        InlineKeyboardButton("⚙ Настройки",     callback_data="m_settings"),
     ],
     [
-        InlineKeyboardButton("🔔 Уведомления",  callback_data="m_notifications"),
-        InlineKeyboardButton("⚙ Настройки",    callback_data="m_settings"),
+        InlineKeyboardButton("👤 Аккаунт",       callback_data="m_account"),
+        InlineKeyboardButton("❓ Помощь",        callback_data="m_help"),
     ],
+    # — Развлечения —
     [
-        InlineKeyboardButton("👤 Аккаунт",      callback_data="m_account"),
-        InlineKeyboardButton("❓ Помощь",       callback_data="m_help"),
+        InlineKeyboardButton("🎮 Quant Hunt",    callback_data="m_game"),
     ],
 ])
 

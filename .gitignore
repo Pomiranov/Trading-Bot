@@ -1,19 +1,83 @@
+# ─── Secrets & Environment ────────────────────────────────────────────────────
 .env
+*.env.local
+Password.env
+Projects/
+
+# ─── Python ───────────────────────────────────────────────────────────────────
 __pycache__/
 *.pyc
+*.pyo
 *.pkl
-models/
-.DS_Store
-.bot.pid
-knowledge/rules.yaml.backup
-"Trading Bot.code-workspace"
+*.egg-info/
+dist/
+build/
+venv/
+.venv/
+.Python
+
+# ─── Runtime data (not for git) ───────────────────────────────────────────────
 bot/data/user_prefs.json
 bot/data/credential_vault.json
 bot/data/credential_vault.json.tmp
+data/credential_vault.json
+data/user_prefs.json
+.bot.pid
+bot/.bot.pid
+
+# ─── Raw knowledge books (copyright, large binaries) ──────────────────────────
+knowledge/raw/books/
+*.pdf
+
+# ─── Logs ─────────────────────────────────────────────────────────────────────
 logs/
 *.log
-logs/*.pid
+*.pid
+
+# ─── ML Models ────────────────────────────────────────────────────────────────
+models/
+*.pkl
+*.h5
+*.pt
+
+# ─── Knowledge backups ────────────────────────────────────────────────────────
+knowledge/rules.yaml.backup
+
+# ─── Node.js / Next.js ────────────────────────────────────────────────────────
+node_modules/
+.next/
+.nuxt/
+out/
+dist/
+.cache/
+*.tsbuildinfo
+
+# ─── macOS ────────────────────────────────────────────────────────────────────
+.DS_Store
+.AppleDouble
+.LSOverride
+Thumbs.db
+
+# ─── Claude Code (local settings, worktrees) ──────────────────────────────────
 .claude/
-Projects/trading-bot/Password.env
-Password.env
-*.env.local
+
+# ─── VS Code workspace ────────────────────────────────────────────────────────
+*.code-workspace
+
+# ─── Database dumps ───────────────────────────────────────────────────────────
+*.sql.bak
+*.dump
+
+# ─── Temporary / OS ───────────────────────────────────────────────────────────
+*.tmp
+*.bak
+*.swp
+*~
+
+# ─── Raw generated video sources (local prototypes only) ──────────────────────
+# Root-level only; website/public/media is governed by website/.gitignore.
+# See website/docs/VIDEO_ASSET_GUIDE.md.
+/*.mp4
+
+# ─── Playwright MCP scratch output ────────────────────────────────────────────
+.playwright-mcp/

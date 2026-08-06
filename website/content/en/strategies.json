@@ -1,0 +1,29 @@
+[
+  {
+    "id": "osc_range_moex_d1_fwd",
+    "market": "MOEX",
+    "timeframe": "D1",
+    "status": "forward",
+    "statusNote": "Runs on live data, execution stays in the sandbox",
+    "lastUpdate": "2026-07-12",
+    "source": "real-forward-test"
+  },
+  {
+    "id": "trend_moex",
+    "market": "MOEX",
+    "timeframe": "D1",
+    "status": "frozen",
+    "statusNote": "Stabilised but not cured — development stopped",
+    "lastUpdate": "2026-07-12",
+    "source": "real-forward-test"
+  },
+  {
+    "id": "wrd_moex",
+    "market": "MOEX",
+    "timeframe": "D1",
+    "status": "frozen",
+    "statusNote": "Branch closed: the result did not hold on new data",
+    "lastUpdate": "2026-07-12",
+    "source": "real-forward-test"
+  }
+]

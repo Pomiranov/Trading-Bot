@@ -10,7 +10,7 @@
   --text: #eaecef;
   --muted: #848e9c;
   --long: #00c076;
-  --accent: #f0b90b;
+  --accent: #F7931A;
   --purple: #8b5cf6;
   --blue: #3861fb;
   --font: "Inter", system-ui, sans-serif;
@@ -242,7 +242,7 @@ html, body.ma-body {
 }
 @keyframes particleFly { to { transform: translate(var(--tx), var(--ty)) scale(0); opacity: 0; } }
 
-.game-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px; }
+.game-actions { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-bottom: 10px; }
 
 /* Missions */
 .missions-grid { display: flex; flex-direction: column; gap: 8px; }
@@ -330,3 +330,121 @@ html.embedded .ma-root { border-radius: 0; }
   .quant-legend { font-size: 9px; }
   .game-arena { min-height: 200px; }
 }
+
+/* ── HUD Row 2 ─────────────────────────────────────────────────────────────── */
+.game-hud-row2 {
+  display: flex; align-items: center; gap: 12px;
+  padding: 8px 14px; margin-bottom: 8px; z-index: 1;
+}
+.vol-wrap { flex: 1; }
+.vol-track { height: 5px; background: rgba(255,255,255,0.07); border-radius: 3px; margin-top: 4px; overflow: hidden; }
+.vol-bar { height: 100%; border-radius: 3px; transition: width 0.6s ease, background 0.4s ease; }
+.powerup-status {
+  font-size: 11px; font-weight: 600; font-family: var(--mono);
+  color: var(--accent); min-width: 120px; text-align: right;
+  opacity: 0; transition: opacity 0.3s ease;
+}
+.powerup-status.active { opacity: 1; animation: powerupPulse 1s ease infinite; }
+@keyframes powerupPulse { 0%,100%{opacity:1;} 50%{opacity:0.6;} }
+
+/* ── Market Event Banner ─────────────────────────────────────────────────────── */
+.event-banner {
+  display: none; padding: 8px 14px; margin-bottom: 8px; border-radius: 10px;
+  border: 1px solid transparent; font-size: 11px; font-weight: 600;
+  text-align: center; letter-spacing: 0.05em;
+  animation: bannerSlide 0.4s ease;
+}
+.event-banner.active { display: block; }
+@keyframes bannerSlide { from { opacity: 0; transform: scaleX(0.85); } to { opacity: 1; transform: scaleX(1); } }
+
+/* ── Power-up entities ─────────────────────────────────────────────────────── */
+.powerup-entity {
+  position: absolute; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  border: 2px solid var(--pu-color, var(--accent)); border-radius: 14px;
+  background: radial-gradient(circle at 30% 30%, rgba(255,255,255,0.1), transparent 70%);
+  box-shadow: 0 0 20px color-mix(in srgb, var(--pu-color, var(--accent)) 60%, transparent),
+              0 0 40px color-mix(in srgb, var(--pu-color, var(--accent)) 25%, transparent);
+  cursor: pointer; z-index: 5; padding: 0;
+  animation: powerupAppear 0.4s ease, powerupBob 1.2s ease-in-out infinite;
+}
+.pu-sym { font-size: 26px; }
+.pu-tag { font-size: 7px; font-family: var(--mono); font-weight: 700; color: var(--pu-color, var(--accent)); letter-spacing: 0.08em; margin-top: 2px; }
+@keyframes powerupAppear { from { opacity: 0; transform: scale(0) rotate(-20deg); } to { opacity: 1; transform: scale(1) rotate(0); } }
+@keyframes powerupBob { 0%,100%{transform: translateY(0) rotate(0deg);} 50%{transform: translateY(-8px) rotate(5deg);} }
+
+/* ── Legend powerup ─────────────────────────────────────────────────────────── */
+.ql.powerup { color: #f7c948; border-color: rgba(247,201,72,0.35); }
+
+/* ── Frozen arena ─────────────────────────────────────────────────────────── */
+.game-arena.frozen { filter: saturate(0.4) brightness(0.85); }
+.game-arena.frozen .quant-entity { animation-play-state: running; opacity: 0.7; }
+
+/* ── Screen shake ─────────────────────────────────────────────────────────── */
+.game-arena.shake { animation: arenaShake 0.4s ease; }
+@keyframes arenaShake {
+  0%,100%{transform:translate(0,0);}
+  20%{transform:translate(-4px, 3px);}
+  40%{transform:translate(4px, -3px);}
+  60%{transform:translate(-3px, 4px);}
+  80%{transform:translate(3px, -2px);}
+}
+
+/* ── Chart Prediction Overlay ─────────────────────────────────────────────── */
+.pred-overlay {
+  position: absolute; inset: 0; z-index: 20;
+  display: none; align-items: center; justify-content: center;
+  background: rgba(3,3,8,0.75); backdrop-filter: blur(6px);
+  animation: predFade 0.3s ease;
+}
+.pred-overlay.active { display: flex; }
+@keyframes predFade { from { opacity: 0; } to { opacity: 1; } }
+.pred-card {
+  width: 90%; max-width: 300px; padding: 18px; z-index: 1;
+  animation: predSlide 0.35s ease;
+}
+@keyframes predSlide { from { transform: translateY(30px); opacity:0; } to { transform: none; opacity:1; } }
+.pred-header {
+  display: flex; align-items: center; gap: 8px; margin-bottom: 8px;
+}
+.pred-title { font-family: var(--display); font-size: 12px; color: var(--accent); flex: 1; }
+.pred-ticker { font-size: 10px; color: var(--muted); font-family: var(--mono); }
+.pred-close { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 14px; padding: 4px; }
+.pred-desc { font-size: 11px; color: var(--muted); margin-bottom: 10px; }
+.pred-chart-wrap { background: rgba(0,0,0,0.4); border-radius: 10px; border: 1px solid var(--border); overflow: hidden; margin-bottom: 12px; }
+.pred-chart-wrap canvas { display: block; width: 100%; }
+.pred-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px; }
+.pred-btn {
+  padding: 12px; border-radius: 10px; font-weight: 700; font-size: 13px;
+  cursor: pointer; border: 2px solid transparent; transition: all 0.2s ease;
+}
+.pred-btn.up { background: rgba(0,192,118,0.15); border-color: #00c076; color: #00c076; }
+.pred-btn.up:active { background: rgba(0,192,118,0.3); transform: scale(0.96); }
+.pred-btn.down { background: rgba(246,70,93,0.15); border-color: #f6465d; color: #f6465d; }
+.pred-btn.down:active { background: rgba(246,70,93,0.3); transform: scale(0.96); }
+.pred-reward { font-size: 10px; color: var(--muted); text-align: center; }
+
+/* ── Achievement icons ─────────────────────────────────────────────────────── */
+.ach-icon { font-size: 18px; display: block; margin-bottom: 4px; }
+.ach-card { text-align: center; }
+
+/* ── Mission badge ─────────────────────────────────────────────────────────── */
+.mission-badge { font-size: 8px; padding: 1px 5px; border-radius: 4px; margin-left: 4px; vertical-align: middle; }
+.mission-badge.weekly { background: rgba(139,92,246,0.2); color: var(--purple); border: 1px solid rgba(139,92,246,0.3); }
+
+/* ── Lb rank medals ─────────────────────────────────────────────────────────── */
+.lb-rank { font-size: 14px; }
+
+/* Standalone miniapp page */
+body.ma-body:not(.embedded) .ma-root { height: 100dvh; }
+
+/* ── Signal cards ────────────────────────────────────────────────────────────── */
+.ma-sig-card { padding: 8px 10px; border-radius: 8px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); margin-bottom: 6px; }
+.ma-sig-top { display: flex; justify-content: space-between; align-items: center; }
+.ma-sig-ticker { font-family: var(--mono); font-weight: 600; font-size: 13px; }
+.ma-sig-type { font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 4px; }
+.ma-sig-type.long { background: rgba(16,185,129,0.2); color: #10b981; }
+.ma-sig-type.short { background: rgba(239,68,68,0.2); color: #ef4444; }
+.ma-sig-strategy { font-size: 10px; color: var(--muted); margin-top: 3px; }
+.ma-sig-bottom { display: flex; justify-content: space-between; align-items: center; margin-top: 4px; font-size: 10px; }
+.ma-conf-bar { font-family: var(--mono); letter-spacing: -1px; font-size: 9px; color: var(--accent); }
+.ma-sig-regime { color: var(--muted); font-size: 9px; }

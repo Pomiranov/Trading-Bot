@@ -77,6 +77,53 @@ class SignalsService:
             metadata=self._parse_metadata(row.get("metadata")),
         )
 
+    def _classify_regime(self, adx) -> str:
+        if adx is None or math.isnan(adx):
+            return "unknown"
+        if adx >= 25:
+            return "trending"
+        if adx < 20:
+            return "ranging"
+        return "volatile"
+
+    def _detect_strategy(self, signal) -> str:
+        names = {r.name for r in signal.triggered_rules}
+        if any("macd" in n.lower() for n in names) and any("rsi" in n.lower() for n in names):
+            return "MACD+RSI Momentum"
+        if any("ema" in n.lower() or "trend" in n.lower() for n in names):
+            return "EMA Trend Follow"
+        if any("bb" in n.lower() or "bollinger" in n.lower() for n in names):
+            return "Bollinger Reversal"
+        if any("adx" in n.lower() for n in names):
+            return "ADX Breakout"
+        if any("macd" in n.lower() for n in names):
+            return "MACD Signal"
+        if any("rsi" in n.lower() for n in names):
+            return "RSI Oscillator"
+        return "Multi-Factor Rules"
+
+    def _build_entry_reason(self, signal, iv) -> str:
+        parts = []
+        triggered_names = [r.name for r in signal.triggered_rules]
+        if triggered_names:
+            parts.append(f"Сработали правила: {', '.join(triggered_names[:3])}")
+        if iv.rsi and not math.isnan(iv.rsi):
+            if iv.rsi < 30:
+                parts.append(f"RSI перепродан ({iv.rsi:.1f})")
+            elif iv.rsi > 70:
+                parts.append(f"RSI перекуплен ({iv.rsi:.1f})")
+            else:
+                parts.append(f"RSI нейтральный ({iv.rsi:.1f})")
+        if iv.adx and not math.isnan(iv.adx):
+            if iv.adx >= 25:
+                parts.append(f"Сильный тренд (ADX {iv.adx:.1f})")
+            else:
+                parts.append(f"Флет (ADX {iv.adx:.1f})")
+        if iv.macd_hist and not math.isnan(iv.macd_hist):
+            direction = "бычий" if iv.macd_hist > 0 else "медвежий"
+            parts.append(f"MACD гистограмма {direction}")
+        return "; ".join(parts) if parts else "Технические индикаторы"
+
     def _compute_levels(self, price: float, atr: float, action: str) -> dict:
         sl_dist = atr * config.risk.atr_stop_multiplier
         if action in ("BUY", "LONG"):
@@ -132,7 +179,11 @@ class SignalsService:
 
             exchange, asset_class = EXCHANGE_MAP.get(ticker, ("moex", "stocks"))
             levels = self._compute_levels(price, atr, action)
-            prob = min(95, max(30, 50 + signal.score * 5))
+            confidence = round(min(0.95, max(0.30, signal.confidence if signal.confidence > 0 else 0.5 + signal.score * 0.05)), 3)
+            prob = round(confidence * 100, 1)
+
+            entry_reason = signal.reason or self._build_entry_reason(signal, iv)
+            strategy = self._detect_strategy(signal)
 
             data = {
                 "asset": ticker,
@@ -140,16 +191,23 @@ class SignalsService:
                 "timeframe": "1d",
                 "signal_type": signal_type,
                 "entry_price": price,
-                "probability_pct": round(prob, 1),
+                "probability_pct": prob,
                 "status": "new",
                 "source": "indicators",
                 "asset_class": asset_class,
                 "metadata": {
                     "buy_score": signal.buy_score,
                     "sell_score": signal.sell_score,
+                    "confidence": confidence,
+                    "strategy": strategy,
+                    "entry_reason": entry_reason,
                     "triggered": [r.name for r in signal.triggered_rules],
-                    "rsi": iv.rsi,
-                    "adx": iv.adx,
+                    "rsi": float(iv.rsi) if iv.rsi and not math.isnan(iv.rsi) else None,
+                    "adx": float(iv.adx) if iv.adx and not math.isnan(iv.adx) else None,
+                    "macd_hist": float(iv.macd_hist) if iv.macd_hist and not math.isnan(iv.macd_hist) else None,
+                    "atr": float(atr),
+                    "close": float(price),
+                    "regime": self._classify_regime(iv.adx),
                 },
                 **levels,
             }
@@ -172,11 +230,21 @@ class SignalsService:
         asset_class: Optional[str] = None,
         status: Optional[str] = None,
         limit: int = 100,
+        *,
+        persist_on_empty: bool = False,
     ) -> list[SignalDTO]:
+        """Read stored signals.
+
+        `persist_on_empty` used to be implicit and true: an empty result generated
+        fresh signals and wrote them, which made a GET a writer and turned the
+        signal table into a partial record of dashboard polling. It now defaults to
+        false, and the engine — which has its own schedule — is the only caller
+        that passes true.
+        """
         if exchange:
             exchange = EXCHANGE_ALIASES.get(exchange.lower(), exchange)
         rows = self._repo.list_signals(exchange=exchange, asset_class=asset_class, status=status, limit=limit)
-        if not rows:
+        if not rows and persist_on_empty:
             return self.generate_live_signals(persist=True)
         return [self._row_to_dto(r) for r in rows]
 
@@ -198,5 +266,5 @@ class SignalsService:
             "take_profit_1": signal.take_profit_1,
             "exchange": signal.exchange,
         })
-        self._repo.update_status(signal_id, "executing")
+        self._repo.update_status(signal_id, "filled")
         return result

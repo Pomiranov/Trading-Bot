@@ -1,0 +1,1259 @@
+/**
+ * Shell, panels, tables, states and controls.
+ *
+ * Density model: generous where data is, tight where it is not — the inverse of
+ * what the old Overview did, which spent its entire first fold on six tiles, five
+ * of which displayed no value, above panels with 7px cell padding and 10px
+ * uppercase labels. Minimalism on a dashboard is the absence of elements that do
+ * not answer a question, at the highest clarity the data allows — not empty space.
+ *
+ * Panels are flat. Glass and blur appear only on modal, popover and tooltip.
+ */
+
+/* ═══ App shell ═══════════════════════════════════════════════════════════════
+   A grid rather than fixed positioning, so the environment band and the fault
+   region can change height without anything overlapping or the content jumping. */
+
+.qf-app {
+  display: grid;
+  grid-template-columns: var(--qf-sidebar-width) 1fr;
+  grid-template-rows: 100dvh;
+  min-height: 100dvh;
+}
+
+.qf-app[data-sidebar='rail'] {
+  grid-template-columns: var(--qf-sidebar-rail) 1fr;
+}
+
+/* ─── Sidebar ─── */
+
+.qf-sidebar {
+  grid-column: 1;
+  display: flex;
+  flex-direction: column;
+  background: var(--qf-surface);
+  border-right: 1px solid var(--qf-border);
+  overflow: hidden;
+  z-index: var(--qf-z-sidebar);
+}
+
+.qf-brand {
+  display: flex;
+  align-items: center;
+  gap: var(--qf-space-2);
+  height: var(--qf-topbar-height);
+  padding: 0 var(--qf-space-4);
+  border-bottom: 1px solid var(--qf-border);
+  flex-shrink: 0;
+}
+
+/* The mark is a thin line glyph in currentColor. It used to carry hardcoded
+   #F7931A strokes plus a perpetual drop-shadow glow that intensified on hover. */
+.qf-brand-mark {
+  width: 18px;
+  height: 18px;
+  color: var(--qf-text-primary);
+  flex-shrink: 0;
+}
+
+.qf-brand-name {
+  font-family: var(--qf-font-mono);
+  font-size: var(--qf-caption-size);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--qf-text-primary);
+  font-weight: var(--qf-weight-medium);
+  white-space: nowrap;
+}
+
+.qf-nav {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--qf-space-3) var(--qf-space-2);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.qf-nav-group {
+  padding: var(--qf-space-3) var(--qf-space-2) var(--qf-space-1);
+  font-family: var(--qf-font-mono);
+  font-size: var(--qf-label-size);
+  letter-spacing: var(--qf-label-ls);
+  text-transform: uppercase;
+  color: var(--qf-text-quaternary);
+}
+
+.qf-nav-item {
+  display: flex;
+  align-items: center;
+  gap: var(--qf-space-3);
+  /* 32px tall with 12px horizontal padding — the icon alone is a 20×20 target
+     inside a 32px row, so the hit area clears the 24×24 desktop floor. */
+  min-height: var(--qf-control);
+  padding: 0 var(--qf-space-3);
+  border-radius: var(--qf-radius-sm);
+  color: var(--qf-text-tertiary);
+  font-size: var(--qf-body-size);
+  white-space: nowrap;
+  transition: background-color var(--qf-duration-micro) var(--qf-ease),
+              color var(--qf-duration-micro) var(--qf-ease);
+}
+
+.qf-nav-item:hover {
+  background: var(--qf-highlight);
+  color: var(--qf-text-primary);
+}
+
+/* Active state: raised surface plus a 2px left rule. Not colour alone — the rule
+   is what survives greyscale, and `aria-current` is what survives assistive tech. */
+.qf-nav-item[aria-current='page'] {
+  background: var(--qf-panel-raised);
+  color: var(--qf-text-primary);
+  box-shadow: inset 2px 0 0 var(--qf-accent);
+}
+
+.qf-nav-icon {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  stroke-width: 1.5;
+}
+
+/* A per-item status dot — the affordance a top nav cannot carry. */
+.qf-nav-dot {
+  margin-left: auto;
+  width: 6px;
+  height: 6px;
+  border-radius: var(--qf-radius-full);
+  flex-shrink: 0;
+}
+
+.qf-app[data-sidebar='rail'] .qf-nav-label,
+.qf-app[data-sidebar='rail'] .qf-nav-group,
+.qf-app[data-sidebar='rail'] .qf-brand-name,
+.qf-app[data-sidebar='rail'] .qf-sidebar-footer-text {
+  display: none;
+}
+
+.qf-app[data-sidebar='rail'] .qf-nav-item {
+  justify-content: center;
+  padding: 0;
+}
+
+.qf-sidebar-footer {
+  border-top: 1px solid var(--qf-border);
+  padding: var(--qf-space-3);
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--qf-space-2);
+}
+
+.qf-user {
+  display: flex;
+  align-items: center;
+  gap: var(--qf-space-2);
+  min-width: 0;
+}
+
+.qf-user-avatar {
+  width: var(--qf-control-sm);
+  height: var(--qf-control-sm);
+  border-radius: var(--qf-radius-full);
+  background: var(--qf-panel-raised);
+  border: 1px solid var(--qf-border);
+  display: grid;
+  place-items: center;
+  font-size: var(--qf-caption-size);
+  color: var(--qf-text-primary);
+  flex-shrink: 0;
+}
+
+.qf-user-meta { min-width: 0; }
+
+.qf-user-name {
+  font-size: var(--qf-caption-size);
+  color: var(--qf-text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.qf-user-role {
+  font-size: var(--qf-label-size);
+  color: var(--qf-text-quaternary);
+  font-family: var(--qf-font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+/* ─── Main column ─── */
+
+.qf-main {
+  grid-column: 2;
+  display: grid;
+  /* `minmax(0, 1fr)`, not the implicit `auto`. An implicit column is sized to its
+     widest child's min-content, and the topbar's flex line does not wrap — so at
+     390px the whole column grew to 714px and the page scrolled horizontally.
+     `min-width: 0` on the grid *item* does not help; the inner track needs its
+     own floor of zero. */
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto auto auto 1fr;
+  min-width: 0;
+  min-height: 0;
+}
+
+.qf-topbar {
+  display: flex;
+  align-items: center;
+  gap: var(--qf-space-3);
+  min-height: var(--qf-topbar-height);
+  padding: 0 var(--qf-space-4);
+  background: var(--qf-surface);
+  border-bottom: 1px solid var(--qf-border);
+  z-index: var(--qf-z-topbar);
+  min-width: 0;
+}
+
+/* A flex child defaults to `min-width: auto`, which refuses to shrink below its
+   content. The title is the one item that may be truncated. */
+.qf-topbar-title {
+  min-width: 0;
+  flex: 1 1 auto;
+  overflow: hidden;
+}
+
+.qf-topbar-title h1 {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.qf-topbar-context {
+  font-size: var(--qf-label-size);
+  font-family: var(--qf-font-mono);
+  letter-spacing: var(--qf-label-ls);
+  text-transform: uppercase;
+  color: var(--qf-text-quaternary);
+}
+
+.qf-topbar-actions {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: var(--qf-space-2);
+}
+
+/* A clock that ticks is honest liveness: a value that visibly changes reads as
+   motion without being decoration, which is what the pulsing dots were pretending
+   to be. */
+.qf-clock {
+  font-family: var(--qf-font-mono);
+  font-size: var(--qf-caption-size);
+  color: var(--qf-text-tertiary);
+  white-space: nowrap;
+}
+
+/* ═══ Tier 1 — environment band ═══════════════════════════════════════════════
+   Persistent, full-width, never dismissible. */
+
+.qf-band {
+  display: flex;
+  align-items: center;
+  gap: var(--qf-space-3);
+  min-height: var(--qf-band-height);
+  padding: 0 var(--qf-space-4);
+  background: var(--qf-graphite);
+  border-bottom: 1px solid var(--qf-border);
+  font-size: var(--qf-caption-size);
+  color: var(--qf-text-secondary);
+  flex-wrap: wrap;
+}
+
+.qf-band-env {
+  font-family: var(--qf-font-mono);
+  font-size: var(--qf-label-size);
+  letter-spacing: var(--qf-label-ls);
+  text-transform: uppercase;
+  color: var(--qf-text-primary);
+  font-weight: var(--qf-weight-medium);
+}
+
+.qf-band-sep { color: var(--qf-text-quaternary); }
+
+/* LIVE inverts to paper. The one place the site's inverted-band device earns its
+   keep on an operational screen: "you are trading real money" deserves a
+   discontinuity no dark-on-dark treatment can deliver. Never colour alone — the
+   words «LIVE · РЕАЛЬНЫЕ СРЕДСТВА» are mandatory and come from the server. */
+.qf-band--live {
+  background: var(--qf-paper);
+  color: var(--qf-on-paper-secondary);
+  border-bottom-color: var(--qf-border-on-paper);
+}
+
+.qf-band--live .qf-band-env { color: var(--qf-on-paper); }
+.qf-band--live .qf-band-sep { color: var(--qf-on-paper-secondary); }
+
+/* An undetermined environment is a fault, styled as one — never a quiet
+   fallback to sandbox. */
+.qf-band--unknown {
+  background: var(--qf-danger-dim);
+  border-bottom-color: var(--qf-danger);
+}
+
+.qf-band--unknown .qf-band-env { color: var(--qf-danger); }
+
+/* ═══ Tier 2 — fault region ═══════════════════════════════════════════════════
+   Zero height when healthy. There is deliberately no green "all clear" band: a
+   permanent reassurance becomes invisible within a day and takes the operator's
+   attention budget with it. */
+
+.qf-faults:empty { display: none; }
+
+.qf-faults {
+  display: flex;
+  flex-direction: column;
+  background: var(--qf-bg);
+  border-bottom: 1px solid var(--qf-border);
+}
+
+.qf-fault {
+  display: flex;
+  align-items: center;
+  gap: var(--qf-space-3);
+  min-height: var(--qf-touch-target);
+  padding: var(--qf-space-2) var(--qf-space-4);
+  border-bottom: 1px solid var(--qf-border);
+  font-size: var(--qf-caption-size);
+}
+
+.qf-fault:last-child { border-bottom: none; }
+
+.qf-fault-subject {
+  color: var(--qf-text-primary);
+  font-weight: var(--qf-weight-medium);
+  white-space: nowrap;
+}
+
+.qf-fault-reason {
+  color: var(--qf-text-secondary);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.qf-fault-time {
+  margin-left: auto;
+  color: var(--qf-text-quaternary);
+  font-family: var(--qf-font-mono);
+  white-space: nowrap;
+}
+
+/* ─── Content ─── */
+
+.qf-content {
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: var(--qf-space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--qf-card-gap);
+  /* The bottom inset keeps the last panel clear of a phone's home indicator. */
+  padding-bottom: calc(var(--qf-space-4) + env(safe-area-inset-bottom));
+}
+
+.qf-view { display: none; flex-direction: column; gap: var(--qf-card-gap); }
+.qf-view[data-active='true'] { display: flex; }
+
+/* ═══ Panels ══════════════════════════════════════════════════════════════════
+   Flat. No glass, no ring, no glow, no hover lift — a dense grid that twitches as
+   the pointer crosses it is a cost with no benefit. */
+
+.qf-panel {
+  background: var(--qf-panel);
+  border: 1px solid var(--qf-border);
+  border-radius: var(--qf-radius-lg);
+  box-shadow: var(--qf-shadow-panel);
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  /* The panel owns its height, not the canvas inside it — so a value arriving
+     cannot move the thing below it. */
+  overflow: hidden;
+}
+
+.qf-panel-header {
+  display: flex;
+  align-items: center;
+  gap: var(--qf-space-3);
+  min-height: var(--qf-panel-header-height);
+  padding: 0 var(--qf-panel-padding);
+  border-bottom: 1px solid var(--qf-border);
+  flex-shrink: 0;
+}
+
+.qf-panel-title {
+  font-family: var(--qf-font-mono);
+  font-size: var(--qf-label-size);
+  letter-spacing: var(--qf-label-ls);
+  text-transform: uppercase;
+  color: var(--qf-text-secondary);
+  font-weight: var(--qf-weight-medium);
+  white-space: nowrap;
+}
+
+.qf-panel-meta {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: var(--qf-space-2);
+  font-size: var(--qf-caption-size);
+  color: var(--qf-text-quaternary);
+  font-family: var(--qf-font-mono);
+  white-space: nowrap;
+}
+
+.qf-panel-body {
+  padding: var(--qf-panel-body-padding);
+  min-width: 0;
+}
+
+.qf-panel-body--flush { padding: 0; }
+
+/* Nesting rule: inner radius = outer − 4px, so corners stay concentric. */
+.qf-panel .qf-panel { border-radius: var(--qf-radius-md); }
+
+/* ─── Grids ─── */
+
+.qf-grid { display: grid; gap: var(--qf-card-gap); min-width: 0; }
+.qf-grid--2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.qf-grid--3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.qf-grid--4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+/* Risk beside positions: risk is a fixed-width read, positions want the room. */
+.qf-grid--risk-positions { grid-template-columns: minmax(320px, 400px) minmax(0, 1fr); }
+
+/* ═══ Metrics ═════════════════════════════════════════════════════════════════ */
+
+.qf-metrics {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 1px;
+  background: var(--qf-border);
+}
+
+.qf-metric-cell {
+  background: var(--qf-panel);
+  padding: var(--qf-space-3) var(--qf-panel-padding);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.qf-metric-label {
+  font-size: var(--qf-caption-size);
+  color: var(--qf-text-tertiary);
+  /* Wraps rather than truncates: «Устаревшие котиро…» tells an operator nothing.
+     The cell grows; the panel owns its height, so nothing below it moves. */
+  overflow-wrap: anywhere;
+}
+
+.qf-metric-value {
+  font-size: var(--qf-metric-size);
+  line-height: var(--qf-metric-lh);
+  letter-spacing: var(--qf-metric-ls);
+  color: var(--qf-text-primary);
+  font-weight: var(--qf-weight-medium);
+  white-space: nowrap;
+}
+
+.qf-metric-value--lg {
+  font-size: var(--qf-metric-lg-size);
+  line-height: var(--qf-metric-lg-lh);
+  letter-spacing: var(--qf-metric-lg-ls);
+}
+
+/* Sample size sits in the same visual unit as the statistic it qualifies, never
+   as a footnote — «0,61 · выборка 12», not a tooltip. */
+.qf-metric-sub {
+  font-size: var(--qf-caption-size);
+  color: var(--qf-text-quaternary);
+  overflow-wrap: anywhere;
+}
+
+/* ═══ Status ══════════════════════════════════════════════════════════════════
+   Every status is dot + word. The dot's *shape* differs per state, so the eight
+   states stay distinguishable in greyscale and to a colour-blind operator. */
+
+.qf-status {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--qf-space-2);
+  font-size: var(--qf-caption-size);
+  min-width: 0;
+}
+
+/* The state word itself never wraps — «Нет связи» split across two lines is worse
+   than a slightly wider chip. Any *other* text child (a breach message, a service
+   reason) does wrap: a clipped reason is the one thing an operator must not lose,
+   and these strings are sentences of unbounded length. */
+.qf-status-word { white-space: nowrap; }
+
+.qf-status > span:not(.qf-status-shape):not(.qf-status-word) {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.qf-status-shape {
+  width: 8px;
+  height: 8px;
+  flex-shrink: 0;
+  border-radius: var(--qf-radius-full);
+  background: currentColor;
+}
+
+/* Hollow ring — stale, disconnected. */
+.qf-status-shape[data-shape='ring'] {
+  background: transparent;
+  border: 1.5px solid currentColor;
+}
+
+/* Half-filled — degraded. */
+.qf-status-shape[data-shape='dot-half'] {
+  background: linear-gradient(to right, currentColor 50%, transparent 50%);
+  border: 1.5px solid currentColor;
+}
+
+/* Square — paused by an operator. A deliberate decision, not a fault. */
+.qf-status-shape[data-shape='square'] { border-radius: 1px; }
+
+/* Ring with a slash — frozen. */
+.qf-status-shape[data-shape='ring-slash'] {
+  background: transparent;
+  border: 1.5px solid currentColor;
+  position: relative;
+}
+.qf-status-shape[data-shape='ring-slash']::after {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border-top: 1.5px solid currentColor;
+  transform: rotate(-45deg);
+}
+
+/* Dashed ring — never reported. Must never look like healthy. */
+.qf-status-shape[data-shape='ring-dashed'] {
+  background: transparent;
+  border: 1.5px dashed currentColor;
+}
+
+.qf-status[data-state='healthy'] { color: var(--qf-success); }
+.qf-status[data-state='degraded'] { color: var(--qf-warning); }
+.qf-status[data-state='stale'] { color: var(--qf-neutral); }
+.qf-status[data-state='paused'] { color: var(--qf-neutral); }
+.qf-status[data-state='frozen'] { color: var(--qf-neutral); }
+.qf-status[data-state='disconnected'] { color: var(--qf-danger); }
+.qf-status[data-state='failed'] { color: var(--qf-danger); }
+.qf-status[data-state='unknown'] { color: var(--qf-text-quaternary); }
+
+.qf-status-word { color: var(--qf-text-secondary); }
+
+/* ─── Chips ─── */
+
+.qf-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--qf-space-1);
+  padding: 2px var(--qf-space-2);
+  border-radius: var(--qf-radius-full);
+  border: 1px solid var(--qf-border);
+  font-family: var(--qf-font-mono);
+  font-size: var(--qf-label-size);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--qf-text-tertiary);
+  white-space: nowrap;
+}
+
+.qf-chip[data-tone='positive'] { color: var(--qf-success); border-color: var(--qf-success-dim); background: var(--qf-success-dim); }
+.qf-chip[data-tone='negative'] { color: var(--qf-danger); border-color: var(--qf-danger-dim); background: var(--qf-danger-dim); }
+.qf-chip[data-tone='warning'] { color: var(--qf-warning); border-color: var(--qf-warning-dim); background: var(--qf-warning-dim); }
+.qf-chip[data-tone='neutral'] { color: var(--qf-neutral); background: var(--qf-neutral-dim); }
+.qf-chip[data-tone='unknown'] { color: var(--qf-text-quaternary); border-style: dashed; }
+
+/* Row-level environment marker. Present on every row that has an environment, so
+   a sandbox result can never be read as a live one. */
+.qf-chip--env { text-transform: lowercase; letter-spacing: 0; }
+.qf-chip--env[data-env='live'] { background: var(--qf-paper); color: var(--qf-on-paper); border-color: var(--qf-paper); }
+.qf-chip--env[data-env='unknown'] { color: var(--qf-danger); border-color: var(--qf-danger); border-style: dashed; }
+
+/* ─── Staleness marker ───────────────────────────────────────────────────────
+   Per *cell*, not per panel. A price 32 days old must be impossible to mistake
+   for live, and it is the cell that is stale — marking the panel would imply
+   everything in it is. Appears once and stays static. */
+
+.qf-stale {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--qf-space-1);
+  color: var(--qf-neutral);
+  font-family: var(--qf-font-mono);
+  font-size: var(--qf-label-size);
+  white-space: nowrap;
+}
+
+.qf-stale::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border: 1.5px solid currentColor;
+  border-radius: var(--qf-radius-full);
+  flex-shrink: 0;
+}
+
+/* The value itself is dimmed *and* marked. Dimming alone would read as
+   "unimportant" rather than "old". */
+.qf-value--stale { color: var(--qf-neutral); }
+
+/* ═══ Tables ══════════════════════════════════════════════════════════════════ */
+
+.qf-table-wrap {
+  overflow: auto;
+  /* ≥8 rows before an internal scroll, and never a scroll inside a scroll inside
+     a scroll — the old `.paper-feed` sat inside a card inside the main scroll. */
+  max-height: min(70dvh, 640px);
+  overscroll-behavior: contain;
+}
+
+.qf-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: var(--qf-caption-size);
+}
+
+.qf-table caption {
+  text-align: left;
+  padding: var(--qf-space-2) var(--qf-panel-padding);
+  font-size: var(--qf-caption-size);
+  color: var(--qf-text-quaternary);
+}
+
+.qf-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: var(--qf-z-sticky);
+  background: var(--qf-graphite);
+  border-bottom: 1px solid var(--qf-border);
+  padding: var(--qf-space-2) var(--qf-space-3);
+  text-align: left;
+  font-family: var(--qf-font-mono);
+  font-size: var(--qf-label-size);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--qf-text-tertiary);
+  font-weight: var(--qf-weight-medium);
+  white-space: nowrap;
+}
+
+.qf-table th[aria-sort] { cursor: pointer; user-select: none; }
+.qf-table th[aria-sort]:hover { color: var(--qf-text-primary); }
+
+.qf-table th[aria-sort='ascending']::after { content: ' ↑'; }
+.qf-table th[aria-sort='descending']::after { content: ' ↓'; }
+
+.qf-table tbody td {
+  height: var(--qf-row-height);
+  padding: 0 var(--qf-space-3);
+  border-bottom: 1px solid var(--qf-border);
+  color: var(--qf-text-secondary);
+  vertical-align: middle;
+}
+
+/* Header and body must agree. In three of eight old tables 12 columns were
+   right-aligned in the header and left-aligned in the body, because the header
+   used `.num` and the body emitted `class="mono"` (no alignment) or nothing. Here
+   alignment is driven by one attribute that both halves read. */
+.qf-table [data-align='end'] { text-align: right; }
+.qf-table [data-align='center'] { text-align: center; }
+
+.qf-table td[data-align='end'],
+.qf-table td[data-numeric='true'] {
+  font-variant-numeric: tabular-nums lining;
+  /* No negative tracking on tabular figures — it partially defeats the alignment
+     the tabular feature exists to provide. */
+  letter-spacing: 0;
+}
+
+.qf-table tbody tr { transition: background-color var(--qf-duration-micro) var(--qf-ease); }
+.qf-table tbody tr:hover { background: var(--qf-highlight); }
+
+/* Selected row: raised surface + 2px left rule. Colour is never the only
+   indicator, and without a selected state keyboard traversal is unusable. */
+.qf-table tbody tr[aria-selected='true'] {
+  background: var(--qf-panel-raised);
+  box-shadow: inset 2px 0 0 var(--qf-accent);
+}
+
+.qf-table tbody tr[data-focused='true'] {
+  outline: 2px solid var(--qf-accent);
+  outline-offset: -2px;
+}
+
+.qf-table--compact { --qf-row-height: var(--qf-row-compact); }
+.qf-table--comfortable { --qf-row-height: var(--qf-row-comfortable); }
+.qf-table--monitoring { --qf-row-height: var(--qf-row-monitoring); }
+
+/* Long identifiers: `osc_range_moex_d1_fwd` is 21 characters. Truncate with the
+   full value reachable, never with a hard clip. */
+.qf-truncate {
+  max-width: 20ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  display: inline-block;
+  vertical-align: bottom;
+}
+
+/* ═══ Data states ═════════════════════════════════════════════════════════════
+   Ten of them, and each says what is empty and why. «Нет данных» is eight
+   different situations with eight different actions; collapsing them is how an
+   unreported outage becomes "у меня всё нулями". */
+
+.qf-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--qf-space-2);
+  padding: var(--qf-space-8) var(--qf-space-4);
+  text-align: center;
+}
+
+.qf-state-title {
+  font-size: var(--qf-body-size);
+  color: var(--qf-text-secondary);
+}
+
+.qf-state-detail {
+  font-size: var(--qf-caption-size);
+  color: var(--qf-text-quaternary);
+  max-width: 44ch;
+}
+
+.qf-state-id {
+  font-family: var(--qf-font-mono);
+  font-size: var(--qf-label-size);
+  color: var(--qf-text-quaternary);
+}
+
+/* An error is danger as *stroke*, never a filled red block. */
+.qf-state--error {
+  border: 1px solid var(--qf-danger);
+  border-radius: var(--qf-radius-md);
+  background: var(--qf-danger-dim);
+}
+
+.qf-state--error .qf-state-title { color: var(--qf-danger); }
+
+/* Empty-state geometry is the one place cold blue is permitted, as stroke. */
+.qf-state-figure {
+  width: 48px;
+  height: 48px;
+  stroke: var(--qf-signal-stroke);
+  fill: none;
+  stroke-width: 1.5;
+}
+
+/* Refresh keeps the previous data visible under a progress hairline. Blanking a
+   populated panel on every poll is how a working screen looks broken. */
+.qf-panel[aria-busy='true'] { position: relative; }
+
+.qf-panel[aria-busy='true']::after {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 2px;
+  background: var(--qf-border-strong);
+}
+
+/* ═══ Controls ════════════════════════════════════════════════════════════════ */
+
+.qf-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--qf-space-2);
+  min-height: var(--qf-control);
+  min-width: var(--qf-control);
+  padding: 0 var(--qf-space-3);
+  border-radius: var(--qf-radius-sm);
+  /* Every control edge is --qf-border-strong: 3:1, which the old 0.07 alpha
+     border (≈1.3:1) failed for anything interactive. */
+  border: 1px solid var(--qf-border-strong);
+  background: var(--qf-fill-subtle);
+  color: var(--qf-text-primary);
+  font-size: var(--qf-caption-size);
+  white-space: nowrap;
+  transition: background-color var(--qf-duration-micro) var(--qf-ease),
+              border-color var(--qf-duration-micro) var(--qf-ease);
+}
+
+.qf-btn:hover:not(:disabled) { background: var(--qf-highlight); }
+
+/* No `transform: scale(0.96)` on :active. A shrink-on-press reads as "the click
+   registered" even when the request failed — press feedback must come from the
+   result, not the gesture. And no ripple: that is a Material idiom belonging to
+   neither the site nor the reference. */
+
+.qf-btn:disabled {
+  /* Not opacity: 0.45, which fails contrast and is indistinguishable from
+     "loading". A disabled control keeps legible text and states why in its
+     title/aria-description. */
+  border-color: var(--qf-border);
+  color: var(--qf-text-quaternary);
+  background: transparent;
+}
+
+.qf-btn[aria-busy='true'] { color: var(--qf-text-tertiary); }
+
+.qf-btn--primary {
+  background: var(--qf-accent);
+  border-color: var(--qf-accent);
+  color: var(--qf-on-accent);
+}
+
+.qf-btn--primary:hover:not(:disabled) { background: var(--qf-accent-hover); }
+
+/* Destructive: danger as stroke, never a fill and never a gradient. A button
+   that closes a position must not look like the site's white pill CTA. */
+.qf-btn--danger {
+  border-color: var(--qf-danger);
+  color: var(--qf-danger);
+  background: transparent;
+}
+
+.qf-btn--danger:hover:not(:disabled) { background: var(--qf-danger-dim); }
+
+.qf-btn--ghost { border-color: transparent; background: transparent; color: var(--qf-text-tertiary); }
+.qf-btn--ghost:hover:not(:disabled) { background: var(--qf-highlight); color: var(--qf-text-primary); }
+
+.qf-btn--icon { padding: 0; width: var(--qf-control); }
+
+.qf-input,
+.qf-select {
+  min-height: var(--qf-control);
+  padding: 0 var(--qf-space-3);
+  border-radius: var(--qf-radius-sm);
+  border: 1px solid var(--qf-border-strong);
+  background: var(--qf-bg-elevated);
+  color: var(--qf-text-primary);
+  font-size: var(--qf-caption-size);
+  max-width: 100%;
+}
+
+.qf-select { padding-right: var(--qf-space-6); cursor: pointer; }
+
+.qf-input::placeholder { color: var(--qf-text-quaternary); }
+
+.qf-field { display: flex; flex-direction: column; gap: var(--qf-space-1); min-width: 0; }
+
+/* An input with a trailing control (password show/hide). The button sits inside
+   the field's border rather than beside it, so the pair reads as one control. */
+.qf-input-group {
+  display: flex;
+  align-items: stretch;
+  gap: var(--qf-space-1);
+  min-width: 0;
+}
+
+.qf-input-group .qf-input { flex: 1 1 auto; min-width: 0; }
+
+.qf-input-group .qf-btn {
+  flex: 0 0 auto;
+  width: var(--qf-control-lg);
+  border-color: var(--qf-border-strong);
+}
+
+/* ─── Chart value readout ────────────────────────────────────────────────────
+   A crosshair plus an exact value. A chart whose numbers are only obtainable by
+   eyeballing a line against an axis is a picture, not an instrument. Driven by
+   both pointer and arrow keys, so it is not hover-only. */
+
+.qf-chart-cursor {
+  stroke: var(--qf-border-strong);
+  stroke-width: 1;
+  stroke-dasharray: 2 3;
+  pointer-events: none;
+}
+
+.qf-chart-cursor-dot {
+  fill: var(--qf-text-primary);
+  pointer-events: none;
+}
+
+.qf-chart-readout {
+  position: absolute;
+  top: var(--qf-space-1);
+  left: var(--qf-space-1);
+  padding: 2px var(--qf-space-2);
+  background: var(--qf-glass);
+  border: 1px solid var(--qf-glass-border);
+  border-radius: var(--qf-radius-xs);
+  font-family: var(--qf-font-mono);
+  font-size: var(--qf-label-size);
+  color: var(--qf-text-primary);
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.qf-chart-readout[hidden] { display: none; }
+
+/* The chart is a single tab stop; arrow keys walk the series. */
+.qf-chart[tabindex]:focus-visible {
+  outline: 2px solid var(--qf-accent);
+  outline-offset: -2px;
+}
+
+.qf-field-label { font-size: var(--qf-caption-size); color: var(--qf-text-tertiary); }
+
+.qf-field-error { font-size: var(--qf-caption-size); color: var(--qf-danger); }
+
+.qf-toolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--qf-space-2);
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+/* ═══ Charts ══════════════════════════════════════════════════════════════════
+   Local SVG. Both CDN libraries are gone: ECharts alone was 1 029 203 B raw,
+   loaded synchronously in <head> with no SRI, for a handful of panels — and the
+   lightweight-charts build put a TradingView watermark on an operator's screen. */
+
+.qf-chart {
+  position: relative;
+  width: 100%;
+  /* The panel owns the height so a series arriving cannot resize the panel. */
+  height: var(--qf-chart-height, 200px);
+}
+
+.qf-chart svg { display: block; width: 100%; height: 100%; overflow: visible; }
+
+/* Series colour encodes *identity*, not outcome. The old equity chart drew a
+   green area under a curve whose own header read −80 776,12 ₽ in red — a false
+   positive read before any number was. Outcome is carried by the sign, by the
+   zero baseline, and by fill direction relative to it. */
+.qf-chart-line { fill: none; stroke: var(--qf-text-primary); stroke-width: 1.5; }
+.qf-chart-area { fill: var(--qf-highlight); stroke: none; }
+.qf-chart-baseline { stroke: var(--qf-border-strong); stroke-width: 1; stroke-dasharray: 2 3; }
+.qf-chart-grid { stroke: var(--qf-border); stroke-width: 1; }
+.qf-chart-axis {
+  fill: var(--qf-text-quaternary);
+  font-size: var(--qf-label-size);
+  font-family: var(--qf-font-mono);
+}
+.qf-chart-bar-positive { fill: var(--qf-success); }
+.qf-chart-bar-negative { fill: var(--qf-danger); }
+.qf-chart-underwater { fill: var(--qf-danger-dim); stroke: var(--qf-danger); stroke-width: 1; }
+.qf-chart-step { fill: none; stroke: var(--qf-text-primary); stroke-width: 1.5; }
+.qf-chart-marker { fill: var(--qf-text-primary); }
+
+.qf-sparkline { height: 32px; }
+
+/* Every chart ships a text alternative and a data-table toggle — a canvas with
+   no equivalent fails 1.1.1, and a trader on a screen reader has the same right
+   to the series as anyone else. */
+.qf-chart-summary {
+  font-size: var(--qf-caption-size);
+  color: var(--qf-text-quaternary);
+  padding: var(--qf-space-2) var(--qf-panel-padding);
+}
+
+/* ═══ Overlays — the only place glass is allowed ═══════════════════════════════ */
+
+.qf-scrim {
+  position: fixed;
+  inset: 0;
+  background: var(--qf-scrim);
+  z-index: var(--qf-z-overlay);
+}
+
+.qf-dialog {
+  position: fixed;
+  inset: 0;
+  z-index: var(--qf-z-modal);
+  display: grid;
+  place-items: center;
+  padding: var(--qf-space-4);
+}
+
+.qf-dialog-panel {
+  width: min(480px, 100%);
+  max-height: 85dvh;
+  overflow-y: auto;
+  background: var(--qf-glass);
+  backdrop-filter: blur(var(--qf-blur));
+  border: 1px solid var(--qf-glass-border);
+  border-radius: var(--qf-radius-xl);
+  box-shadow: var(--qf-shadow-overlay);
+  padding: var(--qf-space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--qf-space-4);
+}
+
+.qf-dialog-title { font-size: var(--qf-heading-size); color: var(--qf-text-primary); font-weight: var(--qf-weight-semibold); }
+.qf-dialog-body { font-size: var(--qf-body-size); color: var(--qf-text-secondary); display: flex; flex-direction: column; gap: var(--qf-space-3); }
+.qf-dialog-actions { display: flex; gap: var(--qf-space-2); justify-content: flex-end; }
+
+/* ─── Toasts ─── */
+
+.qf-toasts {
+  position: fixed;
+  bottom: calc(var(--qf-space-4) + env(safe-area-inset-bottom));
+  right: var(--qf-space-4);
+  z-index: var(--qf-z-toast);
+  display: flex;
+  flex-direction: column;
+  gap: var(--qf-space-2);
+  max-width: min(400px, calc(100vw - var(--qf-space-8)));
+  pointer-events: none;
+}
+
+.qf-toast {
+  pointer-events: auto;
+  background: var(--qf-panel-raised);
+  border: 1px solid var(--qf-border-strong);
+  border-radius: var(--qf-radius-md);
+  box-shadow: var(--qf-shadow-overlay);
+  padding: var(--qf-space-3);
+  font-size: var(--qf-caption-size);
+  color: var(--qf-text-secondary);
+  display: flex;
+  gap: var(--qf-space-2);
+  align-items: flex-start;
+}
+
+.qf-toast[data-tone='error'] { border-color: var(--qf-danger); }
+.qf-toast[data-tone='success'] { border-color: var(--qf-success); }
+
+/* ═══ Login ═══════════════════════════════════════════════════════════════════ */
+
+.qf-signin {
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  padding: var(--qf-space-6);
+  position: relative;
+  overflow: hidden;
+}
+
+.qf-signin-card {
+  width: min(400px, 100%);
+  background: var(--qf-panel);
+  border: 1px solid var(--qf-border);
+  border-radius: var(--qf-radius-2xl);
+  padding: var(--qf-space-8);
+  display: flex;
+  flex-direction: column;
+  gap: var(--qf-space-5);
+  position: relative;
+  z-index: var(--qf-z-content);
+}
+
+/* The card's own gap applies to *its* children, and the form is a single child —
+   so without this the label/input pairs inside it collapsed against each other
+   and «Пароль» sat on top of the field above it. */
+.qf-signin-card form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--qf-space-4);
+}
+
+.qf-signin-card .qf-input {
+  /* 36px, not 32: this is the one form on the product where a comfortable target
+     costs nothing — there is no density to preserve on a sign-in surface. */
+  min-height: var(--qf-control-lg);
+  width: 100%;
+}
+
+.qf-signin-card .qf-btn {
+  min-height: var(--qf-control-lg);
+  width: 100%;
+}
+
+/* Empty until a failure, so it must not reserve a gap of its own. */
+.qf-signin-card .qf-field-error:empty {
+  display: none;
+}
+
+/* The sign-in surface is the one place decorative geometry belongs: there is no
+   data here to compete with. Cold blue as stroke and shadow, ≤0.28 alpha, and
+   static — no orbit animation. */
+.qf-signin-geometry {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  display: grid;
+  place-items: center;
+}
+
+.qf-signin-geometry svg {
+  width: min(760px, 120vw);
+  height: auto;
+  stroke: var(--qf-signal-stroke);
+  fill: none;
+  stroke-width: 1;
+  filter: drop-shadow(var(--qf-signal-glow));
+  /* No extra opacity. The stroke token is already 0.24 alpha — the doctrine's
+     ceiling is 0.28 — and multiplying it by 0.6 again took it to ~0.14, at which
+     point it read as a rendering artefact rather than as restraint. */
+}
+
+/* ═══ Responsive ══════════════════════════════════════════════════════════════ */
+
+/* Below 1360 the sidebar collapses to a rail by default. At 1024 the sidebar was
+   240px = 23 % of the viewport. */
+@media (max-width: 1359px) {
+  .qf-app:not([data-sidebar='expanded']) {
+    grid-template-columns: var(--qf-sidebar-rail) 1fr;
+  }
+  .qf-app:not([data-sidebar='expanded']) .qf-nav-label,
+  .qf-app:not([data-sidebar='expanded']) .qf-nav-group,
+  .qf-app:not([data-sidebar='expanded']) .qf-brand-name,
+  .qf-app:not([data-sidebar='expanded']) .qf-sidebar-footer-text {
+    display: none;
+  }
+  .qf-app:not([data-sidebar='expanded']) .qf-nav-item {
+    justify-content: center;
+    padding: 0;
+  }
+  .qf-grid--risk-positions { grid-template-columns: minmax(0, 1fr); }
+}
+
+@media (max-width: 1279px) {
+  .qf-grid--4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .qf-grid--3 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .qf-content { max-width: var(--qf-content-max); }
+}
+
+/* Tablet: the sidebar becomes an overlay rather than eating a quarter of the
+   width. */
+@media (max-width: 1023px) {
+  .qf-app { grid-template-columns: minmax(0, 1fr); }
+  .qf-sidebar {
+    position: fixed;
+    inset: 0 auto 0 0;
+    width: var(--qf-sidebar-width);
+    transform: translateX(-100%);
+    transition: transform var(--qf-duration-panel) var(--qf-ease);
+    box-shadow: var(--qf-shadow-overlay);
+  }
+  .qf-app[data-sidebar='open'] .qf-sidebar { transform: translateX(0); }
+  .qf-app[data-sidebar='open'] .qf-nav-label,
+  .qf-app[data-sidebar='open'] .qf-nav-group,
+  .qf-app[data-sidebar='open'] .qf-brand-name { display: block; }
+  .qf-main { grid-column: 1; }
+  .qf-grid--2, .qf-grid--3, .qf-grid--4 { grid-template-columns: minmax(0, 1fr); }
+  :root { --qf-row-height: var(--qf-row-comfortable); }
+}
+
+/* ─── Mobile: a monitoring surface, not a scaled desktop terminal ─────────────
+   Rows become cards. A 14-column table in a 390px viewport whose entire
+   responsive strategy was `overflow-x: auto` is not a mobile experience; and no
+   control here mutates trading state except the emergency stop. */
+@media (max-width: 767px) {
+  :root {
+    --qf-row-height: var(--qf-row-monitoring);
+    --qf-body-size: 15px;
+    --qf-caption-size: 13px;
+    --qf-control: var(--qf-touch-target);
+    --qf-control-sm: var(--qf-touch-target);
+    --qf-control-lg: var(--qf-touch-target);
+  }
+
+  .qf-content { padding: var(--qf-space-3); }
+
+  /* Table → cards. The header is hidden and each cell carries its own label from
+     `data-label`, so one markup shape serves both layouts and the accessible
+     table semantics survive. */
+  .qf-table--responsive thead { display: none; }
+  .qf-table--responsive tbody tr {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 2px;
+    padding: var(--qf-space-3);
+    border: 1px solid var(--qf-border);
+    border-radius: var(--qf-radius-md);
+    margin-bottom: var(--qf-space-2);
+    background: var(--qf-graphite);
+  }
+  .qf-table--responsive tbody td {
+    display: flex;
+    justify-content: space-between;
+    gap: var(--qf-space-3);
+    height: auto;
+    min-height: var(--qf-space-6);
+    padding: 0;
+    border-bottom: none;
+    text-align: left !important;
+  }
+  .qf-table--responsive tbody td::before {
+    content: attr(data-label);
+    color: var(--qf-text-quaternary);
+    font-size: var(--qf-caption-size);
+    flex-shrink: 0;
+  }
+  .qf-table-wrap { max-height: none; overflow: visible; }
+
+  .qf-toasts { left: var(--qf-space-3); right: var(--qf-space-3); max-width: none; }
+  .qf-band { padding: var(--qf-space-2) var(--qf-space-3); }
+  .qf-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+
+  /* The chrome wraps onto a second line rather than forcing the page wider. Both
+     regions keep every word — the status label and the environment name are what
+     survive greyscale, so shrinking them away is not an option. */
+  .qf-topbar { flex-wrap: wrap; padding: var(--qf-space-2) var(--qf-space-3); }
+  .qf-topbar-actions { flex-wrap: wrap; margin-left: 0; width: 100%; }
+  .qf-topbar-title { flex: 1 1 100%; }
+  .qf-fault { flex-wrap: wrap; }
+  .qf-fault-time { margin-left: 0; }
+  /* The panel header's meta line is the other place a nowrap run can overflow. */
+  .qf-panel-header { flex-wrap: wrap; min-height: auto; padding: var(--qf-space-2) var(--qf-space-3); }
+  .qf-panel-meta { margin-left: 0; flex-wrap: wrap; }
+
+  /* The health strip is ten services in one flex row. On a 390px viewport a long
+     pair like «Рыночные данные Устарело» exceeds the panel, and the panel clips
+     it — losing the word that carries the state in greyscale. Wrapping the label
+     keeps every word readable; truncating it would not. */
+  /* On a 390px viewport even the state word has to give way, so the whole status
+     stacks rather than forcing the panel wider. */
+  .qf-status { align-items: flex-start; flex-wrap: wrap; }
+  .qf-status-word { white-space: normal; }
+  .qf-status-shape { margin-top: 5px; flex-shrink: 0; }
+}
+
+/* Landscape phone: the vertical budget is the constraint, so chrome shrinks and
+   the content scrolls rather than the whole page. */
+@media (max-height: 480px) and (orientation: landscape) {
+  :root {
+    --qf-topbar-height: 40px;
+    --qf-band-height: 32px;
+    --qf-panel-header-height: 32px;
+  }
+  .qf-content { padding: var(--qf-space-2); }
+}
+
+/* Wall display / large workstation: more rows, not bigger cards. A three-column
+   row stretching to 800px per card on a 2560px monitor is wasted space. */
+@media (min-width: 1680px) {
+  :root { --qf-row-height: var(--qf-row-compact); }
+}
+
+@media print {
+  .qf-sidebar, .qf-topbar-actions, .qf-toasts { display: none; }
+  .qf-app { grid-template-columns: minmax(0, 1fr); }
+  .qf-content { overflow: visible; }
+}

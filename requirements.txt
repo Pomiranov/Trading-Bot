@@ -8,6 +8,10 @@ python-dotenv>=1.0.0
 
 # Database
 psycopg2-binary>=2.9.0
+asyncpg>=0.29.0
+
+# Statistical tests (hypothesis_engine)
+scipy>=1.11.0
 
 # Telegram Bot API
 python-telegram-bot>=20.0
@@ -21,9 +25,14 @@ PyYAML>=6.0
 # Web dashboard
 flask>=3.1.0
 sqlalchemy>=2.0.0
+httpx>=0.27.0
 
 # Security (Phase 1+)
 cryptography>=42.0.0
+# Argon2id for dashboard operator passwords. Optional but strongly preferred:
+# security/passwords.py falls back to Werkzeug's scrypt when it is absent, and
+# records the algorithm inside the digest so upgrading is a re-hash on next login.
+argon2-cffi>=23.1.0
 
 # Platform monitoring
 psutil>=5.9.0

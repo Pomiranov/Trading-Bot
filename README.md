@@ -3,13 +3,16 @@
 # QuantFlow
 
 ![Python](https://img.shields.io/badge/Python-3.11+-3776AB?style=flat-square&logo=python&logoColor=white)
+![Next.js](https://img.shields.io/badge/Next.js-15-000000?style=flat-square&logo=nextdotjs&logoColor=white)
 ![Flask](https://img.shields.io/badge/Flask-3.1+-000000?style=flat-square&logo=flask&logoColor=white)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-TimescaleDB-4169E1?style=flat-square&logo=postgresql&logoColor=white)
 ![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?style=flat-square&logo=docker&logoColor=white)
 ![Telegram](https://img.shields.io/badge/Telegram-Bot-26A5E4?style=flat-square&logo=telegram&logoColor=white)
+![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?style=flat-square&logo=typescript&logoColor=white)
 
-**Профессиональная экосистема алгоритмической торговли**  
-Trading Dashboard · Telegram Bot · Mini App · Signal Engine · Paper Sandbox · Gamification
+**Институциональная платформа алгоритмической торговли с байесовской системой убеждений**
+
+Belief Engine · Trading Dashboard · Telegram Bot · Signal Pipeline · Paper Sandbox · Marketing Website
 
 [🇷🇺 Русская версия](#русская-версия) · [🇬🇧 English version](#english-version)
 
@@ -22,50 +25,122 @@ Trading Dashboard · Telegram Bot · Mini App · Signal Engine · Paper Sandbox 
 ## Содержание
 
 - [О проекте](#о-проекте)
+- [Система убеждений](#система-убеждений)
+- [Конвейер движка](#конвейер-движка)
 - [Возможности](#возможности)
 - [Архитектура системы](#архитектура-системы)
-- [Синхронизация](#синхронизация)
+- [Маркетинговый сайт](#маркетинговый-сайт)
 - [Стек технологий](#стек-технологий)
 - [Структура проекта](#структура-проекта)
 - [Установка](#установка)
 - [Конфигурация](#конфигурация)
-- [Использование](#использование)
 - [API](#api)
-- [Сигнальный движок](#сигнальный-движок)
-- [CRYPTONITE Quant Hunter](#cryptonite-quant-hunter)
 - [Безопасность](#безопасность)
-- [Скриншоты](#скриншоты)
 - [Roadmap](#roadmap)
-- [Contributing](#contributing-1)
-- [Лицензия](#лицензия)
 - [Дисклеймер](#дисклеймер)
 
 ---
 
 ## О проекте
 
-**QuantFlow** — это платформа алгоритмической торговли, объединяющая веб-терминал, Telegram-бота, Telegram Mini App и виртуальный торговый sandbox в единую экосистему.
+**QuantFlow** — алгоритмическая торговая платформа, построенная на принципе байесовского обновления убеждений. Система не предсказывает рынок и не использует ML/LLM для генерации сигналов. Вместо этого она измеряет, какие проверенные торговые правила работают прямо сейчас, и распределяет капитал строго по статистическому доверию.
 
-Платформа ориентирована на:
+**Ключевой принцип**: каждая стратегия получает численный уровень доверия (confidence), который обновляется после каждой сделки по закону Байеса. Размер позиции — прямая математическая функция этого доверия. Мнения не принимаются; принимаются только доказательства.
 
-- **MOEX** — загрузка свечей через MOEX ISS REST API
-- **Tinkoff Invest API v2** — основной брокер (Sandbox / Production)
-- **Bybit** — дополнительный брокерский клиент (опционально)
-- **Paper Trading** — виртуальный портфель для тестирования без риска
+### Поддерживаемые рынки и брокеры
 
-QuantFlow **не использует ML/LLM** для генерации сигналов. Сигналы строятся на **технических индикаторах** и **YAML-правилах** с весовым скорингом — прозрачно, воспроизводимо и настраиваемо.
+| Рынок | Брокер | Режим |
+|-------|--------|-------|
+| MOEX (акции, деривативы) | T-Инвестиции (Тинькофф) | Sandbox + Production |
+| MOEX | Финам | В разработке |
+| Крипто | Bybit | Spot + Derivatives |
+| Все рынки | Paper Trading | Всегда доступен |
 
-### Ключевые компоненты
+### Основные компоненты
 
 | Компонент | Назначение |
 |-----------|------------|
-| **Trading Dashboard** | Веб-терминал: портфель, сигналы, бэктест, настройки, Mini App |
+| **Belief Engine** | Байесовская система обновления доверия к стратегиям |
+| **Engine Pipeline** | 7-этапный конвейер: данные → сигнал → исполнение → память |
+| **Trading Dashboard** | Flask SPA-терминал: портфель, сигналы, бэктест, стратегии |
 | **Telegram Bot** | Мобильное управление, уведомления, ручная торговля |
-| **Telegram Mini App** | CRYPTONITE Quant Hunter — геймификация + Trade-вкладка |
-| **Trading Engine** | Автоматический торговый цикл (`bot/main.py`) |
-| **Platform Layer** | Единый API: портфель, сигналы, paper, бэктест, SSE |
-| **Signal Engine** | Индикаторы + 12 правил из `knowledge/rules.yaml` |
-| **Paper Sandbox** | Виртуальный счёт: 10M ₽ / 100K USDT по умолчанию |
+| **Paper Sandbox** | Виртуальный счёт — идентичный путь сигнала без риска |
+| **Marketing Website** | Публичный Next.js-сайт (RU/EN), институциональный дизайн |
+
+---
+
+## Система убеждений
+
+Это ядро проекта — то, что отличает QuantFlow от обычных торговых ботов.
+
+### Принцип работы
+
+```
+Каждая стратегия имеет уровень доверия (confidence ∈ [0.05, 0.95]).
+
+После каждой сделки:
+  new_confidence = current + (target - current) × LEARNING_RATE
+
+где target вычисляется из:
+  - win_rate    (доля выигрышных сделок)
+  - profit_factor (gross profit / gross loss)
+  - sharpe_ratio  (скорректированная на риск доходность)
+  - expectancy    (математическое ожидание на сделку)
+
+До 20 подтверждённых сделок confidence = базовый уровень (без доверия).
+```
+
+### Ключевые константы
+
+| Параметр | Значение | Смысл |
+|----------|----------|-------|
+| `MIN_TRADES_FOR_CONFIDENCE` | 20 | Минимум сделок для начала обучения |
+| `CONFIDENCE_LEARNING_RATE` | 0.15 | Скорость адаптации (15% за сделку) |
+| `MIN_CONFIDENCE` | 0.05 | Нижняя граница — никогда не нуль |
+| `MAX_CONFIDENCE` | 0.95 | Верхняя граница — никогда не стопроцентная уверенность |
+
+### Что делает система
+
+- `belief_updater.py` — пересчитывает confidence после каждой сделки
+- `decision_evaluator.py` — оценивает сигналы против текущего доверия
+- `hypothesis_engine.py` — формирует и проверяет торговые гипотезы
+- `memory_writer.py` — записывает историю обновлений в базу данных
+- `feedback.py` — собирает результаты сделок для обучения
+- `trading_orchestrator.py` — координирует весь цикл обучения
+
+### Управление стратегиями
+
+| Статус | Описание |
+|--------|----------|
+| `LIVE` | Стратегия торгует, confidence достаточна |
+| `PAPER` | Торгует виртуально, накапливает историю |
+| `FROZEN` | Confidence упала — капитал не распределяется, история сохраняется |
+| `HYPOTHESIS` | Ожидает минимума сделок для первой оценки |
+
+Замороженная стратегия **не удаляется**. Если рыночные условия вернутся, confidence восстановится через новые данные — постепенно, не с нуля.
+
+---
+
+## Конвейер движка
+
+7-этапный детерминированный путь от данных до исполнения:
+
+```
+01 CANDLE LOADER     OHLCV-свечи из MOEX ISS / Bybit API
+       ↓
+02 INDICATOR ENGINE  RSI · ATR · EMA · MACD · BB · ADX · VWAP · Stochastic · CCI
+       ↓
+03 RULES ENGINE      12+ правил из knowledge/rules.yaml → SignalResult (BUY/SELL/HOLD + score)
+       ↓
+04 BELIEF GATE       Сверяет сигнал с текущим confidence стратегии
+                     Слабое доверие → сигнал блокируется
+       ↓
+05 RISK MANAGER      ATR-стоп · размер позиции = f(confidence) · дневной лимит убытков
+       ↓
+06 BROKER / PAPER    TinkoffClient · BybitClient · PaperEngine
+       ↓
+07 MEMORY WRITER     Результат сделки → belief_updater → обновление confidence в БД
+```
 
 ---
 
@@ -75,28 +150,24 @@ QuantFlow **не использует ML/LLM** для генерации сиг�
 
 Профессиональный SPA-терминал на Flask + Vanilla JS.
 
-**Разделы (views):**
+**Разделы:**
 
 | View | Клавиша | Описание |
 |------|---------|----------|
 | Dashboard | `1` | Баланс, PnL, equity curve, метрики, лог событий |
-| Portfolio | `2` | Позиции, аллокация, котировки, графики Lightweight Charts |
+| Portfolio | `2` | Позиции, аллокация, котировки, Lightweight Charts |
 | Signals | `3` | Live-сигналы, фильтры, генерация и исполнение |
-| Backtest | `4` | Запуск симуляций, equity/drawdown/heatmap, журнал сделок |
-| Quant Hunter | `5` | Mini App встроен inline (без iframe) |
-| Settings | — | Конфигурация, Tinkoff-токены, Dashboard API Key |
+| Backtest | `4` | Симуляции, equity/drawdown/heatmap, журнал сделок |
+| Quant Hunter | `5` | Telegram Mini App встроен без iframe |
+| Settings | — | Конфигурация, токены брокеров, Dashboard API Key |
 
 **UI/UX:**
-
 - CSS Grid layout с `SidebarProvider` (OPEN / COLLAPSED)
-- Отдельный fullscreen-layout для Mini App
 - Design System (`design-system.css`) — тёмная terminal-тема
 - Графики: **Lightweight Charts** + **ECharts**
 - Real-time через **SSE** (`/api/platform/stream`)
 - Polling fallback каждые 12 сек (`QFSync`)
-- State: `QFStore` → `QFRender` → views
-
-**Обновление:** `R` — принудительный refresh текущего view.
+- Горячая клавиша `R` — принудительный refresh текущего view
 
 ---
 
@@ -104,96 +175,27 @@ QuantFlow **не использует ML/LLM** для генерации сиг�
 
 Полнофункциональный бот на `python-telegram-bot` ≥ 20 с inline-клавиатурами.
 
-**Главное меню:**
-
-- 📊 Dashboard — обзор портфеля и статус бота
-- 💼 Портфель · 📈 Позиции · 📑 Заявки · 📜 Операции
-- 💰 Баланс · 📊 Аналитика · 📈 Статистика
-- 🤖 Торговый бот — start / pause / resume / stop / status / logs
-- 📡 Сигналы — просмотр и фильтрация
-- 🔔 Уведомления — настройка push-типов
-- ⚙ Настройки · 👤 Аккаунт · ❓ Помощь
-
 **Команды:**
 
 ```
-/start        /dashboard     /portfolio     /positions
-/orders       /operations    /balance       /statistics
-/signal       /bot_status    /help          /cancel
+/start  /dashboard  /portfolio  /positions  /orders
+/balance  /statistics  /signal  /bot_status  /help
 ```
 
-**Уведомления (push):**
+**Push-уведомления:** открытие/закрытие сделки, новый сигнал, исполнение ордера, ошибки брокера, срабатывание лимитов риска, изменение confidence стратегии.
 
-- Открытие / закрытие сделки
-- Новый сигнал
-- Исполнение ордера
-- Ошибки API брокера
-- Срабатывание лимитов риска
-- Старт / остановка бота
-
-**Безопасность бота:**
-
-- Авторизация по `TELEGRAM_CHAT_ID` + `TELEGRAM_ALLOWED_IDS`
-- Rate limiting на действия
-- Подтверждение критических торговых операций
-
-**Поддерживаемые брокеры:**
-
-- 🟢 **Tinkoff Invest** — полная интеграция
-- 🟡 **Bybit** — клиент в кодовой базе
-- ⚪ **Finam** — в разработке (UI-заглушка в настройках)
+**Безопасность:** whitelist по `TELEGRAM_CHAT_ID`, rate limiting, подтверждение критических операций.
 
 ---
 
-### Telegram Mini App — CRYPTONITE Quant Hunter
+### Paper Trading Sandbox
 
-Web3-стиль геймификация в `bot/ui/static/miniapp/`.
+Виртуальный счёт с **идентичным путём сигнала** — тот же RulesEngine, тот же BeliefGate, тот же RiskManager. Отличается только финальное исполнение: вместо брокера — `PaperEngine`.
 
-**Два режима запуска:**
-
-1. **Встроен в Dashboard** — view `Quant Hunter` (клавиша `5`)
-2. **Standalone / Telegram** — `https://DOMAIN/static/miniapp/index.html`
-
-> Для Telegram WebView нужен **HTTPS**. Инструкция: [`bot/ui/static/miniapp/BOTFATHER.md`](bot/ui/static/miniapp/BOTFATHER.md)
-
-**Вкладки Mini App:**
-
-| Вкладка | Содержание |
-|---------|------------|
-| **Trade** | Баланс, PnL, позиции, сигналы — данные из Platform API |
-| **QUANT HUNTER** | Игровая механика |
-
-**Игровые механики (реализовано):**
-
-| Механика | Детали |
-|----------|--------|
-| **Типы Quant** | Common +1 · Rare +10 · Epic +100 · Legendary +1000 |
-| **Energy** | 100/100, −1 за поимку, +10 каждые 10 мин |
-| **Уровни** | Crypto Rookie → Market Hunter → Signal Seeker → Quant Master → Crypto Legend |
-| **XP** | Прогрессия: `80 + level × 25` XP до следующего уровня |
-| **Daily Missions** | Catch 50/200, Legendary hunt, 7-day login streak |
-| **Achievements** | First Catch, 100 Quant, 7 Days, Level 10/50, Legendary Collector |
-| **Leaderboard** | Rank · Username · Level · Points (localStorage) |
-| **Combo** | Серия поимок подряд с визуальным feedback |
-| **Визуал** | Cyberpunk UI, частицы, glow, holographic panels, canvas-фон |
-
-Прогресс сохраняется в `localStorage` (`qf_quant_hunter_v2`).
-
----
-
-### Trading Sandbox (Paper Trading)
-
-Виртуальный портфель без реальных денег.
-
-**Возможности:**
-
-- Виртуальный баланс (по умолчанию **10 000 000 ₽** или **100 000 USDT**)
-- Открытие / закрытие paper-позиций
-- Расчёт unrealized PnL по реальным ценам из таблицы `candles`
-- История сделок (`paper_trades`)
-- Equity snapshots
-- Исполнение сигналов в paper-режиме
-- Агрегация с брокерским портфелем в Platform Overview
+- Виртуальный баланс: **10 000 000 ₽** / **100 000 USDT** по умолчанию
+- История paper-сделок формирует начальное доверие стратегии
+- PnL рассчитывается по реальным рыночным ценам
+- Агрегируется с брокерским портфелем в Platform Overview
 
 **Таблицы БД:** `paper_accounts`, `paper_positions`, `paper_trades`, `equity_snapshots`
 
@@ -201,48 +203,43 @@ Web3-стиль геймификация в `bot/ui/static/miniapp/`.
 
 ### Signal Engine
 
-Правила-based движок (не нейросеть).
+Правила-based движок — прозрачный, воспроизводимый, настраиваемый.
 
-**Индикаторы** (`signals/indicators.py`, библиотека `ta`):
-
-- RSI · MACD · EMA (fast/slow) · ATR
-- Bollinger Bands · ADX + DI · VWAP
-- Stochastic · CCI
+**Индикаторы** (библиотека `ta`):
+RSI · MACD · EMA (fast/slow) · ATR · Bollinger Bands · ADX+DI · VWAP · Stochastic · CCI
 
 **Правила** (`knowledge/rules.yaml`):
+- 12+ правил BUY / SELL / HOLD с весовым скорингом
+- Горячая перезагрузка без рестарта сервера
+- Каждое правило — явные условия по индикаторам, без магии
 
-- 12 правил BUY / SELL / HOLD
-- Весовой скоринг (`weight`)
-- Условия по индикаторам (`operator`, `value`)
-- Горячая перезагрузка без рестарта
+**Пример правила:**
 
-**Риск-менеджмент** (`risk/risk_manager.py`):
-
-- ATR-стоп (`RISK_ATR_STOP_MULT`)
-- Лимит размера позиции (`RISK_MAX_POSITION_PCT`)
-- Макс. открытых позиций (`RISK_MAX_OPEN_POSITIONS`)
-- Дневной лимит убытков (`RISK_MAX_DAILY_LOSS_PCT`)
-- Trailing stop
+```yaml
+- name: "RSI_Oversold_Bounce"
+  description: "RSI выходит из зоны перепроданности"
+  action: BUY
+  weight: 1.0
+  conditions:
+    - indicator: rsi
+      operator: "<"
+      value: 35
+    - indicator: macd_hist
+      operator: ">"
+      value: 0
+```
 
 ---
 
 ### Backtest
 
-Два движка:
-
-| Движок | Файл | Назначение |
-|--------|------|------------|
-| Classic | `backtest/engine.py` | CLI: `python3 bot/main.py --backtest` |
+| Движок | Файл | Запуск |
+|--------|------|--------|
+| Classic | `backtest/engine.py` | `python3 bot/main.py --backtest` |
 | Advanced | `backtest/advanced_engine.py` | Platform API + Dashboard UI |
 
-**Параметры бэктеста:**
-
-- Strategy: `rules_engine`
-- Commission: 0.03% (default)
-- Slippage: 0.01%
-- Initial capital: 1 000 000 ₽ (default)
-- Результаты: equity curve, drawdown, heatmap, календарь доходности, журнал сделок
-- Экспорт: `GET /api/platform/backtest/runs/{id}/export`
+Параметры: комиссия 0.03%, slippage 0.01%, стартовый капитал 1 000 000 ₽.  
+Результаты: equity curve · drawdown · heatmap · календарь доходности · журнал сделок.
 
 ---
 
@@ -253,151 +250,179 @@ flowchart TB
     subgraph clients [Клиенты]
         D[Dashboard SPA]
         T[Telegram Bot]
-        M[Mini App]
+        W[Marketing Website]
     end
 
-    subgraph api [Platform API]
-        P["/api/platform/*"]
-        S[SSE Stream]
+    subgraph pipeline [Engine Pipeline]
+        CL[01 Candle Loader]
+        IE[02 Indicator Engine]
+        RE[03 Rules Engine]
+        BG[04 Belief Gate]
+        RM[05 Risk Manager]
+        EX[06 Broker / Paper]
+        MW[07 Memory Writer]
     end
 
-    subgraph core [Ядро]
-        E[Trading Engine]
-        SE[Signal Engine]
-        R[Risk Manager]
-        PT[Paper Trading]
+    subgraph learning [Belief System]
+        BU[Belief Updater]
+        HE[Hypothesis Engine]
+        DE[Decision Evaluator]
     end
 
-    subgraph external [Внешние системы]
+    subgraph external [Брокеры / Данные]
         MOEX[MOEX ISS API]
-        TK[Tinkoff Invest API]
+        TK[T-Инвестиции API]
         BY[Bybit API]
     end
 
     DB[(PostgreSQL / TimescaleDB)]
+    SSE[SSE Hub]
 
-    D --> P
+    D --> |REST| pipeline
     T --> TK
-    M --> P
-    P --> S
-    P --> PT
-    P --> SE
-    E --> SE
-    E --> R
-    E --> TK
-    SE --> MOEX
-    PT --> DB
-    E --> DB
-    P --> DB
-    D --> S
-```
-
-**Поток данных:**
-
-```
-User
-  ↓
-Dashboard / Telegram Bot / Mini App
-  ↓
-Platform API + SSE Hub
-  ↓
-Trading Engine + Signal Engine + Risk Manager
-  ↓
-Broker Layer (Tinkoff · Bybit) + Paper Sandbox
-  ↓
-PostgreSQL / TimescaleDB
-  ↓
-Analytics (Backtest · Statistics · Dashboard Metrics)
+    CL --> MOEX
+    CL --> BY
+    CL --> IE --> RE --> BG --> RM --> EX --> MW
+    BG --> learning
+    MW --> BU --> DB
+    EX --> DB
+    D --> SSE
+    SSE --> DB
 ```
 
 ---
 
-## Синхронизация
+## Маркетинговый сайт
 
-**Dashboard ↔ Telegram Bot ↔ Trading Engine**
+`website/` — публичный институциональный сайт на **Next.js 15** с TypeScript и Tailwind CSS v4.
 
-| Событие | SSE | REST API | Telegram |
-|---------|-----|----------|----------|
-| `signals_updated` | ✅ | `/api/platform/signals` | Push + меню Сигналы |
-| `portfolio_updated` | ✅ | `/api/platform/portfolio` | Push + Портфель |
-| `trade_executed` | ✅ | Paper / Broker | Push уведомление |
-| `backtest_complete` | ✅ | `/api/platform/backtest/runs` | — |
-| Balance updates | ✅ | `/api/platform/overview` | /balance |
+### Технологии
 
-**Frontend sync layer:**
+| Категория | Стек |
+|-----------|------|
+| Framework | Next.js 15 (App Router, SSG) |
+| Language | TypeScript 5 |
+| Styles | Tailwind CSS v4 · CSS Design Tokens |
+| i18n | next-intl (RU / EN) |
+| Animation | GSAP 3 + ScrollTrigger · Motion (Framer) · Lenis smooth scroll |
+| 3D | Three.js · React Three Fiber · Drei |
+| Content | MDX (philosophy, engine pipeline, learning system) |
+| Forms | react-hook-form · Zod |
+| Analytics | PostHog · Vercel Analytics |
+| Deployment | Vercel (SSG) |
 
+### Разделы сайта
+
+| Секция | Содержание |
+|--------|------------|
+| Hero | Signal Propagation визуализация, live-метрики стратегии |
+| Philosophy | Три принципа: доказательства · ограниченное убеждение · адаптивность |
+| Engine Pipeline | Интерактивный горизонтальный скроллер — 7 этапов конвейера |
+| Learning System | Интерактивный confidence slider, trajectory chart |
+| Dashboard Preview | Фотореалистичный мокап дашборда |
+| Strategy Layer | Live-таблица стратегий (LIVE / PAPER / FROZEN) |
+| Broker Integrations | T-Инвестиции · Bybit · Финам |
+| Paper Sandbox | Объяснение paper trading без риска |
+| Pricing | Тарифные планы (Research / Operator / Live) |
+| FAQ | 5 частых вопросов |
+| Telegram Bot | Описание интеграции |
+| CTA | Форма запроса закрытого доступа |
+
+### Запуск сайта
+
+```bash
+cd website
+npm install
+npm run dev      # localhost:3000
+npm run build    # production build
 ```
-MOEX/Broker → Platform Services → SSE Hub → QFSync → QFStore → QFRender → UI
-                                      ↓
-                              Mini App (Trade tab)
-```
-
-Polling fallback: 12 сек. Reconnect SSE: 5 сек.
 
 ---
 
 ## Стек технологий
 
-### Frontend
-
-| Категория | Технология |
-|-----------|------------|
-| UI | Vanilla JavaScript (без React/Vue) |
-| Стили | Custom Design System CSS, CSS Grid, Flexbox |
-| Layout | `SidebarProvider`, `AppLayout`, `MiniAppLayout` |
-| Charts | Lightweight Charts 4.2 · ECharts 5.5 |
-| State | `QFStore`, `QFSync`, `QFRender`, `QFApi` |
-| Шрифты | Inter · JetBrains Mono · Orbitron |
-| Template | Flask + Jinja2 |
-
-### Backend
+### Торговая платформа (Python)
 
 | Категория | Технология |
 |-----------|------------|
 | Runtime | Python 3.11+ |
 | Web | Flask ≥ 3.1 |
 | ORM | SQLAlchemy ≥ 2.0 |
-| DB Driver | psycopg2-binary |
 | Database | PostgreSQL 15 + TimescaleDB |
 | Telegram | python-telegram-bot ≥ 20 |
 | Brokers | tinkoff-investments SDK · Bybit client |
 | Analysis | pandas · ta · PyYAML |
-| HTTP | requests |
-| Security | cryptography · credential vault · audit log |
+| Security | cryptography · JWT · credential vault |
+| Real-time | SSE (Server-Sent Events) |
 
-### Infrastructure
+### Dashboard Frontend (Vanilla JS)
+
+| Категория | Технология |
+|-----------|------------|
+| UI | Vanilla JavaScript |
+| Charts | Lightweight Charts 4.2 · ECharts 5.5 |
+| State | `QFStore` → `QFRender` → views |
+| Шрифты | Inter · JetBrains Mono |
+
+### Маркетинговый сайт (Next.js)
+
+| Категория | Технология |
+|-----------|------------|
+| Framework | Next.js 15 · React 19 |
+| Styles | Tailwind CSS v4 · shadcn/ui |
+| Animation | GSAP 3 · Motion · Lenis |
+| 3D | Three.js · R3F |
+| i18n | next-intl |
+
+### Инфраструктура
 
 | Категория | Технология |
 |-----------|------------|
 | Containers | Docker Compose |
 | DB UI | Adminer (:8080) |
-| Real-time | SSE (Server-Sent Events) |
 | Market Data | MOEX ISS REST API |
 | Logging | Rotating file logs (10 MB × 5) |
-| Process Manager | `start.sh` |
 
 ---
 
 ## Структура проекта
 
 ```
-Trading-Bot-main/
+Trading-Bot/
 │
-├── bot/                              # Исходный код приложения
-│   ├── main.py                       # Торговый цикл + Telegram (thread)
+├── bot/                              # Торговая платформа (Python)
+│   ├── main.py                       # Точка входа: торговый цикл + Telegram
 │   ├── config.py                     # Конфигурация из .env
 │   │
+│   ├── learning/                     # Система убеждений (Belief Engine)
+│   │   ├── belief_updater.py         # Байесовское обновление confidence
+│   │   ├── decision_evaluator.py     # Оценка сигналов против confidence
+│   │   ├── hypothesis_engine.py      # Формирование торговых гипотез
+│   │   ├── memory_writer.py          # Запись результатов в БД
+│   │   ├── feedback.py               # Сбор feedback после сделок
+│   │   └── trading_orchestrator.py   # Координация всего цикла обучения
+│   │
 │   ├── signals/                      # Сигнальный движок
-│   │   ├── indicators.py             # RSI, MACD, EMA, ATR, BB, ADX, VWAP
+│   │   ├── indicators.py             # RSI, MACD, EMA, ATR, BB, ADX, VWAP, CCI
 │   │   └── rules_engine.py           # YAML-правила → SignalResult
 │   │
 │   ├── risk/
-│   │   └── risk_manager.py           # ATR-стоп, лимиты, trailing
+│   │   ├── risk_manager.py           # ATR-стоп, лимиты, trailing stop
+│   │   └── state_store.py            # Состояние риск-менеджера
+│   │
+│   ├── engine/
+│   │   └── paper_engine.py           # Paper trading движок
+│   │
+│   ├── gateway/
+│   │   └── trade_gateway.py          # Унифицированный шлюз к брокерам
+│   │
+│   ├── market/
+│   │   └── data_hub.py               # Агрегатор рыночных данных
 │   │
 │   ├── broker/
-│   │   ├── tinkoff_client.py         # Tinkoff Invest API
+│   │   ├── tinkoff_client.py         # T-Инвестиции API
 │   │   ├── bybit_client.py           # Bybit API
-│   │   └── registry.py               # Broker registry
+│   │   └── registry.py               # Реестр брокеров
 │   │
 │   ├── backtest/
 │   │   ├── engine.py                 # CLI-бэктестер
@@ -407,54 +432,66 @@ Trading-Bot-main/
 │   │   └── loader.py                 # MOEX ISS → PostgreSQL candles
 │   │
 │   ├── qf_platform/                  # Platform layer
-│   │   ├── schema.py                 # DDL: paper, signals, backtest
-│   │   ├── services/                 # portfolio, signals, paper, backtest
-│   │   └── repositories/             # Data access
+│   │   ├── schema.py                 # DDL: belief_system, paper, signals, backtest
+│   │   ├── services/                 # portfolio, signals, paper, backtest, analytics
+│   │   └── repositories/             # Data access objects
 │   │
 │   ├── realtime/
 │   │   └── sse_hub.py                # SSE pub/sub
 │   │
+│   ├── auth/                         # Аутентификация
+│   │   ├── jwt_service.py
+│   │   ├── session_manager.py
+│   │   ├── brute_force.py
+│   │   └── user_repository.py
+│   │
+│   ├── security/
+│   │   ├── credential_vault.py       # AES-шифрование токенов
+│   │   ├── dashboard_auth.py         # Dashboard auth middleware
+│   │   └── http_middleware.py        # HTTP security headers
+│   │
 │   ├── tg/                           # Telegram bot
 │   │   ├── bot.py                    # Application factory
-│   │   ├── handlers/                 # 15+ handler modules
+│   │   ├── handlers/                 # Handler modules
 │   │   ├── menus/                    # Inline keyboards
 │   │   ├── notifications/            # Push dispatcher
 │   │   └── middlewares/              # Auth, rate limit, errors
 │   │
-│   ├── security/                     # Auth, encryption, middleware
-│   │   ├── credential_vault.py
-│   │   ├── dashboard_auth.py
-│   │   └── http_middleware.py
-│   │
-│   ├── services/                     # Bot engine, statistics, broker service
-│   │
-│   └── ui/                           # Web Dashboard
-│       ├── dashboard.py              # Flask entry point
+│   └── ui/                           # Trading Dashboard
+│       ├── dashboard.py              # Flask entry point (:5001)
 │       ├── api/platform_routes.py    # /api/platform/*
 │       ├── templates/dashboard.html  # SPA shell
 │       └── static/
 │           ├── core/                 # api, store, sync, layout, format
 │           ├── views/render.js       # View renderers
-│           ├── miniapp/              # Quant Hunter + Trade
-│           │   ├── game.js
-│           │   ├── miniapp.js
-│           │   ├── miniapp.css
-│           │   ├── index.html
-│           │   └── BOTFATHER.md
-│           ├── app.js, platform.js, charts.js
-│           └── design-system.css, style.css
+│           ├── miniapp/              # CRYPTONITE Quant Hunter
+│           ├── app.js, charts.js
+│           └── design-system.css
+│
+├── website/                          # Маркетинговый сайт (Next.js 15)
+│   ├── src/
+│   │   ├── app/                      # App Router pages
+│   │   ├── components/               # UI, sections, motion, scene
+│   │   ├── content-layer/            # MDX content pipeline
+│   │   ├── lib/                      # i18n, analytics, fonts, utils
+│   │   └── styles/                   # Design tokens (color, typography, spacing)
+│   ├── content/                      # MDX content (RU + EN)
+│   │   ├── {locale}/philosophy/      # 3 philosophy cards
+│   │   ├── {locale}/engine-pipeline/ # 7 pipeline stages
+│   │   └── {locale}/learning-system/ # Learning system docs
+│   └── messages/                     # i18n strings (ru.json, en.json)
 │
 ├── knowledge/
-│   └── rules.yaml                    # 12 торговых правил
+│   └── rules.yaml                    # Торговые правила (12+, горячая перезагрузка)
 │
 ├── tests/
 │   └── platform_tests/               # Unit-тесты platform layer
 │
-├── docs/                             # Расширенная документация
-├── infra/                            # logrotate и др.
-├── docker-compose.yml                # TimescaleDB + Adminer
+├── docs/                             # Документация
+├── infra/                            # logrotate и конфигурации
+├── docker-compose.yml                # TimescaleDB (:5432) + Adminer (:8080)
 ├── requirements.txt
-├── start.sh                          # Запуск всей системы
+├── start.sh / start.ps1 / start.bat  # Скрипты запуска
 └── .env.example
 ```
 
@@ -465,18 +502,19 @@ Trading-Bot-main/
 ### Требования
 
 - **Python 3.11+**
+- **Node.js 20+** (для маркетингового сайта)
 - **Docker** и **Docker Compose**
-- **Git**
-- (Опционально) Tinkoff Invest token, Telegram bot token
+- Токены: Tinkoff Invest API, Telegram Bot (опционально)
 
 ### Шаг 1 — Клонирование
 
 ```bash
-git clone https://github.com/YOUR_ORG/Trading-Bot-main.git
-cd Trading-Bot-main
+git clone https://github.com/Pomiranov/Trading-Bot.git
+cd Trading-Bot
+git checkout merge-learning-nik
 ```
 
-### Шаг 2 — Окружение
+### Шаг 2 — Python-окружение
 
 ```bash
 python3 -m venv .venv
@@ -488,7 +526,8 @@ pip install -r requirements.txt
 
 ```bash
 cp .env.example .env
-# Отредактируйте .env — минимум DB_PASSWORD
+# Минимально: DB_PASSWORD
+# Для торговли: TINKOFF_TOKEN, TELEGRAM_TOKEN
 ```
 
 ### Шаг 4 — База данных
@@ -499,29 +538,24 @@ docker compose up -d
 # Adminer     → http://127.0.0.1:8080
 ```
 
-Схема platform-таблиц создаётся автоматически при старте Dashboard.
+Схема (`belief_system`, `paper_*`, `signals`, `backtest_*`) создаётся автоматически при первом старте Dashboard.
 
 ### Шаг 5 — Исторические данные (опционально)
 
 ```bash
-python3 bot/data/loader.py SBER GAZP LKOH YNDX NVTK --interval 1d --days 365
+python3 bot/data/loader.py SBER GAZP LKOH YNDX --interval 1d --days 365
 ```
 
 ### Шаг 6 — Запуск
 
-**Вариант A — всё сразу:**
-
 ```bash
+# Всё сразу (macOS/Linux)
 ./start.sh
-```
 
-**Вариант B — по отдельности:**
-
-```bash
-# Dashboard → http://127.0.0.1:5001
+# Только Dashboard → http://127.0.0.1:5001
 python3 bot/ui/dashboard.py
 
-# Торговый цикл + Telegram (в отдельном терминале)
+# Торговый цикл + Telegram
 python3 bot/main.py
 
 # Только Telegram-бот
@@ -529,9 +563,12 @@ python3 bot/main.py --bot-only
 
 # CLI-бэктест
 python3 bot/main.py --backtest
+
+# Маркетинговый сайт → http://localhost:3000
+cd website && npm install && npm run dev
 ```
 
-> ⚠️ **Безопасность:** держите `TINKOFF_SANDBOX=true` до осознанного перехода на live-торговлю.
+> ⚠️ `TINKOFF_SANDBOX=true` по умолчанию. Не меняйте на `false` без полного понимания рисков.
 
 ---
 
@@ -553,9 +590,9 @@ python3 bot/main.py --backtest
 
 | Переменная | Описание |
 |------------|----------|
-| `TINKOFF_TOKEN` | API-токен (t.xxx…) |
+| `TINKOFF_TOKEN` | API-токен |
 | `TINKOFF_ACCOUNT_ID` | ID счёта |
-| `TINKOFF_SANDBOX` | `true` = песочница, `false` = боевой |
+| `TINKOFF_SANDBOX` | `true` = sandbox, `false` = live |
 
 ### Telegram
 
@@ -563,7 +600,7 @@ python3 bot/main.py --backtest
 |------------|----------|
 | `TELEGRAM_TOKEN` | Токен от @BotFather |
 | `TELEGRAM_CHAT_ID` | Основной chat ID |
-| `TELEGRAM_ALLOWED_IDS` | Доп. ID через запятую |
+| `TELEGRAM_ALLOWED_IDS` | Доп. разрешённые IDs |
 
 ### Dashboard
 
@@ -571,8 +608,8 @@ python3 bot/main.py --backtest
 |------------|--------------|----------|
 | `DASHBOARD_HOST` | `127.0.0.1` | Bind address |
 | `DASHBOARD_PORT` | `5001` | Порт |
-| `DASHBOARD_API_KEY` | — | API-ключ (заголовок `X-Dashboard-Api-Key`) |
-| `DASHBOARD_REQUIRE_API_KEY` | `false` | Требовать ключ для GET /api/* |
+| `DASHBOARD_API_KEY` | — | API-ключ |
+| `DASHBOARD_REQUIRE_API_KEY` | `false` | Требовать ключ |
 
 ### Торговля и риск
 
@@ -585,37 +622,6 @@ python3 bot/main.py --backtest
 | `RISK_MAX_DAILY_LOSS_PCT` | `0.02` | Дневной лимит убытков |
 | `RISK_MAX_OPEN_POSITIONS` | `5` | Макс. открытых позиций |
 
-### Безопасность
-
-| Переменная | Описание |
-|------------|----------|
-| `SECRETS_MASTER_KEY` | 64-char hex — шифрование токенов на диске |
-| `VAULT_ADDR` / `VAULT_TOKEN` | HashiCorp Vault (опционально) |
-
----
-
-## Использование
-
-### Dashboard
-
-1. Откройте `http://127.0.0.1:5001`
-2. Навигация: sidebar или клавиши `1`–`5`
-3. Сворачивание sidebar — кнопка «Свернуть» (состояние в `localStorage`)
-4. Quant Hunter — встроен в Dashboard, вкладка QUANT HUNTER открывается по умолчанию
-
-### Telegram Bot
-
-1. Создайте бота через @BotFather
-2. Укажите `TELEGRAM_TOKEN` и `TELEGRAM_CHAT_ID` в `.env`
-3. Запустите `python3 bot/main.py --bot-only` или полный `main.py`
-4. Отправьте `/start` боту
-
-### Mini App в Telegram
-
-1. Опубликуйте Dashboard на HTTPS
-2. Следуйте [`BOTFATHER.md`](bot/ui/static/miniapp/BOTFATHER.md)
-3. Web App URL: `https://YOUR-DOMAIN/static/miniapp/index.html`
-
 ---
 
 ## API
@@ -625,9 +631,9 @@ python3 bot/main.py --backtest
 | Метод | Endpoint | Описание |
 |-------|----------|----------|
 | GET | `/overview` | Сводка: баланс, PnL, брокеры, система |
-| GET | `/portfolio` | Портфель (агрегация broker + paper) |
+| GET | `/portfolio` | Портфель (broker + paper) |
 | GET | `/portfolio/positions` | Список позиций |
-| GET | `/signals` | Сигналы (фильтры: exchange, status, limit) |
+| GET | `/signals` | Сигналы с фильтрами |
 | POST | `/signals/generate` | Генерация live-сигналов |
 | POST | `/signals/{id}/execute` | Исполнение сигнала |
 | GET | `/paper/account` | Paper-счёт и позиции |
@@ -637,81 +643,7 @@ python3 bot/main.py --backtest
 | GET | `/backtest/runs/{id}/export` | Экспорт JSON |
 | GET | `/health` | System health |
 | GET | `/brokers` | Статус брокеров |
-| GET | `/stream` | **SSE** — real-time события |
-
-### Legacy Dashboard API (`/api/`)
-
-| Endpoint | Описание |
-|----------|----------|
-| `/api/stats` | Win rate, Sharpe, drawdown |
-| `/api/equity` | Equity curve |
-| `/api/candles` | OHLCV свечи |
-| `/api/signals/live` | Live-индикаторы по тикеру |
-| `/api/settings` | Конфигурация приложения |
-| `/api/tinkoff/*` | Прямой доступ к Tinkoff portfolio |
-
----
-
-## Сигнальный движок
-
-### Как работает
-
-1. `MoexLoader` загружает OHLCV свечи (MOEX ISS)
-2. `IndicatorEngine` рассчитывает индикаторы на pandas DataFrame
-3. `RulesEngine` проверяет 12 правил из YAML
-4. Результат: `BUY` / `SELL` / `HOLD` + score + metadata
-5. `RiskManager` проверяет допустимость сделки
-6. `TinkoffClient` исполняет ордер (или Paper Trading для sandbox)
-
-### Пример правила (YAML)
-
-```yaml
-- name: "RSI_Oversold_Bounce"
-  description: "RSI выходит из перепроданности"
-  action: BUY
-  weight: 1.0
-  conditions:
-    - indicator: rsi
-      operator: "<"
-      value: 35
-    - indicator: macd_hist
-      operator: ">"
-      value: 0
-```
-
----
-
-## CRYPTONITE Quant Hunter
-
-### Игровой цикл
-
-```
-User Action (catch Quant)
-    ↓
-Reward (points + XP)
-    ↓
-Progression (level up)
-    ↓
-Upgrade (titles, skins)
-    ↓
-New Challenge (missions, achievements)
-```
-
-### Типы Quant
-
-| Тип | Очки | Spawn rate | Lifetime |
-|-----|------|------------|----------|
-| Common ◇ | +1 | 55% | 4000 ms |
-| Rare ◆ | +10 | 28% | 2800 ms |
-| Epic ✦ | +100 | 14% | 2000 ms |
-| Legendary ★ | +1000 | 3% | 1500 ms |
-
-### Retention-механики
-
-- **Energy cap** — возврат через 10–100 мин
-- **Daily missions** — ежедневные цели
-- **7-day streak** — редкий скин `holo-rare`
-- **Leaderboard** — соревновательный элемент
+| GET | `/stream` | **SSE** real-time события |
 
 ---
 
@@ -720,87 +652,48 @@ New Challenge (missions, achievements)
 | Механизм | Реализация |
 |----------|------------|
 | Dashboard API Key | Заголовок `X-Dashboard-Api-Key` |
-| Telegram Auth | Whitelist chat IDs |
-| Credential Vault | AES-шифрование токенов (`SECRETS_MASTER_KEY`) |
-| HTTP Headers | `X-Frame-Options`, `X-Content-Type-Options`, `Referrer-Policy` |
-| Audit Log | Security events в логах |
-| Redaction | Маскирование секретов в логах |
-| Rate Limiting | Telegram middleware |
+| Telegram Auth | Whitelist chat IDs + rate limiting |
+| Credential Vault | AES-шифрование токенов на диске |
+| JWT / Sessions | `auth/jwt_service.py`, `session_manager.py` |
+| Brute Force | `auth/brute_force.py` |
+| HTTP Headers | `X-Frame-Options`, `X-Content-Type-Options`, CSP |
+| Audit Log | Security events в rotating-логах |
 | Sandbox Mode | `TINKOFF_SANDBOX=true` по умолчанию |
-
----
-
-## Скриншоты
-
-> Добавьте изображения в `docs/screenshots/` и раскомментируйте.
-
-| Dashboard | Portfolio |
-|:---:|:---:|
-| _placeholder_ | _placeholder_ |
-
-| Signals | Backtest |
-|:---:|:---:|
-| _placeholder_ | _placeholder_ |
-
-| Quant Hunter Mini App |
-|:---:|
-| _placeholder_ |
 
 ---
 
 ## Roadmap
 
-### ✅ Completed
+### ✅ Реализовано
 
-- Dashboard redesign (terminal UI, CSS Grid, SidebarProvider)
-- Platform layer (portfolio, signals, backtest, paper trading)
-- SSE-синхронизация Dashboard ↔ Mini App
-- Paper Trading Sandbox (10M ₽ / 100K USDT)
-- CRYPTONITE Quant Hunter (energy, levels, missions, leaderboard)
-- Telegram bot с 15+ handlers и push-уведомлениями
-- Security hardening (vault, API key, audit)
-- Inline Mini App embed (без iframe)
+- [x] Belief Engine — байесовское обновление confidence
+- [x] 7-этапный Engine Pipeline с Memory Writer
+- [x] Trading Dashboard (Flask SPA, CSS Grid, темная тема)
+- [x] Platform layer (portfolio, signals, backtest, paper trading)
+- [x] Paper Sandbox с идентичным путём сигнала
+- [x] SSE real-time синхронизация
+- [x] Telegram Bot (15+ handlers, push-уведомления)
+- [x] Security hardening (vault, JWT, brute force, API key)
+- [x] Marketing Website (Next.js 15, RU/EN, GSAP, Three.js)
+- [x] Бэктест (Classic + Advanced с UI)
+- [x] Bybit integration
+- [x] CRYPTONITE Quant Hunter Mini App
 
-### ⏳ Upcoming
+### ⏳ Запланировано
 
-- Улучшение scoring-модели сигналов
-- Finam broker integration
-- Расширение Bybit-функционала
-- Advanced portfolio analytics
-- Cloud save для игрового прогресса
-- WebSocket live quotes (сейчас SSE)
-- Скриншоты и CI/CD pipeline
-
----
-
-## Contributing
-
-1. **Fork** репозитория
-2. Создайте ветку: `git checkout -b feature/описание`
-3. Внесите изменения
-4. Запустите тесты:
-
-```bash
-python3 -m pytest tests/
-```
-
-5. Откройте **Pull Request** с описанием изменений
-
-Для багов — GitHub Issues. Для security-уязвимостей — не создавайте публичные issues.
-
----
-
-## Лицензия
-
-Файл `LICENSE` в репозитории **отсутствует**.  
-В предыдущих версиях документации упоминалась лицензия **MIT** — рекомендуется добавить `LICENSE` файл.
+- [ ] Finam broker integration
+- [ ] WebSocket live quotes (сейчас SSE polling)
+- [ ] Cloud save для прогресса Quant Hunter
+- [ ] Расширенная аналитика портфеля
+- [ ] CI/CD pipeline
+- [ ] Публичная бета-версия
 
 ---
 
 ## Дисклеймер
 
 QuantFlow предназначен для **образовательных и исследовательских** целей.  
-Алгоритмическая торговля связана с финансовыми рисками.  
+Алгоритмическая торговля несёт реальные финансовые риски.  
 Всегда тестируйте в sandbox-режиме. Авторы не несут ответственности за торговые убытки.
 
 ---
@@ -812,50 +705,113 @@ QuantFlow предназначен для **образовательных и и
 ## Table of Contents
 
 - [About](#about)
-- [Features](#features-1)
+- [Belief System](#belief-system)
+- [Engine Pipeline](#engine-pipeline)
+- [Features](#features)
 - [System Architecture](#system-architecture)
-- [Synchronization](#synchronization)
+- [Marketing Website](#marketing-website)
 - [Tech Stack](#tech-stack)
 - [Project Structure](#project-structure)
 - [Installation](#installation)
 - [Configuration](#configuration)
-- [Usage](#usage)
 - [API](#api-1)
-- [Signal Engine](#signal-engine)
-- [CRYPTONITE Quant Hunter](#cryptonite-quant-hunter-1)
 - [Security](#security)
-- [Screenshots](#screenshots-1)
 - [Roadmap](#roadmap-1)
-- [Contributing](#contributing)
-- [License](#license)
 - [Disclaimer](#disclaimer)
 
 ---
 
 ## About
 
-**QuantFlow** is an algorithmic trading platform that unifies a web terminal, Telegram bot, Telegram Mini App, and virtual paper-trading sandbox into a single ecosystem.
+**QuantFlow** is an algorithmic trading platform built on Bayesian belief updating. The system does not predict markets and does not use ML/LLM for signal generation. Instead it measures which verified trading rules are working right now and allocates capital strictly by statistical conviction.
 
-The platform focuses on:
+**Core principle**: every strategy carries a numerical confidence score that updates after each trade via Bayes' law. Position size is a direct mathematical function of that confidence. Opinions are not accepted; only evidence is.
 
-- **MOEX** — candle data via MOEX ISS REST API
-- **Tinkoff Invest API v2** — primary broker (Sandbox / Production)
-- **Bybit** — optional broker client
-- **Paper Trading** — risk-free virtual portfolio
+### Supported markets and brokers
 
-QuantFlow does **not** use ML/LLM for signal generation. Signals are built from **technical indicators** and **YAML rules** with weighted scoring — transparent, reproducible, and configurable.
+| Market | Broker | Mode |
+|--------|--------|------|
+| MOEX (equities, derivatives) | T-Investments (Tinkoff) | Sandbox + Production |
+| MOEX | Finam | In development |
+| Crypto | Bybit | Spot + Derivatives |
+| All markets | Paper Trading | Always available |
 
-### Core Components
+### Core components
 
 | Component | Purpose |
 |-----------|---------|
-| **Trading Dashboard** | Web terminal: portfolio, signals, backtest, settings, Mini App |
+| **Belief Engine** | Bayesian confidence updater for trading strategies |
+| **Engine Pipeline** | 7-stage pipeline: data → signal → execution → memory |
+| **Trading Dashboard** | Flask SPA terminal: portfolio, signals, backtest, strategies |
 | **Telegram Bot** | Mobile control, notifications, manual trading |
-| **Telegram Mini App** | CRYPTONITE Quant Hunter — gamification + Trade tab |
-| **Trading Engine** | Automated trading loop (`bot/main.py`) |
-| **Platform Layer** | Unified API: portfolio, signals, paper, backtest, SSE |
-| **Signal Engine** | Indicators + 12 rules from `knowledge/rules.yaml` |
-| **Paper Sandbox** | Virtual account: 10M ₽ / 100K USDT by default |
+| **Paper Sandbox** | Virtual account — identical signal path, zero risk |
+| **Marketing Website** | Public Next.js site (RU/EN), institutional design |
+
+---
+
+## Belief System
+
+This is the core of the project — what distinguishes QuantFlow from ordinary trading bots.
+
+### How it works
+
+```
+Each strategy holds a confidence score (confidence ∈ [0.05, 0.95]).
+
+After each trade:
+  new_confidence = current + (target - current) × LEARNING_RATE
+
+where target is computed from:
+  - win_rate       (fraction of winning trades)
+  - profit_factor  (gross profit / gross loss)
+  - sharpe_ratio   (risk-adjusted return)
+  - expectancy     (expected value per trade)
+
+Until 20 confirmed trades: confidence = base level (no trust granted).
+```
+
+### Key constants
+
+| Parameter | Value | Meaning |
+|-----------|-------|---------|
+| `MIN_TRADES_FOR_CONFIDENCE` | 20 | Minimum trades before learning begins |
+| `CONFIDENCE_LEARNING_RATE` | 0.15 | Adaptation speed (15% per trade) |
+| `MIN_CONFIDENCE` | 0.05 | Floor — never zero |
+| `MAX_CONFIDENCE` | 0.95 | Ceiling — never 100% certain |
+
+### Strategy lifecycle
+
+| Status | Description |
+|--------|-------------|
+| `LIVE` | Strategy is trading; confidence is sufficient |
+| `PAPER` | Trading virtually, accumulating history |
+| `FROZEN` | Confidence fell — capital removed, history preserved |
+| `HYPOTHESIS` | Awaiting minimum trades for first evaluation |
+
+A frozen strategy is **never deleted**. If market conditions that made it work return, confidence rebuilds through new evidence — gradually, not from scratch.
+
+---
+
+## Engine Pipeline
+
+7-stage deterministic path from data to execution:
+
+```
+01 CANDLE LOADER     OHLCV candles from MOEX ISS / Bybit API
+       ↓
+02 INDICATOR ENGINE  RSI · ATR · EMA · MACD · BB · ADX · VWAP · Stochastic · CCI
+       ↓
+03 RULES ENGINE      12+ rules from knowledge/rules.yaml → SignalResult (BUY/SELL/HOLD + score)
+       ↓
+04 BELIEF GATE       Checks signal against current strategy confidence
+                     Low conviction → signal is blocked
+       ↓
+05 RISK MANAGER      ATR stop · position size = f(confidence) · daily loss limit
+       ↓
+06 BROKER / PAPER    TinkoffClient · BybitClient · PaperEngine
+       ↓
+07 MEMORY WRITER     Trade result → belief_updater → confidence update in DB
+```
 
 ---
 
@@ -867,26 +823,14 @@ Professional SPA terminal built with Flask + Vanilla JS.
 
 **Views:**
 
-| View | Hotkey | Description |
-|------|--------|-------------|
+| View | Key | Description |
+|------|-----|-------------|
 | Dashboard | `1` | Balance, PnL, equity curve, metrics, event log |
 | Portfolio | `2` | Positions, allocation, tickers, Lightweight Charts |
 | Signals | `3` | Live signals, filters, generate & execute |
 | Backtest | `4` | Simulations, equity/drawdown/heatmap, trade journal |
-| Quant Hunter | `5` | Mini App embedded inline (no iframe) |
-| Settings | — | Config, Tinkoff tokens, Dashboard API Key |
-
-**UI/UX:**
-
-- CSS Grid layout with `SidebarProvider` (OPEN / COLLAPSED)
-- Dedicated fullscreen layout for Mini App
-- Design System (`design-system.css`) — dark terminal theme
-- Charts: **Lightweight Charts** + **ECharts**
-- Real-time via **SSE** (`/api/platform/stream`)
-- Polling fallback every 12s (`QFSync`)
-- State: `QFStore` → `QFRender` → views
-
-**Refresh:** press `R` to reload the current view.
+| Quant Hunter | `5` | Telegram Mini App embedded without iframe |
+| Settings | — | Config, broker tokens, Dashboard API Key |
 
 ---
 
@@ -894,555 +838,39 @@ Professional SPA terminal built with Flask + Vanilla JS.
 
 Full-featured bot on `python-telegram-bot` ≥ 20 with inline keyboards.
 
-**Main menu:**
-
-- 📊 Dashboard — portfolio overview & bot status
-- 💼 Portfolio · 📈 Positions · 📑 Orders · 📜 Operations
-- 💰 Balance · 📊 Analytics · 📈 Statistics
-- 🤖 Trading Bot — start / pause / resume / stop / status / logs
-- 📡 Signals — browse & filter
-- 🔔 Notifications — push type settings
-- ⚙ Settings · 👤 Account · ❓ Help
-
 **Commands:**
 
 ```
-/start        /dashboard     /portfolio     /positions
-/orders       /operations    /balance       /statistics
-/signal       /bot_status    /help          /cancel
+/start  /dashboard  /portfolio  /positions  /orders
+/balance  /statistics  /signal  /bot_status  /help
 ```
 
-**Push notifications:**
+**Push notifications:** trade open/close, new signal, order fill, broker errors, risk limit triggers, strategy confidence changes.
 
-- Trade open / close
-- New signal
-- Order fill
-- Broker API errors
-- Risk limit triggers
-- Bot start / stop
-
-**Bot security:**
-
-- Authorization via `TELEGRAM_CHAT_ID` + `TELEGRAM_ALLOWED_IDS`
-- Rate limiting on actions
-- Confirmation for critical trade operations
-
-**Supported brokers:**
-
-- 🟢 **Tinkoff Invest** — full integration
-- 🟡 **Bybit** — client in codebase
-- ⚪ **Finam** — in development (settings UI stub)
+**Security:** chat ID whitelist, rate limiting, confirmation for critical operations.
 
 ---
 
-### Telegram Mini App — CRYPTONITE Quant Hunter
+### Paper Trading Sandbox
 
-Web3-style gamification in `bot/ui/static/miniapp/`.
+Virtual account with an **identical signal path** — same RulesEngine, same BeliefGate, same RiskManager. Only the final execution differs: broker is replaced by `PaperEngine`.
 
-**Launch modes:**
-
-1. **Embedded in Dashboard** — `Quant Hunter` view (key `5`)
-2. **Standalone / Telegram** — `https://DOMAIN/static/miniapp/index.html`
-
-> Telegram WebView requires **HTTPS**. Setup guide: [`bot/ui/static/miniapp/BOTFATHER.md`](bot/ui/static/miniapp/BOTFATHER.md)
-
-**Mini App tabs:**
-
-| Tab | Content |
-|-----|---------|
-| **Trade** | Balance, PnL, positions, signals — from Platform API |
-| **QUANT HUNTER** | Game mechanics |
-
-**Game mechanics (implemented):**
-
-| Mechanic | Details |
-|----------|---------|
-| **Quant types** | Common +1 · Rare +10 · Epic +100 · Legendary +1000 |
-| **Energy** | 100/100, −1 per catch, +10 every 10 min |
-| **Levels** | Crypto Rookie → Market Hunter → Signal Seeker → Quant Master → Crypto Legend |
-| **XP** | Progression: `80 + level × 25` XP to next level |
-| **Daily Missions** | Catch 50/200, Legendary hunt, 7-day login streak |
-| **Achievements** | First Catch, 100 Quant, 7 Days, Level 10/50, Legendary Collector |
-| **Leaderboard** | Rank · Username · Level · Points (localStorage) |
-| **Combo** | Consecutive catches with visual feedback |
-| **Visuals** | Cyberpunk UI, particles, glow, holographic panels, canvas background |
-
-Progress is stored in `localStorage` (`qf_quant_hunter_v2`).
-
----
-
-### Trading Sandbox (Paper Trading)
-
-Virtual portfolio without real money.
-
-**Capabilities:**
-
-- Virtual balance (default **10,000,000 ₽** or **100,000 USDT**)
-- Open / close paper positions
-- Unrealized PnL calculated from real `candles` prices
-- Trade history (`paper_trades`)
-- Equity snapshots
-- Signal execution in paper mode
-- Aggregation with broker portfolio in Platform Overview
-
-**DB tables:** `paper_accounts`, `paper_positions`, `paper_trades`, `equity_snapshots`
+- Default balance: **10,000,000 ₽** / **100,000 USDT**
+- Paper trade history forms a strategy's initial confidence score
+- PnL calculated from real market prices
+- Aggregated with broker portfolio in Platform Overview
 
 ---
 
 ### Signal Engine
 
-Rules-based engine (not a neural network).
+Rules-based engine — transparent, reproducible, configurable.
 
-**Indicators** (`signals/indicators.py`, `ta` library):
+**Indicators** (`ta` library): RSI · MACD · EMA · ATR · Bollinger Bands · ADX+DI · VWAP · Stochastic · CCI
 
-- RSI · MACD · EMA (fast/slow) · ATR
-- Bollinger Bands · ADX + DI · VWAP
-- Stochastic · CCI
+**Rules** (`knowledge/rules.yaml`): 12+ BUY/SELL/HOLD rules with weighted scoring. Hot-reload without restart.
 
-**Rules** (`knowledge/rules.yaml`):
-
-- 12 BUY / SELL / HOLD rules
-- Weighted scoring (`weight`)
-- Indicator conditions (`operator`, `value`)
-- Hot-reload without restart
-
-**Risk management** (`risk/risk_manager.py`):
-
-- ATR stop (`RISK_ATR_STOP_MULT`)
-- Position size limit (`RISK_MAX_POSITION_PCT`)
-- Max open positions (`RISK_MAX_OPEN_POSITIONS`)
-- Daily loss limit (`RISK_MAX_DAILY_LOSS_PCT`)
-- Trailing stop
-
----
-
-### Backtest
-
-Two engines:
-
-| Engine | File | Purpose |
-|--------|------|---------|
-| Classic | `backtest/engine.py` | CLI: `python3 bot/main.py --backtest` |
-| Advanced | `backtest/advanced_engine.py` | Platform API + Dashboard UI |
-
-**Backtest parameters:**
-
-- Strategy: `rules_engine`
-- Commission: 0.03% (default)
-- Slippage: 0.01%
-- Initial capital: 1,000,000 ₽ (default)
-- Results: equity curve, drawdown, heatmap, return calendar, trade journal
-- Export: `GET /api/platform/backtest/runs/{id}/export`
-
----
-
-## System Architecture
-
-```mermaid
-flowchart TB
-    subgraph clients [Clients]
-        D[Dashboard SPA]
-        T[Telegram Bot]
-        M[Mini App]
-    end
-
-    subgraph api [Platform API]
-        P["/api/platform/*"]
-        S[SSE Stream]
-    end
-
-    subgraph core [Core]
-        E[Trading Engine]
-        SE[Signal Engine]
-        R[Risk Manager]
-        PT[Paper Trading]
-    end
-
-    subgraph external [External]
-        MOEX[MOEX ISS API]
-        TK[Tinkoff Invest API]
-        BY[Bybit API]
-    end
-
-    DB[(PostgreSQL / TimescaleDB)]
-
-    D --> P
-    T --> TK
-    M --> P
-    P --> S
-    P --> PT
-    P --> SE
-    E --> SE
-    E --> R
-    E --> TK
-    SE --> MOEX
-    PT --> DB
-    E --> DB
-    P --> DB
-    D --> S
-```
-
-**Data flow:**
-
-```
-User
-  ↓
-Dashboard / Telegram Bot / Mini App
-  ↓
-Platform API + SSE Hub
-  ↓
-Trading Engine + Signal Engine + Risk Manager
-  ↓
-Broker Layer (Tinkoff · Bybit) + Paper Sandbox
-  ↓
-PostgreSQL / TimescaleDB
-  ↓
-Analytics (Backtest · Statistics · Dashboard Metrics)
-```
-
----
-
-## Synchronization
-
-**Dashboard ↔ Telegram Bot ↔ Trading Engine**
-
-| Event | SSE | REST API | Telegram |
-|-------|-----|----------|----------|
-| `signals_updated` | ✅ | `/api/platform/signals` | Push + Signals menu |
-| `portfolio_updated` | ✅ | `/api/platform/portfolio` | Push + Portfolio |
-| `trade_executed` | ✅ | Paper / Broker | Push notification |
-| `backtest_complete` | ✅ | `/api/platform/backtest/runs` | — |
-| Balance updates | ✅ | `/api/platform/overview` | /balance |
-
-**Frontend sync layer:**
-
-```
-MOEX/Broker → Platform Services → SSE Hub → QFSync → QFStore → QFRender → UI
-                                      ↓
-                              Mini App (Trade tab)
-```
-
-Polling fallback: 12s. SSE reconnect: 5s.
-
----
-
-## Tech Stack
-
-### Frontend
-
-| Category | Technology |
-|----------|------------|
-| UI | Vanilla JavaScript (no React/Vue) |
-| Styles | Custom Design System CSS, CSS Grid, Flexbox |
-| Layout | `SidebarProvider`, `AppLayout`, `MiniAppLayout` |
-| Charts | Lightweight Charts 4.2 · ECharts 5.5 |
-| State | `QFStore`, `QFSync`, `QFRender`, `QFApi` |
-| Fonts | Inter · JetBrains Mono · Orbitron |
-| Template | Flask + Jinja2 |
-
-### Backend
-
-| Category | Technology |
-|----------|------------|
-| Runtime | Python 3.11+ |
-| Web | Flask ≥ 3.1 |
-| ORM | SQLAlchemy ≥ 2.0 |
-| DB Driver | psycopg2-binary |
-| Database | PostgreSQL 15 + TimescaleDB |
-| Telegram | python-telegram-bot ≥ 20 |
-| Brokers | tinkoff-investments SDK · Bybit client |
-| Analysis | pandas · ta · PyYAML |
-| HTTP | requests |
-| Security | cryptography · credential vault · audit log |
-
-### Infrastructure
-
-| Category | Technology |
-|----------|------------|
-| Containers | Docker Compose |
-| DB UI | Adminer (:8080) |
-| Real-time | SSE (Server-Sent Events) |
-| Market Data | MOEX ISS REST API |
-| Logging | Rotating file logs (10 MB × 5) |
-| Process Manager | `start.sh` |
-
----
-
-## Project Structure
-
-```
-Trading-Bot-main/
-│
-├── bot/                              # Application source
-│   ├── main.py                       # Trading loop + Telegram (thread)
-│   ├── config.py                     # .env configuration
-│   │
-│   ├── signals/                      # Signal engine
-│   │   ├── indicators.py             # RSI, MACD, EMA, ATR, BB, ADX, VWAP
-│   │   └── rules_engine.py           # YAML rules → SignalResult
-│   │
-│   ├── risk/
-│   │   └── risk_manager.py           # ATR stop, limits, trailing
-│   │
-│   ├── broker/
-│   │   ├── tinkoff_client.py         # Tinkoff Invest API
-│   │   ├── bybit_client.py           # Bybit API
-│   │   └── registry.py               # Broker registry
-│   │
-│   ├── backtest/
-│   │   ├── engine.py                 # CLI backtester
-│   │   └── advanced_engine.py        # Platform backtest
-│   │
-│   ├── data/
-│   │   └── loader.py                 # MOEX ISS → PostgreSQL candles
-│   │
-│   ├── qf_platform/                  # Platform layer
-│   │   ├── schema.py                 # DDL: paper, signals, backtest
-│   │   ├── services/                 # portfolio, signals, paper, backtest
-│   │   └── repositories/             # Data access
-│   │
-│   ├── realtime/
-│   │   └── sse_hub.py                # SSE pub/sub
-│   │
-│   ├── tg/                           # Telegram bot
-│   │   ├── bot.py                    # Application factory
-│   │   ├── handlers/                 # 15+ handler modules
-│   │   ├── menus/                    # Inline keyboards
-│   │   ├── notifications/            # Push dispatcher
-│   │   └── middlewares/              # Auth, rate limit, errors
-│   │
-│   ├── security/                     # Auth, encryption, middleware
-│   │
-│   ├── services/                     # Bot engine, statistics
-│   │
-│   └── ui/                           # Web Dashboard
-│       ├── dashboard.py              # Flask entry point
-│       ├── api/platform_routes.py    # /api/platform/*
-│       ├── templates/dashboard.html  # SPA shell
-│       └── static/
-│           ├── core/                 # api, store, sync, layout
-│           ├── views/render.js
-│           └── miniapp/              # Quant Hunter + Trade
-│
-├── knowledge/
-│   └── rules.yaml                    # 12 trading rules
-│
-├── tests/
-│   └── platform_tests/
-│
-├── docs/
-├── docker-compose.yml
-├── requirements.txt
-├── start.sh
-└── .env.example
-```
-
----
-
-## Installation
-
-### Requirements
-
-- **Python 3.11+**
-- **Docker** & **Docker Compose**
-- **Git**
-- (Optional) Tinkoff Invest token, Telegram bot token
-
-### Step 1 — Clone
-
-```bash
-git clone https://github.com/YOUR_ORG/Trading-Bot-main.git
-cd Trading-Bot-main
-```
-
-### Step 2 — Environment
-
-```bash
-python3 -m venv .venv
-source .venv/bin/activate        # Windows: .venv\Scripts\activate
-pip install -r requirements.txt
-```
-
-### Step 3 — Configuration
-
-```bash
-cp .env.example .env
-# Edit .env — at minimum set DB_PASSWORD
-```
-
-### Step 4 — Database
-
-```bash
-docker compose up -d
-# TimescaleDB → localhost:5432
-# Adminer     → http://127.0.0.1:8080
-```
-
-Platform schema is created automatically on Dashboard startup.
-
-### Step 5 — Historical data (optional)
-
-```bash
-python3 bot/data/loader.py SBER GAZP LKOH YNDX NVTK --interval 1d --days 365
-```
-
-### Step 6 — Run
-
-**Option A — all at once:**
-
-```bash
-./start.sh
-```
-
-**Option B — separately:**
-
-```bash
-# Dashboard → http://127.0.0.1:5001
-python3 bot/ui/dashboard.py
-
-# Trading loop + Telegram (separate terminal)
-python3 bot/main.py
-
-# Telegram bot only
-python3 bot/main.py --bot-only
-
-# CLI backtest
-python3 bot/main.py --backtest
-```
-
-> ⚠️ **Safety:** keep `TINKOFF_SANDBOX=true` until you intentionally switch to live trading.
-
----
-
-## Configuration
-
-Full template: [`.env.example`](.env.example)
-
-### Database
-
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `DB_HOST` | `localhost` | PostgreSQL host |
-| `DB_PORT` | `5432` | Port |
-| `DB_NAME` | `trading_bot` | Database name |
-| `DB_USER` | `trader` | Username |
-| `DB_PASSWORD` | — | **Required** |
-
-### Tinkoff Broker
-
-| Variable | Description |
-|----------|-------------|
-| `TINKOFF_TOKEN` | API token (t.xxx…) |
-| `TINKOFF_ACCOUNT_ID` | Account ID |
-| `TINKOFF_SANDBOX` | `true` = sandbox, `false` = live |
-
-### Telegram
-
-| Variable | Description |
-|----------|-------------|
-| `TELEGRAM_TOKEN` | Token from @BotFather |
-| `TELEGRAM_CHAT_ID` | Primary chat ID |
-| `TELEGRAM_ALLOWED_IDS` | Additional IDs, comma-separated |
-
-### Dashboard
-
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `DASHBOARD_HOST` | `127.0.0.1` | Bind address |
-| `DASHBOARD_PORT` | `5001` | Port |
-| `DASHBOARD_API_KEY` | — | API key (`X-Dashboard-Api-Key` header) |
-| `DASHBOARD_REQUIRE_API_KEY` | `false` | Require key for GET /api/* |
-
-### Trading & Risk
-
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `TICKERS` | `SBER,GAZP,…` | Watched tickers |
-| `POLL_INTERVAL` | `60` | Loop interval (sec) |
-| `RISK_MAX_POSITION_PCT` | `0.05` | Max % per position |
-| `RISK_ATR_STOP_MULT` | `2.0` | ATR stop multiplier |
-| `RISK_MAX_DAILY_LOSS_PCT` | `0.02` | Daily loss limit |
-| `RISK_MAX_OPEN_POSITIONS` | `5` | Max open positions |
-
-### Security
-
-| Variable | Description |
-|----------|-------------|
-| `SECRETS_MASTER_KEY` | 64-char hex — encrypt tokens on disk |
-| `VAULT_ADDR` / `VAULT_TOKEN` | HashiCorp Vault (optional) |
-
----
-
-## Usage
-
-### Dashboard
-
-1. Open `http://127.0.0.1:5001`
-2. Navigate via sidebar or keys `1`–`5`
-3. Collapse sidebar — state persisted in `localStorage`
-4. Quant Hunter opens with QUANT HUNTER tab by default
-
-### Telegram Bot
-
-1. Create a bot via @BotFather
-2. Set `TELEGRAM_TOKEN` and `TELEGRAM_CHAT_ID` in `.env`
-3. Run `python3 bot/main.py --bot-only` or full `main.py`
-4. Send `/start` to the bot
-
-### Mini App in Telegram
-
-1. Publish Dashboard on HTTPS
-2. Follow [`BOTFATHER.md`](bot/ui/static/miniapp/BOTFATHER.md)
-3. Web App URL: `https://YOUR-DOMAIN/static/miniapp/index.html`
-
----
-
-## API
-
-### Platform API (`/api/platform/`)
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/overview` | Summary: balance, PnL, brokers, system |
-| GET | `/portfolio` | Portfolio (broker + paper aggregation) |
-| GET | `/portfolio/positions` | Position list |
-| GET | `/signals` | Signals (filters: exchange, status, limit) |
-| POST | `/signals/generate` | Generate live signals |
-| POST | `/signals/{id}/execute` | Execute signal |
-| GET | `/paper/account` | Paper account & positions |
-| POST | `/paper/trade` | Open / close paper position |
-| POST | `/backtest/run` | Run backtest |
-| GET | `/backtest/runs` | Run history |
-| GET | `/backtest/runs/{id}/export` | Export JSON |
-| GET | `/health` | System health |
-| GET | `/brokers` | Broker status |
-| GET | `/stream` | **SSE** — real-time events |
-
-### Legacy Dashboard API (`/api/`)
-
-| Endpoint | Description |
-|----------|-------------|
-| `/api/stats` | Win rate, Sharpe, drawdown |
-| `/api/equity` | Equity curve |
-| `/api/candles` | OHLCV candles |
-| `/api/signals/live` | Live indicators per ticker |
-| `/api/settings` | App configuration |
-| `/api/tinkoff/*` | Direct Tinkoff portfolio access |
-
----
-
-## Signal Engine
-
-### How it works
-
-1. `MoexLoader` fetches OHLCV candles (MOEX ISS)
-2. `IndicatorEngine` computes indicators on pandas DataFrame
-3. `RulesEngine` evaluates 12 YAML rules
-4. Output: `BUY` / `SELL` / `HOLD` + score + metadata
-5. `RiskManager` validates trade eligibility
-6. `TinkoffClient` executes order (or Paper Trading for sandbox)
-
-### Example rule (YAML)
+**Example rule:**
 
 ```yaml
 - name: "RSI_Oversold_Bounce"
@@ -1460,37 +888,377 @@ Full template: [`.env.example`](.env.example)
 
 ---
 
-## CRYPTONITE Quant Hunter
+### Backtest
 
-### Game loop
+| Engine | File | Launch |
+|--------|------|--------|
+| Classic | `backtest/engine.py` | `python3 bot/main.py --backtest` |
+| Advanced | `backtest/advanced_engine.py` | Platform API + Dashboard UI |
+
+Parameters: commission 0.03%, slippage 0.01%, initial capital 1,000,000 ₽.  
+Results: equity curve · drawdown · heatmap · return calendar · trade journal.
+
+---
+
+## System Architecture
+
+```mermaid
+flowchart TB
+    subgraph clients [Clients]
+        D[Dashboard SPA]
+        T[Telegram Bot]
+        W[Marketing Website]
+    end
+
+    subgraph pipeline [Engine Pipeline]
+        CL[01 Candle Loader]
+        IE[02 Indicator Engine]
+        RE[03 Rules Engine]
+        BG[04 Belief Gate]
+        RM[05 Risk Manager]
+        EX[06 Broker / Paper]
+        MW[07 Memory Writer]
+    end
+
+    subgraph learning [Belief System]
+        BU[Belief Updater]
+        HE[Hypothesis Engine]
+        DE[Decision Evaluator]
+    end
+
+    subgraph external [Brokers / Data]
+        MOEX[MOEX ISS API]
+        TK[T-Investments API]
+        BY[Bybit API]
+    end
+
+    DB[(PostgreSQL / TimescaleDB)]
+    SSE[SSE Hub]
+
+    D --> |REST| pipeline
+    T --> TK
+    CL --> MOEX
+    CL --> BY
+    CL --> IE --> RE --> BG --> RM --> EX --> MW
+    BG --> learning
+    MW --> BU --> DB
+    EX --> DB
+    D --> SSE
+    SSE --> DB
+```
+
+---
+
+## Marketing Website
+
+`website/` — public institutional website built with **Next.js 15**, TypeScript, and Tailwind CSS v4.
+
+### Tech
+
+| Category | Stack |
+|----------|-------|
+| Framework | Next.js 15 (App Router, SSG) |
+| Language | TypeScript 5 |
+| Styles | Tailwind CSS v4 · CSS Design Tokens |
+| i18n | next-intl (RU / EN) |
+| Animation | GSAP 3 + ScrollTrigger · Motion · Lenis smooth scroll |
+| 3D | Three.js · React Three Fiber · Drei |
+| Content | MDX (philosophy, engine pipeline, learning system) |
+| Forms | react-hook-form · Zod |
+| Analytics | PostHog · Vercel Analytics |
+| Deployment | Vercel (SSG) |
+
+### Sections
+
+| Section | Content |
+|---------|---------|
+| Hero | Signal propagation visualization, live strategy metrics |
+| Philosophy | Three principles: evidence · bounded conviction · adaptivity |
+| Engine Pipeline | Interactive horizontal scroller — 7 pipeline stages |
+| Learning System | Interactive confidence slider, trajectory chart |
+| Dashboard Preview | Photorealistic dashboard mockup |
+| Strategy Layer | Live strategy table (LIVE / PAPER / FROZEN) |
+| Broker Integrations | T-Investments · Bybit · Finam |
+| Paper Sandbox | Paper trading explanation |
+| Pricing | Tier plans (Research / Operator / Live) |
+| FAQ | Frequently asked questions |
+| Telegram Bot | Integration overview |
+| CTA | Closed beta access request form |
+
+### Run the website
+
+```bash
+cd website
+npm install
+npm run dev      # localhost:3000
+npm run build    # production build
+```
+
+---
+
+## Tech Stack
+
+### Trading platform (Python)
+
+| Category | Technology |
+|----------|------------|
+| Runtime | Python 3.11+ |
+| Web | Flask ≥ 3.1 |
+| ORM | SQLAlchemy ≥ 2.0 |
+| Database | PostgreSQL 15 + TimescaleDB |
+| Telegram | python-telegram-bot ≥ 20 |
+| Brokers | tinkoff-investments SDK · Bybit client |
+| Analysis | pandas · ta · PyYAML |
+| Security | cryptography · JWT · credential vault |
+| Real-time | SSE (Server-Sent Events) |
+
+### Dashboard frontend (Vanilla JS)
+
+| Category | Technology |
+|----------|------------|
+| UI | Vanilla JavaScript |
+| Charts | Lightweight Charts 4.2 · ECharts 5.5 |
+| State | `QFStore` → `QFRender` → views |
+
+### Marketing website (Next.js)
+
+| Category | Technology |
+|----------|------------|
+| Framework | Next.js 15 · React 19 |
+| Styles | Tailwind CSS v4 · shadcn/ui |
+| Animation | GSAP 3 · Motion · Lenis |
+| 3D | Three.js · R3F |
+| i18n | next-intl |
+
+---
+
+## Project Structure
 
 ```
-User Action (catch Quant)
-    ↓
-Reward (points + XP)
-    ↓
-Progression (level up)
-    ↓
-Upgrade (titles, skins)
-    ↓
-New Challenge (missions, achievements)
+Trading-Bot/
+│
+├── bot/                              # Trading platform (Python)
+│   ├── main.py                       # Entry point: trading loop + Telegram
+│   ├── config.py                     # .env configuration
+│   │
+│   ├── learning/                     # Belief Engine
+│   │   ├── belief_updater.py         # Bayesian confidence update
+│   │   ├── decision_evaluator.py     # Signal evaluation vs confidence
+│   │   ├── hypothesis_engine.py      # Trading hypothesis formation
+│   │   ├── memory_writer.py          # Write results to DB
+│   │   ├── feedback.py               # Post-trade feedback collection
+│   │   └── trading_orchestrator.py   # Learning cycle coordinator
+│   │
+│   ├── signals/                      # Signal engine
+│   │   ├── indicators.py             # RSI, MACD, EMA, ATR, BB, ADX, VWAP, CCI
+│   │   └── rules_engine.py           # YAML rules → SignalResult
+│   │
+│   ├── risk/
+│   │   ├── risk_manager.py           # ATR stop, limits, trailing stop
+│   │   └── state_store.py            # Risk state persistence
+│   │
+│   ├── engine/
+│   │   └── paper_engine.py           # Paper trading engine
+│   │
+│   ├── gateway/
+│   │   └── trade_gateway.py          # Unified broker gateway
+│   │
+│   ├── market/
+│   │   └── data_hub.py               # Market data aggregator
+│   │
+│   ├── broker/
+│   │   ├── tinkoff_client.py
+│   │   ├── bybit_client.py
+│   │   └── registry.py
+│   │
+│   ├── backtest/
+│   │   ├── engine.py                 # CLI backtester
+│   │   └── advanced_engine.py        # Platform backtest
+│   │
+│   ├── qf_platform/                  # Platform layer
+│   │   ├── schema.py                 # DDL: belief_system, paper, signals
+│   │   ├── services/                 # portfolio, signals, paper, backtest
+│   │   └── repositories/             # Data access
+│   │
+│   ├── auth/                         # Authentication
+│   │   ├── jwt_service.py
+│   │   ├── session_manager.py
+│   │   └── brute_force.py
+│   │
+│   ├── security/                     # Encryption, headers
+│   ├── tg/                           # Telegram bot
+│   ├── realtime/                     # SSE hub
+│   └── ui/                           # Trading Dashboard (:5001)
+│
+├── website/                          # Marketing website (Next.js 15)
+│   ├── src/
+│   │   ├── app/
+│   │   ├── components/
+│   │   ├── content-layer/
+│   │   ├── lib/
+│   │   └── styles/
+│   ├── content/                      # MDX content (RU + EN)
+│   └── messages/                     # i18n strings
+│
+├── knowledge/
+│   └── rules.yaml                    # Trading rules (12+, hot-reload)
+│
+├── tests/
+├── docs/
+├── docker-compose.yml                # TimescaleDB + Adminer
+├── requirements.txt
+├── start.sh / start.ps1 / start.bat
+└── .env.example
 ```
 
-### Quant types
+---
 
-| Type | Points | Spawn rate | Lifetime |
-|------|--------|------------|----------|
-| Common ◇ | +1 | 55% | 4000 ms |
-| Rare ◆ | +10 | 28% | 2800 ms |
-| Epic ✦ | +100 | 14% | 2000 ms |
-| Legendary ★ | +1000 | 3% | 1500 ms |
+## Installation
 
-### Retention mechanics
+### Requirements
 
-- **Energy cap** — return visits every 10–100 min
-- **Daily missions** — daily goals
-- **7-day streak** — rare `holo-rare` skin
-- **Leaderboard** — competitive element
+- **Python 3.11+**
+- **Node.js 20+** (for marketing website)
+- **Docker** and **Docker Compose**
+
+### Step 1 — Clone
+
+```bash
+git clone https://github.com/Pomiranov/Trading-Bot.git
+cd Trading-Bot
+git checkout merge-learning-nik
+```
+
+### Step 2 — Python environment
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate        # Windows: .venv\Scripts\activate
+pip install -r requirements.txt
+```
+
+### Step 3 — Configuration
+
+```bash
+cp .env.example .env
+# Minimum: DB_PASSWORD
+# For trading: TINKOFF_TOKEN, TELEGRAM_TOKEN
+```
+
+### Step 4 — Database
+
+```bash
+docker compose up -d
+# TimescaleDB → localhost:5432
+# Adminer     → http://127.0.0.1:8080
+```
+
+Schema (`belief_system`, `paper_*`, `signals`, `backtest_*`) is created automatically on first Dashboard start.
+
+### Step 5 — Historical data (optional)
+
+```bash
+python3 bot/data/loader.py SBER GAZP LKOH YNDX --interval 1d --days 365
+```
+
+### Step 6 — Run
+
+```bash
+# Everything at once (macOS/Linux)
+./start.sh
+
+# Dashboard only → http://127.0.0.1:5001
+python3 bot/ui/dashboard.py
+
+# Trading loop + Telegram
+python3 bot/main.py
+
+# Telegram bot only
+python3 bot/main.py --bot-only
+
+# CLI backtest
+python3 bot/main.py --backtest
+
+# Marketing website → http://localhost:3000
+cd website && npm install && npm run dev
+```
+
+> ⚠️ `TINKOFF_SANDBOX=true` by default. Do not switch to `false` without fully understanding the risks.
+
+---
+
+## Configuration
+
+Full template: [`.env.example`](.env.example)
+
+### Database
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `DB_HOST` | `localhost` | PostgreSQL host |
+| `DB_PORT` | `5432` | Port |
+| `DB_NAME` | `trading_bot` | Database name |
+| `DB_USER` | `trader` | Username |
+| `DB_PASSWORD` | — | **Required** |
+
+### Tinkoff broker
+
+| Variable | Description |
+|----------|-------------|
+| `TINKOFF_TOKEN` | API token |
+| `TINKOFF_ACCOUNT_ID` | Account ID |
+| `TINKOFF_SANDBOX` | `true` = sandbox, `false` = live |
+
+### Telegram
+
+| Variable | Description |
+|----------|-------------|
+| `TELEGRAM_TOKEN` | Token from @BotFather |
+| `TELEGRAM_CHAT_ID` | Primary chat ID |
+| `TELEGRAM_ALLOWED_IDS` | Additional allowed IDs |
+
+### Dashboard
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `DASHBOARD_HOST` | `127.0.0.1` | Bind address |
+| `DASHBOARD_PORT` | `5001` | Port |
+| `DASHBOARD_API_KEY` | — | API key header |
+| `DASHBOARD_REQUIRE_API_KEY` | `false` | Require key for GET /api/* |
+
+### Trading & risk
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `TICKERS` | `SBER,GAZP,…` | Watched tickers |
+| `POLL_INTERVAL` | `60` | Loop interval (sec) |
+| `RISK_MAX_POSITION_PCT` | `0.05` | Max % per position |
+| `RISK_ATR_STOP_MULT` | `2.0` | ATR stop multiplier |
+| `RISK_MAX_DAILY_LOSS_PCT` | `0.02` | Daily loss limit |
+| `RISK_MAX_OPEN_POSITIONS` | `5` | Max open positions |
+
+---
+
+## API
+
+### Platform API (`/api/platform/`)
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/overview` | Summary: balance, PnL, brokers, system |
+| GET | `/portfolio` | Portfolio (broker + paper aggregation) |
+| GET | `/portfolio/positions` | Position list |
+| GET | `/signals` | Signals with filters |
+| POST | `/signals/generate` | Generate live signals |
+| POST | `/signals/{id}/execute` | Execute signal |
+| GET | `/paper/account` | Paper account & positions |
+| POST | `/paper/trade` | Open / close paper position |
+| POST | `/backtest/run` | Run backtest |
+| GET | `/backtest/runs` | Run history |
+| GET | `/backtest/runs/{id}/export` | Export JSON |
+| GET | `/health` | System health |
+| GET | `/brokers` | Broker status |
+| GET | `/stream` | **SSE** real-time events |
 
 ---
 
@@ -1499,31 +1267,13 @@ New Challenge (missions, achievements)
 | Mechanism | Implementation |
 |-----------|----------------|
 | Dashboard API Key | `X-Dashboard-Api-Key` header |
-| Telegram Auth | Whitelist chat IDs |
-| Credential Vault | AES token encryption (`SECRETS_MASTER_KEY`) |
-| HTTP Headers | `X-Frame-Options`, `X-Content-Type-Options`, `Referrer-Policy` |
-| Audit Log | Security events in logs |
-| Redaction | Secret masking in logs |
-| Rate Limiting | Telegram middleware |
+| Telegram Auth | Whitelist chat IDs + rate limiting |
+| Credential Vault | AES token encryption on disk |
+| JWT / Sessions | `auth/jwt_service.py`, `session_manager.py` |
+| Brute Force Protection | `auth/brute_force.py` |
+| HTTP Headers | `X-Frame-Options`, `X-Content-Type-Options`, CSP |
+| Audit Log | Security events in rotating logs |
 | Sandbox Mode | `TINKOFF_SANDBOX=true` by default |
-
----
-
-## Screenshots
-
-> Add images to `docs/screenshots/` and uncomment below.
-
-| Dashboard | Portfolio |
-|:---:|:---:|
-| _placeholder_ | _placeholder_ |
-
-| Signals | Backtest |
-|:---:|:---:|
-| _placeholder_ | _placeholder_ |
-
-| Quant Hunter Mini App |
-|:---:|
-| _placeholder_ |
 
 ---
 
@@ -1531,53 +1281,32 @@ New Challenge (missions, achievements)
 
 ### ✅ Completed
 
-- Dashboard redesign (terminal UI, CSS Grid, SidebarProvider)
-- Platform layer (portfolio, signals, backtest, paper trading)
-- SSE sync Dashboard ↔ Mini App
-- Paper Trading Sandbox (10M ₽ / 100K USDT)
-- CRYPTONITE Quant Hunter (energy, levels, missions, leaderboard)
-- Telegram bot with 15+ handlers and push notifications
-- Security hardening (vault, API key, audit)
-- Inline Mini App embed (no iframe)
+- [x] Belief Engine — Bayesian confidence updating
+- [x] 7-stage Engine Pipeline with Memory Writer
+- [x] Trading Dashboard (Flask SPA, dark terminal theme)
+- [x] Platform layer (portfolio, signals, backtest, paper trading)
+- [x] Paper Sandbox with identical signal path
+- [x] SSE real-time synchronization
+- [x] Telegram Bot (15+ handlers, push notifications)
+- [x] Security hardening (vault, JWT, brute force, API key)
+- [x] Marketing Website (Next.js 15, RU/EN, GSAP, Three.js)
+- [x] Backtest engine (Classic + Advanced with UI)
+- [x] Bybit integration
+- [x] CRYPTONITE Quant Hunter Mini App
 
-### ⏳ Upcoming
+### ⏳ Planned
 
-- Enhanced signal scoring model
-- Finam broker integration
-- Expanded Bybit functionality
-- Advanced portfolio analytics
-- Cloud save for game progress
-- WebSocket live quotes (currently SSE)
-- Screenshots & CI/CD pipeline
-
----
-
-## Contributing
-
-1. **Fork** the repository
-2. Create a branch: `git checkout -b feature/description`
-3. Make your changes
-4. Run tests:
-
-```bash
-python3 -m pytest tests/
-```
-
-5. Open a **Pull Request** with a clear description
-
-For bugs — GitHub Issues. For security vulnerabilities — do not open public issues.
-
----
-
-## License
-
-No `LICENSE` file is included in the repository.  
-Previous documentation referenced **MIT** — adding a `LICENSE` file is recommended.
+- [ ] Finam broker integration
+- [ ] WebSocket live quotes (currently SSE polling)
+- [ ] Cloud save for Quant Hunter progress
+- [ ] Advanced portfolio analytics
+- [ ] CI/CD pipeline
+- [ ] Public beta release
 
 ---
 
 ## Disclaimer
 
 QuantFlow is intended for **educational and research** purposes.  
-Algorithmic trading involves financial risk.  
+Algorithmic trading carries real financial risk.  
 Always test in sandbox mode. Authors are not liable for trading losses.

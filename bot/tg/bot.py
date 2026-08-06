@@ -32,6 +32,7 @@ from tg.handlers.dashboard import cb_dashboard, cmd_dashboard, cb_dashboard_refr
 from tg.handlers.portfolio import cb_portfolio, cb_portfolio_refresh, cmd_portfolio
 from tg.handlers.positions import (
     cb_positions, cb_positions_page, cb_positions_refresh, cmd_positions,
+    cb_position_detail,
 )
 from tg.handlers.orders import (
     cb_orders, cb_orders_filter, cb_orders_refresh, cb_order_cancel, cmd_orders,
@@ -41,7 +42,11 @@ from tg.handlers.operations import (
 )
 from tg.handlers.balance import cb_balance, cb_balance_refresh, cmd_balance
 from tg.handlers.statistics import cb_statistics, cb_statistics_refresh, cmd_statistics
-from tg.handlers.analytics import cb_analytics
+from tg.handlers.analytics import (
+    cb_analytics,
+    cb_analytics_paper, cb_analytics_broker,
+    cb_analytics_strategy, cb_analytics_drawdown,
+)
 from tg.handlers.trading import cb_trading_menu, build_trade_conversation
 from tg.handlers.trading_bot import (
     cb_trading_bot, cb_bot_start, cb_bot_pause, cb_bot_resume,
@@ -49,6 +54,7 @@ from tg.handlers.trading_bot import (
 )
 from tg.handlers.signals import (
     cb_signals, cb_signals_refresh, cb_signals_filter,
+    cb_signals_generate, cb_signal_execute,
     cmd_signal, build_signal_conversation,
 )
 from tg.handlers.notifications import cb_notifications, cb_notification_toggle
@@ -58,6 +64,17 @@ from tg.handlers.settings import (
 )
 from tg.handlers.account import cb_account, cb_account_accounts
 from tg.handlers.help import cb_help, cmd_help
+from tg.handlers.miniapp import cmd_game, cb_game, setup_menu_button
+from tg.handlers.paper_trading import (
+    cmd_paper, cb_paper_menu, cb_paper_toggle,
+    cb_paper_stats, cb_paper_positions, cb_paper_trades,
+    cb_paper_risk,
+)
+from tg.handlers.learning import (
+    cmd_learning,
+    cb_learning_overview, cb_learning_strategies,
+    cb_learning_hypotheses, cb_learning_decisions,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -138,6 +155,10 @@ def _build_application() -> Application:
     app.add_handler(CallbackQueryHandler(cb_statistics,          pattern=r"^m_statistics$"))
     app.add_handler(CallbackQueryHandler(cb_statistics_refresh,  pattern=r"^stat_refresh$"))
     app.add_handler(CallbackQueryHandler(cb_analytics,           pattern=r"^m_analytics$"))
+    app.add_handler(CallbackQueryHandler(cb_analytics_paper,     pattern=r"^analytics_paper$"))
+    app.add_handler(CallbackQueryHandler(cb_analytics_broker,    pattern=r"^analytics_broker$"))
+    app.add_handler(CallbackQueryHandler(cb_analytics_strategy,  pattern=r"^analytics_strategy$"))
+    app.add_handler(CallbackQueryHandler(cb_analytics_drawdown,  pattern=r"^analytics_drawdown$"))
     app.add_handler(CallbackQueryHandler(cb_trading_menu,        pattern=r"^m_trading$"))
     app.add_handler(CallbackQueryHandler(cb_trading_bot,         pattern=r"^m_trading_bot$"))
     app.add_handler(CallbackQueryHandler(cb_bot_start,           pattern=r"^bot_start$"))
@@ -149,6 +170,8 @@ def _build_application() -> Application:
     app.add_handler(CallbackQueryHandler(cb_signals,             pattern=r"^m_signals$"))
     app.add_handler(CallbackQueryHandler(cb_signals_refresh,     pattern=r"^sig_refresh$"))
     app.add_handler(CallbackQueryHandler(cb_signals_filter,      pattern=r"^sig_filter_"))
+    app.add_handler(CallbackQueryHandler(cb_signals_generate,    pattern=r"^sig_generate$"))
+    app.add_handler(CallbackQueryHandler(cb_signal_execute,      pattern=r"^sig_exec_\d+$"))
     app.add_handler(CallbackQueryHandler(cb_notifications,       pattern=r"^m_notifications$"))
     app.add_handler(CallbackQueryHandler(cb_notification_toggle, pattern=r"^notif_toggle_"))
     app.add_handler(CallbackQueryHandler(cb_settings,            pattern=r"^m_settings$"))
@@ -158,12 +181,44 @@ def _build_application() -> Application:
     app.add_handler(CallbackQueryHandler(cb_account,             pattern=r"^m_account$"))
     app.add_handler(CallbackQueryHandler(cb_account_accounts,    pattern=r"^acc_accounts$"))
     app.add_handler(CallbackQueryHandler(cb_help,                pattern=r"^m_help$"))
+    app.add_handler(CallbackQueryHandler(cb_game,                pattern=r"^m_game$"))
 
-    # No-op callbacks (pagination labels)
+    # ── Positions detail ──────────────────────────────────────────────────────
+    app.add_handler(CallbackQueryHandler(cb_position_detail, pattern=r"^pos_detail_"))
+
+    # No-op callbacks (pagination labels, unimplemented history)
     app.add_handler(CallbackQueryHandler(
         lambda u, c: u.callback_query.answer(),
-        pattern=r"^(pos_noop|ops_noop)$",
+        pattern=r"^(pos_noop|ops_noop|pos_hist_.+)$",
     ))
+
+    # ── Stub handlers for settings sections not yet implemented ───────────────
+    async def _cb_coming_soon(update, context):
+        await update.callback_query.answer("Раздел в разработке", show_alert=True)
+
+    app.add_handler(CallbackQueryHandler(
+        _cb_coming_soon,
+        pattern=r"^(set_tokens|set_timezone|set_currency|set_risk|set_interval|set_security|sig_filter_active)$",
+    ))
+
+    # ── Command: /game ────────────────────────────────────────────────────
+    app.add_handler(CommandHandler("game", cmd_game))
+
+    # ── Paper Trading ─────────────────────────────────────────────────────
+    app.add_handler(CommandHandler("paper", cmd_paper))
+    app.add_handler(CallbackQueryHandler(cb_paper_menu,      pattern=r"^m_paper$"))
+    app.add_handler(CallbackQueryHandler(cb_paper_toggle,    pattern=r"^paper_toggle$"))
+    app.add_handler(CallbackQueryHandler(cb_paper_stats,     pattern=r"^paper_stats$"))
+    app.add_handler(CallbackQueryHandler(cb_paper_positions, pattern=r"^paper_positions$"))
+    app.add_handler(CallbackQueryHandler(cb_paper_trades,    pattern=r"^paper_trades$"))
+    app.add_handler(CallbackQueryHandler(cb_paper_risk,      pattern=r"^paper_risk$"))
+
+    # ── Learning System ───────────────────────────────────────────────────
+    app.add_handler(CommandHandler("learning",          cmd_learning))
+    app.add_handler(CallbackQueryHandler(cb_learning_overview,   pattern=r"^m_learning$"))
+    app.add_handler(CallbackQueryHandler(cb_learning_strategies, pattern=r"^learn_strategies$"))
+    app.add_handler(CallbackQueryHandler(cb_learning_hypotheses, pattern=r"^learn_hypotheses$"))
+    app.add_handler(CallbackQueryHandler(cb_learning_decisions,  pattern=r"^learn_decisions$"))
 
     return app
 
@@ -177,6 +232,11 @@ def run_bot() -> None:
     _application = _build_application()
     set_bot(_application.bot)
     logger.info("Telegram bot starting (polling)…")
+
+    async def _post_init(app) -> None:
+        await setup_menu_button(app.bot)
+
+    _application.post_init = _post_init
     _application.run_polling(drop_pending_updates=True, stop_signals=[])
     logger.info("Telegram bot stopped")
 

@@ -1,0 +1,10 @@
+---
+id: belief-gate
+order: 4
+stepLabel: Confidence
+title: Confidence gate
+plain: Measures how well the strategy has held up so far.
+sourceRef: TradingOrchestrator.check_signal()
+---
+
+Checks the strategy's accumulated confidence before anything executes. Below the 0.20 floor a signal is recorded but not acted on.

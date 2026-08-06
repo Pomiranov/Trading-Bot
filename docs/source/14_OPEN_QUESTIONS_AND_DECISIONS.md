@@ -452,12 +452,13 @@
 
 ## Operations
 
-### OQ-DOC-01 · Коммитить ли 5 untracked-документов?
+### OQ-DOC-01 · Коммитить ли 5 untracked-документов? — **ЗАКРЫТ 2026-08-06**
 
-**Почему важно:** `design/DASHBOARD_UIUX_AUDIT.md`, `design/UIUX_DESIGNER_META_PROMPT.md`, `docs/BA_GPT_SYSTEM_PROMPT.md`, `docs/MARKETING_PROMPT_ENGINEER_GPT.md`, `docs/PROJECT_MANAGER_PROMPT_ENGINEER_GPT.md` существуют на диске, но не в Git. **Этот аудит их не трогал** (ограничение: не изменять незакоммиченные пользовательские файлы).
+**Почему важно (на момент постановки вопроса):** `design/DASHBOARD_UIUX_AUDIT.md`, `design/UIUX_DESIGNER_META_PROMPT.md`, `docs/BA_GPT_SYSTEM_PROMPT.md`, `docs/MARKETING_PROMPT_ENGINEER_GPT.md`, `docs/PROJECT_MANAGER_PROMPT_ENGINEER_GPT.md` существовали на диске, но не в Git. **Тот аудит их не трогал** (ограничение: не изменять незакоммиченные пользовательские файлы).
 **Рекомендация:** Промпты для агентов — закоммитить (они часть процесса разработки и должны быть общими). `DASHBOARD_UIUX_AUDIT.md` — сверить с [04](04_DASHBOARD_AUDIT.md) и затем закоммитить.
 **Кто решает:** владелец.
 **Крайний момент:** нет; но незакоммиченные файлы теряются при смене машины.
+**Решение (2026-08-06):** четыре ролевых промта вынесены за пределы репозитория в `/Users/danila/OpenHands/import/quant-role-prompts/` как исторический snapshot (байт-в-байт копии под git — `.agents/skills/*/references/`), `design/DASHBOARD_UIUX_AUDIT.md` закоммичен по своему исходному пути (`dd2c5fe`). Вопрос закрыт.
 **Связь:** [13](13_STALE_DOCUMENTS_REGISTER.md)
 
 ---
@@ -469,6 +470,7 @@
 **Рекомендация:** **A для начала** (не ломает ни одной существующей ссылки — а на некоторые документы ссылается код, например `next.config.ts` → `SECURITY_REVIEW.md`), затем B при накоплении.
 **Кто решает:** Documentation workstream.
 **Крайний момент:** нет.
+**Статус на 2026-08-06:** остаётся **открытым**. Закрытие OQ-DOC-01 его не снимает: вопрос касается ~20 устаревших **отслеживаемых** документов, а не вынесенных ролевых промтов.
 **Связь:** [13 §6](13_STALE_DOCUMENTS_REGISTER.md)
 
 ---

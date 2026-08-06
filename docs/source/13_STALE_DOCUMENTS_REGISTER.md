@@ -15,7 +15,7 @@
 ### Что удалось проверить
 - Полный инвентарь: 46 Markdown-файлов (`docs/` 15, `design/` 13, `website/docs/` 17, корень 2), с датами последнего изменения по Git и объёмом в строках.
 - Соответствие ключевых утверждений фактическому коду — построчно, для документов, которые могут ввести в заблуждение.
-- Untracked-статус 5 документов (созданы, но не закоммичены).
+- Untracked-статус 5 документов на дату аудита; закрыт 2026-08-06: четыре ролевых промта вынесены в `/Users/danila/OpenHands/import/quant-role-prompts/`, `design/DASHBOARD_UIUX_AUDIT.md` закоммичен (`dd2c5fe`).
 
 ### Что проверить не удалось
 - Актуальность 13 документов `design/screens/**` и части `website/docs/**` в части **дизайнерского замысла** — они описывают визуальные решения, проверка которых требует доступа к аутентифицированному Dashboard UI ([04](04_DASHBOARD_AUDIT.md)).
@@ -118,9 +118,9 @@
 | `docs/DASHBOARD_QUALITY_LOG.md` | 99 | 2026-07-21 | Журнал качества | Исторический | Записи июля | Как история решений | **ОСТАВИТЬ** как журнал | — |
 | `docs/security/phase-0-report.md` | 67 | 2026-07-13 | Отчёт по безопасности, фаза 0 | Исторический | — | Контекст, почему приняты текущие решения | **ОСТАВИТЬ** как история; соответствующие тесты живы (`tests/security_tests/test_phase0_security.py`) | [07](07_SECURITY_PRIVACY_AND_COMPLIANCE_AUDIT.md) |
 | `docs/security/phase-1-report.md` | 111 | 2026-07-13 | Отчёт по безопасности, фаза 1 | Исторический | — | То же | **ОСТАВИТЬ** как история | [07](07_SECURITY_PRIVACY_AND_COMPLIANCE_AUDIT.md) |
-| `docs/BA_GPT_SYSTEM_PROMPT.md` | 670 | **UNTRACKED** | Промпт для BA-агента | Не о коде | — | Инструмент | **ОСТАВИТЬ**; закоммитить или оставить локальным — решение владельца | — |
-| `docs/MARKETING_PROMPT_ENGINEER_GPT.md` | 479 | **UNTRACKED** | Промпт для маркетинга | Не о коде | — | Инструмент | **ОСТАВИТЬ** | — |
-| `docs/PROJECT_MANAGER_PROMPT_ENGINEER_GPT.md` | 792 | **UNTRACKED** | Промпт для PM | Не о коде | Может конфликтовать с [12](12_AGENT_WORKSTREAMS_AND_RESPONSIBILITIES.md) — проверить согласованность | Инструмент | **ОСТАВИТЬ, сверить** с [12](12_AGENT_WORKSTREAMS_AND_RESPONSIBILITIES.md) | частично [12](12_AGENT_WORKSTREAMS_AND_RESPONSIBILITIES.md) |
+| `docs/BA_GPT_SYSTEM_PROMPT.md` | 670 | вне репозитория с 2026-08-06 | Промпт для BA-агента | Не о коде | — | Инструмент | **ВЫНЕСЕН** в `/Users/danila/OpenHands/import/quant-role-prompts/02_BUSINESS_ANALYST_PROMPT.md` решением владельца (OQ-DOC-01); копия под git — `.agents/skills/quant-business-analyst/references/02_BUSINESS_ANALYST_PROMPT.md` | — |
+| `docs/MARKETING_PROMPT_ENGINEER_GPT.md` | 479 | вне репозитория с 2026-08-06 | Промпт для маркетинга | Не о коде | — | Инструмент | **ВЫНЕСЕН** в `/Users/danila/OpenHands/import/quant-role-prompts/04_MARKETING_PROMPT.md` (OQ-DOC-01); копия под git — `.agents/skills/quant-marketing/references/04_MARKETING_PROMPT.md` | — |
+| `docs/PROJECT_MANAGER_PROMPT_ENGINEER_GPT.md` | 792 | вне репозитория с 2026-08-06 | Промпт для PM | Не о коде | Может конфликтовать с [12](12_AGENT_WORKSTREAMS_AND_RESPONSIBILITIES.md) — проверить согласованность | Инструмент | **ВЫНЕСЕН** в `/Users/danila/OpenHands/import/quant-role-prompts/01_PROJECT_MANAGER_CHAT_PROMPT.md` (OQ-DOC-01); копия под git — `.agents/skills/quant-project-manager/references/01_PROJECT_MANAGER_CHAT_PROMPT.md`; сверку с [12](12_AGENT_WORKSTREAMS_AND_RESPONSIBILITIES.md) выполнять по ней | частично [12](12_AGENT_WORKSTREAMS_AND_RESPONSIBILITIES.md) |
 
 ---
 
@@ -133,8 +133,8 @@
 | `design/DASHBOARD_APPROVED_REFERENCE_AUDIT.md` | 2 493 | 2026-08-03 | Аудит по утверждённому референсу | **Вероятно да** (INFERRED) — самый свежий и самый крупный документ `design/` | Часть могла быть реализована после 03.08 | **ОСТАВИТЬ** — основной справочник по дизайну Dashboard | дополняется [04](04_DASHBOARD_AUDIT.md) |
 | `design/DASHBOARD_REDESIGN_IMPLEMENTATION_PLAN.md` | 198 | 2026-07-29 | План реализации редизайна | **UNVERIFIED** | Степень выполнения не установлена (нет доступа к UI) | **ОСТАВИТЬ, сверить** после визуального аудита | [04](04_DASHBOARD_AUDIT.md) |
 | `design/DESIGN_SYSTEM.md` | 208 | 2026-07-20 | Дизайн-система | **Частично** | Токены сайта менялись позже; зафиксирован дрейф `--qf-paper` и `--qf-accent-hover` ([Q-02](08_QA_TESTING_PERFORMANCE_AND_RELIABILITY_AUDIT.md)) | **ОБНОВИТЬ** в рамках RM-P2-015 | источник истины — `website/src/styles/tokens/` |
-| `design/DASHBOARD_UIUX_AUDIT.md` | 447 | **UNTRACKED** | UI/UX-аудит Dashboard | **UNVERIFIED** | Создан, не закоммичен | **ОСТАВИТЬ, сверить** с [04](04_DASHBOARD_AUDIT.md) | дополняет [04](04_DASHBOARD_AUDIT.md) |
-| `design/UIUX_DESIGNER_META_PROMPT.md` | 789 | **UNTRACKED** | Промпт для дизайнера | Не о коде | — | **ОСТАВИТЬ** | — |
+| `design/DASHBOARD_UIUX_AUDIT.md` | 447 | 2026-08-06 (`dd2c5fe`) | UI/UX-аудит Dashboard | **UNVERIFIED** | — | **ОСТАВИТЬ, сверить** с [04](04_DASHBOARD_AUDIT.md) | дополняет [04](04_DASHBOARD_AUDIT.md) |
+| `design/UIUX_DESIGNER_META_PROMPT.md` | 789 | вне репозитория с 2026-08-06 | Промпт для дизайнера | Не о коде | — | **ВЫНЕСЕН** в `/Users/danila/OpenHands/import/quant-role-prompts/03_UIUX_DESIGNER_PROMPT.md` (OQ-DOC-01); копия под git — `.agents/skills/quant-uiux-designer/references/03_UIUX_DESIGNER_PROMPT.md` | — |
 | `design/screens/P0_01_dashboard.md` | 163 | 2026-07-20 | Спецификация экрана | **UNVERIFIED** | Спецификации до редизайна | **ОСТАВИТЬ, сверить** | [04](04_DASHBOARD_AUDIT.md) |
 | `design/screens/P0_02_analytics.md` | 141 | 2026-07-20 | То же | **UNVERIFIED** | То же | **ОСТАВИТЬ, сверить** | [04](04_DASHBOARD_AUDIT.md) |
 | `design/screens/P0_03_signals.md` | 146 | 2026-07-20 | То же | **UNVERIFIED** | То же | **ОСТАВИТЬ, сверить** | [04](04_DASHBOARD_AUDIT.md) |
@@ -256,11 +256,11 @@
 2. Пометить документы из раздела 5 по процедуре раздела 6.
 3. Свести два Windows-руководства в одно.
 4. Сверить `design/screens/*` и `design/DASHBOARD_UIUX_AUDIT.md` при визуальном аудите Dashboard.
-5. Проверить `docs/PROJECT_MANAGER_PROMPT_ENGINEER_GPT.md` на согласованность с [12](12_AGENT_WORKSTREAMS_AND_RESPONSIBILITIES.md).
+5. Проверить исторический промт PM (`.agents/skills/quant-project-manager/references/01_PROJECT_MANAGER_CHAT_PROMPT.md`, копия вне репозитория — `/Users/danila/OpenHands/import/quant-role-prompts/01_PROJECT_MANAGER_CHAT_PROMPT.md`) на согласованность с [12](12_AGENT_WORKSTREAMS_AND_RESPONSIBILITIES.md).
 
 ## Open Questions
 
-См. [14](14_OPEN_QUESTIONS_AND_DECISIONS.md): OQ-DOC-01 (коммитить ли 5 untracked-промптов), OQ-DOC-02 (заводить ли `docs/archive/` вместо пометок в шапке), OQ-LEGAL-04 (лицензия проекта).
+См. [14](14_OPEN_QUESTIONS_AND_DECISIONS.md): OQ-DOC-01 (закрыт 2026-08-06), OQ-DOC-02 (заводить ли `docs/archive/` вместо пометок в шапке), OQ-LEGAL-04 (лицензия проекта).
 
 ## Уровень уверенности документа
 

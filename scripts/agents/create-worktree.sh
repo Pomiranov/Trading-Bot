@@ -38,6 +38,13 @@ usage() {
   --link-env     симлинк на .env канонического дерева (копии секрета не создаётся).
                  Нужен только для полного прогона pytest. По умолчанию выключено.
 
+Переменные окружения:
+  QUANT_AGENT_IDENTITY  роль в git identity нового worktree; по умолчанию берётся
+                        из префикса ветки. Итог: user.name = openhands-<роль>
+  QUANT_AGENT_EMAIL     полностью задаёт user.email
+                        (по умолчанию openhands-<роль>@openhands.local)
+  QUANT_WORKTREE_ROOT   корень каталогов worktree
+
 Пример:
   scripts/agents/create-worktree.sh agent/codex/rm-p0-003-add-ci quant-site-approved-reference-redesign
 EOF
@@ -80,11 +87,26 @@ for p in "${PROTECTED_BRANCHES[@]}"; do
 	fi
 done
 
-if ! printf '%s' "$BRANCH" | grep -Eq "$BRANCH_PATTERN"; then
+# [[ =~ ]] сопоставляет значение ЦЕЛИКОМ: в отличие от `printf | grep -Eq`, где ^…$
+# привязаны к строке и многострочное значение прошло бы по одной удачной строке.
+if ! [[ "$BRANCH" =~ $BRANCH_PATTERN ]]; then
 	die "недопустимое имя ветки: '$BRANCH'
        Разрешено: agent/{claude|codex|gemini|openhands}/<task-id>-<slug> или infra/<task-id>-<slug>
        Только строчные буквы, цифры, дефис, точка, подчёркивание.
        Примеры: agent/claude/rm-p0-002-execution-mode, infra/openhands-multi-agent-setup"
+fi
+
+# Значения identity применяются на шаге 7, но проверяются здесь — до того, как что-либо
+# создано: иначе отказ оставил бы worktree без identity.
+if [ -n "${QUANT_AGENT_IDENTITY:-}" ] &&
+	! [[ "$QUANT_AGENT_IDENTITY" =~ ^[a-z0-9][a-z0-9-]*$ ]]; then
+	die "недопустимое значение QUANT_AGENT_IDENTITY: '$QUANT_AGENT_IDENTITY'
+       Разрешены строчные буквы, цифры и дефис. Пример: QUANT_AGENT_IDENTITY=control-center"
+fi
+if [ -n "${QUANT_AGENT_EMAIL:-}" ] &&
+	! [[ "$QUANT_AGENT_EMAIL" =~ ^[^[:space:]]+@[^[:space:]]+$ ]]; then
+	die "недопустимое значение QUANT_AGENT_EMAIL: '$QUANT_AGENT_EMAIL'
+       Ожидается адрес вида openhands-<роль>@openhands.local, без пробелов."
 fi
 
 # ── 2. Base branch должен существовать ──────────────────────────────────────
@@ -169,11 +191,17 @@ WT_ADMIN="$(git -C "$WT" rev-parse --path-format=absolute --git-dir)"
 	printf 'branch=%s\n' "$BRANCH"
 } >"$WT_ADMIN/quant-base"
 
-# ── Git identity агента: ТОЛЬКО worktree-scoped ─────────────────────────────
-# Без этого агент, у которого нет identity, выполнит `git config --local user.*`,
-# а в linked worktree это пишет в ОБЩИЙ .git/config канонического дерева — и
-# следующий коммит владельца окажется подписан агентом. Проверено на практике.
-# extensions.worktreeConfig=true включает per-worktree конфиг (git >= 2.31).
+# ── 7. Git identity агента: ТОЛЬКО worktree-scoped ──────────────────────────
+# Без этого шага identity в worktree нет вовсе, и оба исхода плохи:
+#   — в контейнере OpenHands глобального git-конфига нет, и коммит падает с
+#     "Author identity unknown";
+#   — на хосте identity резолвится в глобальный конфиг владельца, и коммит агента
+#     подписывается его именем.
+# Сам агент это чинить не должен: `git config --local` в linked worktree пишет в
+# ОБЩИЙ .git/config канонического дерева, и тогда уже коммит владельца окажется
+# подписан агентом. Проверено на практике.
+# extensions.worktreeConfig=true включает per-worktree конфиг (git >= 2.31):
+# запись уходит в .git/worktrees/<name>/config.worktree, общий конфиг не затрагивая.
 case "$BRANCH" in
 agent/claude/*) AGENT_ID=claude ;;
 agent/codex/*) AGENT_ID=codex ;;
@@ -181,14 +209,40 @@ agent/gemini/*) AGENT_ID=gemini ;;
 agent/openhands/*) AGENT_ID=openhands ;;
 *) AGENT_ID=infra ;;
 esac
-if [ "$(git -C "$CANONICAL" config --local --get extensions.worktreeConfig 2>/dev/null)" != "true" ]; then
-	git -C "$CANONICAL" config --local extensions.worktreeConfig true
-	printf '  включён extensions.worktreeConfig (per-worktree git config)\n'
-fi
-git -C "$WT" config --worktree user.name "openhands-$AGENT_ID"
-git -C "$WT" config --worktree user.email "openhands-$AGENT_ID@openhands.local"
 
-# ── 7. Необязательный симлинк на .env ───────────────────────────────────────
+# QUANT_AGENT_IDENTITY переопределяет только роль — соглашение openhands-<роль>
+# на домене openhands.local сохраняется (openhands-control-center, openhands-uiux, …).
+# Оба значения уже проверены на шаге 1.
+AGENT_ID="${QUANT_AGENT_IDENTITY:-$AGENT_ID}"
+AGENT_NAME="openhands-$AGENT_ID"
+AGENT_EMAIL="${QUANT_AGENT_EMAIL:-$AGENT_NAME@openhands.local}"
+
+if [ "$(git -C "$CANONICAL" config --local --type=bool --get extensions.worktreeConfig 2>/dev/null)" != "true" ]; then
+	if git -C "$CANONICAL" config --local extensions.worktreeConfig true; then
+		note "включён extensions.worktreeConfig (per-worktree git config)"
+	else
+		die "не удалось включить extensions.worktreeConfig в $CANONICAL.
+       Без него запись identity ушла бы в ОБЩИЙ .git/config канонического дерева —
+       этого делать нельзя, поэтому identity не задана.
+       Worktree уже создан: $WT
+       Действие владельца: включить флаг вручную и задать identity, либо закрыть worktree:
+         scripts/agents/close-worktree.sh '$BRANCH'"
+	fi
+fi
+
+git -C "$WT" config --worktree user.name "$AGENT_NAME"
+git -C "$WT" config --worktree user.email "$AGENT_EMAIL"
+
+# Контроль: identity обязана лежать в административном каталоге worktree. Если файла
+# нет — запись ушла в общий конфиг, и это нужно увидеть сразу, а не после коммита.
+if [ ! -f "$WT_ADMIN/config.worktree" ]; then
+	die "identity записана не в config.worktree этого worktree ($WT_ADMIN).
+       Проверьте общий конфиг канонического дерева и уберите оттуда user.*, если они появились:
+         git -C '$CANONICAL' config --local --get-regexp '^user\.'"
+fi
+note "identity  : $AGENT_NAME <$AGENT_EMAIL> (worktree-scoped)"
+
+# ── 8. Необязательный симлинк на .env ───────────────────────────────────────
 # Симлинк, а не копия: секрет остаётся в единственном месте. .env покрыт .gitignore,
 # поэтому симлинк не попадёт в коммит.
 ENV_STATE="не связан (часть pytest будет пропущена: ~132 passed / 101 skipped)"
@@ -204,7 +258,7 @@ if [ "$LINK_ENV" -eq 1 ]; then
 	fi
 fi
 
-# ── 8. Итог ─────────────────────────────────────────────────────────────────
+# ── 9. Итог ─────────────────────────────────────────────────────────────────
 cat <<EOF
 
 Готово. Для handoff (docs/agents/HANDOFF.md):

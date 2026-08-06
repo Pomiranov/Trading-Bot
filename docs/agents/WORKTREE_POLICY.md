@@ -82,6 +82,7 @@ scripts/agents/create-worktree.sh agent/codex/rm-p0-003-add-ci quant-site-approv
 - требует, чтобы canonical working tree не имел незакоммиченных **отслеживаемых** изменений (untracked-файлы допускаются и не переносятся в worktree);
 - отказывается, если ветка или каталог worktree уже существуют (повторное использование worktree запрещено);
 - создаёт ветку от base branch и worktree в `/Users/danila/OpenHands/worktrees/Quant/<slug>`;
+- задаёт в новом worktree git identity `openhands-<роль>` **worktree-scoped**, не трогая общий `.git/config` — см. раздел «Git identity» ниже;
 - печатает путь worktree, ветку и base commit — их агент вставляет в handoff.
 
 ### `status-worktrees.sh`
@@ -136,10 +137,11 @@ scripts/agents/close-worktree.sh agent/gemini/rm-p1-021-core-tests
 
 Поэтому:
 
-- на репозитории включён `extensions.worktreeConfig = true`;
-- `create-worktree.sh` задаёт identity **worktree-scoped** (`git config --worktree`) по префиксу ветки: `openhands-claude`, `openhands-codex`, `openhands-gemini`, `openhands-openhands`, `openhands-infra`;
+- на репозитории включён `extensions.worktreeConfig = true`, поэтому `git config --worktree` пишет в `.git/worktrees/<name>/config.worktree`, а не в общий конфиг; если флаг окажется выключен, `create-worktree.sh` включает его сам, а при неудаче отказывается задавать identity вовсе;
+- `create-worktree.sh` задаёт identity **worktree-scoped** (`git config --worktree`) по префиксу ветки: `openhands-claude`, `openhands-codex`, `openhands-gemini`, `openhands-openhands`, `openhands-infra`. Роль переопределяется переменной `QUANT_AGENT_IDENTITY` (`QUANT_AGENT_IDENTITY=control-center` → `openhands-control-center`), адрес — `QUANT_AGENT_EMAIL`;
 - **агенту запрещено выполнять `git config` в любой области** (`AGENTS.md §6`). Отсутствие identity — дефект среды, о котором нужно сообщить, а не настраивать самому;
-- canonical working tree сохраняет глобальную identity владельца.
+- canonical working tree сохраняет глобальную identity владельца;
+- `close-worktree.sh` ничего дополнительно не чистит: `config.worktree` лежит в `.git/worktrees/<name>/` и удаляется вместе с worktree.
 
 Проверка:
 

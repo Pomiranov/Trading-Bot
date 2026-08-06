@@ -153,6 +153,17 @@ node bot/ui/static/check-dashboard-tokens.mjs # ВНИМАНИЕ: красный
 
 Формат сообщения коммита — `docs/GIT_WORKFLOW.md`. Коммит, закрывающий задачу Roadmap, упоминает её ID.
 
+**Как пушить из беседы OpenHands.** Токен **не** кладётся в URL remote — он попал бы в общий `.git/config` канонического дерева и в вывод `git remote -v`. Единственный разрешённый способ — per-command credential helper, читающий `GITHUB_TOKEN` из окружения беседы:
+
+```bash
+git -c credential.helper=scripts/agents/git-credential-openhands.sh \
+    push origin agent/<agent>/<task-id>-<slug>
+```
+
+Helper ничего никуда не записывает; значение токена не появляется ни в argv, ни в конфиге, ни в логе. Прописывать helper через `git config` запрещено — см. запрет на `git config` выше. Проверено 2026-08-06: из контейнера работают `fetch`, `ls-remote` и `push`, при этом `ghp_` в `.git/config` — 0 вхождений.
+
+Если `GITHUB_TOKEN` в окружении отсутствует — это дефект среды, а не повод настраивать credential самостоятельно: сообщи владельцу.
+
 ---
 
 ## 7. Запреты, действующие для всех

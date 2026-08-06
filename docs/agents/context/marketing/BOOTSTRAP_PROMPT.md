@@ -101,10 +101,18 @@ Source Pack — 15 документов в `docs/source/`. Читай **один
 
 ## Замеренные факты (ground truth на 2026-08-06)
 
-Ветка `quant-site-approved-reference-redesign`, HEAD `7f357e3`.
-Тесты: `161 passed, 72 skipped`. Python-файлов под `bot/` — **176**.
-Документов в `docs/source/` — **15** (не 14).
+Это факты **канонического репозитория** `/Users/danila/Downloads/Trading-Bot-merge-learning-nik`:
+ветка `quant-site-approved-reference-redesign`, HEAD `7f357e3`, тесты
+`161 passed, 72 skipped`, Python-файлов под `bot/` — **176**, документов в
+`docs/source/` — **15** (не 14).
 Remote: `https://github.com/Pomiranov/Trading-Bot.git`, private, default branch `main`.
+
+**Твоя рабочая область — это не канонический репозиторий.** Она отдельный worktree
+в состоянии **detached HEAD** на коммите ветки `infra/openhands-multi-agent-setup`,
+поэтому `git rev-parse --abbrev-ref HEAD` в ней вернёт `HEAD`, а не имя ветки, и sha
+будет другим. Это ожидаемо, а не дефект: область даёт тебе правила, skills и контекст.
+Состояние production-кода читай в каноническом репозитории — он смонтирован и доступен
+на чтение. Числа выше относятся к нему.
 
 ## Правило факта
 
